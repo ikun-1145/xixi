@@ -84,7 +84,8 @@
     .buttons a:nth-child(3) { animation-delay: 0.7s; }
     .buttons a:nth-child(4) { animation-delay: 0.9s; }
     .buttons a:nth-child(5) { animation-delay: 1.1s; }
-    .donate-button { animation-delay: 1.3s; }
+    .buttons a:nth-child(6) { animation-delay: 1.3s; } /* 实时粉丝数按钮 */
+    .donate-button { animation-delay: 1.5s; }
 
     @keyframes slideUp {
       to {
@@ -168,6 +169,7 @@
       <a href="guanzhu.html">关注我们</a>
       <a href="lianxi.html">联系我们</a>
       <a href="comment.html">评论留言</a>
+      <a href="fans.html">实时粉丝数</a> <!-- 新增按钮 -->
       <button id="donateBtn" class="donate-button">捐赠支持</button>
     </div>
   </div>
@@ -183,7 +185,6 @@
 
   <footer>Copyright©️2024-2025霜蓝, All Rights Reserved.</footer>
 
-  <!-- 登录逻辑脚本 -->
   <script type="module">
     import { supabase } from './p/js/supabaseClient.js';
 
