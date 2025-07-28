@@ -1,137 +1,122 @@
 <!DOCTYPE html>
-<html lang="zh-Hans">
+<html lang="zh-CN">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>实时粉丝数 - 霜蓝</title>
-  <link href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap" rel="stylesheet">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>粉丝数展示</title>
+  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet" />
   <style>
-    * { box-sizing: border-box; }
-
     body {
       margin: 0;
-      font-family: 'Product Sans', sans-serif;
-      background: linear-gradient(135deg, #e0faff, #ffffff);
+      font-family: 'Orbitron', sans-serif;
+      background: url("p/bg.png") no-repeat center center fixed;
+      background-size: cover;
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-height: 100vh;
-      color: #1A1A1A;
-    }
-
-    .container {
-      margin-top: 3rem;
-      padding: 2rem;
-      width: 90%;
-      max-width: 720px;
-      background: rgba(255,255,255,0.5);
-      backdrop-filter: blur(10px);
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-      text-align: center;
-      animation: fadeInUp 1s ease-out;
-    }
-
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    h1 {
-      font-size: 2.2rem;
-      margin-bottom: 1.5rem;
-      text-shadow: 1px 1px 2px #ccc;
-    }
-
-    .odometer {
-      display: flex;
       justify-content: center;
-      font-size: 4rem;
-      font-weight: bold;
-      letter-spacing: 0.1em;
-      margin-bottom: 1.5rem;
-      color: #000;
+      height: 100vh;
+      color: #71f8fc;
+    }
+
+    .counter {
+      display: flex;
+      font-size: 10vw;
+      gap: 0.2em;
+      user-select: none;
+      text-shadow: 0 0 10px #71f8fc;
     }
 
     .digit {
       position: relative;
       width: 1em;
-      height: 1.3em;
-      overflow: hidden;
-      margin: 0 0.05em;
+      height: 1.2em;
+      perspective: 1000px;
     }
 
-    .digit span {
+    .digit-inner {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      transform-style: preserve-3d;
+      animation: flip 1s ease-in-out;
+    }
+
+    .digit-front, .digit-back {
       position: absolute;
       width: 100%;
       height: 100%;
-      animation: flipIn 0.6s ease forwards;
-      transform: translateY(-100%);
-      opacity: 0;
+      backface-visibility: hidden;
     }
 
-    @keyframes flipIn {
-      0% { transform: translateY(-100%); opacity: 0; }
-      60% { transform: translateY(10%); opacity: 1; }
-      100% { transform: translateY(0); opacity: 1; }
+    .digit-back {
+      transform: rotateX(180deg);
     }
 
-    .update-time {
-      font-size: 0.9rem;
-      color: #333;
-      margin-top: 1rem;
+    @keyframes flip {
+      0% { transform: rotateX(0); }
+      50% { transform: rotateX(180deg); }
+      100% { transform: rotateX(0); }
     }
 
-    .back {
-      margin-top: 2rem;
-      display: inline-block;
-      padding: 0.8rem 1.5rem;
-      background: linear-gradient(to right, #71f8fc, #a0fff8);
-      border-radius: 30px;
-      text-decoration: none;
-      color: black;
-      font-weight: bold;
-      font-size: 1.1rem;
-      transition: transform 0.3s ease;
-    }
-
-    .back:hover {
-      transform: translateY(-3px);
-    }
-
-    footer {
-      margin: 2rem 0 1rem;
-      font-size: 0.9rem;
-      color: #000;
+    .footer {
+      position: absolute;
+      bottom: 20px;
+      font-size: 1rem;
+      color: #ccc;
+      background: rgba(0, 0, 0, 0.3);
+      padding: 5px 12px;
+      border-radius: 6px;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>实时粉丝数</h1>
-    <div class="odometer" id="odometer"></div>
-    <div class="update-time">最后更新时间：2025年7月28日 下午7:17</div>
-    <a href="index.html" class="back">← 返回主页</a>
-  </div>
-  <footer>Copyright©️2024–2025霜蓝, All Rights Reserved.</footer>
+
+  <div class="counter" id="fanCounter"></div>
+  <div class="footer" id="updateTime"></div>
 
   <script>
-    document.addEventListener("DOMContentLoaded", () => {
-      const fans = "20400";
-      const odometer = document.getElementById("odometer");
+    // 粉丝数（你可以每次更新时只改这个数字）
+    const fans = 20400;
 
-      fans.split("").forEach((char, i) => {
+    // 更新时间（你只改这一个日期字符串就好）
+    const updateDate = '2025年7月28日 19:17';
+
+    // 显示更新时间
+    document.getElementById('updateTime').textContent = '最后更新：' + updateDate;
+
+    // 渲染数字
+    const container = document.getElementById("fanCounter");
+
+    function renderDigits(number) {
+      container.innerHTML = "";
+      const digits = number.toString().split("");
+      digits.forEach(d => {
         const digit = document.createElement("div");
         digit.className = "digit";
 
-        const span = document.createElement("span");
-        span.textContent = char;
-        span.style.animationDelay = (i * 0.1) + "s";
+        const inner = document.createElement("div");
+        inner.className = "digit-inner";
 
-        digit.appendChild(span);
-        odometer.appendChild(digit);
+        const front = document.createElement("div");
+        front.className = "digit-front";
+        front.textContent = d;
+
+        const back = document.createElement("div");
+        back.className = "digit-back";
+        back.textContent = d;
+
+        inner.appendChild(front);
+        inner.appendChild(back);
+        digit.appendChild(inner);
+        container.appendChild(digit);
       });
-    });
+    }
+
+    renderDigits(fans);
   </script>
+
 </body>
 </html>
