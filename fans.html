@@ -1,36 +1,59 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-Hans">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>粉丝数展示</title>
-  <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@700&display=swap" rel="stylesheet" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>实时粉丝数 - 霜蓝</title>
+  <link href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap" rel="stylesheet">
   <style>
+    * { box-sizing: border-box; }
+
     body {
       margin: 0;
-      font-family: 'Orbitron', sans-serif;
-      background: url("p/bg.png") no-repeat center center fixed;
-      background-size: cover;
+      font-family: 'Product Sans', sans-serif;
+      background: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center center / cover no-repeat fixed;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
-      height: 100vh;
-      color: #71f8fc;
+      min-height: 100vh;
+      color: #1A1A1A;
     }
 
-    .counter {
+    .container {
+      margin-top: 3rem;
+      padding: 2rem;
+      width: 90%;
+      max-width: 720px;
+      background: rgba(255,255,255,0.5);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      text-align: center;
+      animation: fadeInUp 1s ease-out;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    h1 {
+      font-size: 2.2rem;
+      margin-bottom: 1.5rem;
+    }
+
+    .number-display {
       display: flex;
-      font-size: 10vw;
-      gap: 0.2em;
-      user-select: none;
-      text-shadow: 0 0 10px #71f8fc;
+      justify-content: center;
+      gap: 0.5rem;
+      font-size: 3.5rem;
+      margin: 1.5rem 0;
     }
 
     .digit {
       position: relative;
-      width: 1em;
-      height: 1.2em;
+      width: 2.2rem;
+      height: 3.5rem;
       perspective: 1000px;
     }
 
@@ -41,7 +64,7 @@
       width: 100%;
       height: 100%;
       transform-style: preserve-3d;
-      animation: flip 1s ease-in-out;
+      animation: flip 0.6s ease-in-out;
     }
 
     .digit-front, .digit-back {
@@ -49,6 +72,12 @@
       width: 100%;
       height: 100%;
       backface-visibility: hidden;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #ffffffaa;
+      border-radius: 8px;
+      box-shadow: 0 0 5px rgba(0,0,0,0.2);
     }
 
     .digit-back {
@@ -61,33 +90,54 @@
       100% { transform: rotateX(0); }
     }
 
-    .footer {
-      position: absolute;
-      bottom: 20px;
-      font-size: 1rem;
-      color: #ccc;
-      background: rgba(0, 0, 0, 0.3);
-      padding: 5px 12px;
-      border-radius: 6px;
+    .update-time {
+      font-size: 0.95rem;
+      color: #333;
+      margin-top: 0.5rem;
+    }
+
+    .back {
+      margin-top: 2rem;
+      display: inline-block;
+      padding: 0.8rem 1.5rem;
+      background: linear-gradient(to right, #71f8fc, #a0fff8);
+      border-radius: 30px;
+      text-decoration: none;
+      color: black;
+      font-weight: bold;
+      font-size: 1.1rem;
+      transition: transform 0.3s ease;
+    }
+
+    .back:hover {
+      transform: translateY(-3px);
+    }
+
+    footer {
+      margin: 2rem 0 1rem;
+      font-size: 0.9rem;
+      color: #000;
     }
   </style>
 </head>
 <body>
-
-  <div class="counter" id="fanCounter"></div>
-  <div class="footer" id="updateTime"></div>
+  <div class="container">
+    <h1>实时粉丝数</h1>
+    <div class="number-display" id="fanCounter"></div>
+    <div class="update-time" id="updateTime"></div>
+    <a href="index.html" class="back">← 返回主页</a>
+  </div>
+  <footer>Copyright©️2024-2025霜蓝, All Rights Reserved.</footer>
 
   <script>
-    // 粉丝数（你可以每次更新时只改这个数字）
+    // 可修改部分
     const fans = 20400;
-
-    // 更新时间（你只改这一个日期字符串就好）
     const updateDate = '2025年7月28日 19:17';
 
-    // 显示更新时间
+    // 更新时间渲染
     document.getElementById('updateTime').textContent = '最后更新：' + updateDate;
 
-    // 渲染数字
+    // 渲染翻页数字
     const container = document.getElementById("fanCounter");
 
     function renderDigits(number) {
@@ -117,6 +167,5 @@
 
     renderDigits(fans);
   </script>
-
 </body>
 </html>
