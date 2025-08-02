@@ -12,28 +12,42 @@
 
     body {
       font-family: 'Product Sans', sans-serif;
-      background: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center center / cover no-repeat fixed;
+      background: linear-gradient(135deg, #e0faff, #ffffff, #a0fff8), url('p/bg.png') center center / cover no-repeat fixed;
+      background-size: 200% 200%;
+      animation: bgFlow 15s ease-in-out infinite;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
       min-height: 100vh;
       overflow-x: hidden;
+      animation: pageFadeIn 2s ease-in-out;
+    }
+
+    @keyframes bgFlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+
+    @keyframes pageFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
     }
 
     .container {
       text-align: center;
-      padding: 2.5rem 2rem;
+      padding: 3rem 2.5rem;
       max-width: 900px;
       backdrop-filter: blur(12px);
-      background: rgba(255, 255, 255, 0.6);
+      background: rgba(255, 255, 255, 0.2);
       border-radius: 25px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.15), inset 0 0 10px rgba(255,255,255,0.3);
-      animation: fadeIn 1.2s ease;
+      animation: fadeIn 1.5s ease-in-out;
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(20px); }
+      from { opacity: 0; transform: translateY(30px); }
       to { opacity: 1; transform: translateY(0); }
     }
 
@@ -53,7 +67,13 @@
       object-fit: cover;
       box-shadow: 0 0 25px rgba(0,0,0,0.2);
       margin-right: 2rem;
+      animation: slideInLeft 1s ease-in-out;
       transition: transform 0.3s ease;
+    }
+
+    @keyframes slideInLeft {
+      from { opacity: 0; transform: translateX(-50px); }
+      to { opacity: 1; transform: translateX(0); }
     }
 
     .avatar:hover {
@@ -66,12 +86,31 @@
       line-height: 1.4;
       text-align: left;
       flex: 1;
+      animation: fadeInRight 1.2s ease-in-out;
+      white-space: nowrap;
+      overflow: hidden;
+      border-right: 2px solid #000;
+      animation: typing 2s steps(20) forwards, blink 0.5s step-end infinite alternate;
+    }
+
+    @keyframes fadeInRight {
+      from { opacity: 0; transform: translateX(50px); }
+      to { opacity: 1; transform: translateX(0); }
+    }
+
+    @keyframes typing {
+      from { width: 0; }
+      to { width: 100%; }
+    }
+
+    @keyframes blink {
+      50% { border-color: transparent; }
     }
 
     .buttons {
       display: flex;
       flex-wrap: wrap;
-      gap: 1.2rem;
+      gap: 1.5rem;
       justify-content: center;
       margin-top: 2rem;
     }
@@ -81,37 +120,34 @@
       padding: 1rem 2rem;
       font-size: 1.1rem;
       color: #000;
-      background: #a0fff8;
+      background: linear-gradient(135deg, #a0fff8, #71f8fc);
       border: 2px solid transparent;
-      border-image: linear-gradient(to right, #71f8fc, #a0fff8) 1;
-      border-radius: 35px;
+      border-radius: 10px;
       text-decoration: none;
       font-weight: bold;
-      box-shadow: 0 5px 15px rgba(0,0,0,0.1);
-      transform: translateY(20px);
-      opacity: 0;
-      animation: slideUp 0.4s ease forwards;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .buttons a:nth-child(1) { animation-delay: 0.1s; }
-    .buttons a:nth-child(2) { animation-delay: 0.2s; }
-    .buttons a:nth-child(3) { animation-delay: 0.3s; }
-    .buttons a:nth-child(4) { animation-delay: 0.4s; }
-    .buttons a:nth-child(5) { animation-delay: 0.5s; }
-    .buttons a:nth-child(6) { animation-delay: 0.6s; }
-    .donate-button { animation-delay: 0.7s; }
-
-    @keyframes slideUp {
-      to {
-        transform: translateY(0);
-        opacity: 1;
-      }
+      box-shadow: inset 0 2px 4px rgba(255,255,255,0.5), 0 4px 10px rgba(0,0,0,0.1);
+      backdrop-filter: blur(8px);
+      animation: slideUp 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
+      transition: all 0.3s ease;
     }
 
     .buttons a:hover, .donate-button:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 8px 20px rgba(0,0,0,0.15);
+      background: linear-gradient(135deg, #90e8e8, #61d8dc);
+      box-shadow: inset 0 2px 4px rgba(255,255,255,0.5), 0 6px 15px rgba(0,0,0,0.15);
+      transform: scale(1.05) rotate(2deg);
+    }
+
+    .buttons a:nth-child(1) { animation-delay: 0.2s; }
+    .buttons a:nth-child(2) { animation-delay: 0.4s; }
+    .buttons a:nth-child(3) { animation-delay: 0.6s; }
+    .buttons a:nth-child(4) { animation-delay: 0.8s; }
+    .buttons a:nth-child(5) { animation-delay: 1.0s; }
+    .buttons a:nth-child(6) { animation-delay: 1.2s; }
+    .donate-button { animation-delay: 1.4s; }
+
+    @keyframes slideUp {
+      from { transform: translateY(50px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
     }
 
     footer {
@@ -131,10 +167,18 @@
       width: 100%;
       height: 100%;
       background-color: rgba(0,0,0,0.5);
+      opacity: 0;
+      transition: opacity 0.5s ease-in-out;
+    }
+
+    .modal.active {
+      display: block;
+      opacity: 1;
     }
 
     .modal-content {
-      background-color: white;
+      background-color: rgba(255, 255, 255, 0.9);
+      backdrop-filter: blur(12px);
       margin: 15% auto;
       padding: 25px 35px;
       border-radius: 12px;
@@ -142,6 +186,12 @@
       max-width: 400px;
       text-align: center;
       box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+      animation: modalPop 0.5s ease-in-out;
+    }
+
+    @keyframes modalPop {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
     }
 
     .modal-content p {
@@ -150,19 +200,20 @@
     }
 
     .login-button {
-      background: #a0fff8;
+      background: linear-gradient(135deg, #a0fff8, #71f8fc);
       color: black;
       border: 2px solid transparent;
-      border-image: linear-gradient(to right, #71f8fc, #a0fff8) 1;
       padding: 10px 20px;
       font-size: 16px;
       border-radius: 10px;
       cursor: pointer;
-      transition: transform 0.3s ease;
+      backdrop-filter: blur(8px);
+      transition: all 0.3s ease;
     }
 
     .login-button:hover {
-      transform: translateY(-3px);
+      background: linear-gradient(135deg, #90e8e8, #61d8dc);
+      transform: scale(1.05);
     }
 
     .close {
@@ -172,21 +223,12 @@
     }
 
     @media (min-width: 768px) {
-      .buttons {
-        gap: 1.5rem;
-      }
-      .header {
-        flex-wrap: nowrap;
-      }
+      .buttons { gap: 1.8rem; }
+      .header { flex-wrap: nowrap; }
     }
 
     @media (min-width: 1024px) {
-      .buttons {
-        gap: 1.8rem;
-      }
-      .container {
-        padding: 3rem 2.5rem;
-      }
+      .container { padding: 3.5rem 3rem; }
     }
 
     @media (max-width: 480px) {
@@ -204,19 +246,19 @@
       <h1>你好，我是霜蓝</h1>
     </div>
     <div class="buttons">
-      <a href="shoushe.html">兽设介绍</a>
-      <a href="banquan.html">版权信息</a>
-      <a href="guanzhu.html">关注我们</a>
-      <a href="lianxi.html">联系我们</a>
-      <a href="comment.html">评论留言</a>
-      <a href="fans.html">实时粉丝数</a>
-      <button id="donateBtn" class="donate-button">捐赠支持</button>
+      <a href="shoushe.html" title="了解我的兽设故事">兽设介绍</a>
+      <a href="banquan.html" title="查看版权相关信息">版权信息</a>
+      <a href="guanzhu.html" title="关注我的最新动态">关注我们</a>
+      <a href="lianxi.html" title="通过多种方式联系我">联系我们</a>
+      <a href="comment.html" title="留下你的评论和建议">评论留言</a>
+      <a href="fans.html" title="查看实时粉丝数据">实时粉丝数</a>
+      <button id="donateBtn" class="donate-button" title="支持我的创作">捐赠支持</button>
     </div>
   </div>
 
   <div id="loginModal" class="modal">
     <div class="modal-content">
-      <span class="close" onclick="document.getElementById('loginModal').style.display='none'">&times;</span>
+      <span class="close" onclick="closeModal()">&times;</span>
       <p>您需要先登录后才能访问捐赠页面。</p>
       <button id="loginRedirect" class="login-button">使用 GitHub 登录</button>
     </div>
@@ -229,13 +271,23 @@
 
     const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
 
+    function closeModal() {
+      const modal = document.getElementById("loginModal");
+      modal.classList.remove("active");
+      setTimeout(() => modal.style.display = "none", 500);
+    }
+
     document.getElementById("donateBtn").addEventListener("click", () => {
       if (isLoggedIn) {
         window.location.href = "donate.html";
       } else {
-        document.getElementById("loginModal").style.display = "block";
+        const modal = document.getElementById("loginModal");
+        modal.style.display = "block";
+        setTimeout(() => modal.classList.add("active"), 10);
       }
     });
+
+    document.querySelector(".close").addEventListener("click", closeModal);
 
     const loginRedirectBtn = document.getElementById('loginRedirect');
     if (loginRedirectBtn) {
