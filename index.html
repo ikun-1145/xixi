@@ -23,7 +23,7 @@
 
     .container {
       margin-top: 2rem;
-      padding: 2Jean;
+      padding: 2rem;
       width: 90%;
       max-width: 720px;
       background: rgba(255,255,255,0.5);
@@ -59,19 +59,22 @@
       margin-top: 1.5rem;
     }
 
-    .buttons a, .donate-button {
+    .buttons a,
+    .donate-button {
       display: inline-block;
       padding: 0.8rem 1.5rem;
-      background antral-gradient(to right, #71f8fc, #a0fff8);
+      background: linear-gradient(to right, #71f8fc, #a0fff8);
       border-radius: 30px;
       text-decoration: none;
       color: black;
       font-weight: bold;
       font-size: 1.1rem;
       transition: transform 0.3s ease;
+      text-align: center;
     }
 
-    .buttons a:hover, .donate-button:hover {
+    .buttons a:hover,
+    .donate-button:hover {
       transform: translateY(-3px);
     }
 
@@ -82,6 +85,50 @@
       text-align: center;
     }
 
+    /* 页面加载动画 */
+    #loading {
+      position: fixed;
+      z-index: 9999;
+      background: #ffffff;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.6s ease;
+    }
+
+    .loader {
+      border: 6px solid #e0faff;
+      border-top: 6px solid #71f8fc;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    body.fade-in {
+      animation: fadeBody 0.8s ease;
+    }
+
+    @keyframes fadeBody {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    body.fade-out {
+      animation: fadeOut 0.6s ease forwards;
+    }
+
+    @keyframes fadeOut {
+      to { opacity: 0; }
+    }
+
+    /* 登录弹窗 */
     .modal {
       display: none;
       position: fixed;
@@ -152,6 +199,11 @@
   </style>
 </head>
 <body>
+  <!-- 加载动画 -->
+  <div id="loading">
+    <div class="loader"></div>
+  </div>
+
   <div class="container">
     <img src="p/tx.jpeg" alt="头像" class="avatar">
     <h1>你好，我是霜蓝</h1>
@@ -162,10 +214,11 @@
       <a href="lianxi.html">联系我们</a>
       <a href="comment.html">评论留言</a>
       <a href="fans.html">实时粉丝数</a>
-      <button id="donateBtn" class="donate-button">捐赠支持</button>
+      <button id="donateBtn" class="donate-button" type="button">捐赠支持</button>
     </div>
   </div>
 
+  <!-- 登录弹窗 -->
   <div id="loginModal" class="modal">
     <div class="modal-content">
       <span class="close" onclick="closeModal()">&times;</span>
@@ -176,6 +229,34 @@
 
   <footer>Copyright©️2024-2025霜蓝, All Rights Reserved.</footer>
 
+  <!-- 加载与跳转过渡 -->
+  <script>
+    window.addEventListener('load', () => {
+      document.body.classList.add('fade-in');
+      const loader = document.getElementById('loading');
+      if (loader) {
+        loader.style.opacity = '0';
+        setTimeout(() => loader.style.display = 'none', 600);
+      }
+    });
+
+    // 所有 a 标签点击淡出后跳转
+    document.addEventListener("DOMContentLoaded", () => {
+      const links = document.querySelectorAll("a[href]");
+      links.forEach(link => {
+        const href = link.getAttribute("href");
+        if (!href.startsWith("#") && !href.startsWith("javascript")) {
+          link.addEventListener("click", (e) => {
+            e.preventDefault();
+            document.body.classList.add("fade-out");
+            setTimeout(() => window.location.href = href, 600);
+          });
+        }
+      });
+    });
+  </script>
+
+  <!-- supabase 登录控制 -->
   <script type="module">
     import { supabase } from './p/js/supabaseClient.js';
 
@@ -184,16 +265,15 @@
     function closeModal() {
       const modal = document.getElementById("loginModal");
       modal.classList.remove("active");
-      setTimeout(() => modal.style.display = "none", 500);
     }
 
     document.getElementById("donateBtn").addEventListener("click", () => {
       if (isLoggedIn) {
-        window.location.href = "donate.html";
+        document.body.classList.add("fade-out");
+        setTimeout(() => window.location.href = "donate.html", 600);
       } else {
         const modal = document.getElementById("loginModal");
-        modal.style.display = "block";
-        setTimeout(() => modal.classList.add("active"), 10);
+        modal.classList.add("active");
       }
     });
 
@@ -211,8 +291,8 @@
       });
     }
 
-    const { data, error } = await supabase.auth.getUser();
-    if (data.user) {
+    const { data } = await supabase.auth.getUser();
+    if (data?.user) {
       localStorage.setItem("isLoggedIn", "true");
     } else {
       localStorage.setItem("isLoggedIn", "false");
