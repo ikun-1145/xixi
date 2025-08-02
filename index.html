@@ -3,28 +3,28 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>霜蓝的个人主页</title>
+  <title>霜蓝的NFT主页</title>
   <link rel="sitemap" type="application/xml" href="/sitemap.xml">
-  <meta name="keywords" content="霜蓝,霜蓝CCC,福瑞,furry" />
+  <meta name="keywords" content="霜蓝,霜蓝CCC,福瑞,furry,NFT" />
   <link href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      font-family: 'SF Pro Display', 'Product Sans', sans-serif;
-      background: linear-gradient(135deg, #f5f7fa, #e2e8f0);
+      font-family: 'Product Sans', sans-serif;
+      background: linear-gradient(135deg, #2A1B3D, #4B2E83), url('p/bg.png') center center / cover no-repeat;
       background-size: 200% 200%;
-      animation: bgFlow 15s ease-in-out infinite;
+      animation: bgWave 15s ease-in-out infinite;
+      color: #fff;
       display: flex;
       flex-direction: column;
       align-items: center;
-      justify-content: center;
       min-height: 100vh;
       overflow-x: hidden;
-      animation: pageFadeIn 2s ease-in-out;
+      animation: pageFadeIn 1.5s ease-in-out;
     }
 
-    @keyframes bgFlow {
+    @keyframes bgWave {
       0% { background-position: 0% 50%; }
       50% { background-position: 100% 50%; }
       100% { background-position: 0% 50%; }
@@ -35,123 +35,144 @@
       to { opacity: 1; }
     }
 
+    nav {
+      width: 100%;
+      padding: 1rem 2rem;
+      display: flex;
+      justify-content: flex-start;
+      gap: 2rem;
+      position: fixed;
+      top: 0;
+      z-index: 100;
+    }
+
+    nav a {
+      color: #fff;
+      text-decoration: none;
+      font-size: 1rem;
+      opacity: 0.8;
+      transition: opacity 0.3s ease;
+    }
+
+    nav a:hover {
+      opacity: 1;
+    }
+
+    .connect-btn {
+      margin-left: auto;
+      padding: 0.5rem 1.5rem;
+      background: #8A4AF3;
+      border-radius: 20px;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      transition: all 0.3s ease;
+    }
+
+    .connect-btn:hover {
+      background: #6F2ACD;
+      transform: translateY(-2px);
+    }
+
     .container {
       text-align: center;
-      padding: 3rem 2.5rem;
-      max-width: 900px;
-      backdrop-filter: blur(12px);
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 25px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.15), inset 0 0 10px rgba(255,255,255,0.3);
-      animation: fadeIn 1.5s ease-in-out;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    .header {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      margin-bottom: 2rem;
+      padding: 6rem 2rem 2rem;
+      max-width: 1200px;
+      position: relative;
     }
 
     .avatar {
-      width: 140px;
-      height: 140px;
-      max-width: 100%;
+      width: 200px;
+      height: 200px;
       border-radius: 50%;
       object-fit: cover;
-      box-shadow: 0 0 25px rgba(0,0,0,0.2);
-      margin-right: 2rem;
-      animation: slideInLeft 1s ease-in-out;
-      transition: transform 0.3s ease;
-    }
-
-    @keyframes slideInLeft {
-      from { opacity: 0; transform: translateX(-50px); }
-      to { opacity: 1; transform: translateX(0); }
-    }
-
-    .avatar:hover {
-      transform: scale(1.05);
+      box-shadow: 0 0 30px rgba(138, 74, 243, 0.5);
+      animation: fadeIn 1.2s ease-in-out;
+      position: absolute;
+      top: 2rem;
+      right: 2rem;
     }
 
     h1 {
-      font-family: 'SF Pro Text', 'Product Sans', sans-serif;
-      font-weight: 600;
-      font-size: 2.4rem;
-      color: #1d1d1f;
-      line-height: 1.4;
-      text-align: left;
-      flex: 1;
-      white-space: nowrap;
-      overflow: hidden;
-      border-right: 2px solid #1d1d1f;
-      animation: typing 2s steps(20) forwards, blink 0.5s step-end infinite alternate;
+      font-size: 4rem;
+      font-weight: 900;
+      line-height: 1.2;
+      text-transform: uppercase;
+      animation: slideUp 1.5s ease-in-out;
     }
 
-    @keyframes typing {
-      from { width: 0; }
-      to { width: 100%; }
+    p {
+      font-size: 1.2rem;
+      margin: 1rem 0;
+      color: #D1C4E9;
+      animation: fadeIn 1.8s ease-in-out;
     }
 
-    @keyframes blink {
-      50% { border-color: transparent; }
+    .discover-btn {
+      padding: 1rem 2rem;
+      background: #007AFF;
+      border-radius: 50px;
+      border: none;
+      color: #fff;
+      font-size: 1.1rem;
+      cursor: pointer;
+      box-shadow: 0 4px 10px rgba(0, 122, 255, 0.3);
+      animation: bounceIn 1.5s ease-in-out;
+      transition: all 0.3s ease;
+    }
+
+    .discover-btn:hover {
+      background: #005BB5;
+      transform: translateY(-3px) scale(1.05);
     }
 
     .buttons {
       display: flex;
-      flex-wrap: wrap;
       gap: 1.5rem;
       justify-content: center;
       margin-top: 2rem;
     }
 
-    .buttons a, .donate-button {
-      display: inline-block;
-      padding: 12px 24px;
-      font-size: 1.1rem;
-      font-family: 'SF Pro Display', 'Product Sans', sans-serif;
-      color: #fff;
-      background: #007AFF;
+    .buttons a {
+      padding: 0.8rem 1.5rem;
+      background: #8A4AF3;
       border-radius: 12px;
+      color: #fff;
       text-decoration: none;
       font-weight: 500;
       box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      backdrop-filter: blur(8px);
-      animation: slideUp 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards;
-      transition: all 0.2s ease;
+      animation: slideUp 1.2s ease-in-out;
+      transition: all 0.3s ease;
     }
 
-    .buttons a:hover, .donate-button:hover {
-      background: #005BB5;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.15);
-      transform: translateY(-2px) scale(1.02);
+    .buttons a:hover {
+      background: #6F2ACD;
+      transform: translateY(-2px);
     }
 
-    .buttons a:nth-child(1) { animation-delay: 0.2s; }
-    .buttons a:nth-child(2) { animation-delay: 0.4s; }
-    .buttons a:nth-child(3) { animation-delay: 0.6s; }
-    .buttons a:nth-child(4) { animation-delay: 0.8s; }
-    .buttons a:nth-child(5) { animation-delay: 1.0s; }
-    .buttons a:nth-child(6) { animation-delay: 1.2s; }
-    .donate-button { animation-delay: 1.4s; }
+    .buttons a:nth-child(1) { animation-delay: 0.3s; }
+    .buttons a:nth-child(2) { animation-delay: 0.6s; }
+    .buttons a:nth-child(3) { animation-delay: 0.9s; }
+    .buttons a:nth-child(4) { animation-delay: 1.2s; }
+    .buttons a:nth-child(5) { animation-delay: 1.5s; }
+    .buttons a:nth-child(6) { animation-delay: 1.8s; }
 
-    @keyframes slideUp {
-      from { transform: translateY(50px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
+    .stats {
+      display: flex;
+      justify-content: center;
+      gap: 3rem;
+      margin-top: 3rem;
+      color: #D1C4E9;
     }
 
-    footer {
-      margin-top: 2.5rem;
-      font-size: 0.9rem;
-      color: #1d1d1f;
+    .stat-item {
       text-align: center;
-      width: 100%;
+    }
+
+    .stat-item span {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: #fff;
     }
 
     .modal {
@@ -173,15 +194,15 @@
     }
 
     .modal-content {
-      background: rgba(255, 255, 255, 0.9);
-      backdrop-filter: blur(12px);
+      background: rgba(42, 27, 61, 0.9);
+      backdrop-filter: blur(10px);
       margin: 15% auto;
-      padding: 25px 35px;
+      padding: 2rem;
       border-radius: 12px;
       width: 90%;
       max-width: 400px;
       text-align: center;
-      box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+      box-shadow: 0 5px 20px rgba(0,0,0,0.3);
       animation: modalPop 0.5s ease-in-out;
     }
 
@@ -193,64 +214,78 @@
     .modal-content p {
       font-size: 1rem;
       margin-bottom: 1.2rem;
-      color: #1d1d1f;
+      color: #D1C4E9;
     }
 
     .login-button {
       background: #007AFF;
       color: #fff;
       border: none;
-      padding: 12px 24px;
+      padding: 0.8rem 1.5rem;
       font-size: 1rem;
-      font-family: 'SF Pro Display', 'Product Sans', sans-serif;
       border-radius: 12px;
       cursor: pointer;
-      transition: all 0.2s ease;
+      transition: all 0.3s ease;
     }
 
     .login-button:hover {
       background: #005BB5;
-      transform: translateY(-2px) scale(1.02);
+      transform: translateY(-2px);
     }
 
     .close {
       float: right;
-      font-size: 22px;
+      font-size: 1.5rem;
       cursor: pointer;
-      color: #1d1d1f;
+      color: #D1C4E9;
     }
 
-    @media (min-width: 768px) {
-      .buttons { gap: 1.8rem; }
-      .header { flex-wrap: nowrap; }
+    footer {
+      margin-top: 2rem;
+      font-size: 0.9rem;
+      color: #D1C4E9;
+      text-align: center;
+      width: 100%;
+      padding: 1rem;
     }
 
-    @media (min-width: 1024px) {
-      .container { padding: 3.5rem 3rem; }
-    }
-
-    @media (max-width: 480px) {
-      h1 { font-size: 1.8rem; text-align: center; }
-      .avatar { width: 120px; height: 120px; margin: 0 auto 1rem; }
-      .header { flex-direction: column; align-items: center; }
-      .buttons a, .donate-button { padding: 10px 20px; font-size: 1rem; }
+    @media (max-width: 768px) {
+      nav { flex-direction: column; align-items: center; gap: 1rem; }
+      .connect-btn { margin-left: 0; margin-top: 1rem; }
+      .container { padding-top: 8rem; }
+      .avatar { position: static; margin: 0 auto 2rem; }
+      h1 { font-size: 2.5rem; }
+      .buttons { flex-direction: column; gap: 1rem; }
+      .stats { flex-direction: column; gap: 1.5rem; }
     }
   </style>
 </head>
 <body>
+  <nav>
+    <a href="#">Drop</a>
+    <a href="#">Marketplace</a>
+    <a href="#">Creator</a>
+    <a href="#">Community</a>
+    <button class="connect-btn">Connect to Wallet</button>
+  </nav>
+
   <div class="container">
-    <div class="header">
-      <img src="p/tx.jpeg" alt="头像" class="avatar">
-      <h1>你好，我是霜蓝</h1>
-    </div>
+    <img src="p/tx.jpeg" alt="头像" class="avatar">
+    <h1>Create Your Own NFT Dream Gallery</h1>
+    <p>The Largest NFT Marketplace. Authentic and truly unique digital creation. Signed and owned by the creator, made possible by blockchain technology.</p>
+    <button class="discover-btn">Discover NFT</button>
     <div class="buttons">
-      <a href="shoushe.html" title="了解我的兽设故事">兽设介绍</a>
-      <a href="banquan.html" title="查看版权相关信息">版权信息</a>
-      <a href="guanzhu.html" title="关注我的最新动态">关注我们</a>
-      <a href="lianxi.html" title="通过多种方式联系我">联系我们</a>
-      <a href="comment.html" title="留下你的评论和建议">评论留言</a>
-      <a href="fans.html" title="查看实时粉丝数据">实时粉丝数</a>
-      <button id="donateBtn" class="donate-button" title="支持我的创作">捐赠支持</button>
+      <a href="shoushe.html">兽设介绍</a>
+      <a href="banquan.html">版权信息</a>
+      <a href="guanzhu.html">关注我们</a>
+      <a href="lianxi.html">联系我们</a>
+      <a href="comment.html">评论留言</a>
+      <a href="fans.html">实时粉丝数</a>
+    </div>
+    <div class="stats">
+      <div class="stat-item"><span>25.5K</span> Artwork</div>
+      <div class="stat-item"><span>15.5M</span> Artist</div>
+      <div class="stat-item"><span>10.5K</span> Auction</div>
     </div>
   </div>
 
