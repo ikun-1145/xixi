@@ -12,178 +12,74 @@
 
     body {
       font-family: 'Product Sans', sans-serif;
-      background: linear-gradient(135deg, #00CED1, #20B2AA), url('p/bg.png') center center / cover no-repeat;
-      background-size: 200% 200%;
-      animation: bgWave 15s ease-in-out infinite;
-      color: #fff;
+      background: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center center / cover no-repeat fixed;
       display: flex;
       flex-direction: column;
       align-items: center;
+      justify-content: center;
       min-height: 100vh;
-      overflow-x: hidden;
-      position: relative;
-      animation: pageFadeIn 1.5s ease-in-out;
-    }
-
-    @keyframes bgWave {
-      0% { background-position: 0% 50%; }
-      50% { background-position: 100% 50%; }
-      100% { background-position: 0% 50%; }
-    }
-
-    @keyframes pageFadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    /* 模拟波浪线条 */
-    body::before {
-      content: '';
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      background: url('data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"%3E%3Cpath fill="%2300CED1" fill-opacity="0.2" d="M0,128L48,144C96,160,192,192,288,192C384,192,480,160,576,149.3C672,139,768,149,864,170.7C960,192,1056,224,1152,213.3C1248,203,1344,149,1392,122.7L1440,96V320H1392H1344H1248H1152H1056H960H864H768H672H576H480H384H288H192H96H48H0Z"%3E%3C/path%3E%3C/svg%3E');
-      animation: waveMove 10s linear infinite;
-      z-index: -1;
-    }
-
-    @keyframes waveMove {
-      0% { transform: translateY(0); }
-      50% { transform: translateY(20px); }
-      100% { transform: translateY(0); }
+      color: #1A1A1A;
     }
 
     .container {
+      margin-top: 2rem;
+      padding: 2Jean;
+      width: 90%;
+      max-width: 720px;
+      background: rgba(255,255,255,0.5);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
       text-align: center;
-      padding: 2rem;
-      max-width: 1200px;
-      position: relative;
-      z-index: 1;
+      animation: fadeInUp 1s ease-out;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     .avatar {
-      width: 200px;
-      height: 200px;
+      width: 150px;
+      height: 150px;
       border-radius: 50%;
       object-fit: cover;
-      box-shadow: 0 0 30px rgba(0, 206, 209, 0.5), inset 0 0 20px rgba(255, 255, 255, 0.2);
-      background: linear-gradient(135deg, #00CED1, #20B2AA);
-      animation: fadeIn 1.2s ease-in-out;
-      position: absolute;
-      top: 2rem;
-      right: 2rem;
-      border: 4px solid rgba(255, 255, 255, 0.1);
+      margin-bottom: 1rem;
     }
 
     h1 {
-      font-size: 4rem;
-      font-weight: 900;
-      line-height: 1.2;
-      color: #fff;
-      text-shadow: 2px 2px 10px rgba(0, 0, 0, 0.3);
-      animation: slideUp 1.5s ease-in-out;
-    }
-
-    p {
-      font-size: 1.2rem;
-      margin: 1rem 0;
-      color: #E0FFFF; /* 浅青色副标题 */
-      animation: fadeIn 1.8s ease-in-out;
-    }
-
-    .donate-btn {
-      padding: 1rem 2rem;
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 50px;
-      border: none;
-      color: #fff;
-      font-size: 1.1rem;
-      cursor: pointer;
-      box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-      backdrop-filter: blur(10px);
-      animation: bounceIn 1.5s ease-in-out;
-      transition: all 0.3s ease;
-    }
-
-    .donate-btn:hover {
-      background: rgba(255, 255, 255, 0.3);
-      transform: translateY(-3px) scale(1.05);
+      font-size: 2rem;
+      margin-bottom: 1rem;
     }
 
     .buttons {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 1.5rem;
-      justify-content: center;
-      margin-top: 2rem;
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
     }
 
-    .buttons a {
-      padding: 0.8rem 1.5rem;
-      background: rgba(255, 255, 255, 0.2);
-      border-radius: 12px;
-      color: #fff;
-      text-decoration: none;
-      font-weight: 500;
-      box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-      backdrop-filter: blur(10px);
-      animation: slideUp 1.2s ease-in-out;
-      transition: all 0.3s ease;
-    }
-
-    .buttons a:hover {
-      background: rgba(255, 255, 255, 0.3);
-      transform: translateY(-2px);
-    }
-
-    .buttons a:nth-child(1) { animation-delay: 0.3s; }
-    .buttons a:nth-child(2) { animation-delay: 0.6s; }
-    .buttons a:nth-child(3) { animation-delay: 0.9s; }
-    .buttons a:nth-child(4) { animation-delay: 1.2s; }
-    .buttons a:nth-child(5) { animation-delay: 1.5s; }
-    .buttons a:nth-child(6) { animation-delay: 1.8s; }
-
-    .stats {
-      display: flex;
-      justify-content: center;
-      gap: 3rem;
-      margin-top: 3rem;
-      color: #E0FFFF;
-    }
-
-    .stat-item {
-      text-align: center;
-    }
-
-    .stat-item span {
+    .buttons a, .donate-button {
       display: inline-block;
-      width: 60px;
-      height: 60px;
-      line-height: 60px;
-      background: rgba(0, 206, 209, 0.2);
-      border-radius: 50%;
-      font-size: 1.2rem;
-      font-weight: 700;
-      color: #fff;
-      margin-bottom: 0.5rem;
+      padding: 0.8rem 1.5rem;
+      background antral-gradient(to right, #71f8fc, #a0fff8);
+      border-radius: 30px;
+      text-decoration: none;
+      color: black;
+      font-weight: bold;
+      font-size: 1.1rem;
+      transition: transform 0.3s ease;
     }
 
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
+    .buttons a:hover, .donate-button:hover {
+      transform: translateY(-3px);
     }
 
-    @keyframes slideUp {
-      from { transform: translateY(50px); opacity: 0; }
-      to { transform: translateY(0); opacity: 1; }
-    }
-
-    @keyframes bounceIn {
-      0% { transform: scale(0.8); opacity: 0; }
-      50% { transform: scale(1.05); }
-      100% { transform: scale(1); opacity: 1; }
+    footer {
+      margin: 2rem 0 1rem;
+      font-size: 0.9rem;
+      color: #000;
+      text-align: center;
     }
 
     .modal {
@@ -205,7 +101,7 @@
     }
 
     .modal-content {
-      background: rgba(0, 206, 209, 0.9);
+      background: rgba(255,255,255,0.9);
       backdrop-filter: blur(10px);
       margin: 15% auto;
       padding: 2rem;
@@ -213,7 +109,7 @@
       width: 90%;
       max-width: 400px;
       text-align: center;
-      box-shadow: 0 5px 20px rgba(0,0,0,0.3);
+      box-shadow: 0 5px 20px rgba(0,0,0,0.2);
       animation: modalPop 0.5s ease-in-out;
     }
 
@@ -225,48 +121,33 @@
     .modal-content p {
       font-size: 1rem;
       margin-bottom: 1.2rem;
-      color: #fff;
     }
 
     .login-button {
-      background: rgba(255, 255, 255, 0.2);
-      color: #fff;
+      background: linear-gradient(to right, #71f8fc, #a0fff8);
+      color: black;
       border: none;
       padding: 0.8rem 1.5rem;
       font-size: 1rem;
-      border-radius: 12px;
+      border-radius: 30px;
       cursor: pointer;
-      backdrop-filter: blur(10px);
-      transition: all 0.3s ease;
+      transition: transform 0.3s ease;
     }
 
     .login-button:hover {
-      background: rgba(255, 255, 255, 0.3);
-      transform: translateY(-2px);
+      transform: translateY(-3px);
     }
 
     .close {
       float: right;
       font-size: 1.5rem;
       cursor: pointer;
-      color: #fff;
+      color: #1A1A1A;
     }
 
-    footer {
-      margin-top: 2rem;
-      font-size: 0.9rem;
-      color: #E0FFFF;
-      text-align: center;
-      width: 100%;
-      padding: 1rem;
-    }
-
-    @media (max-width: 768px) {
-      .container { padding-top: 4rem; }
-      .avatar { position: static; margin: 0 auto 2rem; }
-      h1 { font-size: 2.5rem; }
-      .buttons { flex-direction: column; gap: 1rem; }
-      .stats { flex-direction: column; gap: 1.5rem; }
+    @media (max-width: 480px) {
+      h1 { font-size: 1.8rem; }
+      .buttons a, .donate-button { font-size: 1rem; padding: 0.8rem 1.2rem; }
     }
   </style>
 </head>
@@ -274,8 +155,6 @@
   <div class="container">
     <img src="p/tx.jpeg" alt="头像" class="avatar">
     <h1>你好，我是霜蓝</h1>
-    <p>欢迎探索我的数字世界，体验独特的设计与创意。</p>
-    <button id="donateBtn" class="donate-btn">捐赠支持</button>
     <div class="buttons">
       <a href="shoushe.html">兽设介绍</a>
       <a href="banquan.html">版权信息</a>
@@ -283,11 +162,7 @@
       <a href="lianxi.html">联系我们</a>
       <a href="comment.html">评论留言</a>
       <a href="fans.html">实时粉丝数</a>
-    </div>
-    <div class="stats">
-      <div class="stat-item"><span>10K</span> 粉丝</div>
-      <div class="stat-item"><span>50+</span> 作品</div>
-      <div class="stat-item"><span>5K</span> 互动</div>
+      <button id="donateBtn" class="donate-button">捐赠支持</button>
     </div>
   </div>
 
