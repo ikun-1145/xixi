@@ -26,6 +26,12 @@
       background-color: rgba(0, 0, 0, 0.6);
       border-radius: 15px;
       box-shadow: 0 0 15px #71f8fc88;
+      animation: fadeInUp 1s ease-out;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
     }
 
     h1 {
@@ -88,9 +94,57 @@
         align-items: center;
       }
     }
+
+    /* 加载动画样式 */
+    #loading {
+      position: fixed;
+      z-index: 9999;
+      background: #ffffff;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.6s ease;
+    }
+
+    .loader {
+      border: 6px solid #e0faff;
+      border-top: 6px solid #71f8fc;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    body.fade-in {
+      animation: fadeBody 0.8s ease;
+    }
+
+    @keyframes fadeBody {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    body.fade-out {
+      animation: fadeOut 0.6s ease forwards;
+    }
+
+    @keyframes fadeOut {
+      to { opacity: 0; }
+    }
   </style>
 </head>
 <body>
+  <!-- 加载动画 -->
+  <div id="loading">
+    <div class="loader"></div>
+  </div>
+
   <div class="container">
     <h1>感谢你的支持！</h1>
     <p style="text-align:center;">如果你喜欢本站内容，可以通过以下方式支持我：</p>
@@ -107,12 +161,49 @@
     </div>
 
     <div class="btn-group">
-      <button onclick="window.location.href='index.html'">返回主页</button>
+      <button id="backBtn">返回主页</button>
     </div>
 
     <div class="footer">
       Copyright©️2024-2025 霜蓝, All Rights Reserved.
     </div>
   </div>
+
+  <!-- 跳转与加载逻辑 -->
+  <script>
+    window.addEventListener('load', () => {
+      document.body.classList.add('fade-in');
+      const loader = document.getElementById('loading');
+      if (loader) {
+        loader.style.opacity = '0';
+        setTimeout(() => loader.style.display = 'none', 600);
+      }
+    });
+
+    // 所有 a[href] 和按钮跳转添加淡出动画
+    document.addEventListener("DOMContentLoaded", () => {
+      // 链接跳转处理
+      const links = document.querySelectorAll("a[href]");
+      links.forEach(link => {
+        const href = link.getAttribute("href");
+        if (!href.startsWith("#") && !href.startsWith("javascript")) {
+          link.addEventListener("click", (e) => {
+            e.preventDefault();
+            document.body.classList.add("fade-out");
+            setTimeout(() => window.location.href = href, 600);
+          });
+        }
+      });
+
+      // 按钮跳转处理
+      const backBtn = document.getElementById("backBtn");
+      if (backBtn) {
+        backBtn.addEventListener("click", () => {
+          document.body.classList.add("fade-out");
+          setTimeout(() => window.location.href = "index.html", 600);
+        });
+      }
+    });
+  </script>
 </body>
 </html>
