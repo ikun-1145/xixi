@@ -20,7 +20,7 @@
     }
 
     .container {
-      margin-top: 3rem;
+      margin-top: 2rem;
       padding: 2rem;
       width: 90%;
       max-width: 720px;
@@ -38,66 +38,51 @@
     }
 
     h1 {
-      font-size: 2.2rem;
+      font-size: 2rem;
       margin-bottom: 1.5rem;
     }
 
-    .number-display {
+    .fan-count {
       display: flex;
       justify-content: center;
-      gap: 0.5rem;
-      font-size: 3.5rem;
-      margin: 1.5rem 0;
+      font-size: 3rem;
+      font-weight: bold;
+      margin-bottom: 1rem;
     }
 
     .digit {
-      position: relative;
-      width: 2.2rem;
-      height: 3.5rem;
-      perspective: 1000px;
-    }
-
-    .digit-inner {
-      position: absolute;
-      top: 0;
-      left: 0;
-      width: 100%;
-      height: 100%;
-      transform-style: preserve-3d;
-      animation: flip 0.6s ease-in-out;
-    }
-
-    .digit-front, .digit-back {
-      position: absolute;
-      width: 100%;
-      height: 100%;
-      backface-visibility: hidden;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: #ffffffaa;
+      display: inline-block;
+      width: 2rem;
+      height: 3rem;
+      line-height: 3rem;
+      margin: 0 0.1rem;
+      background: linear-gradient(to bottom, #71f8fc, #a0fff8);
+      color: #000;
       border-radius: 8px;
-      box-shadow: 0 0 5px rgba(0,0,0,0.2);
+      box-shadow: 0 3px 10px rgba(0,0,0,0.15);
+      overflow: hidden;
+      position: relative;
+      transform-style: preserve-3d;
+      animation: popIn 0.5s ease forwards;
     }
 
-    .digit-back {
-      transform: rotateX(180deg);
-    }
-
-    @keyframes flip {
-      0% { transform: rotateX(0); }
-      50% { transform: rotateX(180deg); }
-      100% { transform: rotateX(0); }
+    @keyframes popIn {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
     }
 
     .update-time {
       font-size: 0.95rem;
-      color: #333;
-      margin-top: 0.5rem;
+      color: #555;
+      margin-bottom: 1.5rem;
+    }
+
+    .thanks {
+      font-size: 1.1rem;
+      margin-bottom: 2rem;
     }
 
     .back {
-      margin-top: 2rem;
       display: inline-block;
       padding: 0.8rem 1.5rem;
       background: linear-gradient(to right, #71f8fc, #a0fff8);
@@ -118,126 +103,35 @@
       font-size: 0.9rem;
       color: #000;
     }
-
-    /* 加载动画 */
-    #loading {
-      position: fixed;
-      z-index: 9999;
-      background: #ffffff;
-      width: 100%;
-      height: 100%;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: opacity 0.6s ease;
-    }
-
-    .loader {
-      border: 6px solid #e0faff;
-      border-top: 6px solid #71f8fc;
-      border-radius: 50%;
-      width: 60px;
-      height: 60px;
-      animation: spin 1s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    body.fade-in {
-      animation: fadeBody 0.8s ease;
-    }
-
-    @keyframes fadeBody {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    body.fade-out {
-      animation: fadeOut 0.6s ease forwards;
-    }
-
-    @keyframes fadeOut {
-      to { opacity: 0; }
-    }
   </style>
 </head>
 <body>
-  <!-- 加载动画 -->
-  <div id="loading">
-    <div class="loader"></div>
-  </div>
-
   <div class="container">
     <h1>实时粉丝数</h1>
-    <div class="number-display" id="fanCounter"></div>
-    <div class="update-time" id="updateTime"></div>
+    <div class="fan-count" id="fanCount"></div>
+    <p class="update-time" id="updateTime"></p>
+    <p class="thanks">感谢大家的支持与陪伴！</p>
     <a href="index.html" class="back">← 返回主页</a>
   </div>
-
   <footer>Copyright©️2024-2025霜蓝, All Rights Reserved.</footer>
 
   <script>
-    // 显示加载动画 → 页面淡入
-    window.addEventListener('load', () => {
-      document.body.classList.add('fade-in');
-      const loader = document.getElementById('loading');
-      if (loader) {
-        loader.style.opacity = '0';
-        setTimeout(() => loader.style.display = 'none', 600);
-      }
+    // === 只需改这两行 ===
+    const fanCount = 20882; // 粉丝数
+    const updateTime = "2025年8月8日 18:25"; // 更新时间
+
+    // 渲染数字
+    const fanCountContainer = document.getElementById('fanCount');
+    String(fanCount).split('').forEach((digit, index) => {
+      const span = document.createElement('span');
+      span.className = 'digit';
+      span.style.animationDelay = `${index * 0.1}s`; // 依次延迟动画
+      span.textContent = digit;
+      fanCountContainer.appendChild(span);
     });
 
-    // 跳转按钮淡出动画
-    document.addEventListener("DOMContentLoaded", () => {
-      const links = document.querySelectorAll("a[href]");
-      links.forEach(link => {
-        const href = link.getAttribute("href");
-        if (!href.startsWith("#") && !href.startsWith("javascript")) {
-          link.addEventListener("click", (e) => {
-            e.preventDefault();
-            document.body.classList.add("fade-out");
-            setTimeout(() => window.location.href = href, 600);
-          });
-        }
-      });
-    });
-
-    // 粉丝数 & 更新时间（可修改）
-    const fans = 20611;
-    const updateDate = '2025年8月2日 14:15';
-
-    document.getElementById('updateTime').textContent = '最后更新：' + updateDate;
-
-    const container = document.getElementById("fanCounter");
-
-    function renderDigits(number) {
-      container.innerHTML = "";
-      const digits = number.toString().split("");
-      digits.forEach(d => {
-        const digit = document.createElement("div");
-        digit.className = "digit";
-
-        const inner = document.createElement("div");
-        inner.className = "digit-inner";
-
-        const front = document.createElement("div");
-        front.className = "digit-front";
-        front.textContent = d;
-
-        const back = document.createElement("div");
-        back.className = "digit-back";
-        back.textContent = d;
-
-        inner.appendChild(front);
-        inner.appendChild(back);
-        digit.appendChild(inner);
-        container.appendChild(digit);
-      });
-    }
-
-    renderDigits(fans);
+    // 渲染更新时间
+    document.getElementById('updateTime').textContent = `数据更新时间：${updateTime}`;
   </script>
 </body>
 </html>
