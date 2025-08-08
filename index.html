@@ -6,6 +6,7 @@
   <title>霜蓝的个人主页</title>
   <link rel="sitemap" type="application/xml" href="/sitemap.xml">
   <meta name="keywords" content="霜蓝,霜蓝CCC,福瑞,furry" />
+  <meta name="description" content="霜蓝的个人主页，展示我的作品、联系方式和动态，欢迎访问与交流。">
   <link href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -69,13 +70,14 @@
       color: black;
       font-weight: bold;
       font-size: 1.1rem;
-      transition: transform 0.3s ease;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
       text-align: center;
     }
 
     .buttons a:hover,
     .donate-button:hover {
       transform: translateY(-3px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
     }
 
     footer {
@@ -178,11 +180,12 @@
       font-size: 1rem;
       border-radius: 30px;
       cursor: pointer;
-      transition: transform 0.3s ease;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
 
     .login-button:hover {
       transform: translateY(-3px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
     }
 
     .close {
@@ -240,7 +243,6 @@
       }
     });
 
-    // 所有 a 标签点击淡出后跳转
     document.addEventListener("DOMContentLoaded", () => {
       const links = document.querySelectorAll("a[href]");
       links.forEach(link => {
