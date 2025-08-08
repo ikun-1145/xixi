@@ -6,10 +6,9 @@
   <title>实时粉丝数 - 霜蓝</title>
   <link href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap" rel="stylesheet">
   <style>
-    * { box-sizing: border-box; }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
-      margin: 0;
       font-family: 'Product Sans', sans-serif;
       background: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center center / cover no-repeat fixed;
       display: flex;
@@ -17,6 +16,7 @@
       align-items: center;
       min-height: 100vh;
       color: #1A1A1A;
+      opacity: 1;
     }
 
     .container {
@@ -103,9 +103,57 @@
       font-size: 0.9rem;
       color: #000;
     }
+
+    /* 加载动画层 */
+    #loading {
+      position: fixed;
+      z-index: 9999;
+      background: #ffffff;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.6s ease;
+    }
+
+    .loader {
+      border: 6px solid #e0faff;
+      border-top: 6px solid #71f8fc;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    body.fade-in {
+      animation: fadeBody 0.8s ease;
+    }
+
+    @keyframes fadeBody {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    body.fade-out {
+      animation: fadeOut 0.6s ease forwards;
+    }
+
+    @keyframes fadeOut {
+      to { opacity: 0; }
+    }
   </style>
 </head>
 <body>
+  <!-- 加载动画层 -->
+  <div id="loading">
+    <div class="loader"></div>
+  </div>
+
   <div class="container">
     <h1>实时粉丝数</h1>
     <div class="fan-count" id="fanCount"></div>
@@ -113,25 +161,52 @@
     <p class="thanks">感谢大家的支持与陪伴！</p>
     <a href="index.html" class="back">← 返回主页</a>
   </div>
+
   <footer>Copyright©️2024-2025霜蓝, All Rights Reserved.</footer>
 
+  <!-- 动效脚本 -->
   <script>
-    // === 只需改这两行 ===
-    const fanCount = 20882; // 粉丝数
-    const updateTime = "2025年8月8日 18:25"; // 更新时间
+    // === ✅ 只改这两行 ===
+    const fanCount = 20882;
+    const updateTime = "2025年8月8日 18:30";
 
-    // 渲染数字
+    // 加载数字
     const fanCountContainer = document.getElementById('fanCount');
-    String(fanCount).split('').forEach((digit, index) => {
+    String(fanCount).split('').forEach((digit, i) => {
       const span = document.createElement('span');
       span.className = 'digit';
-      span.style.animationDelay = `${index * 0.1}s`; // 依次延迟动画
+      span.style.animationDelay = `${i * 0.1}s`;
       span.textContent = digit;
       fanCountContainer.appendChild(span);
     });
 
-    // 渲染更新时间
+    // 更新时间
     document.getElementById('updateTime').textContent = `数据更新时间：${updateTime}`;
+
+    // 页面进入动画
+    window.addEventListener('load', () => {
+      document.body.classList.add('fade-in');
+      const loader = document.getElementById('loading');
+      if (loader) {
+        loader.style.opacity = '0';
+        setTimeout(() => loader.style.display = 'none', 600);
+      }
+    });
+
+    // 页面跳转动画
+    document.addEventListener("DOMContentLoaded", () => {
+      const links = document.querySelectorAll("a[href]");
+      links.forEach(link => {
+        const href = link.getAttribute("href");
+        if (!href.startsWith("#") && !href.startsWith("javascript")) {
+          link.addEventListener("click", (e) => {
+            e.preventDefault();
+            document.body.classList.add("fade-out");
+            setTimeout(() => window.location.href = href, 600);
+          });
+        }
+      });
+    });
   </script>
 </body>
 </html>
