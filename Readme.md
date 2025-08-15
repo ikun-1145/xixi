@@ -2,4 +2,4 @@
 #网站地址：https://sunland-eob.pages.dev
 
 
-<img src="follow.svg" width="200" />
+<img src="https://raw.githubusercontent.com/ikun-1145/xixi/main/follow.svg" width="300" />
