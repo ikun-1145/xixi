@@ -1,19 +1,29 @@
-<svg width="200" height="200" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg">
+<svg width="300" height="300" viewBox="0 0 300 300" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <linearGradient id="grad" x1="0%" y1="0%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#71f8fc"/>
+      <stop offset="50%" stop-color="#ff77ff"/>
+      <stop offset="100%" stop-color="#71f8fc"/>
+    </linearGradient>
+  </defs>
+
   <style>
-    .rotating {
-      transform-origin: 100px 100px;
-      animation: spin 3s linear infinite;
-      font-size: 20px;
-      fill: #71f8fc;
+    .animated-text {
+      font-size: 50px;
       font-family: "Arial", sans-serif;
+      fill: url(#grad);
+      text-anchor: middle;
+      alignment-baseline: middle;
+      transform-origin: 150px 150px;
+      animation: rotateScale 4s linear infinite;
     }
-    @keyframes spin {
-      0% { transform: rotate(0deg);}
-      100% { transform: rotate(360deg);}
+
+    @keyframes rotateScale {
+      0% { transform: rotate(0deg) scale(1); }
+      50% { transform: rotate(180deg) scale(1.2); }
+      100% { transform: rotate(360deg) scale(1); }
     }
   </style>
 
-  <text x="100" y="100" text-anchor="middle" alignment-baseline="middle" class="rotating">
-    快关注我！
-  </text>
+  <text x="150" y="150" class="animated-text">快关注我！</text>
 </svg>
