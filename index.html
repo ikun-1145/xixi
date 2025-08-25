@@ -7,176 +7,95 @@
   <style>
     body {
       margin: 0;
-      font-family: "Segoe UI", "Helvetica Neue", Arial, sans-serif;
-      background: #ffffff;
+      padding: 0;
+      font-family: "Microsoft YaHei", sans-serif;
+      background: #fff;
       color: #333;
-      overflow-x: hidden;
-      transition: background 0.3s, color 0.3s;
+      text-align: center;
     }
-
-    /* 背景粒子画布 */
-    #particles-js {
-      position: fixed;
-      top: 0;
-      left: 0;
+    /* 头像框 */
+    .avatar {
+      margin-top: 50px;
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      border: 5px solid #00cfff;
+      overflow: hidden;
+      margin-left: auto;
+      margin-right: auto;
+      box-shadow: 0 0 15px #00cfff;
+    }
+    .avatar img {
       width: 100%;
       height: 100%;
-      z-index: -1;
-    }
-
-    header {
-      text-align: center;
-      padding: 2rem 1rem;
-    }
-
-    /* 头像样式 + 边框 */
-    .avatar {
-      width: 120px;
-      height: 120px;
-      border-radius: 50%;
-      border: 4px solid #71f8fc;
-      box-shadow: 0 0 15px rgba(113, 248, 252, 0.6);
       object-fit: cover;
     }
-
-    h1 {
-      margin-top: 1rem;
-      font-size: 1.8rem;
-    }
-
-    /* 切换主题按钮 */
-    .theme-toggle {
-      position: absolute;
-      top: 15px;
-      right: 15px;
-      padding: 0.5rem 1rem;
-      border-radius: 20px;
-      background: linear-gradient(135deg, #71f8fc, #a0fff8);
-      color: #000;
-      font-weight: bold;
-      cursor: pointer;
-      border: none;
-      transition: transform 0.2s;
-    }
-    .theme-toggle:hover {
-      transform: scale(1.05);
-    }
-
-    /* 按钮网格 */
-    .buttons {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-      gap: 1rem;
-      padding: 2rem;
-      max-width: 700px;
-      margin: auto;
-    }
-    .buttons a {
-      padding: 1rem;
-      background: linear-gradient(135deg, #71f8fc, #a0fff8);
-      border-radius: 12px;
-      text-decoration: none;
-      font-size: 1.1rem;
-      font-weight: bold;
-      color: #000;
-      transition: transform 0.3s, box-shadow 0.3s;
+    /* 按钮样式 */
+    .button-container {
+      margin-top: 40px;
       display: flex;
-      align-items: center;
+      flex-wrap: wrap;
       justify-content: center;
-      gap: 0.5rem;
+      gap: 15px;
     }
-    .buttons a:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 10px 20px rgba(0,0,0,0.2);
+    .nav-btn {
+      width: 140px;
+      padding: 12px 0;
+      border-radius: 12px;
+      background: linear-gradient(135deg, #7bdff2, #b2f7ef);
+      color: #000;
+      font-size: 16px;
+      font-weight: bold;
+      text-decoration: none;
+      display: inline-block;
+      box-shadow: 0 3px 6px rgba(0,0,0,0.15);
+      transition: transform 0.2s, box-shadow 0.2s;
     }
-
+    .nav-btn:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.25);
+    }
     /* 下滑提示 */
-    .scroll-down {
-      margin-top: 2rem;
-      font-size: 1rem;
-      color: #71f8fc;
+    .scroll-hint {
+      margin-top: 15px;
+      font-size: 14px;
+      color: #00cfff;
       animation: bounce 1.5s infinite;
     }
     @keyframes bounce {
       0%, 100% { transform: translateY(0); }
       50% { transform: translateY(8px); }
     }
-
     footer {
-      text-align: center;
-      padding: 1rem;
-      font-size: 0.9rem;
-      color: #666;
-    }
-
-    /* 暗色主题 */
-    body.dark {
-      background: #111;
-      color: #eee;
-    }
-    body.dark .buttons a {
-      background: linear-gradient(135deg, #444, #222);
-      color: #fff;
-    }
-    body.dark .theme-toggle {
-      background: linear-gradient(135deg, #444, #222);
-      color: #fff;
+      margin-top: 40px;
+      font-size: 13px;
+      color: #777;
     }
   </style>
 </head>
 <body>
-  <!-- 粒子背景 -->
-  <div id="particles-js"></div>
+  <!-- 头像 -->
+  <div class="avatar">
+    <img src="p/tx.jpeg" alt="头像">
+  </div>
 
-  <!-- 切换主题按钮 -->
-  <button class="theme-toggle" onclick="toggleTheme()">🌙 切换主题</button>
+  <!-- 欢迎标题 -->
+  <h1>欢迎来到霜蓝的主页</h1>
+  <div class="scroll-hint">⬇ 下滑查看更多</div>
 
-  <header>
-    <img src="avatar.jpg" alt="头像" class="avatar">
-    <h1>欢迎来到霜蓝的主页</h1>
-    <div class="scroll-down">⬇ 下滑查看更多</div>
-  </header>
-
-  <!-- 快速导航按钮 -->
-  <section class="buttons">
-    <a href="shoushe.html">🐾 兽设介绍</a>
-    <a href="banquan.html">📜 版权信息</a>
-    <a href="guanzhu.html">🔍 关注我们</a>
-    <a href="lianxi.html">✉ 联系我们</a>
-    <a href="liuyan.html">💬 评论留言</a>
-    <a href="fans.html">⭐ 实时粉丝数</a>
-    <a href="donate.html">💖 捐赠支持</a>
-  </section>
+  <!-- 导航按钮 -->
+  <div class="button-container">
+    <a href="#" class="nav-btn">🐾 兽设介绍</a>
+    <a href="#" class="nav-btn">📜 版权信息</a>
+    <a href="#" class="nav-btn">🔍 关注我们</a>
+    <a href="#" class="nav-btn">✉ 联系我们</a>
+    <a href="#" class="nav-btn">💬 评论留言</a>
+    <a href="#" class="nav-btn">⭐ 实时粉丝数</a>
+    <a href="#" class="nav-btn">💖 捐赠支持</a>
+  </div>
 
   <footer>
-    <p>Copyright © 2024-2025 霜蓝, All Rights Reserved.</p>
+    Copyright © 2024-2025 霜蓝, All Rights Reserved.
   </footer>
-
-  <!-- 粒子背景脚本 -->
-  <script src="https://cdn.jsdelivr.net/npm/particles.js"></script>
-  <script>
-    particlesJS("particles-js", {
-      particles: {
-        number: { value: 60 },
-        color: { value: "#71f8fc" },
-        shape: { type: "circle" },
-        opacity: { value: 0.5 },
-        size: { value: 3 },
-        line_linked: {
-          enable: true,
-          distance: 120,
-          color: "#71f8fc",
-          opacity: 0.4,
-          width: 1
-        },
-        move: { enable: true, speed: 2 }
-      }
-    });
-
-    // 主题切换
-    function toggleTheme() {
-      document.body.classList.toggle("dark");
-    }
-  </script>
 </body>
 </html>
