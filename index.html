@@ -50,6 +50,7 @@
       display: inline-block;
       box-shadow: 0 3px 6px rgba(0,0,0,0.15);
       transition: transform 0.2s, box-shadow 0.2s;
+      cursor: pointer;
     }
     .nav-btn:hover {
       transform: translateY(-3px);
@@ -91,11 +92,27 @@
     <a href="#" class="nav-btn">✉ 联系我们</a>
     <a href="#" class="nav-btn">💬 评论留言</a>
     <a href="#" class="nav-btn">⭐ 实时粉丝数</a>
-    <a href="#" class="nav-btn">💖 捐赠支持</a>
+    <a href="javascript:void(0);" class="nav-btn" onclick="checkLogin()">💖 捐赠支持</a>
   </div>
 
   <footer>
     Copyright © 2024-2025 霜蓝, All Rights Reserved.
   </footer>
+
+  <script>
+    function checkLogin() {
+      // 这里可以改成实际的登录验证逻辑
+      const loggedIn = false; // 默认未登录，可以改成动态检测
+
+      if (!loggedIn) {
+        alert("请先登录后再使用捐赠功能！");
+        // 例如跳转到登录页面
+        window.location.href = "login.html";
+      } else {
+        // 已登录 → 跳转到捐赠页面
+        window.location.href = "donate.html";
+      }
+    }
+  </script>
 </body>
 </html>
