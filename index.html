@@ -1,118 +1,344 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-Hans">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>霜蓝的主页</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>霜蓝的个人主页</title>
+  <link rel="sitemap" type="application/xml" href="/sitemap.xml">
+  <meta name="keywords" content="霜蓝,霜蓝CCC,福瑞,furry" />
+  <meta name="description" content="霜蓝的个人主页，展示我的作品、联系方式和动态，欢迎访问与交流。">
+  <link href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap" rel="stylesheet">
   <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
-      margin: 0;
-      padding: 0;
-      font-family: "Microsoft YaHei", sans-serif;
-      background: #fff;
-      color: #333;
-      text-align: center;
+      font-family: 'Product Sans', sans-serif;
+      background: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center center / cover no-repeat fixed;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 100vh;
+      color: #1A1A1A;
     }
-    /* 头像框 */
+
+    .container {
+      margin-top: 2rem;
+      padding: 2rem;
+      width: 90%;
+      max-width: 720px;
+      background: rgba(255,255,255,0.5);
+      backdrop-filter: blur(10px);
+      border-radius: 16px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      text-align: center;
+      animation: fadeInUp 1s ease-out;
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(30px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
     .avatar {
-      margin-top: 50px;
       width: 150px;
       height: 150px;
       border-radius: 50%;
-      border: 5px solid #00cfff;
-      overflow: hidden;
-      margin-left: auto;
-      margin-right: auto;
-      box-shadow: 0 0 15px #00cfff;
+      object-fit: cover;
+      margin-bottom: 1rem;
     }
-    .avatar img {
+
+    h1 {
+      font-size: 2rem;
+      margin-bottom: 1rem;
+    }
+
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+      gap: 1rem;
+      margin-top: 1.5rem;
+    }
+
+    .buttons a,
+    .donate-button {
+      display: inline-block;
+      padding: 0.8rem 1.5rem;
+      background: linear-gradient(to right, #71f8fc, #a0fff8);
+      border-radius: 30px;
+      text-decoration: none;
+      color: black;
+      font-weight: bold;
+      font-size: 1.1rem;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
+      text-align: center;
+    }
+
+    .buttons a:hover,
+    .donate-button:hover {
+      transform: translateY(-3px);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+
+    footer {
+      margin: 2rem 0 1rem;
+      font-size: 0.9rem;
+      color: #000;
+      text-align: center;
+    }
+
+    /* 页面加载动画 */
+    #loading {
+      position: fixed;
+      z-index: 9999;
+      background: #ffffff;
       width: 100%;
       height: 100%;
-      object-fit: cover;
-    }
-    /* 按钮样式 */
-    .button-container {
-      margin-top: 40px;
       display: flex;
-      flex-wrap: wrap;
+      align-items: center;
       justify-content: center;
-      gap: 15px;
+      transition: opacity 0.6s ease;
     }
-    .nav-btn {
-      width: 140px;
-      padding: 12px 0;
+
+    .loader {
+      border: 6px solid #e0faff;
+      border-top: 6px solid #71f8fc;
+      border-radius: 50%;
+      width: 60px;
+      height: 60px;
+      animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    body.fade-in {
+      animation: fadeBody 0.8s ease;
+    }
+
+    @keyframes fadeBody {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    body.fade-out {
+      animation: fadeOut 0.6s ease forwards;
+    }
+
+    @keyframes fadeOut {
+      to { opacity: 0; }
+    }
+
+    /* 登录弹窗 */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 99;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.5);
+      opacity: 0;
+      transition: opacity 0.5s ease-in-out;
+    }
+
+    .modal.active {
+      display: block;
+      opacity: 1;
+    }
+
+    .modal-content {
+      background: rgba(255,255,255,0.9);
+      backdrop-filter: blur(10px);
+      margin: 15% auto;
+      padding: 2rem;
       border-radius: 12px;
-      background: linear-gradient(135deg, #7bdff2, #b2f7ef);
-      color: #000;
-      font-size: 16px;
-      font-weight: bold;
-      text-decoration: none;
-      display: inline-block;
-      box-shadow: 0 3px 6px rgba(0,0,0,0.15);
-      transition: transform 0.2s, box-shadow 0.2s;
+      width: 90%;
+      max-width: 400px;
+      text-align: center;
+      box-shadow: 0 5px 20px rgba(0,0,0,0.2);
+      animation: modalPop 0.5s ease-in-out;
+    }
+
+    @keyframes modalPop {
+      from { transform: scale(0.8); opacity: 0; }
+      to { transform: scale(1); opacity: 1; }
+    }
+
+    .modal-content p {
+      font-size: 1rem;
+      margin-bottom: 1.2rem;
+    }
+
+    .login-button {
+      background: linear-gradient(to right, #71f8fc, #a0fff8);
+      color: black;
+      border: none;
+      padding: 0.8rem 1.5rem;
+      font-size: 1rem;
+      border-radius: 30px;
       cursor: pointer;
+      transition: transform 0.3s ease, box-shadow 0.3s ease;
     }
-    .nav-btn:hover {
+
+    .login-button:hover {
       transform: translateY(-3px);
-      box-shadow: 0 6px 12px rgba(0,0,0,0.25);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
     }
-    /* 下滑提示 */
-    .scroll-hint {
-      margin-top: 15px;
-      font-size: 14px;
-      color: #00cfff;
-      animation: bounce 1.5s infinite;
+
+    .close {
+      float: right;
+      font-size: 1.5rem;
+      cursor: pointer;
+      color: #1A1A1A;
     }
-    @keyframes bounce {
-      0%, 100% { transform: translateY(0); }
-      50% { transform: translateY(8px); }
-    }
-    footer {
-      margin-top: 40px;
-      font-size: 13px;
-      color: #777;
+
+    @media (max-width: 480px) {
+      h1 { font-size: 1.8rem; }
+      .buttons a, .donate-button { font-size: 1rem; padding: 0.8rem 1.2rem; }
     }
   </style>
 </head>
 <body>
-  <!-- 头像 -->
-  <div class="avatar">
-    <img src="p/tx.jpeg" alt="头像">
+  <!-- 加载动画 -->
+  <div id="loading">
+    <div class="loader"></div>
   </div>
 
-  <!-- 欢迎标题 -->
-  <h1>欢迎来到霜蓝的主页</h1>
-  <div class="scroll-hint">⬇ 下滑查看更多</div>
-
-  <!-- 导航按钮 -->
-  <div class="button-container">
-    <a href="#" class="nav-btn">🐾 兽设介绍</a>
-    <a href="#" class="nav-btn">📜 版权信息</a>
-    <a href="#" class="nav-btn">🔍 关注我们</a>
-    <a href="#" class="nav-btn">✉ 联系我们</a>
-    <a href="#" class="nav-btn">💬 评论留言</a>
-    <a href="#" class="nav-btn">⭐ 实时粉丝数</a>
-    <a href="javascript:void(0);" class="nav-btn" onclick="checkLogin()">💖 捐赠支持</a>
+  <div class="container">
+    <img src="p/tx.jpeg" alt="头像" class="avatar">
+    <h1>你好，我是霜蓝</h1>
+    <div class="buttons">
+      <a href="shoushe.html">兽设介绍</a>
+      <a href="banquan.html">版权信息</a>
+      <a href="guanzhu.html">关注我们</a>
+      <a href="lianxi.html">联系我们</a>
+      <a href="comment.html">评论留言</a>
+      <a href="fans.html">实时粉丝数</a>
+      <button id="donateBtn" class="donate-button" type="button">捐赠支持</button>
+    </div>
   </div>
 
-  <footer>
-    Copyright © 2024-2025 霜蓝, All Rights Reserved.
-  </footer>
+  <!-- 登录弹窗 -->
+  <div id="loginModal" class="modal">
+    <div class="modal-content">
+      <span class="close" onclick="closeModal()">&times;</span>
+      <p>您需要先登录后才能访问捐赠页面。</p>
+      <button id="loginRedirect" class="login-button">使用 GitHub 登录</button>
+    </div>
+  </div>
 
+  <footer>Copyright©️2024-2025霜蓝, All Rights Reserved.</footer>
+
+  <!-- 加载与跳转过渡 -->
   <script>
-    function checkLogin() {
-      // 这里可以改成实际的登录验证逻辑
-      const loggedIn = false; // 默认未登录，可以改成动态检测
+    window.addEventListener('load', () => {
+      document.body.classList.add('fade-in');
+      const loader = document.getElementById('loading');
+      if (loader) {
+        loader.style.opacity = '0';
+        setTimeout(() => loader.style.display = 'none', 600);
+      }
+    });
 
-      if (!loggedIn) {
-        alert("请先登录后再使用捐赠功能！");
-        // 例如跳转到登录页面
-        window.location.href = "login.html";
-      } else {
-        // 已登录 → 跳转到捐赠页面
-        window.location.href = "donate.html";
+    document.addEventListener("DOMContentLoaded", () => {
+      const links = document.querySelectorAll("a[href]");
+      links.forEach(link => {
+        const href = link.getAttribute("href");
+        if (!href.startsWith("#") && !href.startsWith("javascript")) {
+          link.addEventListener("click", (e) => {
+            e.preventDefault();
+            document.body.classList.add("fade-out");
+            setTimeout(() => window.location.href = href, 600);
+          });
+        }
+      });
+    });
+  </script>
+
+  <!-- 修正后的 supabase 登录控制（替换掉原来那段） -->
+  <script type="module">
+    import { supabase } from './p/js/supabaseClient.js';
+
+    const donateBtn = document.getElementById("donateBtn");
+    const loginModal = document.getElementById("loginModal");
+    const closeBtn = document.querySelector(".close");
+    const loginRedirectBtn = document.getElementById('loginRedirect');
+
+    // 每次需要时向 supabase 查询当前用户，避免依赖过时的 localStorage 值
+    async function isUserLoggedIn() {
+      try {
+        const { data, error } = await supabase.auth.getUser();
+        if (error) {
+          console.warn("supabase.getUser error:", error);
+          return false;
+        }
+        return !!data?.user;
+      } catch (err) {
+        console.error("isUserLoggedIn error:", err);
+        return false;
       }
     }
+
+    // 暴露全局 closeModal，兼容内联 onclick="closeModal()"
+    window.closeModal = function () {
+      if (loginModal) loginModal.classList.remove("active");
+    };
+
+    // 点击捐赠时实时检查登录状态（不要依赖加载时的缓存）
+    if (donateBtn) {
+      donateBtn.addEventListener("click", async () => {
+        donateBtn.disabled = true;
+        try {
+          const logged = await isUserLoggedIn();
+          localStorage.setItem("isLoggedIn", logged ? "true" : "false");
+
+          if (logged) {
+            // 已登录 -> 跳转到 donate 页面（带渐出效果）
+            document.body.classList.add("fade-out");
+            setTimeout(() => window.location.href = "donate.html", 600);
+          } else {
+            // 未登录 -> 弹窗引导登录
+            if (loginModal) loginModal.classList.add("active");
+          }
+        } finally {
+          donateBtn.disabled = false;
+        }
+      });
+    }
+
+    // 关闭弹窗（额外的事件监听）
+    if (closeBtn) closeBtn.addEventListener("click", () => {
+      if (loginModal) loginModal.classList.remove("active");
+    });
+
+    // 点击登录按钮 -> 发起 GitHub OAuth（保留你原来的 redirectTo）
+    if (loginRedirectBtn) {
+      loginRedirectBtn.addEventListener('click', async () => {
+        await supabase.auth.signInWithOAuth({
+          provider: 'github',
+          options: {
+            redirectTo: location.origin + '/donate.html'
+          }
+        });
+      });
+    }
+
+    // 页面初始化时同步一次 localStorage（可选），并打印状态，便于调试
+    (async () => {
+      const logged = await isUserLoggedIn();
+      localStorage.setItem("isLoggedIn", logged ? "true" : "false");
+      console.log("init login state:", logged);
+    })();
+
+    // 监听 auth 状态变化，实时更新 localStorage（未来可用来更新 UI）
+    supabase.auth.onAuthStateChange((event, session) => {
+      const logged = !!session?.user;
+      localStorage.setItem("isLoggedIn", logged ? "true" : "false");
+      console.log("onAuthStateChange:", event, "logged:", logged);
+    });
   </script>
 </body>
 </html>
