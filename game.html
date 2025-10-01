@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1" />
-<title>霜蓝小游戏（修正透明背景）</title>
+<title>小游戏</title>
 <link href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
@@ -57,7 +57,7 @@ const ctx = canvas.getContext('2d', { alpha: true });
 const buttonsContainer = document.getElementById('buttonsContainer');
 
 let player = { x:50, y:250, size:30, dy:0 };
-let gravity = 0.4;
+let gravity = 0.3;
 let jump = -8;
 let pipes = [];
 let pipeWidth = 60;
