@@ -5,95 +5,121 @@
   <title>霜蓝飞行</title>
   <style>
     body { margin: 0; overflow: hidden; background: #71f8fc; }
-    canvas { display: block; margin: auto; background: url("p/bg.png"); background-size: cover; }
+    canvas { display: block; margin: auto; background: url('p/bg.png') center / cover no-repeat; }
+    #restartBtn {
+      position: absolute; top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      padding: 12px 24px; font-size: 20px; border: none;
+      border-radius: 12px; background: #a0fff8; cursor: pointer;
+      display: none;
+    }
   </style>
 </head>
 <body>
 <canvas id="gameCanvas"></canvas>
+<button id="restartBtn">重新开始</button>
 <script>
-const canvas = document.getElementById("gameCanvas");
-const ctx = canvas.getContext("2d");
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
 canvas.width = 400;
 canvas.height = 600;
 
-let bird = { x: 50, y: 250, width: 30, height: 30, gravity: 0.6, lift: -10, velocity: 0 };
+let bird = { x: 50, y: 250, w: 30, h: 30, gravity: 0.6, lift: -10, vel: 0 };
 let pipes = [];
 let score = 0;
 let gameOver = false;
 
-// 点击或按空格让小鸟上升
-document.addEventListener("keydown", e => { if(e.code === "Space") bird.velocity = bird.lift; });
-document.addEventListener("mousedown", () => { bird.velocity = bird.lift; });
+const restartBtn = document.getElementById('restartBtn');
 
-function drawBird() {
-  ctx.fillStyle = "blue"; // 占位色块，可换成霜蓝形象
-  ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
+function spawnPipe() {
+  let top = Math.random() * 200 + 50;
+  let gap = 120;
+  pipes.push({ x: canvas.width, w: 50, top: top, bottom: canvas.height - top - gap, passed: false });
 }
 
-function drawPipes() {
-  ctx.fillStyle = "green";
-  pipes.forEach(pipe => {
-    ctx.fillRect(pipe.x, 0, pipe.width, pipe.top);
-    ctx.fillRect(pipe.x, canvas.height - pipe.bottom, pipe.width, pipe.bottom);
-  });
+function resetGame() {
+  bird.y = 250;
+  bird.vel = 0;
+  pipes = [];
+  score = 0;
+  gameOver = false;
+  restartBtn.style.display = 'none';
+  loop();
 }
 
-function updateBird() {
-  bird.velocity += bird.gravity;
-  bird.y += bird.velocity;
+// 控制
+document.addEventListener('keydown', e => { if(e.code==='Space') bird.vel = bird.lift; });
+document.addEventListener('mousedown', () => { bird.vel = bird.lift; });
 
-  if (bird.y + bird.height > canvas.height || bird.y < 0) gameOver = true;
-}
+// 更新逻辑
+function update() {
+  bird.vel += bird.gravity;
+  bird.y += bird.vel;
 
-function updatePipes() {
-  if (pipes.length === 0 || pipes[pipes.length - 1].x < 250) {
-    let top = Math.random() * 200 + 50;
-    let gap = 120;
-    pipes.push({ x: canvas.width, width: 50, top: top, bottom: canvas.height - top - gap });
-  }
+  if(bird.y + bird.h > canvas.height || bird.y < 0) gameOver = true;
+
+  if(pipes.length === 0 || pipes[pipes.length-1].x < 250) spawnPipe();
 
   pipes.forEach(pipe => {
     pipe.x -= 2;
-    if (bird.x < pipe.x + pipe.width &&
-        bird.x + bird.width > pipe.x &&
-        (bird.y < pipe.top || bird.y + bird.height > canvas.height - pipe.bottom)) {
+    if(!pipe.passed && bird.x > pipe.x + pipe.w){
+      score++;
+      pipe.passed = true;
+    }
+    if(bird.x < pipe.x + pipe.w && bird.x + bird.w > pipe.x &&
+       (bird.y < pipe.top || bird.y + bird.h > canvas.height - pipe.bottom)){
       gameOver = true;
     }
-
-    if (pipe.x + pipe.width === bird.x) score++;
   });
 
-  pipes = pipes.filter(pipe => pipe.x + pipe.width > 0);
+  pipes = pipes.filter(p => p.x + p.w > 0);
 }
 
-function drawScore() {
-  ctx.fillStyle = "white";
-  ctx.font = "24px Arial";
-  ctx.fillText("得分: " + score, 10, 30);
-}
-
-function loop() {
-  if (gameOver) {
-    ctx.fillStyle = "rgba(0,0,0,0.5)";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "white";
-    ctx.font = "36px Arial";
-    ctx.fillText("游戏结束", 120, 300);
-    ctx.fillText("得分: " + score, 140, 350);
-    return;
-  }
-
+// 绘制
+function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  updateBird();
-  updatePipes();
+  // 背景
+  // ctx.fillStyle = '#71f8fc';
+  // ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  drawBird();
-  drawPipes();
-  drawScore();
+  // 小鸟
+  ctx.fillStyle = 'blue';
+  ctx.fillRect(bird.x, bird.y, bird.w, bird.h);
 
+  // 管子
+  ctx.fillStyle = 'green';
+  pipes.forEach(pipe => {
+    ctx.fillRect(pipe.x, 0, pipe.w, pipe.top);
+    ctx.fillRect(pipe.x, canvas.height - pipe.bottom, pipe.w, pipe.bottom);
+  });
+
+  // 分数
+  ctx.fillStyle = 'white';
+  ctx.font = '24px Arial';
+  ctx.fillText('得分: '+score, 10, 30);
+}
+
+// 游戏循环
+function loop() {
+  if(gameOver){
+    restartBtn.style.display = 'block';
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = 'white';
+    ctx.font = '36px Arial';
+    ctx.fillText('游戏结束', 100, 300);
+    ctx.fillText('得分: '+score, 120, 350);
+    return;
+  }
+  update();
+  draw();
   requestAnimationFrame(loop);
 }
+
+// 重玩按钮
+restartBtn.addEventListener('click', resetGame);
+
 loop();
 </script>
 </body>
