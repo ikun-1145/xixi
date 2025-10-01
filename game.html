@@ -1,207 +1,178 @@
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>小游戏 - 霜蓝的个人主页</title>
-  <link href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap" rel="stylesheet">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>霜蓝小游戏</title>
+<link href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap" rel="stylesheet">
+<style>
+  body {
+    font-family: 'Product Sans', sans-serif;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    margin: 0;
+    background: linear-gradient(135deg,#e0faff,#ffffff), url('p/bg.png') center center / cover no-repeat fixed;
+  }
+  canvas { background: #87ceeb; display: block; }
 
-    body {
-      font-family: 'Product Sans', sans-serif;
-      background: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center center / cover no-repeat fixed;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      min-height: 100vh;
-      color: #1A1A1A;
-    }
+  #buttonsContainer {
+    display: none;
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    flex-direction: column;
+    gap: 1rem;
+    align-items: center;
+  }
 
-    h1 { margin: 1rem 0; }
+  #buttonsContainer button,
+  #buttonsContainer a {
+    display: inline-block;
+    padding: 0.8rem 1.5rem;
+    background: linear-gradient(to right, #71f8fc, #a0fff8);
+    border-radius: 30px;
+    text-decoration: none;
+    color: black;
+    font-weight: bold;
+    font-size: 1.1rem;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+    text-align: center;
+    cursor: pointer;
+  }
 
-    canvas { 
-      display: block; 
-      margin: 0 auto;
-      background: #71f8fc;
-      border-radius: 12px;
-      max-width: 100%;
-    }
+  #buttonsContainer button:hover,
+  #buttonsContainer a:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+  }
 
-    .buttons {
-      display: none; /* 游戏结束时显示 */
-      gap: 1rem;
-      margin: 1rem 0;
-    }
-
-    .buttons button, .buttons a {
-      display: inline-block;
-      padding: 0.8rem 1.5rem;
-      background: linear-gradient(to right, #71f8fc, #a0fff8);
-      border-radius: 30px;
-      text-decoration: none;
-      color: black;
-      font-weight: bold;
-      font-size: 1.1rem;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-      text-align: center;
-      border: none;
-      cursor: pointer;
-    }
-
-    .buttons button:hover, .buttons a:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-    }
-
-    @media (max-width:480px){
-      .buttons button, .buttons a { font-size: 1rem; padding: 0.8rem 1.2rem; }
-    }
-  </style>
+  #gameOverOverlay {
+    position: absolute;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    background: rgba(0,0,0,0.5);
+    display: none;
+    justify-content: center;
+    align-items: center;
+    color: white;
+    font-size: 2rem;
+    font-weight: bold;
+    z-index: 2;
+  }
+</style>
 </head>
 <body>
-  <h1>霜蓝的小游戏</h1>
+
+<div style="position: relative;">
   <canvas id="gameCanvas" width="400" height="600"></canvas>
 
-  <div class="buttons" id="buttonsContainer">
+  <div id="gameOverOverlay">游戏结束</div>
+
+  <div id="buttonsContainer">
     <button id="restartBtn">重新开始</button>
     <a href="index.html">返回主页</a>
   </div>
+</div>
 
-  <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const buttonsContainer = document.getElementById('buttonsContainer');
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
 
-    let player = { x: 50, y: 250, size: 30, dy: 0 };
-    let gravity = 0.5; // 下落速度
-    let jump = -10; // 上升高度
-    let pipes = [];
-    let pipeWidth = 60;
-    let pipeGap = 180; // 管子上下间距
-    let pipeSpacing = 250; // 前后间距
-    let frame = 0;
-    let score = 0;
-    let gameOver = false;
+const blockImg = new Image();
+blockImg.src = 'p/block.png'; // 替换为你的小方块图片
 
-    function resetGame(){
-      player.y = 250;
-      player.dy = 0;
-      pipes = [];
-      frame = 0;
-      score = 0;
-      gameOver = false;
-      buttonsContainer.style.display = 'none';
-      animate();
+let gameOver = false;
+let y = canvas.height/2;
+let velocity = 0;
+const gravity = 0.35; // 下落速度适中
+const jump = -7; // 上升高度适中
+
+// 管子设置
+let pipes = [];
+const pipeWidth = 50;
+const pipeGap = 180; // 管子上下间距
+const pipeDistance = 300; // 前后间距
+
+let frameCount = 0;
+
+function resetGame(){
+  gameOver = false;
+  y = canvas.height/2;
+  velocity = 0;
+  pipes = [];
+  frameCount = 0;
+  buttonsContainer.style.display = 'none';
+  gameOverOverlay.style.display = 'none';
+  requestAnimationFrame(gameLoop);
+}
+
+// 监听点击
+canvas.addEventListener('click', () => {
+  if(!gameOver) velocity = jump;
+});
+
+// 生成管子
+function generatePipe(){
+  const topHeight = Math.random() * (canvas.height - pipeGap - 100) + 50;
+  pipes.push({ x: canvas.width, top: topHeight, bottom: topHeight + pipeGap });
+}
+
+// 游戏结束按钮
+const buttonsContainer = document.getElementById('buttonsContainer');
+const restartBtn = document.getElementById('restartBtn');
+const gameOverOverlay = document.getElementById('gameOverOverlay');
+
+restartBtn.addEventListener('click', resetGame);
+
+// 主循环
+function gameLoop(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  // 更新
+  velocity += gravity;
+  y += velocity;
+
+  frameCount++;
+  if(frameCount % pipeDistance === 0) generatePipe();
+
+  // 绘制管子
+  for(let i=pipes.length-1;i>=0;i--){
+    let p = pipes[i];
+    p.x -= 2;
+    ctx.fillStyle = 'green';
+    ctx.fillRect(p.x,0,pipeWidth,p.top);
+    ctx.fillRect(p.x,p.bottom,pipeWidth,canvas.height-p.bottom);
+
+    // 碰撞检测
+    if(blockImg.width/2 + 20 > p.x && y < p.top || y + 20 > p.bottom && blockImg.width/2 + 20 > p.x){
+      endGame();
     }
 
-    function createPipe(){
-      let topHeight = Math.floor(Math.random() * (canvas.height - pipeGap - 50)) + 25;
-      pipes.push({ x: canvas.width, topHeight });
-    }
+    // 移除离开屏幕的管子
+    if(p.x + pipeWidth < 0) pipes.splice(i,1);
+  }
 
-    function draw(){
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      // 背景
-      ctx.fillStyle = '#71f8fc';
-      ctx.fillRect(0,0,canvas.width,canvas.height);
+  // 绘制小方块
+  ctx.drawImage(blockImg, 50, y, 40, 40);
 
-      // 玩家
-      ctx.fillStyle = '#ffcc00';
-      ctx.fillRect(player.x, player.y, player.size, player.size);
+  // 超出画布下边界
+  if(y + 40 > canvas.height || y < 0) endGame();
 
-      // 管子
-      ctx.fillStyle = '#2b7a78';
-      for(let pipe of pipes){
-        ctx.fillRect(pipe.x, 0, pipeWidth, pipe.topHeight);
-        ctx.fillRect(pipe.x, pipe.topHeight + pipeGap, pipeWidth, canvas.height - (pipe.topHeight + pipeGap));
-      }
+  if(!gameOver) requestAnimationFrame(gameLoop);
+}
 
-      // 分数
-      ctx.fillStyle = '#1A1A1A';
-      ctx.font = '20px Product Sans';
-      ctx.fillText(`分数: ${score}`, 10, 30);
+function endGame(){
+  gameOver = true;
+  gameOverOverlay.style.display = 'flex';
+  buttonsContainer.style.display = 'flex';
+}
 
-      // 游戏结束覆盖层
-      if(gameOver){
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(0,0,canvas.width,canvas.height);
+// 开始游戏
+requestAnimationFrame(gameLoop);
+</script>
 
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `${Math.floor(canvas.width/10)}px Product Sans`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('游戏结束', canvas.width/2, canvas.height/2);
-      }
-    }
-
-    function update(){
-      if(gameOver) return;
-
-      player.dy += gravity;
-      player.y += player.dy;
-
-      // 生成管子
-      if(frame % pipeSpacing === 0) createPipe();
-
-      // 管子移动
-      for(let pipe of pipes){
-        pipe.x -= 2;
-      }
-
-      // 移除离开屏幕的管子
-      pipes = pipes.filter(pipe => pipe.x + pipeWidth > 0);
-
-      // 碰撞检测
-      for(let pipe of pipes){
-        if(player.x + player.size > pipe.x && player.x < pipe.x + pipeWidth){
-          if(player.y < pipe.topHeight || player.y + player.size > pipe.topHeight + pipeGap){
-            endGame();
-          }
-        }
-      }
-
-      // 撞到地面或顶部
-      if(player.y + player.size > canvas.height || player.y < 0){
-        endGame();
-      }
-
-      // 计分
-      for(let pipe of pipes){
-        if(pipe.x + pipeWidth === player.x){
-          score++;
-        }
-      }
-
-      frame++;
-    }
-
-    function animate(){
-      update();
-      draw();
-      if(!gameOver) requestAnimationFrame(animate);
-    }
-
-    function endGame(){
-      gameOver = true;
-      buttonsContainer.style.display = 'flex';
-      draw();
-    }
-
-    document.addEventListener('keydown', (e) => {
-      if(e.code === 'Space') player.dy = jump;
-    });
-
-    document.addEventListener('click', () => {
-      if(!gameOver) player.dy = jump;
-    });
-
-    document.getElementById('restartBtn').addEventListener('click', () => {
-      resetGame();
-    });
-
-    resetGame();
-  </script>
 </body>
 </html>
