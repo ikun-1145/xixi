@@ -2,7 +2,7 @@
 <html lang="zh">
 <head>
   <meta charset="UTF-8">
-  <title>霜蓝飞行</title>
+  <title>小游戏</title>
   <style>
     body { margin: 0; overflow: hidden; background: #71f8fc; }
     canvas { display: block; margin: auto; background: url('p/bg.png') center / cover no-repeat; }
@@ -24,19 +24,25 @@ const ctx = canvas.getContext('2d');
 canvas.width = 400;
 canvas.height = 600;
 
-let bird = { x: 50, y: 250, w: 30, h: 30, gravity: 0.6, lift: -10, vel: 0 };
+// 小鸟
+let bird = { x: 50, y: 250, w: 30, h: 30, gravity: 0.6, vel: 0 };
+
+// 管子数组
 let pipes = [];
 let score = 0;
 let gameOver = false;
 
+// 按钮
 const restartBtn = document.getElementById('restartBtn');
 
+// 生成管子
 function spawnPipe() {
-  let top = Math.random() * 200 + 50;
-  let gap = 120;
+  let top = Math.random() * 200 + 50; // 上管子高度
+  let gap = 180; // 增大间隙
   pipes.push({ x: canvas.width, w: 50, top: top, bottom: canvas.height - top - gap, passed: false });
 }
 
+// 重置游戏
 function resetGame() {
   bird.y = 250;
   bird.vel = 0;
@@ -47,27 +53,27 @@ function resetGame() {
   loop();
 }
 
-// 控制
-document.addEventListener('keydown', e => { if(e.code==='Space') bird.vel = bird.lift; });
-document.addEventListener('mousedown', () => { bird.vel = bird.lift; });
+// 控制：空格键或鼠标点击
+document.addEventListener('keydown', e => { if(e.code === 'Space') bird.vel = -6; }); // lift 减小
+document.addEventListener('mousedown', () => { bird.vel = -6; });
 
 // 更新逻辑
 function update() {
   bird.vel += bird.gravity;
   bird.y += bird.vel;
 
-  if(bird.y + bird.h > canvas.height || bird.y < 0) gameOver = true;
+  if (bird.y + bird.h > canvas.height || bird.y < 0) gameOver = true;
 
-  if(pipes.length === 0 || pipes[pipes.length-1].x < 250) spawnPipe();
+  if (pipes.length === 0 || pipes[pipes.length-1].x < 350) spawnPipe(); // 管子间距增加
 
   pipes.forEach(pipe => {
     pipe.x -= 2;
-    if(!pipe.passed && bird.x > pipe.x + pipe.w){
+    if (!pipe.passed && bird.x > pipe.x + pipe.w) {
       score++;
       pipe.passed = true;
     }
-    if(bird.x < pipe.x + pipe.w && bird.x + bird.w > pipe.x &&
-       (bird.y < pipe.top || bird.y + bird.h > canvas.height - pipe.bottom)){
+    if (bird.x < pipe.x + pipe.w && bird.x + bird.w > pipe.x &&
+        (bird.y < pipe.top || bird.y + bird.h > canvas.height - pipe.bottom)) {
       gameOver = true;
     }
   });
@@ -78,10 +84,6 @@ function update() {
 // 绘制
 function draw() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // 背景
-  // ctx.fillStyle = '#71f8fc';
-  // ctx.fillRect(0, 0, canvas.width, canvas.height);
 
   // 小鸟
   ctx.fillStyle = 'blue';
