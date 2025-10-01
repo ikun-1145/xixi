@@ -21,25 +21,42 @@
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-canvas.width = 400;
-canvas.height = 600;
+const BASE_WIDTH = 400;
+const BASE_HEIGHT = 600;
 
-// 小鸟
 let bird = { x: 50, y: 250, w: 30, h: 30, gravity: 0.6, vel: 0 };
-
-// 管子数组
 let pipes = [];
 let score = 0;
 let gameOver = false;
-
-// 按钮
 const restartBtn = document.getElementById('restartBtn');
+
+// 自适应屏幕
+function resizeCanvas() {
+  const aspectRatio = BASE_WIDTH / BASE_HEIGHT;
+  let w = window.innerWidth;
+  let h = window.innerHeight;
+  if (w / h > aspectRatio) {
+    w = h * aspectRatio;
+  } else {
+    h = w / aspectRatio;
+  }
+  canvas.width = w;
+  canvas.height = h;
+}
+window.addEventListener('load', resizeCanvas);
+window.addEventListener('resize', resizeCanvas);
+
+// 缩放函数
+function scaleX(x) { return x * canvas.width / BASE_WIDTH; }
+function scaleY(y) { return y * canvas.height / BASE_HEIGHT; }
+function scaleW(w) { return w * canvas.width / BASE_WIDTH; }
+function scaleH(h) { return h * canvas.height / BASE_HEIGHT; }
 
 // 生成管子
 function spawnPipe() {
-  let top = Math.random() * 200 + 50; // 上管子高度
-  let gap = 180; // 增大间隙
-  pipes.push({ x: canvas.width, w: 50, top: top, bottom: canvas.height - top - gap, passed: false });
+  let top = Math.random() * 200 + 50;
+  let gap = 180; // 管子间隙
+  pipes.push({ x: BASE_WIDTH, w: 50, top: top, bottom: BASE_HEIGHT - top - gap, passed: false });
 }
 
 // 重置游戏
@@ -53,8 +70,8 @@ function resetGame() {
   loop();
 }
 
-// 控制：空格键或鼠标点击
-document.addEventListener('keydown', e => { if(e.code === 'Space') bird.vel = -6; }); // lift 减小
+// 控制
+document.addEventListener('keydown', e => { if(e.code==='Space') bird.vel = -6; });
 document.addEventListener('mousedown', () => { bird.vel = -6; });
 
 // 更新逻辑
@@ -62,9 +79,9 @@ function update() {
   bird.vel += bird.gravity;
   bird.y += bird.vel;
 
-  if (bird.y + bird.h > canvas.height || bird.y < 0) gameOver = true;
+  if (bird.y + bird.h > BASE_HEIGHT || bird.y < 0) gameOver = true;
 
-  if (pipes.length === 0 || pipes[pipes.length-1].x < 350) spawnPipe(); // 管子间距增加
+  if (pipes.length === 0 || pipes[pipes.length-1].x < 450) spawnPipe(); // 管子间距拉长
 
   pipes.forEach(pipe => {
     pipe.x -= 2;
@@ -73,7 +90,7 @@ function update() {
       pipe.passed = true;
     }
     if (bird.x < pipe.x + pipe.w && bird.x + bird.w > pipe.x &&
-        (bird.y < pipe.top || bird.y + bird.h > canvas.height - pipe.bottom)) {
+        (bird.y < pipe.top || bird.y + bird.h > BASE_HEIGHT - pipe.bottom)) {
       gameOver = true;
     }
   });
@@ -87,19 +104,19 @@ function draw() {
 
   // 小鸟
   ctx.fillStyle = 'blue';
-  ctx.fillRect(bird.x, bird.y, bird.w, bird.h);
+  ctx.fillRect(scaleX(bird.x), scaleY(bird.y), scaleW(bird.w), scaleH(bird.h));
 
   // 管子
   ctx.fillStyle = 'green';
   pipes.forEach(pipe => {
-    ctx.fillRect(pipe.x, 0, pipe.w, pipe.top);
-    ctx.fillRect(pipe.x, canvas.height - pipe.bottom, pipe.w, pipe.bottom);
+    ctx.fillRect(scaleX(pipe.x), 0, scaleW(pipe.w), scaleY(pipe.top));
+    ctx.fillRect(scaleX(pipe.x), canvas.height - scaleY(pipe.bottom), scaleW(pipe.w), scaleY(pipe.bottom));
   });
 
   // 分数
   ctx.fillStyle = 'white';
-  ctx.font = '24px Arial';
-  ctx.fillText('得分: '+score, 10, 30);
+  ctx.font = `${24 * canvas.width / BASE_WIDTH}px Arial`;
+  ctx.fillText('得分: ' + score, scaleX(10), scaleY(30));
 }
 
 // 游戏循环
@@ -109,9 +126,9 @@ function loop() {
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(0,0,canvas.width,canvas.height);
     ctx.fillStyle = 'white';
-    ctx.font = '36px Arial';
-    ctx.fillText('游戏结束', 100, 300);
-    ctx.fillText('得分: '+score, 120, 350);
+    ctx.font = `${36 * canvas.width / BASE_WIDTH}px Arial`;
+    ctx.fillText('游戏结束', scaleX(100), scaleY(300));
+    ctx.fillText('得分: '+score, scaleX(120), scaleY(350));
     return;
   }
   update();
