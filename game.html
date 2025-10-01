@@ -9,7 +9,7 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Product Sans', sans-serif;
-      background: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center center / cover no-repeat fixed;
+      background: url('p/chengshi.png') center center / cover no-repeat fixed;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -107,7 +107,8 @@
 
     function draw(){
       ctx.clearRect(0,0,canvas.width,canvas.height);
-      // 背景
+
+      // 背景颜色填充（保持像素风风格）
       ctx.fillStyle = '#71f8fc';
       ctx.fillRect(0,0,canvas.width,canvas.height);
 
