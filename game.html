@@ -106,35 +106,36 @@
     }
 
     function draw(){
-      ctx.clearRect(0,0,canvas.width,canvas.height);
-      // 管子
-      ctx.fillStyle = '#2b7a78';
-      for(let pipe of pipes){
-        ctx.fillRect(pipe.x, 0, pipeWidth, pipe.topHeight);
-        ctx.fillRect(pipe.x, pipe.topHeight + pipeGap, pipeWidth, canvas.height - (pipe.topHeight + pipeGap));
-      }
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  // 注意：这里不再绘制纯色背景，让下方的 chengshi.png 透出来
 
-      // 玩家
-      ctx.fillStyle = '#ffcc00';
-      ctx.fillRect(player.x, player.y, player.size, player.size);
+  // 管子
+  ctx.fillStyle = '#2b7a78';
+  for(let pipe of pipes){
+    ctx.fillRect(pipe.x, 0, pipeWidth, pipe.topHeight);
+    ctx.fillRect(pipe.x, pipe.topHeight + pipeGap, pipeWidth, canvas.height - (pipe.topHeight + pipeGap));
+  }
 
-      // 分数
-      ctx.fillStyle = '#1A1A1A';
-      ctx.font = '20px Product Sans';
-      ctx.fillText(`分数: ${score}`, 10, 30);
+  // 玩家
+  ctx.fillStyle = '#ffcc00';
+  ctx.fillRect(player.x, player.y, player.size, player.size);
 
-      // 游戏结束覆盖层
-      if(gameOver){
-        ctx.fillStyle = 'rgba(0,0,0,0.5)';
-        ctx.fillRect(0,0,canvas.width,canvas.height);
-        ctx.fillStyle = '#ffffff';
-        ctx.font = `${Math.floor(canvas.width/10)}px Product Sans`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('游戏结束', canvas.width/2, canvas.height/2);
-      }
-    }
+  // 分数
+  ctx.fillStyle = '#1A1A1A';
+  ctx.font = '20px Product Sans';
+  ctx.fillText(`分数: ${score}`, 10, 30);
 
+  // 游戏结束覆盖层
+  if(gameOver){
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = `${Math.floor(canvas.width/10)}px Product Sans`;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillText('游戏结束', canvas.width/2, canvas.height/2);
+  }
+}
     function update(){
       if(gameOver) return;
 
