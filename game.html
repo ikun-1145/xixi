@@ -1,147 +1,233 @@
 <!DOCTYPE html>
-<html lang="zh">
+<html lang="zh-Hans">
 <head>
-  <meta charset="UTF-8">
-  <title>小游戏</title>
-  <style>
-    body { margin: 0; overflow: hidden; background: #71f8fc; display: flex; flex-direction: column; height: 100vh; }
-    canvas { display: block; flex: 1; background: url('p/bg.png') center / cover no-repeat; }
-    #restartBtn {
-      padding: 12px 24px; font-size: 20px; border: none;
-      border-radius: 12px; background: #a0fff8; cursor: pointer;
-      margin: 12px auto; display: none;
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>霜蓝小游戏</title>
+<link href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap" rel="stylesheet">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body {
+    font-family: 'Product Sans', sans-serif;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: flex-start;
+    min-height: 100vh;
+    background: linear-gradient(135deg, #e0faff, #ffffff);
+  }
+  #gameContainer {
+    margin-top: 2rem;
+    background: rgba(255,255,255,0.5);
+    backdrop-filter: blur(10px);
+    border-radius: 16px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  canvas {
+    display: block;
+    border-radius: 12px;
+    background: linear-gradient(to bottom, #ffffff, #c0f0ff);
+  }
+  #score {
+    font-size: 2rem;
+    font-weight: bold;
+    color: #1A1A1A;
+    text-shadow: 0 0 5px #71f8fc;
+    margin: 1rem 0;
+  }
+  .game-button {
+    display: inline-block;
+    padding: 0.8rem 1.5rem;
+    background: linear-gradient(to right, #71f8fc, #a0fff8);
+    border-radius: 30px;
+    text-decoration: none;
+    color: black;
+    font-weight: bold;
+    font-size: 1.1rem;
+    margin: 0.5rem;
+    cursor: pointer;
+    transition: transform 0.3s ease, box-shadow 0.3s ease;
+  }
+  .game-button:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+  }
+  #buttonsContainer {
+    margin-top: 1rem;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    width: 100%;
+  }
+</style>
 </head>
 <body>
-<canvas id="gameCanvas"></canvas>
-<button id="restartBtn">重新开始</button>
+
+<div id="gameContainer">
+  <canvas id="gameCanvas" width="360" height="600"></canvas>
+  <div id="score">0</div>
+  <div id="buttonsContainer">
+    <button id="restartBtn" class="game-button">重新开始</button>
+    <a href="index.html" class="game-button">返回主页</a>
+  </div>
+</div>
+
 <script>
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
-const BASE_WIDTH = 400;
-const BASE_HEIGHT = 600;
 
-let bird = { x: 50, y: 250, w: 30, h: 30, gravity: 0.4, vel: 0, lift: -8 };
+let width = canvas.width;
+let height = canvas.height;
+
+// 玩家方块
+let player = { x: 80, y: height/2, size: 30, vy: 0 };
+
+// 游戏参数
+let gravity = 0.5;      // 下落速度
+let jump = -10;         // 每次点击上升速度
 let pipes = [];
+let pipeWidth = 50;
+let pipeGap = 180;      // 管子上下间距
+let pipeSpacing = 220;  // 管子前后间距
 let score = 0;
 let gameOver = false;
-const restartBtn = document.getElementById('restartBtn');
-const PIPE_SPACING = 450; // 前后管子真实间距
 
-// 自适应屏幕
-function resizeCanvas() {
-  const aspectRatio = BASE_WIDTH / BASE_HEIGHT;
-  let w = window.innerWidth;
-  let h = window.innerHeight;
-  if (w / h > aspectRatio) {
-    w = h * aspectRatio;
-  } else {
-    h = w / aspectRatio;
+// 初始化管子
+function initPipes() {
+  pipes = [];
+  for (let i = 0; i < 3; i++) {
+    let x = width + i * pipeSpacing;
+    let topHeight = Math.random() * (height - pipeGap - 100) + 50;
+    pipes.push({ x, topHeight });
   }
-  canvas.width = w;
-  canvas.height = h;
-}
-window.addEventListener('load', resizeCanvas);
-window.addEventListener('resize', resizeCanvas);
-
-// 缩放函数
-function scaleX(x) { return x * canvas.width / BASE_WIDTH; }
-function scaleY(y) { return y * canvas.height / BASE_HEIGHT; }
-function scaleW(w) { return w * canvas.width / BASE_WIDTH; }
-function scaleH(h) { return h * canvas.height / BASE_HEIGHT; }
-
-// 生成管子
-function spawnPipe() {
-  let top = Math.random() * 200 + 50;
-  let gap = 180; // 管子间隙
-  pipes.push({ x: BASE_WIDTH, w: 50, top: top, bottom: BASE_HEIGHT - top - gap, passed: false });
 }
 
 // 重置游戏
 function resetGame() {
-  bird.y = 250;
-  bird.vel = 0;
-  pipes = [];
+  player.y = height/2;
+  player.vy = 0;
   score = 0;
   gameOver = false;
-  restartBtn.style.display = 'none';
-  loop();
+  initPipes();
+  document.getElementById('score').textContent = score;
 }
 
-// 控制
-document.addEventListener('keydown', e => { if(e.code==='Space') bird.vel = bird.lift; });
-document.addEventListener('mousedown', () => { bird.vel = bird.lift; });
+// 绘制玩家
+function drawPlayer() {
+  ctx.fillStyle = "#71f8fc";
+  ctx.shadowColor = "#a0fff8";
+  ctx.shadowBlur = 10;
+  ctx.beginPath();
+  ctx.roundRect(player.x, player.y, player.size, player.size, 8);
+  ctx.fill();
+  ctx.shadowBlur = 0;
+}
 
-// 更新逻辑
+// 绘制管子
+function drawPipes() {
+  pipes.forEach(pipe => {
+    // 上管子
+    let gradient = ctx.createLinearGradient(pipe.x,0,pipe.x,pipe.topHeight);
+    gradient.addColorStop(0,'#71f8fc');
+    gradient.addColorStop(1,'#a0fff8');
+    ctx.fillStyle = gradient;
+    ctx.roundRect(pipe.x,0,pipeWidth,pipe.topHeight,8);
+    ctx.fill();
+
+    // 下管子
+    let bottomHeight = height - pipe.topHeight - pipeGap;
+    let gradient2 = ctx.createLinearGradient(pipe.x,pipe.topHeight+pipeGap,pipe.x,height);
+    gradient2.addColorStop(0,'#71f8fc');
+    gradient2.addColorStop(1,'#a0fff8');
+    ctx.fillStyle = gradient2;
+    ctx.roundRect(pipe.x,pipe.topHeight + pipeGap,pipeWidth,bottomHeight,8);
+    ctx.fill();
+  });
+}
+
+// 更新游戏
 function update() {
-  bird.vel += bird.gravity;
-  bird.y += bird.vel;
+  if(gameOver) return;
 
-  if (bird.y + bird.h > BASE_HEIGHT || bird.y < 0) gameOver = true;
+  player.vy += gravity;
+  player.y += player.vy;
 
-  // 管子生成条件：确保前后间距
-  if (pipes.length === 0 || (BASE_WIDTH - pipes[pipes.length-1].x) >= PIPE_SPACING) {
-    spawnPipe();
+  pipes.forEach(pipe => {
+    pipe.x -= 2; // 管子移动速度
+    // 撞检测
+    if(player.x + player.size > pipe.x && player.x < pipe.x + pipeWidth){
+      if(player.y < pipe.topHeight || player.y + player.size > pipe.topHeight + pipeGap){
+        gameOver = true;
+      }
+    }
+    // 积分
+    if(pipe.x + pipeWidth === player.x){
+      score++;
+      document.getElementById('score').textContent = score;
+    }
+  });
+
+  // 循环管子
+  if(pipes[0].x + pipeWidth < 0){
+    pipes.shift();
+    let topHeight = Math.random() * (height - pipeGap - 100) + 50;
+    pipes.push({ x: pipes[pipes.length-1].x + pipeSpacing, topHeight });
   }
 
-  pipes.forEach(pipe => {
-    pipe.x -= 2;
-    if (!pipe.passed && bird.x > pipe.x + pipe.w) {
-      score++;
-      pipe.passed = true;
-    }
-    if (bird.x < pipe.x + pipe.w && bird.x + bird.w > pipe.x &&
-        (bird.y < pipe.top || bird.y + bird.h > BASE_HEIGHT - pipe.bottom)) {
-      gameOver = true;
-    }
-  });
-
-  pipes = pipes.filter(p => p.x + p.w > 0);
+  // 撞地板或天花板
+  if(player.y + player.size > height || player.y < 0){
+    gameOver = true;
+  }
 }
 
-// 绘制
+// 绘制画面
 function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // 小鸟
-  ctx.fillStyle = 'blue';
-  ctx.fillRect(scaleX(bird.x), scaleY(bird.y), scaleW(bird.w), scaleH(bird.h));
-
-  // 管子
-  ctx.fillStyle = 'green';
-  pipes.forEach(pipe => {
-    ctx.fillRect(scaleX(pipe.x), 0, scaleW(pipe.w), scaleY(pipe.top));
-    ctx.fillRect(scaleX(pipe.x), canvas.height - scaleY(pipe.bottom), scaleW(pipe.w), scaleY(pipe.bottom));
-  });
-
-  // 分数
-  ctx.fillStyle = 'white';
-  ctx.font = `${24 * canvas.width / BASE_WIDTH}px Arial`;
-  ctx.fillText('得分: ' + score, scaleX(10), scaleY(30));
+  ctx.clearRect(0,0,width,height);
+  drawPipes();
+  drawPlayer();
 }
 
 // 游戏循环
 function loop() {
-  if(gameOver){
-    restartBtn.style.display = 'block';
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle = 'white';
-    ctx.font = `${36 * canvas.width / BASE_WIDTH}px Arial`;
-    ctx.fillText('游戏结束', scaleX(100), scaleY(300));
-    ctx.fillText('得分: '+score, scaleX(120), scaleY(350));
-    return;
-  }
   update();
   draw();
-  requestAnimationFrame(loop);
+  if(!gameOver){
+    requestAnimationFrame(loop);
+  }
 }
-
-// 重玩按钮
-restartBtn.addEventListener('click', resetGame);
-
+initPipes();
 loop();
+
+// 点击跳跃
+canvas.addEventListener('click', ()=>{
+  if(!gameOver){
+    player.vy = jump;
+  }
+});
+
+// 重新开始按钮
+document.getElementById('restartBtn').addEventListener('click', ()=>{
+  resetGame();
+  loop();
+});
+
+// canvas圆角矩形扩展
+CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
+  if (w < 2 * r) r = w / 2;
+  if (h < 2 * r) r = h / 2;
+  this.beginPath();
+  this.moveTo(x+r, y);
+  this.arcTo(x+w, y, x+w, y+h, r);
+  this.arcTo(x+w, y+h, x, y+h, r);
+  this.arcTo(x, y+h, x, y, r);
+  this.arcTo(x, y, x+w, y, r);
+  this.closePath();
+  return this;
+};
 </script>
 </body>
 </html>
