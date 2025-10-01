@@ -1,66 +1,44 @@
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>小游戏 - 霜蓝的个人主页</title>
-  <link href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap" rel="stylesheet">
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: 'Product Sans', sans-serif;
-      background: url('p/chengshi.png') center center / cover no-repeat fixed;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: flex-start;
-      min-height: 100vh;
-      color: #1A1A1A;
-    }
-    h1 { margin: 1rem 0; }
-    canvas { 
-      display: block; 
-      margin: 0 auto;
-      background: #71f8fc;
-      border-radius: 12px;
-      max-width: 100%;
-    }
-    .buttons {
-      display: none; /* 游戏结束时显示 */
-      gap: 1rem;
-      margin: 1rem auto;
-      justify-content: center;
-      position: absolute;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      z-index: 10;
-      flex-direction: column;
-      align-items: center;
-    }
-    .buttons button, .buttons a {
-      display: inline-block;
-      padding: 0.8rem 1.5rem;
-      background: linear-gradient(to right, #71f8fc, #a0fff8);
-      border-radius: 30px;
-      text-decoration: none;
-      color: black;
-      font-weight: bold;
-      font-size: 1.1rem;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-      text-align: center;
-      border: none;
-      cursor: pointer;
-      margin: 0.5rem 0;
-    }
-    .buttons button:hover, .buttons a:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-    }
-    @media (max-width:480px){
-      .buttons button, .buttons a { font-size: 1rem; padding: 0.8rem 1.2rem; }
-    }
-  </style>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>霜蓝小游戏（修正透明背景）</title>
+<link href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{
+    font-family:'Product Sans',sans-serif;
+    background: url('p/chengshi.png') center center / cover no-repeat fixed;
+    display:flex;flex-direction:column;align-items:center;
+    min-height:100vh;color:#1A1A1A;
+  }
+  h1{margin:1rem 0}
+  /* 让 canvas 透明，取消任何填充色 */
+  #gameCanvas{
+    display:block;
+    margin:0 auto;
+    background: transparent; /* 必须是 transparent */
+    border-radius:12px;
+    max-width:100%;
+    image-rendering: pixelated; /* 像素风可用 */
+  }
+  .buttons{
+    display:none;
+    gap:1rem;
+    position:absolute;
+    top:50%;left:50%;
+    transform:translate(-50%,-50%);
+    z-index:10;
+    flex-direction:column;
+    align-items:center;
+  }
+  .buttons button,.buttons a{
+    padding:.8rem 1.5rem;
+    background:linear-gradient(to right,#71f8fc,#a0fff8);
+    border-radius:30px;color:black;font-weight:bold;font-size:1.1rem;border:none;cursor:pointer;margin:.5rem 0;
+  }
+</style>
 </head>
 <body>
   <h1>霜蓝的小游戏</h1>
@@ -71,52 +49,59 @@
     <a href="index.html">返回主页</a>
   </div>
 
-  <script>
-    const canvas = document.getElementById('gameCanvas');
-    const ctx = canvas.getContext('2d');
-    const buttonsContainer = document.getElementById('buttonsContainer');
+<script>
+/* --------- 初始化 --------- */
+const canvas = document.getElementById('gameCanvas');
+/* 显式打开 alpha 通道，确保 canvas 支持透明 */
+const ctx = canvas.getContext('2d', { alpha: true });
+const buttonsContainer = document.getElementById('buttonsContainer');
 
-    let player = { x: 50, y: 250, size: 30, dy: 0 };
-    let gravity = 0.4; 
-    let jump = -8; 
-    let pipes = [];
-    let pipeWidth = 60;
-    let pipeGap = 180; 
-    let pipeSpacing = 250; 
-    let frame = 0;
-    let score = 0;
-    let gameOver = false;
-    let animationId;
+let player = { x:50, y:250, size:30, dy:0 };
+let gravity = 0.4;
+let jump = -8;
+let pipes = [];
+let pipeWidth = 60;
+let pipeGap = 180;
+let pipeSpacing = 250;
+let score = 0;
+let gameOver = false;
+let animationId;
 
-    function resetGame(){
-      player.y = 250;
-      player.dy = 0;
-      pipes = [];
-      frame = 0;
-      score = 0;
-      gameOver = false;
-      buttonsContainer.style.display = 'none';
-      cancelAnimationFrame(animationId);
-      animate();
-    }
+/* --------- 帮助函数：生成初始管子，避免一片空白 --------- */
+function createPipeAt(x){
+  const topHeight = Math.floor(Math.random() * (canvas.height - pipeGap - 50)) + 25;
+  pipes.push({ x, topHeight, passed:false });
+}
 
-    function createPipe(){
-      let topHeight = Math.floor(Math.random() * (canvas.height - pipeGap - 50)) + 25;
-      pipes.push({ x: canvas.width, topHeight, passed: false });
-    }
+/* 重置游戏：创建 3 根初始管子 */
+function resetGame(){
+  player.y = canvas.height / 2;
+  player.dy = 0;
+  pipes = [];
+  score = 0;
+  gameOver = false;
+  buttonsContainer.style.display = 'none';
+  cancelAnimationFrame(animationId);
+  // 创建三根起始管子（分布在画面之外）
+  const startX = canvas.width;
+  for(let i=0;i<3;i++){
+    createPipeAt(startX + i * pipeSpacing);
+  }
+  animate();
+}
 
-    function draw(){
+/* --------- 绘制（注意：不再填充整张 canvas 背景） --------- */
+function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
-  // 注意：这里不再绘制纯色背景，让下方的 chengshi.png 透出来
 
-  // 管子
+  // 绘制管子（单色像素方块风）
   ctx.fillStyle = '#2b7a78';
-  for(let pipe of pipes){
-    ctx.fillRect(pipe.x, 0, pipeWidth, pipe.topHeight);
-    ctx.fillRect(pipe.x, pipe.topHeight + pipeGap, pipeWidth, canvas.height - (pipe.topHeight + pipeGap));
+  for(const p of pipes){
+    ctx.fillRect(p.x, 0, pipeWidth, p.topHeight);
+    ctx.fillRect(p.x, p.topHeight + pipeGap, pipeWidth, canvas.height - (p.topHeight + pipeGap));
   }
 
-  // 玩家
+  // 绘制玩家（方块）
   ctx.fillStyle = '#ffcc00';
   ctx.fillRect(player.x, player.y, player.size, player.size);
 
@@ -125,61 +110,84 @@
   ctx.font = '20px Product Sans';
   ctx.fillText(`分数: ${score}`, 10, 30);
 
-  // 游戏结束覆盖层
+  // 游戏结束遮罩与文字
   if(gameOver){
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle = '#ffffff';
+    ctx.fillStyle = '#fff';
     ctx.font = `${Math.floor(canvas.width/10)}px Product Sans`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('游戏结束', canvas.width/2, canvas.height/2);
   }
 }
-    function update(){
-      if(gameOver) return;
 
-      player.dy += gravity;
-      player.y += player.dy;
+/* --------- 更新游戏逻辑 --------- */
+function update(){
+  if(gameOver) return;
 
-      if(frame % pipeSpacing === 0) createPipe();
+  // 物理
+  player.dy += gravity;
+  player.y += player.dy;
 
-      for(let pipe of pipes) pipe.x -= 2;
-      pipes = pipes.filter(pipe => pipe.x + pipeWidth > 0);
+  // 根据像素间距决定是否生成新管子（避免基于帧数）
+  if(pipes.length === 0 || (pipes[pipes.length-1].x < canvas.width - pipeSpacing)){
+    createPipeAt(canvas.width);
+  }
 
-      for(let pipe of pipes){
-        if(player.x + player.size > pipe.x && player.x < pipe.x + pipeWidth){
-          if(player.y < pipe.topHeight || player.y + player.size > pipe.topHeight + pipeGap){
-            endGame();
-          }
-        }
-        if(!pipe.passed && player.x > pipe.x + pipeWidth){
-          score++;
-          pipe.passed = true;
-        }
+  // 管子移动
+  for(const p of pipes) p.x -= 2;
+
+  // 移除离开屏幕的管子
+  pipes = pipes.filter(p => p.x + pipeWidth > 0);
+
+  // 碰撞检测与计分
+  for(const p of pipes){
+    if(player.x + player.size > p.x && player.x < p.x + pipeWidth){
+      if(player.y < p.topHeight || player.y + player.size > p.topHeight + pipeGap){
+        endGame();
       }
-
-      if(player.y + player.size > canvas.height || player.y < 0) endGame();
-      frame++;
     }
-
-    function animate(){
-      update();
-      draw();
-      if(!gameOver) animationId = requestAnimationFrame(animate);
-      else buttonsContainer.style.display = 'flex';
+    if(!p.passed && player.x > p.x + pipeWidth){
+      score++;
+      p.passed = true;
     }
+  }
 
-    function endGame(){
-      gameOver = true;
-      draw();
-    }
+  // 碰到上下边界
+  if(player.y + player.size > canvas.height || player.y < 0){
+    endGame();
+  }
+}
 
-    document.addEventListener('keydown', e => { if(e.code === 'Space' && !gameOver) player.dy = jump; });
-    document.addEventListener('click', () => { if(!gameOver) player.dy = jump; });
-    document.getElementById('restartBtn').addEventListener('click', resetGame);
+/* --------- 动画循环 --------- */
+function animate(){
+  update();
+  draw();
+  if(!gameOver){
+    animationId = requestAnimationFrame(animate);
+  } else {
+    // 游戏结束时显示居中按钮（DOM）
+    buttonsContainer.style.display = 'flex';
+  }
+}
 
-    resetGame();
-  </script>
+/* --------- 结束/输入/按钮事件 --------- */
+function endGame(){
+  gameOver = true;
+  draw();
+}
+
+document.addEventListener('keydown', e => {
+  if(e.code === 'Space' && !gameOver) player.dy = jump;
+});
+document.addEventListener('click', () => {
+  if(!gameOver) player.dy = jump;
+});
+document.getElementById('restartBtn').addEventListener('click', resetGame);
+
+/* 启动 */
+resetGame();
+</script>
 </body>
 </html>
