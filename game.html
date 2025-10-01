@@ -29,6 +29,7 @@ let pipes = [];
 let score = 0;
 let gameOver = false;
 const restartBtn = document.getElementById('restartBtn');
+const PIPE_SPACING = 450; // 前后管子真实间距
 
 // 自适应屏幕
 function resizeCanvas() {
@@ -81,7 +82,10 @@ function update() {
 
   if (bird.y + bird.h > BASE_HEIGHT || bird.y < 0) gameOver = true;
 
-  if (pipes.length === 0 || pipes[pipes.length-1].x < 450) spawnPipe(); // 管子间距拉长
+  // 管子生成条件：确保前后间距
+  if (pipes.length === 0 || (BASE_WIDTH - pipes[pipes.length-1].x) >= PIPE_SPACING) {
+    spawnPipe();
+  }
 
   pipes.forEach(pipe => {
     pipe.x -= 2;
