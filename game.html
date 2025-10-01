@@ -2,73 +2,88 @@
 <html lang="zh-Hans">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>霜蓝小游戏</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>霜蓝的小游戏</title>
 <link href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap" rel="stylesheet">
 <style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
   body {
+    margin:0; padding:0;
     font-family: 'Product Sans', sans-serif;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: flex-start;
-    min-height: 100vh;
     background: linear-gradient(135deg, #e0faff, #ffffff);
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    justify-content:center;
+    min-height:100vh;
+    color:#1A1A1A;
   }
+
   #gameContainer {
-    margin-top: 2rem;
-    background: rgba(255,255,255,0.5);
-    backdrop-filter: blur(10px);
+    position: relative;
+    width: 360px;
+    max-width: 90vw;
+    aspect-ratio: 9/16;
+    background: #71f8fc;
     border-radius: 16px;
-    box-shadow: 0 10px 30px rgba(0,0,0,0.2);
-    padding: 1rem;
+    overflow: hidden;
     display: flex;
     flex-direction: column;
     align-items: center;
   }
+
   canvas {
+    width: 100%;
+    height: 100%;
     display: block;
-    border-radius: 12px;
-    background: linear-gradient(to bottom, #ffffff, #c0f0ff);
   }
+
   #score {
-    font-size: 2rem;
-    font-weight: bold;
-    color: #1A1A1A;
-    text-shadow: 0 0 5px #71f8fc;
-    margin: 1rem 0;
+    position: absolute;
+    top:10px;
+    font-size:1.5rem;
+    font-weight:bold;
+    color:#fff;
+    text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
   }
+
+  #buttonsContainer {
+    display: none;
+    position: absolute;
+    bottom: 10px;
+    width: 100%;
+    display: flex;
+    justify-content: space-around;
+    gap:10px;
+    padding:0 10px;
+  }
+
   .game-button {
-    display: inline-block;
-    padding: 0.8rem 1.5rem;
+    padding:0.8rem 1.5rem;
     background: linear-gradient(to right, #71f8fc, #a0fff8);
     border-radius: 30px;
-    text-decoration: none;
-    color: black;
-    font-weight: bold;
-    font-size: 1.1rem;
-    margin: 0.5rem;
-    cursor: pointer;
+    color:black;
+    font-weight:bold;
+    font-size:1.1rem;
+    text-decoration:none;
+    border:none;
+    cursor:pointer;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
   }
+
   .game-button:hover {
     transform: translateY(-3px);
-    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    box-shadow:0 6px 12px rgba(0,0,0,0.15);
   }
-  #buttonsContainer {
-    margin-top: 1rem;
-    display: flex;
-    flex-wrap: wrap;
-    justify-content: center;
-    width: 100%;
+
+  @media (max-width:480px){
+    #gameContainer { width: 90vw; aspect-ratio: 9/16; }
+    .game-button { font-size:1rem; padding:0.6rem 1rem; }
   }
 </style>
 </head>
 <body>
-
 <div id="gameContainer">
-  <canvas id="gameCanvas" width="360" height="600"></canvas>
+  <canvas id="gameCanvas"></canvas>
   <div id="score">0</div>
   <div id="buttonsContainer">
     <button id="restartBtn" class="game-button">重新开始</button>
@@ -80,154 +95,123 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-let width = canvas.width;
-let height = canvas.height;
+let width = canvas.width = 360;
+let height = canvas.height = 640;
 
-// 玩家方块
-let player = { x: 80, y: height/2, size: 30, vy: 0 };
-
-// 游戏参数
-let gravity = 0.5;      // 下落速度
-let jump = -10;         // 每次点击上升速度
+let player = { x:50, y:height/2, size:30, vy:0 };
+let gravity = 0.3;
+let jumpPower = -6;
 let pipes = [];
 let pipeWidth = 50;
-let pipeGap = 180;      // 管子上下间距
-let pipeSpacing = 220;  // 管子前后间距
+let pipeGap = 150;
+let pipeSpacing = 250;
 let score = 0;
 let gameOver = false;
 
 // 初始化管子
-function initPipes() {
+function initPipes(){
   pipes = [];
-  for (let i = 0; i < 3; i++) {
-    let x = width + i * pipeSpacing;
+  for(let i=0;i<3;i++){
     let topHeight = Math.random() * (height - pipeGap - 100) + 50;
-    pipes.push({ x, topHeight });
+    pipes.push({ x: width + i*pipeSpacing, topHeight });
   }
 }
 
-// 重置游戏
-function resetGame() {
-  player.y = height/2;
-  player.vy = 0;
-  score = 0;
-  gameOver = false;
-  initPipes();
-  document.getElementById('score').textContent = score;
-}
+// 点击上升
+canvas.addEventListener('click',()=>{
+  if(!gameOver){
+    player.vy = jumpPower;
+  }
+});
 
-// 绘制玩家
-function drawPlayer() {
-  ctx.fillStyle = "#71f8fc";
-  ctx.shadowColor = "#a0fff8";
-  ctx.shadowBlur = 10;
-  ctx.beginPath();
-  ctx.roundRect(player.x, player.y, player.size, player.size, 8);
-  ctx.fill();
-  ctx.shadowBlur = 0;
-}
-
-// 绘制管子
-function drawPipes() {
-  pipes.forEach(pipe => {
-    // 上管子
-    let gradient = ctx.createLinearGradient(pipe.x,0,pipe.x,pipe.topHeight);
-    gradient.addColorStop(0,'#71f8fc');
-    gradient.addColorStop(1,'#a0fff8');
-    ctx.fillStyle = gradient;
-    ctx.roundRect(pipe.x,0,pipeWidth,pipe.topHeight,8);
-    ctx.fill();
-
-    // 下管子
-    let bottomHeight = height - pipe.topHeight - pipeGap;
-    let gradient2 = ctx.createLinearGradient(pipe.x,pipe.topHeight+pipeGap,pipe.x,height);
-    gradient2.addColorStop(0,'#71f8fc');
-    gradient2.addColorStop(1,'#a0fff8');
-    ctx.fillStyle = gradient2;
-    ctx.roundRect(pipe.x,pipe.topHeight + pipeGap,pipeWidth,bottomHeight,8);
-    ctx.fill();
-  });
-}
-
-// 更新游戏
-function update() {
+// 游戏循环
+function update(){
   if(gameOver) return;
 
   player.vy += gravity;
   player.y += player.vy;
 
-  pipes.forEach(pipe => {
-    pipe.x -= 2; // 管子移动速度
-    // 撞检测
+  pipes.forEach(pipe=>{
+    pipe.x -= 2;
+    // 碰撞检测
     if(player.x + player.size > pipe.x && player.x < pipe.x + pipeWidth){
       if(player.y < pipe.topHeight || player.y + player.size > pipe.topHeight + pipeGap){
-        gameOver = true;
+        endGame();
       }
     }
-    // 积分
+    // 经过管子计分
     if(pipe.x + pipeWidth === player.x){
       score++;
       document.getElementById('score').textContent = score;
     }
   });
 
-  // 循环管子
+  // 移除左侧管子并生成新管子
   if(pipes[0].x + pipeWidth < 0){
     pipes.shift();
     let topHeight = Math.random() * (height - pipeGap - 100) + 50;
     pipes.push({ x: pipes[pipes.length-1].x + pipeSpacing, topHeight });
   }
 
-  // 撞地板或天花板
+  // 撞到地面或上方
   if(player.y + player.size > height || player.y < 0){
-    gameOver = true;
+    endGame();
   }
 }
 
-// 绘制画面
-function draw() {
+function draw(){
   ctx.clearRect(0,0,width,height);
-  drawPipes();
-  drawPlayer();
+
+  // 绘制管子
+  ctx.fillStyle = '#4caf50';
+  pipes.forEach(pipe=>{
+    ctx.fillRect(pipe.x,0,pipeWidth,pipe.topHeight);
+    ctx.fillRect(pipe.x,pipe.topHeight+pipeGap,pipeWidth,height-(pipe.topHeight+pipeGap));
+  });
+
+  // 绘制玩家
+  ctx.fillStyle = '#2196f3';
+  ctx.fillRect(player.x,player.y,player.size,player.size);
+
+  if(gameOver){
+    ctx.fillStyle = 'rgba(0,0,0,0.5)';
+    ctx.fillRect(0,height/2-50,width,100);
+    ctx.fillStyle = '#fff';
+    ctx.font = 'bold 30px Product Sans';
+    ctx.textAlign = 'center';
+    ctx.fillText('游戏结束', width/2, height/2+10);
+  }
+
+  requestAnimationFrame(draw);
 }
 
-// 游戏循环
-function loop() {
+function loop(){
   update();
-  draw();
-  if(!gameOver){
-    requestAnimationFrame(loop);
-  }
+  if(!gameOver) setTimeout(loop,1000/60);
 }
+
+function endGame(){
+  gameOver = true;
+  document.getElementById('buttonsContainer').style.display = 'flex';
+}
+
+// 重置游戏
+function resetGame(){
+  player = { x:50, y:height/2, size:30, vy:0 };
+  score = 0;
+  document.getElementById('score').textContent = score;
+  gameOver = false;
+  document.getElementById('buttonsContainer').style.display = 'none';
+  initPipes();
+  loop();
+}
+
+// 初始化
 initPipes();
 loop();
 
-// 点击跳跃
-canvas.addEventListener('click', ()=>{
-  if(!gameOver){
-    player.vy = jump;
-  }
-});
-
-// 重新开始按钮
-document.getElementById('restartBtn').addEventListener('click', ()=>{
-  resetGame();
-  loop();
-});
-
-// canvas圆角矩形扩展
-CanvasRenderingContext2D.prototype.roundRect = function (x, y, w, h, r) {
-  if (w < 2 * r) r = w / 2;
-  if (h < 2 * r) r = h / 2;
-  this.beginPath();
-  this.moveTo(x+r, y);
-  this.arcTo(x+w, y, x+w, y+h, r);
-  this.arcTo(x+w, y+h, x, y+h, r);
-  this.arcTo(x, y+h, x, y, r);
-  this.arcTo(x, y, x+w, y, r);
-  this.closePath();
-  return this;
-};
+// 按钮事件
+document.getElementById('restartBtn').addEventListener('click',resetGame);
 </script>
 </body>
 </html>
