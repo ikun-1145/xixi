@@ -4,14 +4,12 @@
   <meta charset="UTF-8">
   <title>小游戏</title>
   <style>
-    body { margin: 0; overflow: hidden; background: #71f8fc; }
-    canvas { display: block; margin: auto; background: url('p/bg.png') center / cover no-repeat; }
+    body { margin: 0; overflow: hidden; background: #71f8fc; display: flex; flex-direction: column; height: 100vh; }
+    canvas { display: block; flex: 1; background: url('p/bg.png') center / cover no-repeat; }
     #restartBtn {
-      position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
       padding: 12px 24px; font-size: 20px; border: none;
       border-radius: 12px; background: #a0fff8; cursor: pointer;
-      display: none;
+      margin: 12px auto; display: none;
     }
   </style>
 </head>
@@ -24,7 +22,7 @@ const ctx = canvas.getContext('2d');
 const BASE_WIDTH = 400;
 const BASE_HEIGHT = 600;
 
-let bird = { x: 50, y: 250, w: 30, h: 30, gravity: 0.6, vel: 0 };
+let bird = { x: 50, y: 250, w: 30, h: 30, gravity: 0.4, vel: 0, lift: -8 };
 let pipes = [];
 let score = 0;
 let gameOver = false;
@@ -72,8 +70,8 @@ function resetGame() {
 }
 
 // 控制
-document.addEventListener('keydown', e => { if(e.code==='Space') bird.vel = -6; });
-document.addEventListener('mousedown', () => { bird.vel = -6; });
+document.addEventListener('keydown', e => { if(e.code==='Space') bird.vel = bird.lift; });
+document.addEventListener('mousedown', () => { bird.vel = bird.lift; });
 
 // 更新逻辑
 function update() {
