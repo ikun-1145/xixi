@@ -14,14 +14,13 @@
     min-height:100vh;color:#1A1A1A;
   }
   h1{margin:1rem 0}
-  /* 让 canvas 透明，取消任何填充色 */
   #gameCanvas{
     display:block;
     margin:0 auto;
-    background: transparent; /* 必须是 transparent */
+    background: transparent;
     border-radius:12px;
     max-width:100%;
-    image-rendering: pixelated; /* 像素风可用 */
+    image-rendering: pixelated;
   }
   .buttons{
     display:none;
@@ -51,9 +50,12 @@
 <script>
 /* --------- 初始化 --------- */
 const canvas = document.getElementById('gameCanvas');
-/* 显式打开 alpha 通道，确保 canvas 支持透明 */
 const ctx = canvas.getContext('2d', { alpha: true });
 const buttonsContainer = document.getElementById('buttonsContainer');
+
+/* 加载鸟的图片 */
+const birdImg = new Image();
+birdImg.src = 'p/bird.png';
 
 let player = { x:50, y:250, size:30, dy:0 };
 let gravity = 0.3;
@@ -66,13 +68,12 @@ let score = 0;
 let gameOver = false;
 let animationId;
 
-/* --------- 帮助函数：生成初始管子，避免一片空白 --------- */
+/* --------- 帮助函数 --------- */
 function createPipeAt(x){
   const topHeight = Math.floor(Math.random() * (canvas.height - pipeGap - 50)) + 25;
   pipes.push({ x, topHeight, passed:false });
 }
 
-/* 重置游戏：创建 3 根初始管子 */
 function resetGame(){
   player.y = canvas.height / 2;
   player.dy = 0;
@@ -81,7 +82,6 @@ function resetGame(){
   gameOver = false;
   buttonsContainer.style.display = 'none';
   cancelAnimationFrame(animationId);
-  // 创建三根起始管子（分布在画面之外）
   const startX = canvas.width;
   for(let i=0;i<3;i++){
     createPipeAt(startX + i * pipeSpacing);
@@ -89,27 +89,26 @@ function resetGame(){
   animate();
 }
 
-/* --------- 绘制（注意：不再填充整张 canvas 背景） --------- */
+/* --------- 绘制 --------- */
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  // 绘制管子（单色像素方块风）
+  // 管子
   ctx.fillStyle = '#2b7a78';
   for(const p of pipes){
     ctx.fillRect(p.x, 0, pipeWidth, p.topHeight);
     ctx.fillRect(p.x, p.topHeight + pipeGap, pipeWidth, canvas.height - (p.topHeight + pipeGap));
   }
 
-  // 绘制玩家（方块）
-  ctx.fillStyle = '#ffcc00';
-  ctx.fillRect(player.x, player.y, player.size, player.size);
+  // 玩家（小鸟图片）
+  ctx.drawImage(birdImg, player.x, player.y, player.size, player.size);
 
   // 分数
   ctx.fillStyle = '#1A1A1A';
   ctx.font = '20px Product Sans';
   ctx.fillText(`分数: ${score}`, 10, 30);
 
-  // 游戏结束遮罩与文字
+  // 游戏结束
   if(gameOver){
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
     ctx.fillRect(0,0,canvas.width,canvas.height);
@@ -121,26 +120,18 @@ function draw(){
   }
 }
 
-/* --------- 更新游戏逻辑 --------- */
+/* --------- 更新 --------- */
 function update(){
   if(gameOver) return;
-
-  // 物理
   player.dy += gravity;
   player.y += player.dy;
 
-  // 根据像素间距决定是否生成新管子（避免基于帧数）
   if(pipes.length === 0 || (pipes[pipes.length-1].x < canvas.width - pipeSpacing)){
     createPipeAt(canvas.width);
   }
-
-  // 管子移动
   for(const p of pipes) p.x -= 2;
-
-  // 移除离开屏幕的管子
   pipes = pipes.filter(p => p.x + pipeWidth > 0);
 
-  // 碰撞检测与计分
   for(const p of pipes){
     if(player.x + player.size > p.x && player.x < p.x + pipeWidth){
       if(player.y < p.topHeight || player.y + player.size > p.topHeight + pipeGap){
@@ -152,31 +143,27 @@ function update(){
       p.passed = true;
     }
   }
-
-  // 碰到上下边界
   if(player.y + player.size > canvas.height || player.y < 0){
     endGame();
   }
 }
 
-/* --------- 动画循环 --------- */
+/* --------- 动画 --------- */
 function animate(){
   update();
   draw();
   if(!gameOver){
     animationId = requestAnimationFrame(animate);
   } else {
-    // 游戏结束时显示居中按钮（DOM）
     buttonsContainer.style.display = 'flex';
   }
 }
 
-/* --------- 结束/输入/按钮事件 --------- */
+/* --------- 事件 --------- */
 function endGame(){
   gameOver = true;
   draw();
 }
-
 document.addEventListener('keydown', e => {
   if(e.code === 'Space' && !gameOver) player.dy = jump;
 });
