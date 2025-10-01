@@ -68,6 +68,16 @@ let score = 0;
 let gameOver = false;
 let animationId;
 
+/* --------- 最高分处理 --------- */
+let highScore = parseInt(localStorage.getItem('highScore')) || 0;
+
+function updateHighScore(){
+  if(score > highScore){
+    highScore = score;
+    localStorage.setItem('highScore', highScore);
+  }
+}
+
 /* --------- 帮助函数 --------- */
 function createPipeAt(x){
   const topHeight = Math.floor(Math.random() * (canvas.height - pipeGap - 50)) + 25;
@@ -107,6 +117,7 @@ function draw(){
   ctx.fillStyle = '#1A1A1A';
   ctx.font = '20px Product Sans';
   ctx.fillText(`分数: ${score}`, 10, 30);
+  ctx.fillText(`最高分: ${highScore}`, 10, 60); // 显示最高分
 
   // 游戏结束
   if(gameOver){
@@ -117,6 +128,9 @@ function draw(){
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
     ctx.fillText('游戏结束', canvas.width/2, canvas.height/2);
+
+    // 更新最高分
+    updateHighScore();
   }
 }
 
