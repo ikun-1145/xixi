@@ -2,216 +2,187 @@
 <html lang="zh-Hans">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>霜蓝的小游戏</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>霜蓝小游戏</title>
 <link href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap" rel="stylesheet">
 <style>
+  * { margin:0; padding:0; box-sizing:border-box; }
   body {
-    margin:0; padding:0;
     font-family: 'Product Sans', sans-serif;
-    background: linear-gradient(135deg, #e0faff, #ffffff);
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    justify-content:center;
-    min-height:100vh;
-    color:#1A1A1A;
+    display:flex; flex-direction:column; align-items:center; justify-content:center;
+    min-height:100vh; background:#e0faff; color:#1A1A1A;
   }
-
-  #gameContainer {
-    position: relative;
-    width: 360px;
-    max-width: 90vw;
-    aspect-ratio: 9/16;
-    background: #71f8fc;
-    border-radius: 16px;
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-  }
-
   canvas {
-    width: 100%;
-    height: 100%;
-    display: block;
+    background: #71f8fc;
+    display:block;
+    border-radius:12px;
+    margin-top:2rem;
   }
-
-  #score {
-    position: absolute;
-    top:10px;
-    font-size:1.5rem;
-    font-weight:bold;
-    color:#fff;
-    text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+  .game-over-buttons {
+    display:none;
+    margin-top:1rem;
+    gap:1rem;
+    flex-wrap:wrap;
   }
-
-  #buttonsContainer {
-    display: none;
-    position: absolute;
-    bottom: 10px;
-    width: 100%;
-    display: flex;
-    justify-content: space-around;
-    gap:10px;
-    padding:0 10px;
-  }
-
-  .game-button {
+  .game-over-buttons button {
     padding:0.8rem 1.5rem;
-    background: linear-gradient(to right, #71f8fc, #a0fff8);
-    border-radius: 30px;
-    color:black;
-    font-weight:bold;
-    font-size:1.1rem;
-    text-decoration:none;
+    border-radius:30px;
     border:none;
+    font-size:1.1rem;
+    font-weight:bold;
+    background: linear-gradient(to right, #71f8fc, #a0fff8);
+    color:black;
     cursor:pointer;
     transition: transform 0.3s ease, box-shadow 0.3s ease;
   }
-
-  .game-button:hover {
+  .game-over-buttons button:hover {
     transform: translateY(-3px);
-    box-shadow:0 6px 12px rgba(0,0,0,0.15);
-  }
-
-  @media (max-width:480px){
-    #gameContainer { width: 90vw; aspect-ratio: 9/16; }
-    .game-button { font-size:1rem; padding:0.6rem 1rem; }
+    box-shadow: 0 6px 12px rgba(0,0,0,0.15);
   }
 </style>
 </head>
 <body>
-<div id="gameContainer">
-  <canvas id="gameCanvas"></canvas>
-  <div id="score">0</div>
-  <div id="buttonsContainer">
-    <button id="restartBtn" class="game-button">重新开始</button>
-    <a href="index.html" class="game-button">返回主页</a>
-  </div>
+
+<canvas id="gameCanvas"></canvas>
+
+<div class="game-over-buttons" id="buttonsContainer">
+  <button id="restartBtn">重新开始</button>
+  <button id="homeBtn">返回主页</button>
 </div>
 
 <script>
+// ===== Canvas & 自适应 =====
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 
-let width = canvas.width = 360;
-let height = canvas.height = 640;
+function resizeCanvas() {
+  canvas.width = window.innerWidth * 0.9;
+  canvas.height = window.innerHeight * 0.6;
+}
+resizeCanvas();
+window.addEventListener('resize', resizeCanvas);
 
-let player = { x:50, y:height/2, size:30, vy:0 };
-let gravity = 0.3;
-let jumpPower = -6;
+// ===== 游戏参数 =====
+let player = { x:50, y:canvas.height/2, size:30, velocity:0 };
+const gravity = 0.3;        // 下落速度
+const jumpStrength = 6;     // 点击上升高度
 let pipes = [];
-let pipeWidth = 50;
-let pipeGap = 150;
-let pipeSpacing = 250;
-let score = 0;
+const pipeWidth = 60;
+const pipeGap = 180;        // 上下管子间距
+let pipeDistance = 300;     // 前后管子间距
 let gameOver = false;
+let score = 0;
 
-// 初始化管子
-function initPipes(){
-  pipes = [];
-  for(let i=0;i<3;i++){
-    let topHeight = Math.random() * (height - pipeGap - 100) + 50;
-    pipes.push({ x: width + i*pipeSpacing, topHeight });
-  }
+// ===== 初始化管子 =====
+function createPipe(x) {
+  const topHeight = Math.random() * (canvas.height - pipeGap - 100) + 50;
+  pipes.push({ x, topHeight });
+}
+for(let i=0;i<3;i++){
+  createPipe(canvas.width + i*pipeDistance);
 }
 
-// 点击上升
-canvas.addEventListener('click',()=>{
-  if(!gameOver){
-    player.vy = jumpPower;
-  }
-});
-
-// 游戏循环
-function update(){
+// ===== 游戏逻辑 =====
+function update() {
   if(gameOver) return;
 
-  player.vy += gravity;
-  player.y += player.vy;
+  // 玩家受力
+  player.velocity += gravity;
+  player.y += player.velocity;
 
-  pipes.forEach(pipe=>{
-    pipe.x -= 2;
-    // 碰撞检测
+  // 边界检测
+  if(player.y + player.size > canvas.height || player.y < 0){
+    endGame();
+  }
+
+  // 管子移动 & 碰撞检测
+  for(let pipe of pipes){
+    pipe.x -= 2; // 管子移动速度
+
+    // 撞管子
     if(player.x + player.size > pipe.x && player.x < pipe.x + pipeWidth){
       if(player.y < pipe.topHeight || player.y + player.size > pipe.topHeight + pipeGap){
         endGame();
       }
     }
-    // 经过管子计分
-    if(pipe.x + pipeWidth === player.x){
+
+    // 出屏则重置
+    if(pipe.x + pipeWidth < 0){
+      pipe.x = canvas.width + pipeDistance;
+      pipe.topHeight = Math.random() * (canvas.height - pipeGap - 100) + 50;
       score++;
-      document.getElementById('score').textContent = score;
     }
-  });
-
-  // 移除左侧管子并生成新管子
-  if(pipes[0].x + pipeWidth < 0){
-    pipes.shift();
-    let topHeight = Math.random() * (height - pipeGap - 100) + 50;
-    pipes.push({ x: pipes[pipes.length-1].x + pipeSpacing, topHeight });
-  }
-
-  // 撞到地面或上方
-  if(player.y + player.size > height || player.y < 0){
-    endGame();
   }
 }
 
-function draw(){
-  ctx.clearRect(0,0,width,height);
+// ===== 绘制 =====
+function draw() {
+  // 背景
+  ctx.fillStyle = '#71f8fc';
+  ctx.fillRect(0,0,canvas.width,canvas.height);
 
-  // 绘制管子
-  ctx.fillStyle = '#4caf50';
-  pipes.forEach(pipe=>{
-    ctx.fillRect(pipe.x,0,pipeWidth,pipe.topHeight);
-    ctx.fillRect(pipe.x,pipe.topHeight+pipeGap,pipeWidth,height-(pipe.topHeight+pipeGap));
-  });
+  // 玩家（小方块，可后续换图片）
+  ctx.fillStyle = '#ffcc00';
+  ctx.fillRect(player.x, player.y, player.size, player.size);
 
-  // 绘制玩家
-  ctx.fillStyle = '#2196f3';
-  ctx.fillRect(player.x,player.y,player.size,player.size);
-
-  if(gameOver){
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(0,height/2-50,width,100);
-    ctx.fillStyle = '#fff';
-    ctx.font = 'bold 30px Product Sans';
-    ctx.textAlign = 'center';
-    ctx.fillText('游戏结束', width/2, height/2+10);
+  // 管子
+  ctx.fillStyle = '#2b7a78';
+  for(let pipe of pipes){
+    // 上管子
+    ctx.fillRect(pipe.x, 0, pipeWidth, pipe.topHeight);
+    // 下管子
+    ctx.fillRect(pipe.x, pipe.topHeight + pipeGap, pipeWidth, canvas.height - (pipe.topHeight + pipeGap));
   }
 
-  requestAnimationFrame(draw);
+  // 分数
+  ctx.fillStyle = '#1A1A1A';
+  ctx.font = '20px Product Sans';
+  ctx.fillText(`分数: ${score}`, 10, 30);
 }
 
-function loop(){
+// ===== 游戏循环 =====
+function gameLoop() {
   update();
-  if(!gameOver) setTimeout(loop,1000/60);
+  draw();
+  if(!gameOver){
+    requestAnimationFrame(gameLoop);
+  }
 }
 
+// ===== 点击控制 =====
+canvas.addEventListener('click', () => {
+  if(!gameOver){
+    player.velocity = -jumpStrength;
+  }
+});
+
+// ===== 游戏结束 =====
+const buttonsContainer = document.getElementById('buttonsContainer');
 function endGame(){
   gameOver = true;
-  document.getElementById('buttonsContainer').style.display = 'flex';
+  buttonsContainer.style.display = 'flex';
 }
 
-// 重置游戏
-function resetGame(){
-  player = { x:50, y:height/2, size:30, vy:0 };
+// ===== 按钮事件 =====
+document.getElementById('restartBtn').addEventListener('click', () => {
+  // 重置参数
+  player.y = canvas.height/2;
+  player.velocity = 0;
+  pipes = [];
+  for(let i=0;i<3;i++) createPipe(canvas.width + i*pipeDistance);
   score = 0;
-  document.getElementById('score').textContent = score;
   gameOver = false;
-  document.getElementById('buttonsContainer').style.display = 'none';
-  initPipes();
-  loop();
-}
+  buttonsContainer.style.display = 'none';
+  gameLoop();
+});
 
-// 初始化
-initPipes();
-loop();
+document.getElementById('homeBtn').addEventListener('click', () => {
+  window.location.href = 'index.html';
+});
 
-// 按钮事件
-document.getElementById('restartBtn').addEventListener('click',resetGame);
+// ===== 启动游戏 =====
+gameLoop();
 </script>
+
 </body>
 </html>
