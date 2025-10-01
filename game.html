@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8">
+  <title>霜蓝飞行</title>
+  <style>
+    body { margin: 0; overflow: hidden; background: #71f8fc; }
+    canvas { display: block; margin: auto; background: url("p/bg.png"); background-size: cover; }
+  </style>
+</head>
+<body>
+<canvas id="gameCanvas"></canvas>
+<script>
+const canvas = document.getElementById("gameCanvas");
+const ctx = canvas.getContext("2d");
+canvas.width = 400;
+canvas.height = 600;
+
+let bird = { x: 50, y: 250, width: 30, height: 30, gravity: 0.6, lift: -10, velocity: 0 };
+let pipes = [];
+let score = 0;
+let gameOver = false;
+
+// 点击或按空格让小鸟上升
+document.addEventListener("keydown", e => { if(e.code === "Space") bird.velocity = bird.lift; });
+document.addEventListener("mousedown", () => { bird.velocity = bird.lift; });
+
+function drawBird() {
+  ctx.fillStyle = "blue"; // 占位色块，可换成霜蓝形象
+  ctx.fillRect(bird.x, bird.y, bird.width, bird.height);
+}
+
+function drawPipes() {
+  ctx.fillStyle = "green";
+  pipes.forEach(pipe => {
+    ctx.fillRect(pipe.x, 0, pipe.width, pipe.top);
+    ctx.fillRect(pipe.x, canvas.height - pipe.bottom, pipe.width, pipe.bottom);
+  });
+}
+
+function updateBird() {
+  bird.velocity += bird.gravity;
+  bird.y += bird.velocity;
+
+  if (bird.y + bird.height > canvas.height || bird.y < 0) gameOver = true;
+}
+
+function updatePipes() {
+  if (pipes.length === 0 || pipes[pipes.length - 1].x < 250) {
+    let top = Math.random() * 200 + 50;
+    let gap = 120;
+    pipes.push({ x: canvas.width, width: 50, top: top, bottom: canvas.height - top - gap });
+  }
+
+  pipes.forEach(pipe => {
+    pipe.x -= 2;
+    if (bird.x < pipe.x + pipe.width &&
+        bird.x + bird.width > pipe.x &&
+        (bird.y < pipe.top || bird.y + bird.height > canvas.height - pipe.bottom)) {
+      gameOver = true;
+    }
+
+    if (pipe.x + pipe.width === bird.x) score++;
+  });
+
+  pipes = pipes.filter(pipe => pipe.x + pipe.width > 0);
+}
+
+function drawScore() {
+  ctx.fillStyle = "white";
+  ctx.font = "24px Arial";
+  ctx.fillText("得分: " + score, 10, 30);
+}
+
+function loop() {
+  if (gameOver) {
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "white";
+    ctx.font = "36px Arial";
+    ctx.fillText("游戏结束", 120, 300);
+    ctx.fillText("得分: " + score, 140, 350);
+    return;
+  }
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  updateBird();
+  updatePipes();
+
+  drawBird();
+  drawPipes();
+  drawScore();
+
+  requestAnimationFrame(loop);
+}
+loop();
+</script>
+</body>
+</html>
