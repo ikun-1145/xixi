@@ -11,6 +11,11 @@
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
+    /* 页面加载前隐藏内容 */
+    body.preload {
+      visibility: hidden;
+    }
+
     body {
       font-family: 'Product Sans', sans-serif;
       background: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center center / cover no-repeat fixed;
@@ -20,6 +25,7 @@
       justify-content: center;
       min-height: 100vh;
       color: #1A1A1A;
+      transition: opacity 0.8s ease;
     }
 
     .container {
@@ -48,10 +54,7 @@
       margin-bottom: 1rem;
     }
 
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
-    }
+    h1 { font-size: 2rem; margin-bottom: 1rem; }
 
     .buttons {
       display: grid;
@@ -80,23 +83,20 @@
       box-shadow: 0 6px 12px rgba(0,0,0,0.15);
     }
 
-    footer {
-      margin: 2rem 0 1rem;
-      font-size: 0.9rem;
-      color: #000;
-      text-align: center;
-    }
+    footer { margin: 2rem 0 1rem; font-size: 0.9rem; color: #000; text-align: center; }
 
-    /* 页面加载动画 */
+    /* 加载动画覆盖层 */
     #loading {
       position: fixed;
       z-index: 9999;
-      background: #ffffff;
+      background: #ffffff; /* 全白覆盖 */
       width: 100%;
       height: 100%;
       display: flex;
       align-items: center;
       justify-content: center;
+      opacity: 1;
+      pointer-events: all;
       transition: opacity 0.6s ease;
     }
 
@@ -109,46 +109,11 @@
       animation: spin 1s linear infinite;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    body.fade-in {
-      animation: fadeBody 0.8s ease;
-    }
-
-    @keyframes fadeBody {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    body.fade-out {
-      animation: fadeOut 0.6s ease forwards;
-    }
-
-    @keyframes fadeOut {
-      to { opacity: 0; }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
     /* 登录弹窗 */
-    .modal {
-      display: none;
-      position: fixed;
-      z-index: 99;
-      left: 0;
-      top: 0;
-      width: 100%;
-      height: 100%;
-      background-color: rgba(0,0,0,0.5);
-      opacity: 0;
-      transition: opacity 0.5s ease-in-out;
-    }
-
-    .modal.active {
-      display: block;
-      opacity: 1;
-    }
-
+    .modal { display: none; position: fixed; z-index: 99; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.5); opacity: 0; transition: opacity 0.5s ease-in-out; }
+    .modal.active { display: block; opacity: 1; }
     .modal-content {
       background: rgba(255,255,255,0.9);
       backdrop-filter: blur(10px);
@@ -161,39 +126,11 @@
       box-shadow: 0 5px 20px rgba(0,0,0,0.2);
       animation: modalPop 0.5s ease-in-out;
     }
-
-    @keyframes modalPop {
-      from { transform: scale(0.8); opacity: 0; }
-      to { transform: scale(1); opacity: 1; }
-    }
-
-    .modal-content p {
-      font-size: 1rem;
-      margin-bottom: 1.2rem;
-    }
-
-    .login-button {
-      background: linear-gradient(to right, #71f8fc, #a0fff8);
-      color: black;
-      border: none;
-      padding: 0.8rem 1.5rem;
-      font-size: 1rem;
-      border-radius: 30px;
-      cursor: pointer;
-      transition: transform 0.3s ease, box-shadow 0.3s ease;
-    }
-
-    .login-button:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 6px 12px rgba(0,0,0,0.15);
-    }
-
-    .close {
-      float: right;
-      font-size: 1.5rem;
-      cursor: pointer;
-      color: #1A1A1A;
-    }
+    @keyframes modalPop { from { transform: scale(0.8); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+    .modal-content p { font-size: 1rem; margin-bottom: 1.2rem; }
+    .login-button { background: linear-gradient(to right, #71f8fc, #a0fff8); color: black; border: none; padding: 0.8rem 1.5rem; font-size: 1rem; border-radius: 30px; cursor: pointer; transition: transform 0.3s ease, box-shadow 0.3s ease; }
+    .login-button:hover { transform: translateY(-3px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); }
+    .close { float: right; font-size: 1.5rem; cursor: pointer; color: #1A1A1A; }
 
     @media (max-width: 480px) {
       h1 { font-size: 1.8rem; }
@@ -201,7 +138,7 @@
     }
   </style>
 </head>
-<body>
+<body class="preload">
   <!-- 加载动画 -->
   <div id="loading">
     <div class="loader"></div>
@@ -233,17 +170,30 @@
 
   <footer>Copyright©️2024-2025霜蓝, All Rights Reserved.</footer>
 
-  <!-- 加载与跳转过渡 -->
-  <script>
-    window.addEventListener('load', () => {
-      document.body.classList.add('fade-in');
-      const loader = document.getElementById('loading');
-      if (loader) {
-        loader.style.opacity = '0';
-        setTimeout(() => loader.style.display = 'none', 600);
+  <script type="module">
+    import { supabase } from './p/js/supabaseClient.js';
+
+    // 页面加载完成后显示内容
+    window.addEventListener('load', async () => {
+      // 获取用户登录状态
+      const { data } = await supabase.auth.getUser();
+      if (data?.user) {
+        localStorage.setItem("isLoggedIn", "true");
+      } else {
+        localStorage.setItem("isLoggedIn", "false");
       }
+
+      // 渐隐加载动画
+      const loader = document.getElementById('loading');
+      loader.style.opacity = '0';
+      setTimeout(() => loader.remove(), 600);
+
+      // 显示页面
+      document.body.classList.remove('preload');
+      document.body.style.opacity = '1';
     });
 
+    // 内部链接渐隐跳转
     document.addEventListener("DOMContentLoaded", () => {
       const links = document.querySelectorAll("a[href]");
       links.forEach(link => {
@@ -251,32 +201,25 @@
         if (!href.startsWith("#") && !href.startsWith("javascript")) {
           link.addEventListener("click", (e) => {
             e.preventDefault();
-            document.body.classList.add("fade-out");
+            document.body.style.opacity = '0';
             setTimeout(() => window.location.href = href, 600);
           });
         }
       });
     });
-  </script>
 
-  <!-- supabase 登录控制 -->
-  <script type="module">
-    import { supabase } from './p/js/supabaseClient.js';
-
+    // 登录弹窗逻辑
     const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
-
     function closeModal() {
-      const modal = document.getElementById("loginModal");
-      modal.classList.remove("active");
+      document.getElementById("loginModal").classList.remove("active");
     }
 
     document.getElementById("donateBtn").addEventListener("click", () => {
       if (isLoggedIn) {
-        document.body.classList.add("fade-out");
+        document.body.style.opacity = '0';
         setTimeout(() => window.location.href = "donate.html", 600);
       } else {
-        const modal = document.getElementById("loginModal");
-        modal.classList.add("active");
+        document.getElementById("loginModal").classList.add("active");
       }
     });
 
@@ -287,18 +230,9 @@
       loginRedirectBtn.addEventListener('click', async () => {
         await supabase.auth.signInWithOAuth({
           provider: 'github',
-          options: {
-            redirectTo: location.origin + '/donate.html'
-          }
+          options: { redirectTo: location.origin + '/donate.html' }
         });
       });
-    }
-
-    const { data } = await supabase.auth.getUser();
-    if (data?.user) {
-      localStorage.setItem("isLoggedIn", "true");
-    } else {
-      localStorage.setItem("isLoggedIn", "false");
     }
   </script>
 </body>
