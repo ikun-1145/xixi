@@ -13,67 +13,117 @@
     display:flex;flex-direction:column;align-items:center;
     min-height:100vh;color:#1A1A1A;overflow:hidden;
   }
+
+  /* wrapper 确保 overlay 精确覆盖 canvas */
+  #gameWrapper{
+    position: relative;
+    display: inline-block;
+  }
+
   #gameCanvas{
     display:block;
-    margin:0 auto;
     background: transparent;
     border-radius:12px;
     image-rendering: pixelated;
+    /* 不设置固定宽高，使用 JS 动态设置 */
   }
+
+  /* 覆盖层：包含“游戏结束”文字 + 两个按钮（垂直排列） */
+  .overlay{
+    display: none;                /* 游戏未结束时隐藏 */
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    z-index: 20;
+    width: 100%;
+    /* 使用 flex 垂直居中排列文字与按钮 */
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+    pointer-events: none; /* 默认禁止事件穿透，按钮会单独开启 */
+  }
+
+  /* 允许按钮接收点击 */
+  .overlay .buttons { pointer-events: auto; }
+
+  .gameoverText{
+    color: #fff;
+    font-weight: bold;
+    text-align: center;
+    text-shadow: 2px 2px 6px rgba(0,0,0,0.6);
+    /* 响应式字体 */
+    font-size: clamp(20px, 6vw, 48px);
+    margin-bottom: 0.4rem;
+  }
+
   .buttons{
-    display:none;
-    gap:1rem;
-    position:absolute;
-    top:50%;left:50%;
-    transform:translate(-50%,-50%);
-    z-index:10;
+    display:flex;
     flex-direction:column;
     align-items:center;
+    gap: 0.6rem;
   }
   .buttons button,.buttons a{
     padding:.8rem 1.5rem;
     background:linear-gradient(to right,#71f8fc,#a0fff8);
-    border-radius:30px;color:black;font-weight:bold;font-size:1.1rem;border:none;cursor:pointer;margin:.5rem 0;
+    border-radius:30px;color:black;font-weight:bold;font-size:1.1rem;border:none;cursor:pointer;margin:.2rem 0;
+    text-decoration:none;
+  }
+
+  /* 小屏微调 */
+  @media (max-width:480px){
+    .buttons button, .buttons a { font-size: 1rem; padding: 0.7rem 1.1rem; }
   }
 </style>
 </head>
 <body>
-  <canvas id="gameCanvas"></canvas>
+  <div id="gameWrapper">
+    <canvas id="gameCanvas"></canvas>
 
-  <div class="buttons" id="buttonsContainer">
-    <button id="restartBtn">重新开始</button>
-    <a href="index.html">返回主页</a>
+    <!-- overlay：含文字和按钮（只在游戏结束时显示） -->
+    <div class="overlay" id="gameOverlay">
+      <div class="gameoverText">游戏结束</div>
+      <div class="buttons" id="buttonsContainer">
+        <button id="restartBtn">重新开始</button>
+        <a id="homeLink" href="index.html">返回主页</a>
+      </div>
+    </div>
   </div>
 
 <script>
-/* --------- 初始化 --------- */
+/* --------- 初始化与自适应（保持原有逻辑分辨率） --------- */
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d', { alpha: true });
+const overlay = document.getElementById('gameOverlay');
 const buttonsContainer = document.getElementById('buttonsContainer');
 
-/* 逻辑分辨率（游戏内部坐标系） */
 const LOGIC_WIDTH = 400;
 const LOGIC_HEIGHT = 650;
 let scale = 1;
 
-/* 屏幕适配 */
 function resizeCanvas(){
-  const maxWidth = window.innerWidth;
-  const maxHeight = window.innerHeight;
-  const scaleX = maxWidth / LOGIC_WIDTH;
-  const scaleY = maxHeight / LOGIC_HEIGHT;
-  scale = Math.min(scaleX, scaleY); // 保持比例缩放
+  const maxWidth = Math.min(window.innerWidth, window.innerHeight * (LOGIC_WIDTH / LOGIC_HEIGHT)); // 保持更稳的适配
+  const maxHeight = Math.min(window.innerHeight, window.innerWidth * (LOGIC_HEIGHT / LOGIC_WIDTH));
+  const scaleX = window.innerWidth / LOGIC_WIDTH;
+  const scaleY = window.innerHeight / LOGIC_HEIGHT;
+  scale = Math.min(scaleX, scaleY);
 
-  canvas.width = LOGIC_WIDTH * scale;
-  canvas.height = LOGIC_HEIGHT * scale;
+  canvas.width = Math.round(LOGIC_WIDTH * scale);
+  canvas.height = Math.round(LOGIC_HEIGHT * scale);
+
+  // 确保 wrapper 与 canvas 同宽（使 overlay 精确覆盖）
+  const wrapper = document.getElementById('gameWrapper');
+  wrapper.style.width = canvas.width + 'px';
+  wrapper.style.height = canvas.height + 'px';
 }
 window.addEventListener('resize', resizeCanvas);
 resizeCanvas();
 
-/* 加载鸟的图片 */
+/* 加载小鸟图片 */
 const birdImg = new Image();
 birdImg.src = 'p/bird.png';
 
+/* --------- 游戏变量（逻辑坐标系） --------- */
 let player = { x:50, y:250, size:30, dy:0 };
 let gravity = 0.3;
 let jump = -6;
@@ -85,21 +135,12 @@ let score = 0;
 let gameOver = false;
 let animationId;
 
-/* --------- 最高分处理 --------- */
+/* 最高分（localStorage） */
 let highScore = parseInt(localStorage.getItem('highScore')) || 0;
+function updateHighScore(){ if(score > highScore){ highScore = score; localStorage.setItem('highScore', highScore); } }
 
-function updateHighScore(){
-  if(score > highScore){
-    highScore = score;
-    localStorage.setItem('highScore', highScore);
-  }
-}
-
-/* --------- 帮助函数 --------- */
-function createPipeAt(x){
-  const topHeight = Math.floor(Math.random() * (LOGIC_HEIGHT - pipeGap - 50)) + 25;
-  pipes.push({ x, topHeight, passed:false });
-}
+/* 帮助函数 */
+function createPipeAt(x){ const topHeight = Math.floor(Math.random() * (LOGIC_HEIGHT - pipeGap - 50)) + 25; pipes.push({ x, topHeight, passed:false }); }
 
 function resetGame(){
   player.y = LOGIC_HEIGHT / 2;
@@ -107,20 +148,25 @@ function resetGame(){
   pipes = [];
   score = 0;
   gameOver = false;
-  buttonsContainer.style.display = 'none';
+  // 隐藏 overlay（DOM）
+  overlay.style.display = 'none';
   cancelAnimationFrame(animationId);
   const startX = LOGIC_WIDTH;
-  for(let i=0;i<3;i++){
-    createPipeAt(startX + i * pipeSpacing);
-  }
+  for(let i=0;i<3;i++) createPipeAt(startX + i * pipeSpacing);
   animate();
 }
 
-/* --------- 绘制 --------- */
+/* 绘制：在逻辑坐标系里绘制，然后通过 ctx.scale 显示到屏幕 */
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
   ctx.save();
-  ctx.scale(scale, scale);  // 缩放到逻辑坐标系
+  ctx.scale(scale, scale); // 将绘制缩放到逻辑坐标系
+
+  // 背景暗色遮罩（只在游戏结束时显示以突出 overlay）
+  if(gameOver){
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.fillRect(0,0,LOGIC_WIDTH,LOGIC_HEIGHT);
+  }
 
   // 管子
   ctx.fillStyle = '#2b7a78';
@@ -129,34 +175,27 @@ function draw(){
     ctx.fillRect(p.x, p.topHeight + pipeGap, pipeWidth, LOGIC_HEIGHT - (p.topHeight + pipeGap));
   }
 
-  // 玩家（小鸟图片）
-  ctx.drawImage(birdImg, player.x, player.y, player.size, player.size);
-
-  // 分数
-  ctx.fillStyle = '#1A1A1A';
-  ctx.font = '20px Product Sans';
-  ctx.textAlign = 'left';
-  ctx.fillText(`分数: ${score}`, 10, 30);
-  ctx.fillText(`最高分: ${highScore}`, 10, 60);
-
-  // 游戏结束
-  if(gameOver){
-    ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(0,0,LOGIC_WIDTH,LOGIC_HEIGHT);
-    ctx.fillStyle = '#fff';
-    ctx.font = `${Math.floor(LOGIC_WIDTH/10)}px Product Sans`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'middle';
-    ctx.fillText('游戏结束', LOGIC_WIDTH/2, LOGIC_HEIGHT/2);
-
-    // 更新最高分
-    updateHighScore();
+  // 玩家（小鸟图片或备用方块）
+  if(birdImg.complete){
+    ctx.drawImage(birdImg, player.x, player.y, player.size, player.size);
+  } else {
+    ctx.fillStyle = '#ffcc00';
+    ctx.fillRect(player.x, player.y, player.size, player.size);
   }
+
+  // 分数（相对于逻辑坐标）
+  const fontSize = Math.max(12, Math.floor(LOGIC_WIDTH * 0.05)); // 在逻辑坐标里选个合适值
+  ctx.fillStyle = '#1A1A1A';
+  ctx.font = `${fontSize}px Product Sans`;
+  ctx.textAlign = "left";
+  ctx.textBaseline = "top";
+  ctx.fillText(`分数: ${score}`, LOGIC_WIDTH * 0.02, LOGIC_HEIGHT * 0.02);
+  ctx.fillText(`最高分: ${highScore}`, LOGIC_WIDTH * 0.02, LOGIC_HEIGHT * 0.12);
 
   ctx.restore();
 }
 
-/* --------- 更新 --------- */
+/* 更新游戏逻辑（基于逻辑坐标） */
 function update(){
   if(gameOver) return;
   player.dy += gravity;
@@ -175,38 +214,36 @@ function update(){
       }
     }
     if(!p.passed && player.x > p.x + pipeWidth){
-      score++;
-      p.passed = true;
+      score++; p.passed = true;
     }
   }
-  if(player.y + player.size > LOGIC_HEIGHT || player.y < 0){
-    endGame();
-  }
+
+  if(player.y + player.size > LOGIC_HEIGHT || player.y < 0) endGame();
 }
 
-/* --------- 动画 --------- */
+/* 动画循环 */
 function animate(){
   update();
   draw();
   if(!gameOver){
     animationId = requestAnimationFrame(animate);
   } else {
-    buttonsContainer.style.display = 'flex';
+    // 游戏结束：先更新最高分，然后显示 overlay（DOM）
+    updateHighScore();
+    overlay.style.display = 'flex';
   }
 }
 
-/* --------- 事件 --------- */
+/* 结束与事件 */
 function endGame(){
   gameOver = true;
   draw();
 }
-document.addEventListener('keydown', e => {
-  if(e.code === 'Space' && !gameOver) player.dy = jump;
-});
-document.addEventListener('click', () => {
-  if(!gameOver) player.dy = jump;
-});
+
+document.addEventListener('keydown', e => { if(e.code === 'Space' && !gameOver) player.dy = jump; });
+document.addEventListener('click', () => { if(!gameOver) player.dy = jump; });
 document.getElementById('restartBtn').addEventListener('click', resetGame);
+document.getElementById('homeLink').addEventListener('click', () => { /* 保持默认跳转 */ });
 
 /* 启动 */
 resetGame();
