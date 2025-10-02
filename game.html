@@ -96,10 +96,8 @@ function resizeCanvas(){
   const scaleX = window.innerWidth / LOGIC_WIDTH;
   const scaleY = window.innerHeight / LOGIC_HEIGHT;
   scale = Math.min(scaleX, scaleY);
-
   canvas.width = Math.round(LOGIC_WIDTH * scale);
   canvas.height = Math.round(LOGIC_HEIGHT * scale);
-
   const wrapper = document.getElementById('gameWrapper');
   wrapper.style.width = canvas.width + 'px';
   wrapper.style.height = canvas.height + 'px';
@@ -122,6 +120,7 @@ let pipeSpacing = 250;
 let score = 0;
 let gameOver = false;
 let animationId;
+let collisionType = null;  // "top" | "bottom" | "side"
 
 /* 最高分 */
 let highScore = parseInt(localStorage.getItem('highScore')) || 0;
@@ -135,7 +134,16 @@ function updateHighScore(){
 /* 创建管道 */
 function createPipeAt(x){ 
   const topHeight = Math.floor(Math.random() * (LOGIC_HEIGHT - pipeGap - 50)) + 25; 
-  pipes.push({ x, topHeight, passed:false }); 
+  pipes.push({ 
+    x, topHeight, passed:false,
+    get topRect(){ return {x:this.x, y:0, w:pipeWidth, h:this.topHeight}; },
+    get bottomRect(){ return {x:this.x, y:this.topHeight+pipeGap, w:pipeWidth, h:LOGIC_HEIGHT-(this.topHeight+pipeGap)}; }
+  }); 
+}
+
+/* 碰撞检测 */
+function rectsCollide(r1,r2){
+  return !(r1.x+r1.w < r2.x || r1.x > r2.x+r2.w || r1.y+r1.h < r2.y || r1.y > r2.y+r2.h);
 }
 
 /* 重置游戏 */
@@ -144,6 +152,7 @@ function resetGame(){
   pipes = [];
   score = 0;
   gameOver = false;
+  collisionType = null;
   overlay.style.display = 'none';
   cancelAnimationFrame(animationId);
   for(let i=0;i<3;i++) createPipeAt(LOGIC_WIDTH + i * pipeSpacing);
@@ -198,24 +207,39 @@ function update(){
   player.dy += gravity;
   player.y += player.dy;
 
+  // 生成管道
   if(pipes.length === 0 || (pipes[pipes.length-1].x < LOGIC_WIDTH - pipeSpacing)){
     createPipeAt(LOGIC_WIDTH);
   }
   for(const p of pipes) p.x -= 2;
   pipes = pipes.filter(p => p.x + pipeWidth > 0);
 
+  // 玩家碰撞箱
+  const birdRect = {x:player.x, y:player.y, w:player.size, h:player.size};
+
   for(const p of pipes){
-    if(player.x + player.size > p.x && player.x < p.x + pipeWidth){
-      if(player.y < p.topHeight || player.y + player.size > p.topHeight + pipeGap){
-        endGame();
-      }
+    if(rectsCollide(birdRect, p.topRect)){
+      collisionType = (player.dy > 0) ? "top" : "side";
+      endGame();
+    }
+    if(rectsCollide(birdRect, p.bottomRect)){
+      collisionType = (player.dy < 0) ? "bottom" : "side";
+      endGame();
     }
     if(!p.passed && player.x > p.x + pipeWidth){
       score++; p.passed = true;
     }
   }
 
-  if(player.y + player.size > LOGIC_HEIGHT || player.y < 0) endGame();
+  // 碰到边界
+  if(player.y + player.size > LOGIC_HEIGHT){
+    collisionType = "bottom";
+    endGame();
+  }
+  if(player.y < 0){
+    collisionType = "top";
+    endGame();
+  }
 }
 
 /* 动画循环 */
@@ -231,12 +255,20 @@ function animate(){
 function endGame(){
   if(gameOver) return;
   gameOver = true;
-  player.dy = 6;
 
   function deathAnimation(){
     player.dy += gravity;
     player.y += player.dy;
-    player.angle += 0.1;
+
+    // 碰撞方向特效
+    if(collisionType === "top"){
+      player.angle -= 0.08;
+    } else if(collisionType === "bottom"){
+      player.angle += 0.15;
+    } else if(collisionType === "side"){
+      player.x -= 1;
+      player.angle += 0.1;
+    }
 
     draw();
     if(player.y < LOGIC_HEIGHT - player.size){
