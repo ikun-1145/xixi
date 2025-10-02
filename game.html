@@ -2,7 +2,7 @@
 <html lang="zh-Hans">
 <head>
 <meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1" />
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
 <title>小游戏</title>
 <link href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap" rel="stylesheet">
 <style>
@@ -11,15 +11,13 @@
     font-family:'Product Sans',sans-serif;
     background: url('p/chengshi.png') center center / cover no-repeat fixed;
     display:flex;flex-direction:column;align-items:center;
-    min-height:100vh;color:#1A1A1A;
+    min-height:100vh;color:#1A1A1A;overflow:hidden;
   }
-  h1{margin:1rem 0}
   #gameCanvas{
     display:block;
     margin:0 auto;
     background: transparent;
     border-radius:12px;
-    max-width:100%;
     image-rendering: pixelated;
   }
   .buttons{
@@ -40,7 +38,7 @@
 </style>
 </head>
 <body>
-  <canvas id="gameCanvas" width="400" height="650"></canvas>
+  <canvas id="gameCanvas"></canvas>
 
   <div class="buttons" id="buttonsContainer">
     <button id="restartBtn">重新开始</button>
@@ -52,6 +50,25 @@
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d', { alpha: true });
 const buttonsContainer = document.getElementById('buttonsContainer');
+
+/* 逻辑分辨率（游戏内部坐标系） */
+const LOGIC_WIDTH = 400;
+const LOGIC_HEIGHT = 650;
+let scale = 1;
+
+/* 屏幕适配 */
+function resizeCanvas(){
+  const maxWidth = window.innerWidth;
+  const maxHeight = window.innerHeight;
+  const scaleX = maxWidth / LOGIC_WIDTH;
+  const scaleY = maxHeight / LOGIC_HEIGHT;
+  scale = Math.min(scaleX, scaleY); // 保持比例缩放
+
+  canvas.width = LOGIC_WIDTH * scale;
+  canvas.height = LOGIC_HEIGHT * scale;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
 
 /* 加载鸟的图片 */
 const birdImg = new Image();
@@ -80,19 +97,19 @@ function updateHighScore(){
 
 /* --------- 帮助函数 --------- */
 function createPipeAt(x){
-  const topHeight = Math.floor(Math.random() * (canvas.height - pipeGap - 50)) + 25;
+  const topHeight = Math.floor(Math.random() * (LOGIC_HEIGHT - pipeGap - 50)) + 25;
   pipes.push({ x, topHeight, passed:false });
 }
 
 function resetGame(){
-  player.y = canvas.height / 2;
+  player.y = LOGIC_HEIGHT / 2;
   player.dy = 0;
   pipes = [];
   score = 0;
   gameOver = false;
   buttonsContainer.style.display = 'none';
   cancelAnimationFrame(animationId);
-  const startX = canvas.width;
+  const startX = LOGIC_WIDTH;
   for(let i=0;i<3;i++){
     createPipeAt(startX + i * pipeSpacing);
   }
@@ -102,12 +119,14 @@ function resetGame(){
 /* --------- 绘制 --------- */
 function draw(){
   ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.save();
+  ctx.scale(scale, scale);  // 缩放到逻辑坐标系
 
   // 管子
   ctx.fillStyle = '#2b7a78';
   for(const p of pipes){
     ctx.fillRect(p.x, 0, pipeWidth, p.topHeight);
-    ctx.fillRect(p.x, p.topHeight + pipeGap, pipeWidth, canvas.height - (p.topHeight + pipeGap));
+    ctx.fillRect(p.x, p.topHeight + pipeGap, pipeWidth, LOGIC_HEIGHT - (p.topHeight + pipeGap));
   }
 
   // 玩家（小鸟图片）
@@ -116,22 +135,25 @@ function draw(){
   // 分数
   ctx.fillStyle = '#1A1A1A';
   ctx.font = '20px Product Sans';
+  ctx.textAlign = 'left';
   ctx.fillText(`分数: ${score}`, 10, 30);
-  ctx.fillText(`最高分: ${highScore}`, 10, 60); // 显示最高分
+  ctx.fillText(`最高分: ${highScore}`, 10, 60);
 
   // 游戏结束
   if(gameOver){
     ctx.fillStyle = 'rgba(0,0,0,0.5)';
-    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillRect(0,0,LOGIC_WIDTH,LOGIC_HEIGHT);
     ctx.fillStyle = '#fff';
-    ctx.font = `${Math.floor(canvas.width/10)}px Product Sans`;
+    ctx.font = `${Math.floor(LOGIC_WIDTH/10)}px Product Sans`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.fillText('游戏结束', canvas.width/2, canvas.height/2);
+    ctx.fillText('游戏结束', LOGIC_WIDTH/2, LOGIC_HEIGHT/2);
 
     // 更新最高分
     updateHighScore();
   }
+
+  ctx.restore();
 }
 
 /* --------- 更新 --------- */
@@ -140,8 +162,8 @@ function update(){
   player.dy += gravity;
   player.y += player.dy;
 
-  if(pipes.length === 0 || (pipes[pipes.length-1].x < canvas.width - pipeSpacing)){
-    createPipeAt(canvas.width);
+  if(pipes.length === 0 || (pipes[pipes.length-1].x < LOGIC_WIDTH - pipeSpacing)){
+    createPipeAt(LOGIC_WIDTH);
   }
   for(const p of pipes) p.x -= 2;
   pipes = pipes.filter(p => p.x + pipeWidth > 0);
@@ -157,7 +179,7 @@ function update(){
       p.passed = true;
     }
   }
-  if(player.y + player.size > canvas.height || player.y < 0){
+  if(player.y + player.size > LOGIC_HEIGHT || player.y < 0){
     endGame();
   }
 }
