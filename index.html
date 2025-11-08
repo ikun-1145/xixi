@@ -209,13 +209,15 @@
     });
 
     // 登录弹窗逻辑
-    const isLoggedIn = localStorage.getItem("isLoggedIn") === "true";
     function closeModal() {
       document.getElementById("loginModal").classList.remove("active");
     }
 
-    document.getElementById("donateBtn").addEventListener("click", () => {
-      if (isLoggedIn) {
+    document.getElementById("donateBtn").addEventListener("click", async () => {
+      const { data } = await supabase.auth.getUser();
+      const loggedIn = !!data?.user;
+
+      if (loggedIn) {
         document.body.style.opacity = '0';
         setTimeout(() => window.location.href = "donate.html", 600);
       } else {
