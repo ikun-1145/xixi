@@ -22,7 +22,10 @@
 
     .container {
       margin-top: 2rem; padding: 2rem; width: 90%; max-width: 720px;
-      background: rgba(255,255,255,0.5); backdrop-filter: blur(10px); border-radius: 16px;
+      background: rgba(255,255,255,0.5); 
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      border-radius: 16px;
       box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; animation: fadeInUp 1s ease-out;
     }
 
@@ -55,7 +58,9 @@
     .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); opacity:0; transition:.4s; }
     .modal.active { display:block; opacity:1; }
     .modal-content {
-      background:rgba(255,255,255,0.9); backdrop-filter:blur(10px);
+      background: rgba(255,255,255,0.9); 
+      backdrop-filter:blur(10px);
+      -webkit-backdrop-filter: blur(10px);
       margin:15% auto; padding:2rem; width:90%; max-width:400px;
       border-radius:12px; box-shadow:0 5px 20px rgba(0,0,0,0.2); animation:modalPop .5s ease;
       text-align:center;
