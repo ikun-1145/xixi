@@ -15,9 +15,27 @@
 
     body {
       font-family: 'Product Sans', sans-serif;
-      background: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center center / cover no-repeat fixed;
+      background: linear-gradient(135deg, #dcefff, #f8fdff), url('p/bg.png') center center / cover no-repeat fixed;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
       min-height: 100vh; color: #1A1A1A; transition: opacity 0.8s ease;
+    }
+
+    @keyframes float {
+      0% { transform: translateY(0); }
+      50% { transform: translateY(-4px); }
+      100% { transform: translateY(0); }
+    }
+    @keyframes avatarGlow {
+      0% { box-shadow: 0 0 25px rgba(120, 190, 255, 0.3); }
+      50% { box-shadow: 0 0 40px rgba(120, 190, 255, 0.6); }
+      100% { box-shadow: 0 0 25px rgba(120, 190, 255, 0.3); }
+    }
+
+    @keyframes fadeInUp { from {opacity:0; transform:translateY(30px);} to {opacity:1; transform:translateY(0);} }
+    @keyframes breatheGlow {
+      0% { box-shadow: 0 0 12px rgba(113, 248, 252, 0.35); }
+      50% { box-shadow: 0 0 22px rgba(113, 248, 252, 0.55); }
+      100% { box-shadow: 0 0 12px rgba(113, 248, 252, 0.35); }
     }
 
     .container {
@@ -26,12 +44,14 @@
       backdrop-filter: blur(10px);
       -webkit-backdrop-filter: blur(10px);
       border-radius: 16px;
+      box-shadow: 0 20px 50px rgba(80, 140, 200, 0.25), inset 0 0 40px rgba(200, 240, 255, 0.4);
       box-shadow: 0 10px 30px rgba(0,0,0,0.2); text-align: center; animation: fadeInUp 1s ease-out;
+      animation: float 6s ease-in-out infinite;
     }
 
-    @keyframes fadeInUp { from {opacity:0; transform:translateY(30px);} to {opacity:1; transform:translateY(0);} }
-
-    .avatar { width:150px; height:150px; border-radius:50%; object-fit:cover; margin-bottom:1rem; }
+    .avatar { width:150px; height:150px; border-radius:50%; object-fit:cover; margin-bottom:1rem; box-shadow: 0 0 25px rgba(120, 190, 255, 0.6); 
+    animation: float 5s ease-in-out infinite, avatarGlow 5s ease-in-out infinite;
+    }
     h1 { font-size:2rem; margin-bottom:1rem; }
 
     .buttons {
@@ -40,13 +60,14 @@
     }
 
     .buttons a, .donate-button {
+      animation: breatheGlow 4s ease-in-out infinite;
       display:inline-block; padding:0.8rem 1.5rem;
-      background: linear-gradient(to right, #71f8fc, #a0fff8); border-radius:30px;
+      background: #71f8fc; border-radius:30px;
       text-decoration:none; color:black; font-weight:bold; font-size:1.1rem;
-      transition:transform .3s, box-shadow .3s; text-align:center;
+      transition: transform .3s, box-shadow .3s, filter .3s; text-align:center;
     }
 
-    .buttons a:hover, .donate-button:hover { transform:translateY(-3px); box-shadow:0 6px 12px rgba(0,0,0,0.15); }
+    .buttons a:hover, .donate-button:hover { transform:translateY(-3px); box-shadow: 0 12px 28px rgba(80, 160, 255, 0.35); filter: brightness(1.08); }
 
     footer { margin:2rem 0 1rem; font-size:.9rem; text-align:center; }
 
