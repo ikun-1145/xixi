@@ -17,7 +17,22 @@
       font-family: 'Product Sans', sans-serif;
       background: linear-gradient(135deg, #dcefff, #f8fdff), url('p/bg.png') center center / cover no-repeat fixed;
       display: flex; flex-direction: column; align-items: center; justify-content: center;
-      min-height: 100vh; color: #1A1A1A; transition: opacity 0.8s ease;
+      min-height: 100vh; color: #1A1A1A;
+      line-height: 1.7;
+      transition: opacity 0.8s ease;
+    }
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background:
+        radial-gradient(circle at 20% 30%, rgba(255,255,255,0.45) 0, rgba(255,255,255,0) 60%),
+        radial-gradient(circle at 80% 70%, rgba(255,255,255,0.38) 0, rgba(255,255,255,0) 60%),
+        radial-gradient(circle at 40% 80%, rgba(255,255,255,0.42) 0, rgba(255,255,255,0) 60%);
+      background-size: 120% 120%;
+      animation: floatParticles 18s ease-in-out infinite alternate;
+      pointer-events: none;
+      z-index: -1;
     }
 
     @keyframes float {
@@ -29,6 +44,11 @@
       0% { box-shadow: 0 0 25px rgba(120, 190, 255, 0.3); }
       50% { box-shadow: 0 0 40px rgba(120, 190, 255, 0.6); }
       100% { box-shadow: 0 0 25px rgba(120, 190, 255, 0.3); }
+    }
+
+    @keyframes floatParticles {
+      0% { background-position: 0% 0%; }
+      100% { background-position: 100% 100%; }
     }
 
     @keyframes fadeInUp { from {opacity:0; transform:translateY(30px);} to {opacity:1; transform:translateY(0);} }
@@ -46,10 +66,16 @@
       border-radius: 16px;
       box-shadow: 0 20px 50px rgba(80, 140, 200, 0.25), inset 0 0 40px rgba(200, 240, 255, 0.4), 0 10px 30px rgba(0,0,0,0.08); text-align: center; animation: fadeInUp 1s ease-out;
       animation: float 6s ease-in-out infinite;
+      text-align: center;
     }
 
     .avatar { width:150px; height:150px; border-radius:50%; object-fit:cover; margin-bottom:1rem; box-shadow: 0 0 25px rgba(120, 190, 255, 0.6); 
     animation: float 5s ease-in-out infinite, avatarGlow 5s ease-in-out infinite;
+    }
+    .intro {
+      font-size: 1.05rem;
+      margin-top: 0.4rem;
+      opacity: 0.9;
     }
     h1 { font-size:2rem; margin-bottom:1rem; }
 
@@ -96,6 +122,7 @@
   <div class="container">
     <img src="p/tx.jpeg" alt="头像" class="avatar">
     <h1>你好，我是霜蓝</h1>
+    <p class="intro">欢迎来到我的个人主页，这里记录着我的创作、想法与旅程。</p>
 
     <div class="buttons">
       <a href="shoushe.html">兽设介绍</a>
