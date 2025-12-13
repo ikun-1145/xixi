@@ -4,11 +4,13 @@
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
 <title>小游戏</title>
-<link href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap" rel="stylesheet">
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{
-    font-family:'Product Sans',sans-serif;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
+                 "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
+                 "Noto Sans CJK SC", "Source Han Sans SC",
+                 Arial, sans-serif;
     background: url('p/chengshi.png') center center / cover no-repeat fixed;
     display:flex;flex-direction:column;align-items:center;
     min-height:100vh;color:#1A1A1A;overflow:hidden;
@@ -192,7 +194,7 @@ function draw(){
   // 分数
   const fontSize = Math.max(12, Math.floor(LOGIC_WIDTH * 0.05));
   ctx.fillStyle = '#1A1A1A';
-  ctx.font = `${fontSize}px Product Sans`;
+  ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif`;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
   ctx.fillText(`分数: ${score}`, LOGIC_WIDTH * 0.02, LOGIC_HEIGHT * 0.02);
