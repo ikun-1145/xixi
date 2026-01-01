@@ -71,7 +71,7 @@
       text-align: center;
     }
 
-    .avatar { width:150px; height:150px; border-radius:50%; object-fit:cover; margin-bottom:1rem; box-shadow: 0 0 25px rgba(120, 190, 255, 0.6); 
+    .avatar { width:150px; height:150px; border-radius:50%; object-fit:cover; margin-bottom:0.5rem; box-shadow: 0 0 25px rgba(120, 190, 255, 0.6); 
     animation: float 5s ease-in-out infinite, avatarGlow 5s ease-in-out infinite;
     }
     .intro {
@@ -81,6 +81,44 @@
     }
     h1 { font-size:2rem; margin-bottom:1rem; }
 
+#greeting {
+  display: block;
+  margin: 0.6rem auto 0.2rem;
+  font-size: 2rem;
+  line-height: 1.2;
+  text-align: center;
+  white-space: nowrap;
+  overflow: hidden;
+  border-right: 3px solid #71f8fc;
+  
+  /* 核心：动画控制打字 + 光标闪烁 */
+  width: 0;
+  animation: 
+    typing 1.8s steps(2) forwards,          /* 2 = 你好 的字符数，时间可调 */
+    blink 0.8s step-end infinite;           /* 光标一直闪 */
+  
+  /* 预留空间，防止挤压头像 */
+  min-height: 2.6rem;
+  min-width: 5ch;
+}
+
+/* 打字动画：从0宽度慢慢展开到刚好包住“你好” */
+@keyframes typing {
+  from { width: 0 }
+  to   { width: 2.4em; }                    /* 2个中文字宽度 + 余量，视字体可调 2.2~2.6em */
+}
+
+/* 光标闪烁（更稳定版本） */
+@keyframes blink {
+  from, to   { border-color: transparent }
+  50%        { border-color: #71f8fc; }
+}
+
+/* 可选：想打完后隐藏光标，就加这一段 */
+#greeting.finished {
+  border-right: none;
+  animation: typing 1.8s steps(2) forwards;  /* 只保留打字动画，不闪了 */
+}
     .buttons {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 1rem; margin-top: 1.5rem;
@@ -123,7 +161,7 @@
 
   <div class="container">
     <img src="p/tx.jpeg" alt="头像" class="avatar">
-    <h1>你好</h1>
+    <h1 id="greeting"></h1>
     <p class="intro">欢迎来到我的个人主页，这里记录着我的创作、想法与旅程。</p>
 
     <div class="buttons">
@@ -140,7 +178,7 @@
 
   <div id="loginModal" class="modal">
     <div class="modal-content">
-      <span class="close">&times;</span>
+      <span class="close">×</span>
       <p>您需要先登录才能访问捐赠页面。</p>
       <button id="loginRedirect" class="donate-button">使用 GitHub 登录</button>
     </div>
@@ -185,6 +223,30 @@
         options:{ redirectTo: location.origin + '/donate.html' }
       });
     };
+  </script>
+
+  <script>
+    window.addEventListener('load', () => {
+      const greetingEl = document.getElementById('greeting');
+      const text = "你好";
+      let index = 0;
+
+      function typeWriter() {
+        if (index < text.length) {
+          greetingEl.textContent += text.charAt(index);
+          index++;
+          setTimeout(typeWriter, 300);
+        } else {
+          // 打完字后1秒隐藏光标（更自然）
+          setTimeout(() => {
+            greetingEl.classList.add('finished');
+          }, 1000);
+        }
+      }
+
+      // 稍微延迟开始打字，让页面加载更平稳
+      setTimeout(typeWriter, 800);
+    });
   </script>
 </body>
 </html>
