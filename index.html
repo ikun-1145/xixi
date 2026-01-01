@@ -148,14 +148,21 @@
 
   <footer>Copyright©️2024-2025霜蓝, All Rights Reserved.</footer>
 
-  <script type="module">
-    import { supabase } from './p/js/supabaseClient.js';
+  <!-- 使用 CDN 引入 Supabase，兼容校园网 -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/supabase.min.js"></script>
+  <script>
+    const supabase = window.supabase.createClient(
+      'https://klyrasrqgxijwrxuoevj.supabase.co',
+      'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtseXJhc3JxZ3hpandyeHVvZXZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4ODUyMzcsImV4cCI6MjA2ODQ2MTIzN30.qjeTrLp_QquSwvF09HrrQd-stPtgu6H51-Zdb4JUeSM'
+    );
 
     let isLoggedIn = false;
 
     window.addEventListener('load', async () => {
-      const { data } = await supabase.auth.getUser();
-      isLoggedIn = !!data?.user;
+      try {
+        const { data } = await supabase.auth.getUser();
+        isLoggedIn = !!data?.user;
+      } catch(e){ console.warn('Supabase 加载失败:', e); }
 
       document.getElementById('loading').style.opacity = '0';
       setTimeout(() => document.getElementById('loading').remove(), 600);
