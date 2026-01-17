@@ -244,6 +244,28 @@
         options:{ redirectTo: location.origin + '/donate.html' }
       });
     };
+    document.getElementById("magicLoginBtn").onclick = async () => {
+  const email = document.getElementById("magicEmail").value.trim();
+
+  if (!email) {
+    alert("请输入邮箱");
+    return;
+  }
+
+  const { error } = await supabase.auth.signInWithOtp({
+    email,
+    options: {
+      emailRedirectTo: location.origin + '/donate.html'
+    }
+  });
+
+  if (error) {
+    alert("发送失败：" + error.message);
+  } else {
+    alert("登录链接已发送，请查收邮箱");
+    closeModal();
+  }
+};
   </script>
 
   <script>
