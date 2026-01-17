@@ -179,8 +179,29 @@
   <div id="loginModal" class="modal">
     <div class="modal-content">
       <span class="close">×</span>
-      <p>您需要先登录才能访问捐赠页面。</p>
-      <button id="loginRedirect" class="donate-button">使用 GitHub 登录</button>
+      <p style="margin-bottom:1rem;">请先登录后继续</p>
+
+<input
+  id="magicEmail"
+  type="email"
+  placeholder="邮箱（免密码登录）"
+  style="
+    width:100%;
+    padding:0.7rem 1rem;
+    margin-bottom:0.8rem;
+    border-radius:20px;
+    border:1px solid #ccc;
+    font-size:1rem;
+  "
+/>
+
+<button id="magicLoginBtn" class="donate-button" style="width:100%; margin-bottom:0.6rem;">
+  邮箱免密登录（推荐）
+</button>
+
+<button id="loginRedirect" class="donate-button" style="width:100%;">
+  使用 GitHub 登录
+</button>
     </div>
   </div>
 
