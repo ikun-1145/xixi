@@ -196,7 +196,7 @@
 />
 
 <button id="magicLoginBtn" class="donate-button" style="width:100%; margin-bottom:0.6rem;">
-  邮箱免密登录（推荐）
+  发送验证邮件
 </button>
 
 <button id="loginRedirect" class="donate-button" style="width:100%;">
@@ -262,7 +262,7 @@
   if (error) {
     alert("发送失败：" + error.message);
   } else {
-    alert("登录链接已发送，请查收邮箱。如没有收到邮件请查看“垃圾邮件”选项");
+    alert("登录链接已发送，请查收邮箱。发送邮件最迟可能需要10分钟，如没有收到邮件请查看“垃圾邮件”选项");
     closeModal();
   }
 };
