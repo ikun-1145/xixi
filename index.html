@@ -203,9 +203,17 @@
 
     window.addEventListener('load', async () => {
       try {
-        const { data } = await supabase.auth.getUser();
-        isLoggedIn = !!data?.user;
-      } catch(e){ console.warn('Supabase 加载失败:', e); }
+        // 恢复本地 session（关键：保证刷新/重新进入页面仍保持登录）
+        const { data: { session } } = await supabase.auth.getSession();
+        isLoggedIn = !!session;
+
+        // 监听登录状态变化（登录/退出都会更新）
+        supabase.auth.onAuthStateChange((_event, session) => {
+          isLoggedIn = !!session;
+        });
+      } catch(e){
+        console.warn('Supabase 加载失败:', e);
+      }
 
       document.getElementById('loading').style.opacity = '0';
       setTimeout(() => document.getElementById('loading').remove(), 600);
