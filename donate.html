@@ -20,6 +20,7 @@
     }
 
     .container {
+      position: relative;
       max-width: 800px;
       margin: 80px auto;
       padding: 30px;
@@ -147,6 +148,21 @@
 
   <div class="container">
     <h1>感谢你的支持！</h1>
+    <button id="logoutBtn" style="
+      position:absolute;
+      top:20px;
+      right:20px;
+      background: rgba(113,248,252,0.9);
+      border: none;
+      padding: 8px 14px;
+      border-radius: 20px;
+      font-size: 14px;
+      cursor: pointer;
+      color: black;
+      transition: 0.3s;
+    ">
+      退出登录
+    </button>
     <p style="text-align:center;">如果你喜欢本站内容，可以通过以下方式支持我：</p>
     
     <div class="qrcode-section">
@@ -204,6 +220,18 @@
         });
       }
     });
+  </script>
+  <script type="module">
+    import { supabase } from './p/js/supabaseClient.js';
+
+    const logoutBtn = document.getElementById("logoutBtn");
+    if (logoutBtn) {
+      logoutBtn.addEventListener("click", async () => {
+        await supabase.auth.signOut();
+        document.body.classList.add("fade-out");
+        setTimeout(() => window.location.href = "index.html", 600);
+      });
+    }
   </script>
 </body>
 </html>
