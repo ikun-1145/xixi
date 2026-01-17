@@ -179,29 +179,18 @@
   <div id="loginModal" class="modal">
     <div class="modal-content">
       <span class="close">×</span>
+
       <p style="margin-bottom:1rem;">请先登录后继续</p>
 
-<input
-  id="magicEmail"
-  type="email"
-  placeholder="邮箱（免密码登录）"
-  style="
-    width:100%;
-    padding:0.7rem 1rem;
-    margin-bottom:0.8rem;
-    border-radius:20px;
-    border:1px solid #ccc;
-    font-size:1rem;
-  "
-/>
+      <button id="githubLoginBtn" class="donate-button oauth-btn" style="width:100%; margin-bottom:0.6rem; display:flex; align-items:center; justify-content:center; gap:10px;">
+        <img src="p/gh.png" alt="GitHub" style="width:22px; height:22px;">
+        使用 GitHub 登录
+      </button>
 
-<button id="magicLoginBtn" class="donate-button" style="width:100%; margin-bottom:0.6rem;">
-  发送验证邮件
-</button>
-
-<button id="loginRedirect" class="donate-button" style="width:100%;">
-  使用 GitHub 登录
-</button>
+      <button id="googleLoginBtn" class="donate-button oauth-btn" style="width:100%; display:flex; align-items:center; justify-content:center; gap:10px;">
+        <img src="p/IMG_3879.png" alt="Google" style="width:22px; height:22px;">
+        使用 Google 登录
+      </button>
     </div>
   </div>
 
@@ -238,34 +227,19 @@
       }
     };
 
-    document.getElementById("loginRedirect").onclick = async () => {
+    document.getElementById("githubLoginBtn").onclick = async () => {
       await supabase.auth.signInWithOAuth({
         provider:'github',
         options:{ redirectTo: location.origin + '/donate.html' }
       });
     };
-    document.getElementById("magicLoginBtn").onclick = async () => {
-  const email = document.getElementById("magicEmail").value.trim();
 
-  if (!email) {
-    alert("请输入邮箱");
-    return;
-  }
-
-  const { error } = await supabase.auth.signInWithOtp({
-    email,
-    options: {
-      emailRedirectTo: location.origin + '/donate.html'
-    }
-  });
-
-  if (error) {
-    alert("发送失败：" + error.message);
-  } else {
-    alert("登录链接已发送，请查收邮箱。发送邮件最迟可能需要10分钟，如没有收到邮件请查看“垃圾邮件”选项");
-    closeModal();
-  }
-};
+    document.getElementById("googleLoginBtn").onclick = async () => {
+      await supabase.auth.signInWithOAuth({
+        provider:'google',
+        options:{ redirectTo: location.origin + '/donate.html' }
+      });
+    };
   </script>
 
   <script>
