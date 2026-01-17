@@ -90,22 +90,25 @@
   white-space: nowrap;
   overflow: hidden;
   border-right: 3px solid #71f8fc;
-  
-  /* 核心：动画控制打字 + 光标闪烁 */
+
   width: 0;
-  animation: 
-    typing 1.8s steps(2) forwards,          /* 2 = 你好 的字符数，时间可调 */
-    blink 0.8s step-end infinite;           /* 光标一直闪 */
-  
-  /* 预留空间，防止挤压头像 */
+  opacity: 0;
+  transform: translateY(6px);
+
+  animation:
+    typing 1.6s steps(2) forwards,
+    blink 0.8s step-end infinite,
+    greetFadeUp 0.6s ease-out forwards;
+
   min-height: 2.6rem;
   min-width: 5ch;
 }
 
 /* 打字动画：从0宽度慢慢展开到刚好包住“你好” */
 @keyframes typing {
-  from { width: 0 }
-  to   { width: 2.4em; }                    /* 2个中文字宽度 + 余量，视字体可调 2.2~2.6em */
+  0%   { width: 0 }
+  60%  { width: 2.4em; }
+  100% { width: 2.4em; }
 }
 
 /* 光标闪烁（更稳定版本） */
@@ -114,10 +117,18 @@
   50%        { border-color: #71f8fc; }
 }
 
+@keyframes greetFadeUp {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
 /* 可选：想打完后隐藏光标，就加这一段 */
 #greeting.finished {
   border-right: none;
-  animation: typing 1.8s steps(2) forwards;  /* 只保留打字动画，不闪了 */
+  animation: none;
+  width: 2.4em;
+  opacity: 1;
+  transform: translateY(0);
 }
     .buttons {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -254,23 +265,16 @@
     window.addEventListener('load', () => {
       const greetingEl = document.getElementById('greeting');
       const text = "你好";
-      let index = 0;
+      greetingEl.textContent = "";
 
-      function typeWriter() {
-        if (index < text.length) {
-          greetingEl.textContent += text.charAt(index);
-          index++;
-          setTimeout(typeWriter, 300);
-        } else {
-          // 打完字后1秒隐藏光标（更自然）
-          setTimeout(() => {
-            greetingEl.classList.add('finished');
-          }, 1000);
-        }
-      }
+      setTimeout(() => {
+        greetingEl.textContent = text;
+      }, 300);
 
-      // 稍微延迟开始打字，让页面加载更平稳
-      setTimeout(typeWriter, 800);
+      // 打完后稍等再去掉光标
+      setTimeout(() => {
+        greetingEl.classList.add('finished');
+      }, 2000);
     });
   </script>
 </body>
