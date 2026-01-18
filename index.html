@@ -93,12 +93,13 @@
 
   width: 0;
   opacity: 0;
-  transform: translateY(6px);
+  transform: translateY(8px) scale(0.96);
 
   animation:
-    typing 1.6s steps(2) forwards,
+    typing 1.4s steps(2) forwards,
     blink 0.8s step-end infinite,
-    greetFadeUp 0.6s ease-out forwards;
+    greetFadeBounce 0.7s cubic-bezier(.18,.89,.32,1.28) forwards,
+    greetGlow 1.6s ease-out forwards;
 
   min-height: 2.6rem;
   min-width: 5ch;
@@ -117,9 +118,16 @@
   50%        { border-color: #71f8fc; }
 }
 
-@keyframes greetFadeUp {
-  from { opacity: 0; transform: translateY(6px); }
-  to   { opacity: 1; transform: translateY(0); }
+@keyframes greetFadeBounce {
+  0%   { opacity: 0; transform: translateY(10px) scale(0.95); }
+  60%  { opacity: 1; transform: translateY(-2px) scale(1.02); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes greetGlow {
+  0%   { text-shadow: 0 0 0 rgba(113,248,252,0); }
+  40%  { text-shadow: 0 0 12px rgba(113,248,252,0.6); }
+  100% { text-shadow: 0 0 0 rgba(113,248,252,0); }
 }
 
 /* 可选：想打完后隐藏光标，就加这一段 */
@@ -128,7 +136,8 @@
   animation: none;
   width: 2.4em;
   opacity: 1;
-  transform: translateY(0);
+  transform: translateY(0) scale(1);
+  text-shadow: none;
 }
     .buttons {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
@@ -273,7 +282,7 @@
         if (i < text.length) {
           greetingEl.textContent += text.charAt(i);
           i++;
-          setTimeout(typeNext, 380); // 两个字之间的停顿时间（可调：300~500）
+          setTimeout(typeNext, i === 1 ? 520 : 320); // 第二个字稍慢一点，更像真人停顿
         } else {
           // 打完后稍等再去掉光标
           setTimeout(() => {
