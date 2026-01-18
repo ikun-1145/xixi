@@ -255,11 +255,17 @@
     document.querySelector(".close").onclick = closeModal;
     document.getElementById("loginModal").onclick = (e)=>{ if(e.target===e.currentTarget) closeModal(); };
 
-    document.getElementById("donateBtn").onclick = () => {
-      if(isLoggedIn){
-        document.body.style.opacity = '0';
-        setTimeout(()=>location.href="donate.html",600);
-      } else {
+    document.getElementById("donateBtn").onclick = async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        if (session) {
+          document.body.style.opacity = '0';
+          setTimeout(()=>location.href="donate.html",600);
+        } else {
+          document.getElementById("loginModal").classList.add("active");
+        }
+      } catch (e) {
+        console.warn("Session check failed:", e);
         document.getElementById("loginModal").classList.add("active");
       }
     };

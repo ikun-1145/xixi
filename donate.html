@@ -183,6 +183,97 @@
         gap: 24px;
       }
     }
+    .thanks-list {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+      gap: 16px;
+      margin-top: 10px;
+    }
+
+    .thanks-item {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(113,248,252,0.25);
+      border-radius: 14px;
+      padding: 12px 14px;
+      box-shadow: 0 6px 18px rgba(113,248,252,0.15);
+      animation: fadeInUp .4s ease both;
+    }
+
+    .thanks-item .name {
+      color: #71f8fc;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .thanks-item .msg {
+      color: #ddd;
+      font-size: 13px;
+      line-height: 1.4;
+      opacity: .9;
+    }
+
+    .thanks-form {
+      margin-top: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid rgba(113,248,252,0.25);
+      border-radius: 14px;
+      padding: 14px;
+    }
+
+    .thanks-form input,
+    .thanks-form textarea {
+      background: rgba(0,0,0,0.4);
+      border: 1px solid rgba(113,248,252,0.4);
+      border-radius: 10px;
+      padding: 8px 10px;
+      color: #fff;
+      outline: none;
+      font-size: 14px;
+      resize: none;
+    }
+
+    .thanks-form input::placeholder,
+    .thanks-form textarea::placeholder {
+      color: #aaa;
+    }
+
+    .thanks-form button {
+      align-self: center;
+      padding: 8px 20px;
+      border-radius: 20px;
+      background: #71f8fc;
+      border: none;
+      cursor: pointer;
+      transition: .25s;
+    }
+
+    .thanks-form button:hover {
+      background: #5ae0e6;
+    }
+
+    #thanksTip {
+      text-align: center;
+      font-size: 12px;
+      color: #aaa;
+    }
+
+    /* 骨架屏加载效果 */
+    .thanks-item.skeleton {
+      height: 58px;
+      background: linear-gradient(100deg,
+        rgba(255,255,255,0.04) 40%,
+        rgba(255,255,255,0.12) 50%,
+        rgba(255,255,255,0.04) 60%);
+      background-size: 200% 100%;
+      animation: skeleton 1.2s ease infinite;
+    }
+
+    @keyframes skeleton {
+      to { background-position: -200% 0; }
+    }
     /* 二维码放大预览 */
     .img-preview {
       position: fixed;
@@ -285,6 +376,7 @@
       cursor: pointer;
       color: black;
       transition: 0.3s;
+      z-index: 10;
     ">
       退出登录
     </button>
@@ -309,6 +401,23 @@
         <img src="p/zfb.jpeg" alt="支付宝收款码" />
         <p>支付宝</p>
       </div>
+    </div>
+
+    <h2 style="text-align:center; color:#71f8fc; margin-top:40px;">💖 粉丝鸣谢榜</h2>
+    <p style="text-align:center; color:#ccc; font-size:14px; margin-bottom:14px;">
+      感谢每一位支持霜蓝的朋友（按时间倒序）
+    </p>
+
+    <div id="thanksList" class="thanks-list">
+      <div class="thanks-item skeleton"></div>
+      <div class="thanks-item skeleton"></div>
+      <div class="thanks-item skeleton"></div>
+    </div>
+    <div class="thanks-form">
+      <input id="thanksName" type="text" placeholder="你的昵称（可留空）">
+      <textarea id="thanksMsg" rows="3" placeholder="想对霜蓝说的话（可选）"></textarea>
+      <button id="submitThanks">提交到鸣谢榜</button>
+      <p id="thanksTip">提交后会显示在榜单中 💙</p>
     </div>
 
     <div class="btn-group">
@@ -374,6 +483,35 @@
   <script type="module">
     import { supabase } from './p/js/supabaseClient.js';
 
+    // 加载粉丝鸣谢榜
+    const thanksList = document.getElementById("thanksList");
+
+    async function loadThanks() {
+      const { data, error } = await supabase
+        .from("thanks")
+        .select("name, message, created_at")
+        .order("created_at", { ascending: false })
+        .limit(12);
+
+      if (error || !data) {
+        if (thanksList) {
+          thanksList.innerHTML = '<div class="thanks-item"><div class="msg">暂无鸣谢记录，期待你的第一份支持 💙</div></div>';
+        }
+        return;
+      }
+
+      if (thanksList) {
+        thanksList.innerHTML = data.map(item => `
+          <div class="thanks-item">
+            <div class="name">${item.name || "匿名朋友"}</div>
+            <div class="msg">${item.message || "感谢支持！"}</div>
+          </div>
+        `).join("");
+      }
+    }
+
+    loadThanks();
+
     // 显示用户昵称/邮箱
     const { data: { user } } = await supabase.auth.getUser();
     const greet = document.getElementById("userGreeting");
@@ -381,13 +519,67 @@
       greet.textContent = `欢迎你，${user.user_metadata?.name || user.email || "朋友"} 💙`;
     }
 
-    // 退出登录
+    // 退出登录（强制可用版）
     const logoutBtn = document.getElementById("logoutBtn");
     if (logoutBtn) {
-      logoutBtn.addEventListener("click", async () => {
-        await supabase.auth.signOut();
+      logoutBtn.addEventListener("click", async (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        try {
+          await supabase.auth.signOut();
+          console.log("Signed out");
+        } catch (err) {
+          console.warn("Sign out failed, redirect anyway:", err);
+        }
+
         document.body.classList.add("fade-out");
         setTimeout(() => window.location.href = "index.html", 600);
+      });
+    }
+
+    // 提交鸣谢留言
+    const submitBtn = document.getElementById("submitThanks");
+    const nameInput = document.getElementById("thanksName");
+    const msgInput = document.getElementById("thanksMsg");
+    const tip = document.getElementById("thanksTip");
+
+    if (submitBtn) {
+      submitBtn.addEventListener("click", async () => {
+        submitBtn.disabled = true;
+        submitBtn.textContent = "提交中...";
+
+        const { data: { user } } = await supabase.auth.getUser();
+
+        const name =
+          nameInput.value.trim() ||
+          user?.user_metadata?.name ||
+          user?.email ||
+          "匿名朋友";
+
+        const message = msgInput.value.trim() || "感谢支持！";
+
+        const { error } = await supabase.from("thanks").insert({
+          name,
+          message
+        });
+
+        if (error) {
+          console.error(error);
+          tip.textContent = "提交失败，请稍后再试";
+          submitBtn.disabled = false;
+          submitBtn.textContent = "提交到鸣谢榜";
+          return;
+        }
+
+        nameInput.value = "";
+        msgInput.value = "";
+        tip.textContent = "已提交，感谢你的支持！💙";
+
+        await loadThanks();
+
+        submitBtn.disabled = false;
+        submitBtn.textContent = "提交到鸣谢榜";
       });
     }
 
