@@ -171,6 +171,15 @@
       border-radius:12px; box-shadow:0 5px 20px rgba(0,0,0,0.2); animation:modalPop .5s ease;
       text-align:center;
     }
+    /* 兼容性兜底：不支持 backdrop-filter 的浏览器使用更实的背景 */
+    @supports not ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
+      .container {
+        background: rgba(255,255,255,0.85);
+      }
+      .modal-content {
+        background: rgba(255,255,255,0.95);
+      }
+    }
     @keyframes modalPop { from{opacity:0;transform:scale(.8);} to{opacity:1;transform:scale(1);} }
     .close { float:right; font-size:1.5rem; cursor:pointer; }
   </style>
