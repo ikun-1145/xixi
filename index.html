@@ -201,7 +201,9 @@
       <a href="comment.html">评论留言</a>
       <a href="fans.html">实时粉丝数</a>
       <a href="game.html">小游戏</a>
-      <button id="donateBtn" class="donate-button">捐赠支持</button>
+      <button id="donateBtn" class="donate-button" disabled style="opacity:.6; cursor:not-allowed;">
+        捐赠支持
+      </button>
     </div>
   </div>
 
@@ -236,6 +238,12 @@
         const { data: { session } } = await supabase.auth.getSession();
         isLoggedIn = !!session;
 
+        // 启用捐赠按钮
+        const donateBtn = document.getElementById("donateBtn");
+        donateBtn.disabled = false;
+        donateBtn.style.opacity = "1";
+        donateBtn.style.cursor = "pointer";
+
         // 监听登录状态变化（登录/退出都会更新）
         supabase.auth.onAuthStateChange((_event, session) => {
           isLoggedIn = !!session;
@@ -256,9 +264,16 @@
     document.getElementById("loginModal").onclick = (e)=>{ if(e.target===e.currentTarget) closeModal(); };
 
     document.getElementById("donateBtn").onclick = async () => {
+      if (isLoggedIn) {
+        document.body.style.opacity = '0';
+        setTimeout(()=>location.href="donate.html",600);
+        return;
+      }
+
       try {
         const { data: { session } } = await supabase.auth.getSession();
         if (session) {
+          isLoggedIn = true;
           document.body.style.opacity = '0';
           setTimeout(()=>location.href="donate.html",600);
         } else {
