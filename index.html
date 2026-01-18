@@ -267,14 +267,23 @@
       const text = "你好";
       greetingEl.textContent = "";
 
-      setTimeout(() => {
-        greetingEl.textContent = text;
-      }, 300);
+      let i = 0;
 
-      // 打完后稍等再去掉光标
-      setTimeout(() => {
-        greetingEl.classList.add('finished');
-      }, 2000);
+      function typeNext() {
+        if (i < text.length) {
+          greetingEl.textContent += text.charAt(i);
+          i++;
+          setTimeout(typeNext, 380); // 两个字之间的停顿时间（可调：300~500）
+        } else {
+          // 打完后稍等再去掉光标
+          setTimeout(() => {
+            greetingEl.classList.add('finished');
+          }, 900);
+        }
+      }
+
+      // 稍微延迟再开始，更自然
+      setTimeout(typeNext, 400);
     });
   </script>
 </body>
