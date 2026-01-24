@@ -642,14 +642,7 @@
 
       const { data, error } = await supabase
         .from("thanks")
-        .select(`
-          id,
-          name,
-          message,
-          created_at,
-          thanks_likes(count),
-          thanks_likes!left(user_id)
-        `)
+        .select("id, name, message, created_at")
         .order("created_at", { ascending: false })
         .range(from, to);
 
@@ -666,10 +659,6 @@
         const html = data.map(item => {
           const isMine = currentUserEmail && item.name === currentUserEmail;
 
-          const likeCount = item.thanks_likes?.[0]?.count || 0;
-          const likedByMe = currentUserId &&
-            item.thanks_likes?.some(l => l.user_id === currentUserId);
-
           return `
           <div class="thanks-item ${isMine ? "mine" : ""}" data-id="${item.id}">
             <div class="name">${item.name || "匿名朋友"}</div>
@@ -677,8 +666,8 @@
 
             <div class="like-row">
               <div class="time">${formatTime(item.created_at)}</div>
-              <button class="like-btn ${likedByMe ? "liked" : ""}">
-                ${likedByMe ? "❤️" : "🤍"} ${likeCount}
+              <button class="like-btn">
+                🤍 0
               </button>
             </div>
           </div>
