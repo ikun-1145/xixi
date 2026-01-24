@@ -88,29 +88,19 @@
   line-height: 1.2;
   text-align: center;
   white-space: nowrap;
-  overflow: hidden;
   border-right: 3px solid #71f8fc;
 
-  width: 0;
   opacity: 0;
   transform: translateY(8px) scale(0.96);
 
   animation:
-    typing 1.4s steps(2) forwards,
     blink 0.8s step-end infinite,
     greetFadeBounce 0.7s cubic-bezier(.18,.89,.32,1.28) forwards,
     greetGlow 1.6s ease-out forwards;
 
   min-height: 2.6rem;
-  min-width: 5ch;
 }
 
-/* 打字动画：从0宽度慢慢展开到刚好包住“你好” */
-@keyframes typing {
-  0%   { width: 0 }
-  60%  { width: 2.4em; }
-  100% { width: 2.4em; }
-}
 
 /* 光标闪烁（更稳定版本） */
 @keyframes blink {
@@ -130,11 +120,9 @@
   100% { text-shadow: 0 0 0 rgba(113,248,252,0); }
 }
 
-/* 可选：想打完后隐藏光标，就加这一段 */
 #greeting.finished {
   border-right: none;
   animation: none;
-  width: 2.4em;
   opacity: 1;
   transform: translateY(0) scale(1);
   text-shadow: none;
