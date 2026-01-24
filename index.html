@@ -182,27 +182,68 @@
     }
     @keyframes modalPop { from{opacity:0;transform:scale(.8);} to{opacity:1;transform:scale(1);} }
     .close { float:right; font-size:1.5rem; cursor:pointer; }
+
+    .lang-switcher {
+      position: fixed;
+      top: 14px;
+      right: 14px;
+      display: flex;
+      gap: 6px;
+      background: rgba(255,255,255,0.55);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      padding: 6px;
+      border-radius: 999px;
+      box-shadow: 0 6px 18px rgba(80,140,200,0.25);
+      z-index: 20;
+    }
+
+    .lang-switcher button {
+      border: none;
+      background: transparent;
+      padding: 6px 14px;
+      border-radius: 999px;
+      cursor: pointer;
+      font-weight: 600;
+      color: #1a1a1a;
+      transition: .2s ease;
+    }
+
+    .lang-switcher button:hover {
+      background: rgba(113,248,252,0.35);
+    }
+
+    .lang-switcher button.active {
+      background: #71f8fc;
+      color: #000;
+      box-shadow: 0 4px 12px rgba(113,248,252,0.45);
+    }
   </style>
 </head>
 
 <body class="preload">
+  <div id="langSwitcher" class="lang-switcher">
+    <button data-lang="zh">中文</button>
+    <button data-lang="en">EN</button>
+    <button data-lang="jp">日本語</button>
+  </div>
   <div id="loading"><div class="loader"></div></div>
 
   <div class="container">
     <img src="p/tx.jpeg" alt="头像" class="avatar">
     <h1 id="greeting"></h1>
-    <p class="intro">欢迎来到我的个人主页，这里记录着我的创作、想法与旅程。</p>
+    <p class="intro" id="introText"></p>
 
     <div class="buttons">
-      <a href="shoushe.html">兽设介绍</a>
-      <a href="banquan.html">版权信息</a>
-      <a href="guanzhu.html">关注我们</a>
-      <a href="lianxi.html">联系我们</a>
-      <a href="comment.html">评论留言</a>
-      <a href="fans.html">实时粉丝数</a>
-      <a href="game.html">小游戏</a>
+      <a href="shoushe.html"><span id="btnShoushe"></span></a>
+      <a href="banquan.html"><span id="btnBanquan"></span></a>
+      <a href="guanzhu.html"><span id="btnGuanzhu"></span></a>
+      <a href="lianxi.html"><span id="btnLianxi"></span></a>
+      <a href="comment.html"><span id="btnComment"></span></a>
+      <a href="fans.html"><span id="btnFans"></span></a>
+      <a href="game.html"><span id="btnGame"></span></a>
       <button id="donateBtn" class="donate-button" disabled style="opacity:.6; cursor:not-allowed;">
-        捐赠支持
+        <span id="btnDonate"></span>
       </button>
     </div>
   </div>
@@ -328,29 +369,94 @@
   </script>
 
   <script>
-    window.addEventListener('load', () => {
-      const greetingEl = document.getElementById('greeting');
-      const text = "你好";
-      greetingEl.textContent = "";
+  const i18n = {
+    zh: {
+      greeting: "你好",
+      intro: "欢迎来到我的个人主页，这里记录着我的创作、想法与旅程。",
+      shoushe: "兽设介绍",
+      banquan: "版权信息",
+      guanzhu: "关注我们",
+      lianxi: "联系我们",
+      comment: "评论留言",
+      fans: "实时粉丝数",
+      game: "小游戏",
+      donate: "捐赠支持"
+    },
+    en: {
+      greeting: "Hello",
+      intro: "Welcome to my personal website, where I share my creations and journey.",
+      shoushe: "About",
+      banquan: "Copyright",
+      guanzhu: "Follow Me",
+      lianxi: "Contact",
+      comment: "Comments",
+      fans: "Fans",
+      game: "Mini Game",
+      donate: "Support Me"
+    },
+    jp: {
+      greeting: "こんにちは",
+      intro: "私の個人サイトへようこそ。ここでは創作と旅の記録を紹介しています。",
+      shoushe: "設定紹介",
+      banquan: "著作権情報",
+      guanzhu: "フォロー",
+      lianxi: "連絡先",
+      comment: "コメント",
+      fans: "フォロワー数",
+      game: "ミニゲーム",
+      donate: "支援する"
+    }
+  };
 
-      let i = 0;
+  function applyLang(lang) {
+    const t = i18n[lang];
 
-      function typeNext() {
-        if (i < text.length) {
-          greetingEl.textContent += text.charAt(i);
-          i++;
-          setTimeout(typeNext, i === 1 ? 520 : 320); // 第二个字稍慢一点，更像真人停顿
-        } else {
-          // 打完后稍等再去掉光标
-          setTimeout(() => {
-            greetingEl.classList.add('finished');
-          }, 900);
-        }
+    document.getElementById("introText").textContent = t.intro;
+    document.getElementById("btnShoushe").textContent = t.shoushe;
+    document.getElementById("btnBanquan").textContent = t.banquan;
+    document.getElementById("btnGuanzhu").textContent = t.guanzhu;
+    document.getElementById("btnLianxi").textContent = t.lianxi;
+    document.getElementById("btnComment").textContent = t.comment;
+    document.getElementById("btnFans").textContent = t.fans;
+    document.getElementById("btnGame").textContent = t.game;
+    document.getElementById("btnDonate").textContent = t.donate;
+
+    // replay typing animation
+    const greetingEl = document.getElementById('greeting');
+    greetingEl.classList.remove("finished");
+    greetingEl.textContent = "";
+    let i = 0;
+    const text = t.greeting;
+
+    function typeNext() {
+      if (i < text.length) {
+        greetingEl.textContent += text.charAt(i);
+        i++;
+        setTimeout(typeNext, i === 1 ? 520 : 320);
+      } else {
+        setTimeout(() => greetingEl.classList.add('finished'), 900);
       }
+    }
 
-      // 稍微延迟再开始，更自然
-      setTimeout(typeNext, 400);
+    setTimeout(typeNext, 300);
+  }
+
+  window.addEventListener("load", () => {
+    const saved = localStorage.getItem("lang") || "zh";
+    applyLang(saved);
+
+    document.querySelectorAll("#langSwitcher button").forEach(btn => {
+      btn.classList.toggle("active", btn.dataset.lang === saved);
+      btn.onclick = () => {
+        const lang = btn.dataset.lang;
+        localStorage.setItem("lang", lang);
+        document.querySelectorAll("#langSwitcher button")
+          .forEach(b => b.classList.remove("active"));
+        btn.classList.add("active");
+        applyLang(lang);
+      };
     });
+  });
   </script>
 </body>
 </html>
