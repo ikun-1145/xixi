@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>联系我们 - 霜蓝</title>
+  <title id="pageTitle">联系我们 - 霜蓝</title>
   <link href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap" rel="stylesheet">
   <style>
     * { box-sizing: border-box; }
@@ -122,15 +122,44 @@
   </div>
 
   <div class="container">
-    <h1>联系我们</h1>
+    <h1 id="titleText"></h1>
     <div class="email">📧 sunlandccc@outlook.com</div>
-    <a href="index.html" class="back">← 返回主页</a>
+    <a href="index.html" class="back" id="backBtn"></a>
   </div>
   <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
 
   <script>
-    // 加载动画控制
+    const i18n = {
+      zh: {
+        pageTitle: "联系我们 - 霜蓝",
+        title: "联系我们",
+        back: "← 返回主页"
+      },
+      en: {
+        pageTitle: "Contact - Sunland",
+        title: "Contact",
+        back: "← Back to Home"
+      },
+      jp: {
+        pageTitle: "連絡先 - フロスト",
+        title: "連絡先",
+        back: "← ホームへ戻る"
+      }
+    };
+
+    function applyLang() {
+      const lang = localStorage.getItem("lang") || "zh";
+      const t = i18n[lang] || i18n.zh;
+
+      document.title = t.pageTitle;
+      document.getElementById("titleText").textContent = t.title;
+      document.getElementById("backBtn").textContent = t.back;
+    }
+
+    // 加载动画 + 语言应用
     window.addEventListener('load', () => {
+      applyLang();
+
       document.body.classList.add('fade-in');
       const loader = document.getElementById('loading');
       if (loader) {

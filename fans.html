@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>实时粉丝数 - 霜蓝</title>
+  <title id="pageTitle">实时粉丝数 - 霜蓝</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -157,20 +157,53 @@
   </div>
 
   <div class="container">
-    <h1>实时粉丝数</h1>
+    <h1 id="titleText"></h1>
     <div class="fan-count" id="fanCount"></div>
     <p class="update-time" id="updateTime"></p>
-    <p class="thanks">感谢大家的支持与陪伴！</p>
-    <a href="index.html" class="back">← 返回主页</a>
+    <p class="thanks" id="thanksText"></p>
+    <a href="index.html" class="back" id="backBtn"></a>
   </div>
 
   <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
 
   <!-- 动效脚本 -->
   <script>
+    /* --------- i18n --------- */
+    const i18n = {
+      zh: {
+        pageTitle: "实时粉丝数 - 霜蓝",
+        title: "实时粉丝数",
+        thanks: "感谢大家的支持与陪伴！",
+        back: "← 返回主页",
+        updatePrefix: "数据更新时间："
+      },
+      en: {
+        pageTitle: "Live Fans Count - Sunland",
+        title: "Live Fans Count",
+        thanks: "Thank you all for your support!",
+        back: "← Back to Home",
+        updatePrefix: "Last updated: "
+      },
+      jp: {
+        pageTitle: "フォロワー数 - フロスト",
+        title: "フォロワー数",
+        thanks: "いつも応援ありがとうございます！",
+        back: "← ホームへ戻る",
+        updatePrefix: "更新日時："
+      }
+    };
+
+    const currentLang = localStorage.getItem("lang") || "zh";
+    const t = i18n[currentLang] || i18n.zh;
+
+    document.title = t.pageTitle;
+    document.getElementById("titleText").textContent = t.title;
+    document.getElementById("thanksText").textContent = t.thanks;
+    document.getElementById("backBtn").textContent = t.back;
+
     // === ✅ 只改这两行 ===
-    const fanCount = 23480;
-    const updateTime = "2025年12月5日 21:02";
+    const fanCount = 23382;
+    const updateTime = "2026年1月24日 18:40";
 
     // 加载数字
     const fanCountContainer = document.getElementById('fanCount');
@@ -183,7 +216,7 @@
     });
 
     // 更新时间
-    document.getElementById('updateTime').textContent = `数据更新时间：${updateTime}`;
+    document.getElementById('updateTime').textContent = `${t.updatePrefix}${updateTime}`;
 
     // 页面进入动画
     window.addEventListener('load', () => {

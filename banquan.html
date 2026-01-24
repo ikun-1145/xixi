@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta http-equiv="x-dns-prefetch-control" content="off">
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>版权信息 - 霜蓝</title>
+  <title id="pageTitle">版权信息 - 霜蓝</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -131,17 +131,51 @@
   </div>
 
   <div class="container">
-    <h1>版权信息</h1>
-    <p>本站所有素材（包括头像、兽设图、配色方案等）均为原创，仅供展示用途，未经许可不得转载或商用。</p>
+    <h1 id="titleText"></h1>
+    <p id="descText"></p>
     <img src="p/bq.jpeg" alt="版权证书">
-    <a href="index.html" class="back">← 返回主页</a>
+    <a href="index.html" class="back" id="backBtn"></a>
   </div>
 
   <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
 
   <!-- 页面加载 + 跳转动画 -->
   <script>
+    /* --------- i18n --------- */
+    const i18n = {
+      zh: {
+        pageTitle: "版权信息 - 霜蓝",
+        title: "版权信息",
+        desc: "本站所有素材（包括头像、兽设图、配色方案等）均为原创，仅供展示用途，未经许可不得转载或商用。",
+        back: "← 返回主页"
+      },
+      en: {
+        pageTitle: "Copyright - Sunland",
+        title: "Copyright",
+        desc: "All materials on this site (including avatar, character images, and color schemes) are original and for display only. Reproduction or commercial use without permission is prohibited.",
+        back: "← Back to Home"
+      },
+      jp: {
+        pageTitle: "著作権情報 - フロスト",
+        title: "著作権情報",
+        desc: "本サイトのすべての素材（アイコン、キャラクター画像、配色など）はオリジナルであり、展示目的のみ使用されています。無断転載・商用利用は禁止されています。",
+        back: "← ホームへ戻る"
+      }
+    };
+
+    function applyLang() {
+      const lang = localStorage.getItem("lang") || "zh";
+      const t = i18n[lang] || i18n.zh;
+
+      document.title = t.pageTitle;
+      document.getElementById("titleText").textContent = t.title;
+      document.getElementById("descText").textContent = t.desc;
+      document.getElementById("backBtn").textContent = t.back;
+    }
+
     window.addEventListener('load', () => {
+      applyLang();
+
       document.body.classList.add('fade-in');
       const loader = document.getElementById('loading');
       if (loader) {

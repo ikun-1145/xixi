@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8" />
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title>小游戏</title>
+<title id="pageTitle">小游戏</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0}
   body{
@@ -76,15 +76,61 @@
 
     <!-- 游戏结束遮罩 -->
     <div class="overlay" id="gameOverlay">
-      <div class="gameoverText">游戏结束</div>
+      <div class="gameoverText" id="gameOverText"></div>
       <div class="buttons" id="buttonsContainer">
-        <button id="restartBtn">重新开始</button>
-        <a id="homeLink" href="index.html">返回主页</a>
+        <button id="restartBtn"></button>
+        <a id="homeLink" href="index.html"></a>
       </div>
     </div>
   </div>
 
 <script>
+/* --------- i18n --------- */
+const i18n = {
+  zh: {
+    title: "小游戏",
+    gameOver: "游戏结束",
+    restart: "重新开始",
+    home: "返回主页",
+    score: "分数",
+    highScore: "最高分"
+  },
+  en: {
+    title: "Mini Game",
+    gameOver: "Game Over",
+    restart: "Restart",
+    home: "Back to Home",
+    score: "Score",
+    highScore: "Best"
+  },
+  jp: {
+    title: "ミニゲーム",
+    gameOver: "ゲームオーバー",
+    restart: "もう一度",
+    home: "ホームへ戻る",
+    score: "スコア",
+    highScore: "最高記録"
+  }
+};
+
+function applyLang() {
+  const lang = localStorage.getItem("lang") || "zh";
+  const t = i18n[lang] || i18n.zh;
+
+  document.title = t.title;
+  const titleEl = document.getElementById("pageTitle");
+  if (titleEl) titleEl.textContent = t.title;
+
+  document.getElementById("gameOverText").textContent = t.gameOver;
+  document.getElementById("restartBtn").textContent = t.restart;
+  document.getElementById("homeLink").textContent = t.home;
+
+  window.__i18nScoreLabel = t.score;
+  window.__i18nHighScoreLabel = t.highScore;
+}
+
+applyLang();
+
 /* --------- 初始化与自适应 --------- */
 const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d', { alpha: true });
@@ -197,8 +243,10 @@ function draw(){
   ctx.font = `${fontSize}px -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Microsoft YaHei", Arial, sans-serif`;
   ctx.textAlign = "left";
   ctx.textBaseline = "top";
-  ctx.fillText(`分数: ${score}`, LOGIC_WIDTH * 0.02, LOGIC_HEIGHT * 0.02);
-  ctx.fillText(`最高分: ${highScore}`, LOGIC_WIDTH * 0.02, LOGIC_HEIGHT * 0.12);
+  const scoreLabel = window.__i18nScoreLabel || "分数";
+  const highScoreLabel = window.__i18nHighScoreLabel || "最高分";
+  ctx.fillText(`${scoreLabel}: ${score}`, LOGIC_WIDTH * 0.02, LOGIC_HEIGHT * 0.02);
+  ctx.fillText(`${highScoreLabel}: ${highScore}`, LOGIC_WIDTH * 0.02, LOGIC_HEIGHT * 0.12);
 
   ctx.restore();
 }

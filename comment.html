@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta http-equiv="x-dns-prefetch-control" content="off">
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>评论留言 - 霜蓝</title>
+  <title id="pageTitle">评论留言 - 霜蓝</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -120,33 +120,77 @@
   </div>
 
   <div class="container">
-    <h1>评论留言</h1>
+    <h1 id="titleText"></h1>
 
     <!-- Giscus 评论系统 -->
-    <script src="https://giscus.app/client.js"
-        data-repo="ikun-1145/xixi"
-        data-repo-id="R_kgDON2L-Ag"
-        data-category="Announcements"
-        data-category-id="DIC_kwDON2L-As4CsGg4"
-        data-mapping="pathname"
-        data-strict="0"
-        data-reactions-enabled="1"
-        data-emit-metadata="0"
-        data-input-position="bottom"
-        data-theme="preferred_color_scheme"
-        data-lang="zh-CN"
-        crossorigin="anonymous"
-        async>
-    </script>
+    <div id="giscus"></div>
 
-    <a href="index.html" class="back">← 返回主页</a>
+    <a href="index.html" class="back" id="backBtn"></a>
   </div>
 
   <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
 
   <!-- 淡入淡出 + 跳转逻辑 -->
   <script>
+    /* --------- i18n --------- */
+    const i18n = {
+      zh: {
+        pageTitle: "评论留言 - 霜蓝",
+        title: "评论留言",
+        back: "← 返回主页",
+        giscusLang: "zh-CN"
+      },
+      en: {
+        pageTitle: "Comments - Sunland",
+        title: "Comments",
+        back: "← Back to Home",
+        giscusLang: "en"
+      },
+      jp: {
+        pageTitle: "コメント - フロスト",
+        title: "コメント",
+        back: "← ホームへ戻る",
+        giscusLang: "ja"
+      }
+    };
+
+    function loadGiscus(lang) {
+      const container = document.getElementById("giscus");
+      if (!container) return;
+      container.innerHTML = "";
+
+      const script = document.createElement("script");
+      script.src = "https://giscus.app/client.js";
+      script.setAttribute("data-repo", "ikun-1145/xixi");
+      script.setAttribute("data-repo-id", "R_kgDON2L-Ag");
+      script.setAttribute("data-category", "Announcements");
+      script.setAttribute("data-category-id", "DIC_kwDON2L-As4CsGg4");
+      script.setAttribute("data-mapping", "pathname");
+      script.setAttribute("data-strict", "0");
+      script.setAttribute("data-reactions-enabled", "1");
+      script.setAttribute("data-emit-metadata", "0");
+      script.setAttribute("data-input-position", "bottom");
+      script.setAttribute("data-theme", "preferred_color_scheme");
+      script.setAttribute("data-lang", lang);
+      script.crossOrigin = "anonymous";
+      script.async = true;
+      container.appendChild(script);
+    }
+
+    function applyLang() {
+      const lang = localStorage.getItem("lang") || "zh";
+      const t = i18n[lang] || i18n.zh;
+
+      document.title = t.pageTitle;
+      document.getElementById("titleText").textContent = t.title;
+      document.getElementById("backBtn").textContent = t.back;
+
+      loadGiscus(t.giscusLang);
+    }
+
     window.addEventListener('load', () => {
+      applyLang();
+
       document.body.classList.add('fade-in');
       const loader = document.getElementById('loading');
       if (loader) {

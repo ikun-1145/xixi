@@ -141,8 +141,8 @@
   </div>
 
   <div class="container">
-    <h1>关注我们</h1>
-    <p>全网搜索霜蓝，获取更多动态：</p>
+    <h1 id="titleText"></h1>
+    <p id="descText"></p>
     <div class="logos">
       <div><img src="p/bilibili.jpeg"><div>B站</div></div>
       <div><img src="p/dy.png"><div>抖音</div></div>
@@ -151,13 +151,50 @@
       <div><img src="p/x.png"><div>X</div></div>
       <div><img src="p/xhs.png"><div>小红书</div></div>
     </div>
-    <a href="index.html" class="back">← 返回主页</a>
+    <a href="index.html" class="back" id="backBtn"></a>
   </div>
   <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
 
   <script>
-    // 加载动画控制
+    const i18n = {
+      zh: {
+        title: "关注我们",
+        desc: "全网搜索霜蓝，获取更多动态：",
+        back: "← 返回主页",
+        platforms: ["B站", "抖音", "GitHub", "快手", "X", "小红书"]
+      },
+      en: {
+        title: "Follow Me",
+        desc: "Search \"Sunland\" on these platforms:",
+        back: "← Back to Home",
+        platforms: ["Bilibili", "TikTok", "GitHub", "Kwai", "X", "RED"]
+      },
+      jp: {
+        title: "フォローする",
+        desc: "各プラットフォームで「フロスト」を検索してください：",
+        back: "← ホームへ戻る",
+        platforms: ["Biribiri", "TikTok", "GitHub", "Kwaishou", "X", "RED"]
+      }
+    };
+
+    function applyLang() {
+      const lang = localStorage.getItem("lang") || "zh";
+      const t = i18n[lang] || i18n.zh;
+
+      document.getElementById("titleText").textContent = t.title;
+      document.getElementById("descText").textContent = t.desc;
+      document.getElementById("backBtn").textContent = t.back;
+
+      const logoLabels = document.querySelectorAll(".logos div > div");
+      logoLabels.forEach((el, i) => {
+        if (t.platforms[i]) el.textContent = t.platforms[i];
+      });
+    }
+
+    // 加载动画 + 语言应用
     window.addEventListener('load', () => {
+      applyLang();
+
       document.body.classList.add('fade-in');
       const loader = document.getElementById('loading');
       if (loader) {

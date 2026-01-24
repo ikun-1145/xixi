@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>捐赠支持 - 霜蓝</title>
+  <title id="pageTitle">捐赠支持 - 霜蓝</title>
   <link rel="stylesheet" href="style.css">
   <script type="module" src="supabaseClient.js"></script>
   <script type="module" src="checkLogin.js"></script>
@@ -451,10 +451,8 @@
   <div id="thanksToast">感谢你的支持！💙</div>
 
   <div class="container">
-    <h1>感谢你的支持！</h1>
-    <p id="userGreeting" style="text-align:center; margin-top:-10px; color:#bffcff;">
-      欢迎你，朋友 💙
-    </p>
+    <h1 id="titleText"></h1>
+    <p id="userGreeting" style="text-align:center; margin-top:-10px; color:#bffcff;"></p>
     <button id="logoutBtn" style="
       position:absolute;
       top:20px;
@@ -468,35 +466,31 @@
       color: black;
       transition: 0.3s;
       z-index: 10;
-    ">
-      退出登录
-    </button>
-    <p style="text-align:center;">如果你喜欢本站内容，可以选择一个方式支持我：</p>
+    "> </button>
+    <p id="supportDesc" style="text-align:center;"></p>
 
     <div class="tier-group">
-      <button class="tier-btn" data-tier="coffee">☕ 请你喝杯咖啡</button>
-      <button class="tier-btn" data-tier="meal">🍔 请你吃顿饭</button>
-      <button class="tier-btn" data-tier="biglove">💖 狠狠支持一下</button>
+      <button class="tier-btn" data-tier="coffee">☕ <span id="tierCoffee"></span></button>
+      <button class="tier-btn" data-tier="meal">🍔 <span id="tierMeal"></span></button>
+      <button class="tier-btn" data-tier="biglove">💖 <span id="tierBiglove"></span></button>
     </div>
 
-    <p id="tierHint" style="text-align:center; margin-top:12px; color:#ccc; font-size:14px;">
-      选择档位后，扫码支付即可～
-    </p>
+    <p id="tierHintText" style="text-align:center; margin-top:12px; color:#ccc; font-size:14px;"></p>
     
     <div class="qrcode-section">
       <div class="qrcode">
         <img src="p/wx.jpeg" alt="微信收款码" />
-        <p>微信支付</p>
+        <p id="wxPayText"></p>
       </div>
       <div class="qrcode">
         <img src="p/zfb.jpeg" alt="支付宝收款码" />
-        <p>支付宝</p>
+        <p id="aliPayText"></p>
       </div>
     </div>
 
-    <h2 style="text-align:center; color:#71f8fc; margin-top:40px;">💖 粉丝鸣谢榜</h2>
+    <h2 style="text-align:center; color:#71f8fc; margin-top:40px;"><span id="thanksBoardTitle"></span></h2>
     <p style="text-align:center; color:#ccc; font-size:14px; margin-bottom:14px;">
-      感谢每一位支持霜蓝的朋友（按时间倒序）
+      <span id="thanksBoardDesc"></span>
     </p>
 
     <div id="thanksList" class="thanks-list">
@@ -513,21 +507,21 @@
         border-radius: 20px;
         cursor: pointer;
       ">
-        加载更多
+        <span id="loadMoreText"></span>
       </button>
     </div>
     <div class="thanks-form">
-      <h3 class="thanks-title">✍ 留下你的支持留言</h3>
+      <h3 class="thanks-title"><span id="thanksFormTitle"></span></h3>
       <div class="thanks-fields">
-        <input id="thanksName" type="text" placeholder="你的昵称（可留空）">
-        <textarea id="thanksMsg" rows="3" placeholder="想对霜蓝说的话（可选）"></textarea>
+        <input id="thanksName" type="text" placeholder="">
+        <textarea id="thanksMsg" rows="3" placeholder=""></textarea>
       </div>
-      <button id="submitThanks">提交到鸣谢榜</button>
-      <p id="thanksTip">提交后会显示在榜单中 💙</p>
+      <button id="submitThanks"><span id="submitThanksText"></span></button>
+      <p id="thanksTip"><span id="thanksTipText"></span></p>
     </div>
 
     <div class="btn-group">
-      <button id="backBtn">返回主页</button>
+      <button id="backBtn"></button>
     </div>
 
     <div class="footer">
@@ -537,6 +531,114 @@
 
   <!-- 跳转与加载逻辑 -->
   <script>
+    /* --------- i18n --------- */
+    const i18n = {
+      zh: {
+        pageTitle: "捐赠支持 - 霜蓝",
+        title: "感谢你的支持！",
+        supportDesc: "如果你喜欢本站内容，可以选择一个方式支持我：",
+        tierCoffee: "请你喝杯咖啡",
+        tierMeal: "请你吃顿饭",
+        tierBiglove: "狠狠支持一下",
+        tierHint: "选择档位后，扫码支付即可～",
+        wxPay: "微信支付",
+        aliPay: "支付宝",
+        boardTitle: "💖 粉丝鸣谢榜",
+        boardDesc: "感谢每一位支持霜蓝的朋友（按时间倒序）",
+        loadMore: "加载更多",
+        formTitle: "✍ 留下你的支持留言",
+        namePh: "你的昵称（可留空）",
+        msgPh: "想对霜蓝说的话（可选）",
+        submit: "提交到鸣谢榜",
+        tip: "提交后会显示在榜单中 💙",
+        back: "返回主页",
+        logout: "退出登录",
+        greeting: (name) => `欢迎你，${name || "朋友"} 💙`
+      },
+      en: {
+        pageTitle: "Support - Sunland",
+        title: "Thank you for your support!",
+        supportDesc: "If you enjoy this site, you can support me in one of these ways:",
+        tierCoffee: "Buy me a coffee",
+        tierMeal: "Buy me a meal",
+        tierBiglove: "Big support!",
+        tierHint: "Choose a tier and scan to pay.",
+        wxPay: "WeChat Pay",
+        aliPay: "Alipay",
+        boardTitle: "💖 Supporter Board",
+        boardDesc: "Thanks to everyone who supports Sunland (latest first)",
+        loadMore: "Load more",
+        formTitle: "✍ Leave your message",
+        namePh: "Your nickname (optional)",
+        msgPh: "Message to Sunland (optional)",
+        submit: "Submit",
+        tip: "Your message will appear on the board 💙",
+        back: "Back to Home",
+        logout: "Log out",
+        greeting: (name) => `Welcome, ${name || "friend"} 💙`
+      },
+      jp: {
+        pageTitle: "支援 - フロスト",
+        title: "応援ありがとうございます！",
+        supportDesc: "もしこのサイトが気に入ったら、ぜひ支援してください：",
+        tierCoffee: "コーヒーをごちそう",
+        tierMeal: "ご飯をごちそう",
+        tierBiglove: "全力で応援！",
+        tierHint: "金額を選んでQRコードで支払ってください。",
+        wxPay: "WeChat Pay",
+        aliPay: "Alipay",
+        boardTitle: "💖 応援者一覧",
+        boardDesc: "フロストを応援してくれる皆さんへ（新しい順）",
+        loadMore: "もっと見る",
+        formTitle: "✍ 応援メッセージを書く",
+        namePh: "ニックネーム（任意）",
+        msgPh: "フロストへのメッセージ（任意）",
+        submit: "送信",
+        tip: "送信後、一覧に表示されます 💙",
+        back: "ホームへ戻る",
+        logout: "ログアウト",
+        greeting: (name) => `ようこそ、${name || "友達"} 💙`
+      }
+    };
+
+    function applyLangDonate(nameForGreeting) {
+      const lang = localStorage.getItem("lang") || "zh";
+      const t = i18n[lang] || i18n.zh;
+
+      document.title = t.pageTitle;
+      document.getElementById("titleText").textContent = t.title;
+      document.getElementById("supportDesc").textContent = t.supportDesc;
+
+      document.getElementById("tierCoffee").textContent = t.tierCoffee;
+      document.getElementById("tierMeal").textContent = t.tierMeal;
+      document.getElementById("tierBiglove").textContent = t.tierBiglove;
+      document.getElementById("tierHintText").textContent = t.tierHint;
+
+      document.getElementById("wxPayText").textContent = t.wxPay;
+      document.getElementById("aliPayText").textContent = t.aliPay;
+
+      document.getElementById("thanksBoardTitle").textContent = t.boardTitle;
+      document.getElementById("thanksBoardDesc").textContent = t.boardDesc;
+
+      document.getElementById("loadMoreText").textContent = t.loadMore;
+      document.getElementById("thanksFormTitle").textContent = t.formTitle;
+
+      document.getElementById("submitThanksText").textContent = t.submit;
+      document.getElementById("thanksTipText").textContent = t.tip;
+
+      document.getElementById("backBtn").textContent = t.back;
+      document.getElementById("logoutBtn").textContent = t.logout;
+
+      const nameInput = document.getElementById("thanksName");
+      const msgInput = document.getElementById("thanksMsg");
+      if (nameInput) nameInput.placeholder = t.namePh;
+      if (msgInput) msgInput.placeholder = t.msgPh;
+
+      const greet = document.getElementById("userGreeting");
+      if (greet) greet.textContent = t.greeting(nameForGreeting);
+    }
+    window.applyLangDonate = applyLangDonate;
+
     window.addEventListener('load', () => {
       document.body.classList.add('fade-in');
       const loader = document.getElementById('loading');
@@ -544,6 +646,7 @@
         loader.style.opacity = '0';
         setTimeout(() => loader.style.display = 'none', 600);
       }
+      window.applyLangDonate && window.applyLangDonate(null);
     });
 
     // 所有 a[href] 和按钮跳转添加淡出动画
@@ -695,8 +798,9 @@
     currentUserId = user?.id || null;
 
     const greet = document.getElementById("userGreeting");
-    if (user && greet) {
-      greet.textContent = `欢迎你，${user.user_metadata?.name || user.email || "朋友"} 💙`;
+    if (greet) {
+      const name = user?.user_metadata?.name || user?.email || null;
+      window.applyLangDonate && window.applyLangDonate(name);
     }
 
     loadThanks(true);

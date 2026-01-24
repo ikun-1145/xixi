@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>兽设介绍 - 霜蓝</title>
+  <title id="pageTitle">兽设介绍 - 霜蓝</title>
   <style>
     * { box-sizing: border-box; }
 
@@ -145,19 +145,57 @@
   </div>
 
   <div class="container">
-    <h1>霜蓝 - 兽设介绍</h1>
-    <p>霜蓝是一位以冰蓝色为主题的原创兽设，代表着冷静与智慧。</p>
-    <p>以下为霜蓝的双视图展示：</p>
-    <img src="p/xsst.jpeg" alt="霜蓝双视图">
-    <img src="p/xsst_tf.jpeg" alt="霜蓝双视图 - 有头发版">
-    <a href="index.html" class="back">← 返回主页</a>
+    <h1 id="titleText"></h1>
+    <p id="desc1"></p>
+    <p id="desc2"></p>
+    <img src="p/xsst.png" alt="霜蓝双视图">
+    <img src="p/xsst_tf.png" alt="霜蓝双视图 - 有头发版">
+    <a href="index.html" class="back" id="backBtn"></a>
   </div>
 
   <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
 
   <script>
+    /* --------- i18n --------- */
+    const i18n = {
+      zh: {
+        pageTitle: "兽设介绍 - 霜蓝",
+        title: "霜蓝 - 兽设介绍",
+        desc1: "霜蓝是一位以冰蓝色为主题的原创形象，象征着冷静与智慧。",
+        desc2: "以下为霜蓝的双视图展示：",
+        back: "← 返回主页"
+      },
+      en: {
+        pageTitle: "Character Design - Sunland",
+        title: "Sunland - Character Design",
+        desc1: "Sunland is an original character themed in icy blue, representing calmness and wisdom.",
+        desc2: "Below are the front and back views of Sunland:",
+        back: "← Back to Home"
+      },
+      jp: {
+        pageTitle: "キャラクター紹介 - フロスト",
+        title: "フロスト - キャラクター紹介",
+        desc1: "フロストは氷のような青をテーマにしたオリジナルキャラクターで、冷静さと知性を象徴しています。",
+        desc2: "以下はフロストの前後ビューです：",
+        back: "← ホームへ戻る"
+      }
+    };
+
+    function applyLang() {
+      const lang = localStorage.getItem("lang") || "zh";
+      const t = i18n[lang] || i18n.zh;
+
+      document.title = t.pageTitle;
+      document.getElementById("titleText").textContent = t.title;
+      document.getElementById("desc1").textContent = t.desc1;
+      document.getElementById("desc2").textContent = t.desc2;
+      document.getElementById("backBtn").textContent = t.back;
+    }
+
     // 加载动画控制
     window.addEventListener('load', () => {
+      applyLang();
+
       document.body.classList.add('fade-in');
       const loader = document.getElementById('loading');
       if (loader) {
