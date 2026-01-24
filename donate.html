@@ -198,7 +198,27 @@
       box-shadow: 0 6px 18px rgba(113,248,252,0.15);
       animation: fadeInUp .4s ease both;
     }
+    .thanks-item.mine {
+  border-color: #71f8fc;
+  box-shadow:
+    0 0 0 2px rgba(113,248,252,0.35),
+    0 10px 30px rgba(113,248,252,0.35);
+  background: rgba(113,248,252,0.12);
+  position: relative;
+}
 
+.thanks-item.mine::before {
+  content: "你的留言";
+  position: absolute;
+  top: -10px;
+  right: 10px;
+  background: #71f8fc;
+  color: #000;
+  font-size: 11px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  box-shadow: 0 4px 10px rgba(113,248,252,0.4);
+}
     .thanks-item .name {
       color: #71f8fc;
       font-size: 14px;
@@ -212,27 +232,86 @@
       opacity: .9;
     }
 
+    .thanks-item .time {
+      margin-top: 6px;
+      font-size: 12px;
+      color: #9fdde0;
+      opacity: .8;
+      text-align: right;
+    }
+
+    .thanks-item .like-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-top: 6px;
+      gap: 8px;
+    }
+
+    .like-btn {
+      background: rgba(113,248,252,0.15);
+      border: 1px solid rgba(113,248,252,0.6);
+      color: #71f8fc;
+      border-radius: 999px;
+      padding: 2px 10px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: .2s ease;
+    }
+
+    .like-btn:hover {
+      background: rgba(113,248,252,0.35);
+    }
+
+    .like-btn.liked {
+      background: #71f8fc;
+      color: #000;
+    }
+
     .thanks-form {
-      margin-top: 18px;
+      margin-top: 26px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(113,248,252,0.35);
+      border-radius: 18px;
+      padding: 18px 16px 20px;
+      box-shadow: 0 10px 35px rgba(113,248,252,0.18);
+    }
+
+    .thanks-title {
+      margin: 0;
+      text-align: center;
+      font-size: 15px;
+      color: #71f8fc;
+      letter-spacing: 1px;
+    }
+
+    .thanks-fields {
       display: flex;
       flex-direction: column;
       gap: 10px;
-      background: rgba(255,255,255,0.05);
-      border: 1px solid rgba(113,248,252,0.25);
-      border-radius: 14px;
-      padding: 14px;
     }
 
     .thanks-form input,
     .thanks-form textarea {
-      background: rgba(0,0,0,0.4);
-      border: 1px solid rgba(113,248,252,0.4);
-      border-radius: 10px;
-      padding: 8px 10px;
+      background: rgba(0,0,0,0.45);
+      border: 1px solid rgba(113,248,252,0.45);
+      border-radius: 12px;
+      padding: 10px 12px;
       color: #fff;
       outline: none;
       font-size: 14px;
       resize: none;
+      transition: border .2s ease, box-shadow .2s ease, background .2s ease;
+    }
+
+    .thanks-form input:focus,
+    .thanks-form textarea:focus {
+      border-color: #71f8fc;
+      background: rgba(0,0,0,0.55);
+      box-shadow: 0 0 0 2px rgba(113,248,252,0.25);
     }
 
     .thanks-form input::placeholder,
@@ -242,16 +321,28 @@
 
     .thanks-form button {
       align-self: center;
-      padding: 8px 20px;
-      border-radius: 20px;
-      background: #71f8fc;
+      padding: 10px 28px;
+      border-radius: 999px;
+      background: linear-gradient(135deg, #71f8fc, #9ffcff);
       border: none;
       cursor: pointer;
-      transition: .25s;
+      transition: transform .2s ease, box-shadow .2s ease, filter .2s ease;
+      box-shadow: 0 6px 18px rgba(113,248,252,0.45);
+      font-weight: bold;
+      letter-spacing: 1px;
     }
 
     .thanks-form button:hover {
-      background: #5ae0e6;
+      transform: translateY(-2px);
+      box-shadow: 0 10px 26px rgba(113,248,252,0.6);
+      filter: brightness(1.05);
+    }
+
+    .thanks-form button:disabled {
+      opacity: .6;
+      cursor: not-allowed;
+      transform: none;
+      box-shadow: none;
     }
 
     #thanksTip {
@@ -413,9 +504,24 @@
       <div class="thanks-item skeleton"></div>
       <div class="thanks-item skeleton"></div>
     </div>
+    <div id="loadMoreWrap" style="text-align:center; margin-top:14px;">
+      <button id="loadMoreBtn" style="
+        background: rgba(113,248,252,0.2);
+        border: 1px solid rgba(113,248,252,0.6);
+        color: #71f8fc;
+        padding: 8px 18px;
+        border-radius: 20px;
+        cursor: pointer;
+      ">
+        加载更多
+      </button>
+    </div>
     <div class="thanks-form">
-      <input id="thanksName" type="text" placeholder="你的昵称（可留空）">
-      <textarea id="thanksMsg" rows="3" placeholder="想对霜蓝说的话（可选）"></textarea>
+      <h3 class="thanks-title">✍ 留下你的支持留言</h3>
+      <div class="thanks-fields">
+        <input id="thanksName" type="text" placeholder="你的昵称（可留空）">
+        <textarea id="thanksMsg" rows="3" placeholder="想对霜蓝说的话（可选）"></textarea>
+      </div>
       <button id="submitThanks">提交到鸣谢榜</button>
       <p id="thanksTip">提交后会显示在榜单中 💙</p>
     </div>
@@ -483,41 +589,145 @@
   <script type="module">
     import { supabase } from './p/js/supabaseClient.js';
 
+    // 时间格式化辅助
+    function formatTime(iso) {
+      if (!iso) return "";
+
+      const t = new Date(iso);
+      const now = new Date();
+      const diff = (now - t) / 1000;
+
+      if (diff < 60) return "刚刚";
+      if (diff < 3600) return Math.floor(diff / 60) + " 分钟前";
+      if (diff < 86400) return Math.floor(diff / 3600) + " 小时前";
+
+      const isToday = now.toDateString() === t.toDateString();
+      if (isToday) {
+        return "今天 " + pad(t.getHours()) + ":" + pad(t.getMinutes());
+      }
+
+      return (
+        (t.getMonth() + 1) + "月" +
+        t.getDate() + "日 " +
+        pad(t.getHours()) + ":" +
+        pad(t.getMinutes())
+      );
+    }
+
+    function pad(n) {
+      return n < 10 ? "0" + n : n;
+    }
+
     // 加载粉丝鸣谢榜
     const thanksList = document.getElementById("thanksList");
+    let thanksPage = 0;
+    const PAGE_SIZE = 8;
 
-    async function loadThanks() {
+    let currentUserEmail = null;
+    async function loadThanks(reset = false) {
+      if (reset) {
+        thanksPage = 0;
+        if (thanksList) {
+          thanksList.innerHTML = `
+            <div class="thanks-item skeleton"></div>
+            <div class="thanks-item skeleton"></div>
+            <div class="thanks-item skeleton"></div>
+          `;
+        }
+      }
+
+      const from = thanksPage * PAGE_SIZE;
+      const to = from + PAGE_SIZE - 1;
+
       const { data, error } = await supabase
         .from("thanks")
-        .select("name, message, created_at")
+        .select("id, name, message, created_at, likes")
         .order("created_at", { ascending: false })
-        .limit(12);
+        .range(from, to);
 
       if (error || !data) {
-        if (thanksList) {
+        if (thanksList && reset) {
           thanksList.innerHTML = '<div class="thanks-item"><div class="msg">暂无鸣谢记录，期待你的第一份支持 💙</div></div>';
         }
         return;
       }
 
       if (thanksList) {
-        thanksList.innerHTML = data.map(item => `
-          <div class="thanks-item">
+        if (reset) thanksList.innerHTML = "";
+
+        const html = data.map(item => {
+          const isMine = currentUserEmail && item.name === currentUserEmail;
+          const likes = item.likes || 0;
+          return `
+          <div class="thanks-item ${isMine ? "mine" : ""}" data-id="${item.id}">
             <div class="name">${item.name || "匿名朋友"}</div>
             <div class="msg">${item.message || "感谢支持！"}</div>
+
+            <div class="like-row">
+              <div class="time">${formatTime(item.created_at)}</div>
+              <button class="like-btn">❤️ ${likes}</button>
+            </div>
           </div>
-        `).join("");
+          `;
+        }).join("");
+
+        thanksList.insertAdjacentHTML("beforeend", html);
       }
+
+      const loadMoreBtn = document.getElementById("loadMoreBtn");
+      if (loadMoreBtn) {
+        if (data.length < PAGE_SIZE) {
+          loadMoreBtn.style.display = "none";
+        } else {
+          loadMoreBtn.style.display = "inline-block";
+        }
+      }
+
+      thanksPage++;
     }
 
-    loadThanks();
-
-    // 显示用户昵称/邮箱
+    // 显示用户昵称/邮箱，并保存当前用户邮箱
     const { data: { user } } = await supabase.auth.getUser();
+    currentUserEmail = user?.email || null;
+
     const greet = document.getElementById("userGreeting");
     if (user && greet) {
       greet.textContent = `欢迎你，${user.user_metadata?.name || user.email || "朋友"} 💙`;
     }
+
+    loadThanks(true);
+
+    const loadMoreBtn = document.getElementById("loadMoreBtn");
+    if (loadMoreBtn) {
+      loadMoreBtn.addEventListener("click", () => {
+        loadThanks(false);
+      });
+    }
+
+    // 点赞事件代理
+    thanksList.addEventListener("click", async (e) => {
+      const btn = e.target.closest(".like-btn");
+      if (!btn) return;
+
+      const item = btn.closest(".thanks-item");
+      const id = item.dataset.id;
+
+      btn.disabled = true;
+
+      const current = parseInt(btn.textContent.replace("❤️", "").trim()) || 0;
+
+      const { error } = await supabase
+        .from("thanks")
+        .update({ likes: current + 1 })
+        .eq("id", id);
+
+      if (!error) {
+        btn.textContent = `❤️ ${current + 1}`;
+        btn.classList.add("liked");
+      }
+
+      btn.disabled = false;
+    });
 
     // 退出登录（强制可用版）
     const logoutBtn = document.getElementById("logoutBtn");
@@ -576,7 +786,7 @@
         msgInput.value = "";
         tip.textContent = "已提交，感谢你的支持！💙";
 
-        await loadThanks();
+        await loadThanks(true);
 
         submitBtn.disabled = false;
         submitBtn.textContent = "提交到鸣谢榜";
