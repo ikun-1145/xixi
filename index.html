@@ -257,6 +257,33 @@
 
       document.body.classList.remove('preload');
       document.body.style.opacity = '1';
+
+      // 页面首次加载时确保不显示登录弹窗
+      document.getElementById("loginModal").classList.remove("active");
+    });
+
+    // 监听登录状态变化（登录/退出都会更新）
+    supabase.auth.onAuthStateChange((_event, session) => {
+      isLoggedIn = !!session;
+    });
+
+    // 处理从 donate 返回（浏览器后退缓存 bfcache）的情况
+    window.addEventListener("pageshow", async () => {
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        isLoggedIn = !!session;
+
+        // 确保按钮状态正确
+        const donateBtn = document.getElementById("donateBtn");
+        donateBtn.disabled = false;
+        donateBtn.style.opacity = "1";
+        donateBtn.style.cursor = "pointer";
+
+        // 返回主页时强制关闭登录弹窗
+        document.getElementById("loginModal").classList.remove("active");
+      } catch (e) {
+        console.warn("pageshow session sync failed:", e);
+      }
     });
 
     function closeModal(){ document.getElementById("loginModal").classList.remove("active"); }
