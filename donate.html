@@ -624,6 +624,7 @@
     const PAGE_SIZE = 8;
 
     let currentUserEmail = null;
+    let currentUserId = null;
     async function loadThanks(reset = false) {
       if (reset) {
         thanksPage = 0;
@@ -641,7 +642,14 @@
 
       const { data, error } = await supabase
         .from("thanks")
-        .select("id, name, message, created_at, likes")
+        .select(`
+          id,
+          name,
+          message,
+          created_at,
+          thanks_likes(count),
+          thanks_likes!left(user_id)
+        `)
         .order("created_at", { ascending: false })
         .range(from, to);
 
@@ -657,7 +665,11 @@
 
         const html = data.map(item => {
           const isMine = currentUserEmail && item.name === currentUserEmail;
-          const likes = item.likes || 0;
+
+          const likeCount = item.thanks_likes?.[0]?.count || 0;
+          const likedByMe = currentUserId &&
+            item.thanks_likes?.some(l => l.user_id === currentUserId);
+
           return `
           <div class="thanks-item ${isMine ? "mine" : ""}" data-id="${item.id}">
             <div class="name">${item.name || "匿名朋友"}</div>
@@ -665,7 +677,9 @@
 
             <div class="like-row">
               <div class="time">${formatTime(item.created_at)}</div>
-              <button class="like-btn">❤️ ${likes}</button>
+              <button class="like-btn ${likedByMe ? "liked" : ""}">
+                ${likedByMe ? "❤️" : "🤍"} ${likeCount}
+              </button>
             </div>
           </div>
           `;
@@ -689,6 +703,7 @@
     // 显示用户昵称/邮箱，并保存当前用户邮箱
     const { data: { user } } = await supabase.auth.getUser();
     currentUserEmail = user?.email || null;
+    currentUserId = user?.id || null;
 
     const greet = document.getElementById("userGreeting");
     if (user && greet) {
@@ -704,26 +719,51 @@
       });
     }
 
-    // 点赞事件代理
+    // 点赞 / 取消点赞（一人一票）
     thanksList.addEventListener("click", async (e) => {
       const btn = e.target.closest(".like-btn");
       if (!btn) return;
 
+      if (!currentUserId) {
+        alert("请先登录再点赞 💙");
+        return;
+      }
+
       const item = btn.closest(".thanks-item");
-      const id = item.dataset.id;
+      const thanksId = item.dataset.id;
 
       btn.disabled = true;
 
-      const current = parseInt(btn.textContent.replace("❤️", "").trim()) || 0;
+      const isLiked = btn.classList.contains("liked");
 
-      const { error } = await supabase
-        .from("thanks")
-        .update({ likes: current + 1 })
-        .eq("id", id);
+      if (!isLiked) {
+        // 点赞
+        const { error } = await supabase.from("thanks_likes").insert({
+          thanks_id: thanksId,
+          user_id: currentUserId
+        });
 
-      if (!error) {
-        btn.textContent = `❤️ ${current + 1}`;
-        btn.classList.add("liked");
+        if (!error) {
+          const count = parseInt(btn.textContent.replace(/[^\d]/g, "")) + 1;
+          btn.textContent = `❤️ ${count}`;
+          btn.classList.add("liked");
+        }
+      } else {
+        // 取消点赞
+        const { error } = await supabase
+          .from("thanks_likes")
+          .delete()
+          .eq("thanks_id", thanksId)
+          .eq("user_id", currentUserId);
+
+        if (!error) {
+          const count = Math.max(
+            0,
+            parseInt(btn.textContent.replace(/[^\d]/g, "")) - 1
+          );
+          btn.textContent = `🤍 ${count}`;
+          btn.classList.remove("liked");
+        }
       }
 
       btn.disabled = false;
