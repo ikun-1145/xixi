@@ -65,6 +65,38 @@ canvas{
 </div>
 
 <script>
+const i18n = {
+  zh: {
+    title: "小游戏",
+    gameOver: "游戏结束",
+    restart: "再来一局"
+  },
+  en: {
+    title: "Mini Game",
+    gameOver: "Game Over",
+    restart: "Play Again"
+  },
+  ja: {
+    title: "ミニゲーム",
+    gameOver: "ゲームオーバー",
+    restart: "もう一度"
+  }
+};
+function detectLang(){
+  const saved = localStorage.getItem("lang");
+  if (saved) return saved;
+
+  const nav = navigator.language || "zh";
+  if (nav.startsWith("ja")) return "ja";
+  if (nav.startsWith("en")) return "en";
+  return "zh";
+}
+
+const LANG = detectLang();
+const T = i18n[LANG] || i18n.zh;
+document.title = T.title;
+document.getElementById("overText").textContent = T.gameOver;
+document.getElementById("restart").textContent = T.restart;
 /* ================= 基础配置 ================= */
 const LOGIC_W = 400;
 const LOGIC_H = 650;
