@@ -689,7 +689,11 @@
     });
   </script>
   <script type="module">
-    import { supabase } from './p/js/supabaseClient.js';
+    import { supabase, syncSession, getSession } from './p/js/supabaseClient.js';
+
+    // ==== 登录状态全局同步 ====
+    await syncSession();
+    const session = getSession();
 
     // 时间格式化辅助
     function formatTime(iso) {
@@ -792,7 +796,7 @@
     }
 
     // 显示用户昵称/邮箱，并保存当前用户邮箱
-    const { data: { user } } = await supabase.auth.getUser();
+    let user = session?.user || null;
     currentUserEmail = user?.email || null;
     currentUserId = user?.id || null;
 
@@ -816,7 +820,7 @@
       const btn = e.target.closest(".like-btn");
       if (!btn) return;
 
-      if (!currentUserId) {
+      if (!session) {
         alert("请先登录再点赞 💙");
         return;
       }
@@ -891,7 +895,8 @@
         submitBtn.disabled = true;
         submitBtn.textContent = "提交中...";
 
-        const { data: { user } } = await supabase.auth.getUser();
+        // 使用 session 判断登录
+        let user = session?.user || null;
 
         const name =
           nameInput.value.trim() ||
