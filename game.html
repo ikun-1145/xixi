@@ -1,507 +1,258 @@
 <!DOCTYPE html>
 <html lang="zh-Hans">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no" />
-<title id="pageTitle">小游戏</title>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<title>小游戏</title>
+
 <style>
-  /* 基础样式保持不变 */
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{
-    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-                 "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
-                 "Noto Sans CJK SC", "Source Han Sans SC",
-                 Arial, sans-serif;
-    /* 确保你目录下有 p/chengshi.png，没有的话会显示背景色 */
-    background: url('p/chengshi.png') center center / cover no-repeat fixed #87CEEB;
-    display:flex;flex-direction:column;align-items:center;
-    min-height:100vh;color:#1A1A1A;overflow:hidden;
-    /* 禁止移动端长按选中和高亮，提升游戏体验 */
-    -webkit-touch-callout: none;
-    -webkit-user-select: none;
-    user-select: none;
-    -webkit-tap-highlight-color: transparent;
-  }
+*{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",
+  "Microsoft YaHei",Arial,sans-serif;
+  background:url("p/chengshi.png") center/cover no-repeat fixed #87CEEB;
+  min-height:100vh;
+  display:flex;
+  justify-content:center;
+  align-items:flex-start;
+  user-select:none;
+  -webkit-tap-highlight-color:transparent;
+}
 
-  #gameWrapper{
-    position: relative;
-    display: inline-block;
-    margin-top: 2vh; /* 稍微留点顶部边距 */
-  }
+#gameWrapper{position:relative;margin-top:2vh}
+canvas{
+  border-radius:12px;
+  box-shadow:0 10px 20px rgba(0,0,0,.25);
+}
 
-  #gameCanvas{
-    display:block;
-    background: transparent;
-    border-radius:12px;
-    /* 像素化渲染在缩放时可能比较生硬，去掉试试，或者根据你的素材风格决定是否保留 */
-    /* image-rendering: pixelated; */
-    box-shadow: 0 10px 20px rgba(0,0,0,0.2); /* 加点阴影更有层次感 */
-  }
+.overlay{
+  position:absolute;
+  inset:0;
+  display:none;
+  flex-direction:column;
+  justify-content:center;
+  align-items:center;
+  gap:16px;
+  background:rgba(0,0,0,.35);
+}
 
-  .overlay{
-    display: none;
-    position: absolute;
-    top: 50%; left: 50%;
-    transform: translate(-50%, -50%);
-    z-index: 20;
-    width: 100%;
-    /* display: flex; 在JS里控制 */
-    flex-direction: column;
-    align-items: center;
-    gap: 1rem;
-    pointer-events: none;
-  }
-  .overlay .buttons { pointer-events: auto; }
+.overlay h1{
+  color:#fff;
+  font-size:48px;
+  text-shadow:2px 2px 0 #000;
+}
 
-  .gameoverText{
-    color: #fff;
-    font-weight: bold;
-    text-align: center;
-    /* 增强文字描边效果，防止背景太亮看不清 */
-    text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000, 4px 4px 8px rgba(0,0,0,0.5);
-    font-size: clamp(24px, 8vw, 56px); /* 稍微调大了一点字体 */
-    margin-bottom: 0.6rem;
-  }
-
-  .buttons{
-    display:flex;
-    flex-direction:column;
-    align-items:center;
-    gap: 0.8rem;
-  }
-  /* 按钮样式稍微优化，增加点击反馈 */
-  .buttons button,.buttons a{
-    padding:.8rem 2rem;
-    background:linear-gradient(to bottom,#71f8fc,#40e0d0);
-    border-radius:30px;
-    color:#005c5c;
-    font-weight:900;
-    font-size:1.2rem;
-    border:2px solid #fff;
-    cursor:pointer;
-    text-decoration:none;
-    box-shadow: 0 4px 6px rgba(0,0,0,0.2);
-    transition: transform 0.1s, box-shadow 0.1s;
-  }
-  .buttons button:active, .buttons a:active {
-      transform: translateY(2px);
-      box-shadow: 0 2px 3px rgba(0,0,0,0.2);
-      background:linear-gradient(to bottom,#5edce0,#36c7b9);
-  }
-
-  @media (max-width:480px){
-    .buttons button, .buttons a { font-size: 1.1rem; padding: 0.7rem 1.5rem; }
-  }
+.overlay button{
+  padding:.8rem 2.2rem;
+  font-size:1.2rem;
+  font-weight:700;
+  border-radius:30px;
+  border:2px solid #fff;
+  background:linear-gradient(#71f8fc,#40e0d0);
+  color:#004d4d;
+}
 </style>
 </head>
-<body>
-  <div id="gameWrapper">
-    <canvas id="gameCanvas"></canvas>
 
-    <div class="overlay" id="gameOverlay">
-      <div class="gameoverText" id="gameOverText"></div>
-      <div class="buttons" id="buttonsContainer">
-        <button id="restartBtn"></button>
-        </div>
-    </div>
+<body>
+<div id="gameWrapper">
+  <canvas id="game"></canvas>
+
+  <div class="overlay" id="overlay">
+    <h1 id="overText">游戏结束</h1>
+    <button id="restart">再来一局</button>
   </div>
+</div>
 
 <script>
-/* --------- i18n (保持不变) --------- */
-const i18n = {
-  zh: { title: "小游戏优化版", gameOver: "游戏结束", restart: "再来一局", home: "返回主页", score: "当前分数", highScore: "历史最高" },
-  en: { title: "Flappy Game", gameOver: "Game Over", restart: "Play Again", home: "Home", score: "Score", highScore: "Best" },
-  jp: { title: "ミニゲーム", gameOver: "ゲームオーバー", restart: "もう一度", home: "ホーム", score: "スコア", highScore: "自己ベスト" }
-};
+/* ================= 基础配置 ================= */
+const LOGIC_W = 400;
+const LOGIC_H = 650;
 
-function applyLang() {
-  // 自动检测浏览器语言，如果没有设置过
-  const userLang = navigator.language || navigator.userLanguage; 
-  let defaultLang = 'zh';
-  if(userLang.startsWith('en')) defaultLang = 'en';
-  else if(userLang.startsWith('ja')) defaultLang = 'jp';
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const overlay = document.getElementById("overlay");
+const restartBtn = document.getElementById("restart");
 
-  const lang = localStorage.getItem("lang") || defaultLang;
-  const t = i18n[lang] || i18n.zh;
-
-  document.title = t.title;
-  const titleEl = document.getElementById("pageTitle");
-  if (titleEl) titleEl.textContent = t.title;
-
-  document.getElementById("gameOverText").textContent = t.gameOver;
-  document.getElementById("restartBtn").textContent = t.restart;
-  const homeLink = document.getElementById("homeLink");
-  if(homeLink) homeLink.textContent = t.home;
-
-  window.__i18nScoreLabel = t.score;
-  window.__i18nHighScoreLabel = t.highScore;
-}
-
-applyLang();
-
-/* --------- 初始化与自适应 --------- */
-const canvas = document.getElementById('gameCanvas');
-// 明确指定使用 sRGB 颜色空间，有时能解决颜色暗淡问题
-const ctx = canvas.getContext('2d', { alpha: true, colorSpace: 'srgb' });
-const overlay = document.getElementById('gameOverlay');
-
-const LOGIC_WIDTH = 400;
-const LOGIC_HEIGHT = 650;
+/* ================= 自适应 ================= */
 let scale = 1;
 
-function resizeCanvas(){
-  // 留出一点边距，不要完全占满屏幕高度
-  const availableHeight = window.innerHeight * 0.95; 
-  const scaleX = window.innerWidth / LOGIC_WIDTH;
-  const scaleY = availableHeight / LOGIC_HEIGHT;
-  scale = Math.min(scaleX, scaleY);
-  // 限制最大缩放，防止在大屏幕上过大
-  if(scale > 1.5) scale = 1.5;
+function resize(){
+  const h = window.innerHeight * 0.95;
+  scale = Math.min(window.innerWidth / LOGIC_W, h / LOGIC_H, 1.5);
 
-  canvas.width = Math.round(LOGIC_WIDTH * scale);
-  canvas.height = Math.round(LOGIC_HEIGHT * scale);
-  const wrapper = document.getElementById('gameWrapper');
-  wrapper.style.width = canvas.width + 'px';
-  wrapper.style.height = canvas.height + 'px';
-  // 重新绘制一次，防止调整窗口时闪烁
-  if(gameOver) draw(); 
+  canvas.width = LOGIC_W * scale;
+  canvas.height = LOGIC_H * scale;
 }
-// 使用防抖优化resize事件
-let resizeTimeout;
-window.addEventListener('resize', () => {
-    clearTimeout(resizeTimeout);
-    resizeTimeout = setTimeout(resizeCanvas, 200);
-});
-resizeCanvas();
+window.addEventListener("resize", resize);
+resize();
 
-/* 加载小鸟图片 (确保目录下有 p/bird.png) */
+/* ================= 资源 ================= */
 const birdImg = new Image();
-birdImg.src = 'p/bird.png';
+birdImg.src = "p/bird.png";
 
-/* --------- 游戏变量 --------- */
-// 稍微调整了起始位置和大小
-let player = { x:60, y:300, size:34, dy:0, angle:0 };
-let gravity = 0.25; // 重力稍微加大一点点，手感更实
-let jump = -6.5;     // 跳跃力度相应调整
-let pipes = [];
-let pipeWidth = 65;  // 管道加宽一点
-let pipeGap = 170;   // 缝隙稍微调小一点点，增加挑战
-let pipeSpacing = 240;
-let pipeSpeed = 2.2; // 管道移动速度独立出来
-let score = 0;
-let gameOver = false;
-let animationId;
-let collisionType = null;
+/* ================= 游戏状态 ================= */
+let player, pipes, score, highScore, gameOver, rafId;
 
-/* 最高分 */
-let highScore = parseInt(localStorage.getItem('highScore')) || 0;
-function updateHighScore(){ 
-  if(score > highScore){ 
-    highScore = score; 
-    localStorage.setItem('highScore', highScore); 
-  } 
-}
+const gravity = 0.25;
+const jumpForce = -6.5;
+const pipeGap = 170;
+const pipeWidth = 65;
+const pipeSpacing = 240;
+const pipeSpeed = 2.2;
 
-/* 创建管道 */
-function createPipeAt(x){ 
-  // 增加随机性的上下限，防止管道太靠边
-  const minTop = 50;
-  const maxTop = LOGIC_HEIGHT - pipeGap - 120;
-  const topHeight = Math.floor(Math.random() * (maxTop - minTop + 1)) + minTop; 
-  pipes.push({ 
-    x, topHeight, passed:false,
-    get topRect(){ return {x:this.x, y:0, w:pipeWidth, h:this.topHeight}; },
-    get bottomRect(){ return {x:this.x, y:this.topHeight+pipeGap, w:pipeWidth, h:LOGIC_HEIGHT-(this.topHeight+pipeGap)}; }
-  }); 
-}
+highScore = Number(localStorage.getItem("highScore")) || 0;
 
-/* 碰撞检测 (矩形) */
-function rectsCollide(r1,r2){
-  // 稍微缩小一点碰撞箱，让判定更宽容（作弊技巧：玩家体验更好）
-  const hitboxPadding = 4; 
-  return !(r1.x+r1.w - hitboxPadding < r2.x || 
-           r1.x + hitboxPadding > r2.x+r2.w || 
-           r1.y+r1.h - hitboxPadding < r2.y || 
-           r1.y + hitboxPadding > r2.y+r2.h);
-}
-
-/* 重置游戏 */
+/* ================= 初始化 ================= */
 function resetGame(){
   player = { x:60, y:300, size:34, dy:0, angle:0 };
   pipes = [];
   score = 0;
   gameOver = false;
-  collisionType = null;
-  overlay.style.display = 'none';
-  cancelAnimationFrame(animationId);
-  // 初始创建两个管道就够了
-  for(let i=0;i<2;i++) createPipeAt(LOGIC_WIDTH + 100 + i * pipeSpacing);
-  animate();
+  overlay.style.display = "none";
+
+  for(let i=0;i<2;i++){
+    createPipe(LOGIC_W + 100 + i * pipeSpacing);
+  }
+
+  cancelAnimationFrame(rafId);
+  rafId = requestAnimationFrame(loop);
 }
 
-/* 绘制 */
-function draw(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.save();
-  ctx.scale(scale, scale);
+/* ================= 管道 ================= */
+function createPipe(x){
+  const min = 50;
+  const max = LOGIC_H - pipeGap - 120;
+  const top = Math.random() * (max - min) + min;
 
-  // 绘制管道的辅助函数 (优化点：立体管道)
-  function drawFancyPipe(x, y, w, h, isTopPipe) {
-      const capHeight = 24; // 管口盖子高度
-      const capExtraWidth = 6; // 管口比管身宽多少
-
-      // 1. 绘制管身渐变
-      let grd = ctx.createLinearGradient(x, 0, x + w, 0);
-      grd.addColorStop(0, "#438a2e"); // 深色边缘
-      grd.addColorStop(0.4, "#8ee36a"); // 亮色中间
-      grd.addColorStop(1, "#438a2e"); // 深色边缘
-      ctx.fillStyle = grd;
-
-      if (isTopPipe) {
-          // 上方管道身体
-          ctx.fillRect(x, y, w, h - capHeight);
-          // 上方管道口（颜色稍微深一点做区分）
-          ctx.fillStyle = "#3b7829";
-          ctx.fillRect(x - capExtraWidth, y + h - capHeight, w + capExtraWidth*2, capHeight);
-           // 加一条高光线在管口底部，增加立体感
-          ctx.fillStyle = "#b8f28d";
-          ctx.fillRect(x - capExtraWidth, y + h - 3, w + capExtraWidth*2, 3);
-      } else {
-           // 下方管道身体
-          ctx.fillRect(x, y + capHeight, w, h - capHeight);
-          // 下方管道口
-          ctx.fillStyle = "#3b7829";
-          ctx.fillRect(x - capExtraWidth, y, w + capExtraWidth*2, capHeight);
-          // 加一条高光线在管口顶部，增加立体感
-          ctx.fillStyle = "#b8f28d";
-          ctx.fillRect(x - capExtraWidth, y, w + capExtraWidth*2, 3);
-      }
-      
-      // 绘制管身纹理线条(可选)
-      ctx.fillStyle = "rgba(0,0,0,0.05)";
-      ctx.fillRect(x + w*0.2, y, w*0.1, h);
-      ctx.fillRect(x + w*0.7, y, w*0.1, h);
-  }
-
-  // 绘制所有管道
-  for(const p of pipes){
-      // 上管道
-      drawFancyPipe(p.x, 0, pipeWidth, p.topHeight, true);
-      // 下管道
-      drawFancyPipe(p.x, p.topHeight + pipeGap, pipeWidth, LOGIC_HEIGHT - (p.topHeight + pipeGap), false);
-  }
-
-  // 玩家（旋转）
-  ctx.save();
-  ctx.translate(player.x + player.size/2, player.y + player.size/2);
-
-  // --- 优化点：物理旋转逻辑 ---
-  // 如果游戏没结束，根据垂直速度 dy 计算角度。
-  // Math.max/min 用于限制角度范围：上升时最多抬头约25度，下降时最多低头90度
-  // 乘数 0.12 控制旋转灵敏度
-  if (!gameOver) {
-      let targetAngle = Math.max(-Math.PI / 7, Math.min(Math.PI / 2, player.dy * 0.12));
-      player.angle = targetAngle;
-  }
-  // 如果游戏结束，角度由死亡动画控制，这里直接应用
-  ctx.rotate(player.angle);
-
-  // 绘制小鸟
-  if(birdImg.complete && birdImg.naturalWidth > 0){
-    // 为了防止图片旋转时边缘锯齿，稍微画大一点点再缩小也可以，这里直接画
-    ctx.drawImage(birdImg, -player.size/2, -player.size/2, player.size, player.size);
-  } else {
-    // 图片没加载出来时的替代品 (画个简单的带眼睛的方块)
-    ctx.fillStyle = '#ffcc00';
-    ctx.fillRect(-player.size/2, -player.size/2, player.size, player.size);
-    ctx.fillStyle = '#fff'; // 眼睛
-    ctx.fillRect(player.size/4, -player.size/4, player.size/4, player.size/4);
-    ctx.fillStyle = '#000'; // 眼珠
-    ctx.fillRect(player.size/4 + 2, -player.size/4 + 2, player.size/8, player.size/8);
-  }
-  ctx.restore();
-
-  // 分数显示优化
-  ctx.textAlign = "left";
-  ctx.textBaseline = "top";
-  
-  // 绘制分数的辅助函数（带描边）
-  function drawScoreText(text, x, y, fontSize, isHighlight) {
-      ctx.font = `900 ${fontSize}px -apple-system, BlinkMacSystemFont, "Microsoft YaHei", sans-serif`;
-      ctx.lineWidth = isHighlight ? 5 : 4;
-      ctx.strokeStyle = '#fff'; // 白描边
-      ctx.strokeText(text, x, y);
-      ctx.fillStyle = isHighlight ? '#FFD700' : '#543a2a'; // 金色或深棕色填充
-      ctx.fillText(text, x, y);
-  }
-
-  const scoreLabel = window.__i18nScoreLabel || "分数";
-  const highScoreLabel = window.__i18nHighScoreLabel || "最高分";
-  
-  // 大的分数显示在中间上方
-  drawScoreText(`${score}`, LOGIC_WIDTH / 2 - 20, LOGIC_HEIGHT * 0.08, 50, true);
-  ctx.textAlign = "center"; // 居中
-
-  // 小的最高分显示在角落
-  ctx.textAlign = "left";
-  drawScoreText(`${highScoreLabel}: ${highScore}`, LOGIC_WIDTH * 0.04, LOGIC_HEIGHT * 0.02, 20, false);
-
-  // 游戏结束时的遮罩变暗效果
-  if(gameOver && overlay.style.display !== 'flex'){
-    ctx.fillStyle = 'rgba(0,0,0,0.3)';
-    ctx.fillRect(0,0,LOGIC_WIDTH,LOGIC_HEIGHT);
-  }
-
-  ctx.restore();
+  pipes.push({ x, top, passed:false });
 }
 
-/* 更新逻辑 */
+/* ================= 碰撞 ================= */
+function hit(a,b){
+  const pad = 4;
+  return !(
+    a.x+a.w-pad < b.x ||
+    a.x+pad > b.x+b.w ||
+    a.y+a.h-pad < b.y ||
+    a.y+pad > b.y+b.h
+  );
+}
+
+/* ================= 更新 ================= */
 function update(){
-  if(gameOver) return;
   player.dy += gravity;
-  // 限制最大下落速度
   if(player.dy > 12) player.dy = 12;
   player.y += player.dy;
 
-  // 生成管道
-  if(pipes.length === 0 || (pipes[pipes.length-1].x < LOGIC_WIDTH - pipeSpacing)){
-    createPipeAt(LOGIC_WIDTH + 50);
+  if(pipes[pipes.length-1].x < LOGIC_W - pipeSpacing){
+    createPipe(LOGIC_W + 50);
   }
-  // 使用变量控制速度
-  for(const p of pipes) p.x -= pipeSpeed;
-  pipes = pipes.filter(p => p.x + pipeWidth > -100); // 确保完全移出屏幕再删除
 
-  // 玩家碰撞箱
-  const birdRect = {x:player.x, y:player.y, w:player.size, h:player.size};
+  pipes.forEach(p=>p.x -= pipeSpeed);
+  pipes = pipes.filter(p=>p.x + pipeWidth > -100);
+
+  const birdBox = { x:player.x,y:player.y,w:player.size,h:player.size };
 
   for(const p of pipes){
-    if(rectsCollide(birdRect, p.topRect)){
-      collisionType = (player.dy <= 0) ? "top" : "side"; // 向上撞是top，否则算side
+    const topBox = { x:p.x,y:0,w:pipeWidth,h:p.top };
+    const botBox = {
+      x:p.x,
+      y:p.top+pipeGap,
+      w:pipeWidth,
+      h:LOGIC_H-(p.top+pipeGap)
+    };
+
+    if(hit(birdBox,topBox) || hit(birdBox,botBox)){
       endGame();
     }
-    if(rectsCollide(birdRect, p.bottomRect)){
-       // 简单处理，撞到下管道就算bottom，视觉上更好接受
-      collisionType = "bottom";
-      endGame();
-    }
-    // 计分逻辑优化：当小鸟中心通过管道中心时计分
-    if(!p.passed && player.x + player.size/2 > p.x + pipeWidth/2){
-      score++; p.passed = true;
-      // 可选：可以在这里加个简单得分音效
-      // playScoreSound();
+
+    if(!p.passed && player.x+player.size/2 > p.x+pipeWidth/2){
+      score++;
+      p.passed = true;
     }
   }
 
-  // 碰到边界
-  if(player.y + player.size > LOGIC_HEIGHT - 10){ // 稍微留点地面余量
-    collisionType = "bottom";
-    player.y = LOGIC_HEIGHT - player.size - 10;
+  if(player.y + player.size > LOGIC_H-10 || player.y < -player.size){
     endGame();
   }
-  // 允许稍微飞出顶部一点点，但不能太高
-  if(player.y < -player.size * 1.5){
-    collisionType = "top";
-    endGame();
-  }
+
+  player.angle = Math.max(-0.35, Math.min(Math.PI/2, player.dy*0.12));
 }
 
-/* 动画循环 */
-let lastTime = 0;
-function animate(timeStamp){
-  // 简单的帧率控制，防止在高刷屏上速度过快（虽然目前逻辑没完全解耦delta time，但能起一定作用）
-  const deltaTime = timeStamp - lastTime;
-  if (deltaTime < 1000 / 70) { // 限制最大约70fps
-      if(!gameOver) animationId = requestAnimationFrame(animate);
-      return;
-  }
-  lastTime = timeStamp;
+/* ================= 绘制 ================= */
+function draw(){
+  ctx.setTransform(1,0,0,1,0,0);
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.scale(scale,scale);
 
+  // 管道
+  ctx.fillStyle="#5cb85c";
+  pipes.forEach(p=>{
+    ctx.fillRect(p.x,0,pipeWidth,p.top);
+    ctx.fillRect(
+      p.x,
+      p.top+pipeGap,
+      pipeWidth,
+      LOGIC_H-(p.top+pipeGap)
+    );
+  });
+
+  // 鸟
+  ctx.save();
+  ctx.translate(player.x+player.size/2,player.y+player.size/2);
+  ctx.rotate(player.angle);
+
+  if(birdImg.complete){
+    ctx.drawImage(birdImg,-player.size/2,-player.size/2,player.size,player.size);
+  }else{
+    ctx.fillStyle="#ffcc00";
+    ctx.fillRect(-player.size/2,-player.size/2,player.size,player.size);
+  }
+  ctx.restore();
+
+  // 分数
+  ctx.fillStyle="#fff";
+  ctx.font="900 42px sans-serif";
+  ctx.textAlign="center";
+  ctx.fillText(score,LOGIC_W/2,60);
+}
+
+/* ================= 主循环 ================= */
+function loop(){
   update();
   draw();
-  if(!gameOver){
-    animationId = requestAnimationFrame(animate);
-  }
+  if(!gameOver) rafId = requestAnimationFrame(loop);
 }
 
-/* 死亡动画 */
+/* ================= 结束 ================= */
 function endGame(){
   if(gameOver) return;
   gameOver = true;
-  
-  // 死亡时给个向上的小跳跃力，如果不是撞天花板的话
-  if (collisionType !== "top") {
-      player.dy = -4;
-  } else {
-      player.dy = 0;
-  }
 
-  function deathAnimation(){
-    player.dy += gravity * 1.5; // 死亡下落快一点
-    player.y += player.dy;
+  highScore = Math.max(highScore, score);
+  localStorage.setItem("highScore", highScore);
 
-    // 碰撞方向特效 (优化：旋转更加剧烈和明确)
-    if(collisionType === "top" || collisionType === "side"){
-       player.angle += 0.15; // 撞头或撞墙后快速旋转下落
-       if(collisionType === "side") player.x -= 1.5; // 被弹开
-    } else if(collisionType === "bottom"){
-       // 撞到底部直接栽倒
-       player.angle = Math.min(Math.PI/2, player.angle + 0.2);
-    }
-
-    draw();
-    
-    // 落地判断
-    if(player.y < LOGIC_HEIGHT - player.size - 10){
-      requestAnimationFrame(deathAnimation);
-    } else {
-      player.y = LOGIC_HEIGHT - player.size - 10;
-      draw(); // 最后绘制一帧确保在地面
-      updateHighScore();
-      // 延迟一点点弹出菜单，让玩家看清死亡现场
-      setTimeout(() => {
-          overlay.style.display = 'flex';
-      }, 300);
-    }
-  }
-  deathAnimation();
+  overlay.style.display = "flex";
 }
 
-/* 事件优化 (修复空格滚动和移动端延迟) */
-function jumpAction(e) {
-    // 如果是键盘事件，且是空格键，阻止默认滚动行为
-    if (e && e.type === 'keydown' && e.code === 'Space') {
-        e.preventDefault();
-    }
-    // 只有游戏进行中才允许跳跃
-    if (!gameOver) {
-        player.dy = jump;
-        // 可选：播放跳跃音效
-        // playJumpSound();
-    }
+/* ================= 输入 ================= */
+function jump(e){
+  if(e?.code==="Space") e.preventDefault();
+  if(!gameOver) player.dy = jumpForce;
 }
+document.addEventListener("keydown", jump);
+document.addEventListener("mousedown", jump);
+document.addEventListener("touchstart", jump, {passive:false});
 
-// 使用 passive: false 确保能 preventDefault
-document.addEventListener('keydown', jumpAction);
-document.addEventListener('touchstart', jumpAction, {passive: false}); 
-document.addEventListener('mousedown', jumpAction); // 兼容PC鼠标点击
+restartBtn.onclick = e=>{
+  e.stopPropagation();
+  resetGame();
+};
 
-// 按钮点击事件
-document.getElementById('restartBtn').addEventListener('click', (e) => {
-    // 阻止冒泡，防止点按钮时触发 jumpAction
-    e.stopPropagation();
-    resetGame();
-});
-document.getElementById('buttonsContainer').addEventListener('touchstart', (e) => e.stopPropagation(), {passive: true});
-document.getElementById('buttonsContainer').addEventListener('mousedown', (e) => e.stopPropagation());
-
-
-/* 启动 */
-// 初始不直接开始，先resize再开始
-setTimeout(() => {
-    resizeCanvas();
-    resetGame();
-}, 100);
-
+/* ================= 启动 ================= */
+birdImg.onload = resetGame;
+setTimeout(resetGame,200); // 兜底
 </script>
 </body>
 </html>
