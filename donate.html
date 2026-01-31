@@ -5,7 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title id="pageTitle">捐赠支持 - 霜蓝</title>
   <link rel="stylesheet" href="style.css">
-  <script type="module" src="supabaseClient.js"></script>
   <style>
     body {
       font-family: "Helvetica Neue", sans-serif;
@@ -690,7 +689,7 @@
     });
   </script>
   <script type="module">
-    import { supabase, syncSession, getSession } from './p/js/supabaseClient.js';
+    import { supabase, syncSession, getSession } from './supabaseClient.js';
 
     // ==== 登录状态全局同步 ====
     await syncSession();
