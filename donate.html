@@ -478,11 +478,12 @@
     
     <div class="qrcode-section">
       <div class="qrcode">
-        <img id="wxQr" src="p/ten_wx.png" alt="微信收款码" />
+        <img id="wxQr" src="p/ten_wx.jpeg" alt="微信收款码" />
         <p id="wxPayText"></p>
+        <p id="amountText" style="margin-top:4px; font-size:13px; color:#9ffcff;"></p>
       </div>
       <div class="qrcode">
-        <img id="zfbQr" src="p/ten_zfb.png" alt="支付宝收款码" />
+        <img id="zfbQr" src="p/ten_zfb.jpeg" alt="支付宝收款码" />
         <p id="aliPayText"></p>
       </div>
     </div>
@@ -937,19 +938,23 @@
 
     const wxQr = document.getElementById("wxQr");
     const zfbQr = document.getElementById("zfbQr");
+    const amountText = document.getElementById("amountText");
 
     function updateQrByTier(tier) {
       if (tier === "coffee") {
-        wxQr.src = "p/ten_wx.png";
-        zfbQr.src = "p/ten_zfb.png";
+        wxQr.src = "p/ten_wx.jpeg";
+        zfbQr.src = "p/ten_zfb.jpeg";
+        amountText.textContent = "当前金额：¥10";
       }
       if (tier === "meal") {
-        wxQr.src = "p/twenty_wx.png";
-        zfbQr.src = "p/twenty_zfb.png";
+        wxQr.src = "p/twenty_wx.jpeg";
+        zfbQr.src = "p/twenty_zfb.jpeg";
+        amountText.textContent = "当前金额：¥20";
       }
       if (tier === "biglove") {
-        wxQr.src = "p/fifty_wx.png";
-        zfbQr.src = "p/fifty_zfb.png";
+        wxQr.src = "p/fifty_wx.jpeg";
+        zfbQr.src = "p/fifty_zfb.jpeg";
+        amountText.textContent = "当前金额：¥50";
       }
     }
 
