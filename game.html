@@ -59,6 +59,47 @@ canvas{
   color:#004d4d;
 }
 </style>
+
+/* ================= 横屏 UI + iOS 安全区 ================= */
+
+/* 默认按钮样式（竖屏） */
+.overlay button{
+  margin-top: 12px;
+}
+
+/* 横屏时：按钮移动到右侧中部 */
+@media (orientation: landscape) {
+  #gameWrapper{
+    align-items: center;
+  }
+
+  .overlay{
+    flex-direction: row;
+    justify-content: center;
+    gap: 24px;
+  }
+
+  .overlay h1{
+    font-size: 36px;
+  }
+
+  .overlay button{
+    font-size: 1.1rem;
+    padding: .7rem 1.8rem;
+  }
+}
+
+/* iOS 底部安全区（Home Indicator） */
+@supports (padding: env(safe-area-inset-bottom)) {
+  body{
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .overlay{
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
+
 </head>
 
 <body>
