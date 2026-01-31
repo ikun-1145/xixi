@@ -58,7 +58,6 @@ canvas{
   background:linear-gradient(#71f8fc,#40e0d0);
   color:#004d4d;
 }
-</style>
 
 /* ================= 横屏 UI + iOS 安全区 ================= */
 
@@ -68,7 +67,7 @@ canvas{
 }
 
 /* 横屏时：按钮移动到右侧中部 */
-@media (orientation: landscape) {
+@media (orientation: landscape) and (max-width: 900px) {
   #gameWrapper{
     align-items: center;
   }
@@ -99,7 +98,7 @@ canvas{
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
-
+</style>
 </head>
 
 <body>
@@ -163,20 +162,16 @@ function resize(){
   const availableW = window.innerWidth;
   const availableH = window.innerHeight * 0.95;
 
-  const maxAspect = 0.62; // 最大宽高比限制（防止超宽屏）
-  const aspect = availableW / availableH;
-
+  // ====== 填满屏幕（cover 风格，而不是 contain）======
+  // 目标：宁可裁一点背景，也不要只占中间一小块
   let widthBased = availableW / LOGIC_W;
   let heightBased = availableH / LOGIC_H;
 
-  // 超宽屏时，按高度缩放
-  if (aspect > maxAspect) {
-    scale = heightBased;
-  } else {
-    scale = Math.min(widthBased, heightBased);
-  }
+  // 取较大的那个，优先填满屏幕
+  scale = Math.max(widthBased, heightBased);
 
-  scale = Math.min(scale, 1.5);
+  // 给一个上限，防止在超大屏幕上无限放大
+  scale = Math.min(scale, 2.0);
 
   // CSS 显示尺寸
   canvas.style.width = LOGIC_W * scale + "px";
