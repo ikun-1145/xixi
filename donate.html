@@ -933,7 +933,7 @@
 
     // 档位选择效果
     const tierBtns = document.querySelectorAll(".tier-btn");
-    const hint = document.getElementById("tierHint");
+    const hint = document.getElementById("tierHintText");
     let selectedTier = null;
 
     const wxQr = document.getElementById("wxQr");
@@ -970,6 +970,15 @@
         if (selectedTier === "biglove") hint.textContent = "💖 已选择：狠狠爱我档位，真的太感动了！";
       });
     });
+
+    // 默认选中咖啡档
+    const defaultBtn = document.querySelector('.tier-btn[data-tier="coffee"]');
+    if (defaultBtn) {
+      defaultBtn.classList.add("active");
+      selectedTier = "coffee";
+      updateQrByTier("coffee");
+      hint.textContent = "☕ 已选择：咖啡档位，感谢你的温柔支持～";
+    }
 
     // 扫码点击感谢动画
     const toast = document.getElementById("thanksToast");
