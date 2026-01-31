@@ -17,9 +17,16 @@ body{
   align-items:flex-start;
   user-select:none;
   -webkit-tap-highlight-color:transparent;
+  /* iOS Safari 高度修复 */
+  min-height: 100svh;
 }
 
-#gameWrapper{position:relative;margin-top:2vh}
+#gameWrapper{
+  position:relative;
+  margin:2vh auto;
+  display:flex;
+  justify-content:center;
+}
 canvas{
   border-radius:12px;
   box-shadow:0 10px 20px rgba(0,0,0,.25);
@@ -110,11 +117,37 @@ const restartBtn = document.getElementById("restart");
 let scale = 1;
 
 function resize(){
-  const h = window.innerHeight * 0.95;
-  scale = Math.min(window.innerWidth / LOGIC_W, h / LOGIC_H, 1.5);
+  const dpr = window.devicePixelRatio || 1;
 
-  canvas.width = LOGIC_W * scale;
-  canvas.height = LOGIC_H * scale;
+  const availableW = window.innerWidth;
+  const availableH = window.innerHeight * 0.95;
+
+  const maxAspect = 0.62; // 最大宽高比限制（防止超宽屏）
+  const aspect = availableW / availableH;
+
+  let widthBased = availableW / LOGIC_W;
+  let heightBased = availableH / LOGIC_H;
+
+  // 超宽屏时，按高度缩放
+  if (aspect > maxAspect) {
+    scale = heightBased;
+  } else {
+    scale = Math.min(widthBased, heightBased);
+  }
+
+  scale = Math.min(scale, 1.5);
+
+  // CSS 显示尺寸
+  canvas.style.width = LOGIC_W * scale + "px";
+  canvas.style.height = LOGIC_H * scale + "px";
+
+  // 实际像素尺寸（乘 DPR，保证高清）
+  canvas.width = Math.round(LOGIC_W * scale * dpr);
+  canvas.height = Math.round(LOGIC_H * scale * dpr);
+
+  // 每次 resize 都重置坐标系，避免 scale 叠加
+  ctx.setTransform(1, 0, 0, 1, 0, 0);
+  ctx.scale(scale * dpr, scale * dpr);
 }
 window.addEventListener("resize", resize);
 resize();
@@ -285,6 +318,18 @@ restartBtn.onclick = e=>{
 /* ================= 启动 ================= */
 birdImg.onload = resetGame;
 setTimeout(resetGame,200); // 兜底
+
+/* ================= iOS Safari 特殊适配 ================= */
+if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
+  document.body.addEventListener("touchmove", e => {
+    if (e.target === canvas) e.preventDefault();
+  }, { passive:false });
+
+  // 强制重新计算尺寸（解决横竖屏切换高度不准）
+  window.addEventListener("orientationchange", () => {
+    setTimeout(resize, 300);
+  });
+}
 </script>
 </body>
 </html>
