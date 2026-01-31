@@ -95,6 +95,26 @@
       margin: 40px 0;
     }
 
+    .amount-center {
+      grid-column: 1 / -1;
+      text-align: center;
+      margin-top: -6px;
+      margin-bottom: 6px;
+    }
+
+    .amount-center span {
+      display: inline-block;
+      font-size: 22px;
+      font-weight: 700;
+      color: #71f8fc;
+      padding: 6px 18px;
+      border-radius: 999px;
+      background: rgba(113,248,252,0.15);
+      box-shadow: 0 0 0 1px rgba(113,248,252,0.4),
+                  0 10px 30px rgba(113,248,252,0.35);
+      letter-spacing: 1px;
+    }
+
     .qrcode {
       background: rgba(255,255,255,0.08);
       border-radius: 16px;
@@ -497,7 +517,9 @@
       <div class="qrcode">
         <img id="wxQr" src="p/ten_wx.jpeg" alt="微信收款码" />
         <p id="wxPayText"></p>
-        <p id="amountText" style="margin-top:4px; font-size:13px; color:#9ffcff;"></p>
+      </div>
+      <div class="amount-center">
+        <span id="amountText"></span>
       </div>
       <div class="qrcode">
         <img id="zfbQr" src="p/ten_zfb.jpeg" alt="支付宝收款码" />
