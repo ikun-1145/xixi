@@ -12,18 +12,29 @@ html, body {
   background-color: #161823;
 }
 :root {
-  --primary: #3EEDE7;   /* 碧蓝 */
-  --bg-dark: #161823;   /* 漆黑 */
-  --bg-deep: #053154;   /* 暗宝石 */
-  --text-main: #E8FFFF;
+  /* 日间主题（主页同款） */
+  --bg-main-day: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center / cover no-repeat fixed;
+  --card-bg-day: rgba(255,255,255,0.55);
+  --text-day: #1A1A1A;
+  --accent-day: #71f8fc;
+
+  /* 夜间主题（donate 当前） */
+  --bg-main-night: #161823;
+  --card-bg-night: rgba(22, 24, 35, 0.9);
+  --text-night: #E8FFFF;
+  --accent-night: #3EEDE7;
 }
     body {
       font-family: "Helvetica Neue", sans-serif;
-      background-color: var(--bg-dark);
-      background-image: none;
-      color: var(--text-main);
       margin: 0;
       padding: 0;
+      background: var(--bg-main-night);
+      color: var(--text-night);
+    }
+
+    body.day {
+      background: var(--bg-main-day);
+      color: var(--text-day);
     }
 
     .container {
@@ -31,10 +42,15 @@ html, body {
       max-width: 800px;
       margin: 80px auto;
       padding: 30px;
-      background-color: rgba(22, 24, 35, 0.9);
+      background-color: var(--card-bg-night);
       border-radius: 15px;
       box-shadow: 0 0 24px rgba(62, 237, 231, 0.35);
       animation: fadeInUp 1s ease-out;
+    }
+
+    body.day .container {
+      background-color: var(--card-bg-day);
+      box-shadow: 0 12px 30px rgba(0,0,0,0.12);
     }
 
     @keyframes fadeInUp {
@@ -493,15 +509,31 @@ html, body {
       position: fixed;
       inset: 0;
       z-index: 9999;
-      background: radial-gradient(
-        circle at center,
-        rgba(62,237,231,0.12),
-        rgba(22,24,35,0.95) 60%
-      );
       display: flex;
       align-items: center;
       justify-content: center;
       transition: opacity 0.6s ease;
+      background: radial-gradient(
+        circle at center,
+        rgba(113,248,252,0.18),
+        #ffffff 65%
+      );
+    }
+
+    body:not(.day) #loading {
+      background: radial-gradient(
+        circle at center,
+        rgba(62,237,231,0.14),
+        rgba(22,24,35,0.96) 65%
+      );
+    }
+    /* 主题强调色变量适配 */
+    body {
+      --primary: var(--accent-night);
+    }
+
+    body.day {
+      --primary: var(--accent-day);
     }
 
     .loader {
@@ -633,6 +665,11 @@ html, body {
 
   <!-- 跳转与加载逻辑 -->
   <script>
+    (function applyDonateAutoTheme() {
+      const hour = new Date().getHours();
+      const isDay = hour >= 6 && hour < 18;
+      document.body.classList.toggle('day', isDay);
+    })();
     /* --------- i18n --------- */
     const i18n = {
       zh: {
