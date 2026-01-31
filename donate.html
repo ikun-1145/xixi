@@ -688,11 +688,10 @@
     });
   </script>
   <script type="module">
-    import { supabase, syncSession, getSession } from '/p/js/supabaseClient.js';
+    import { supabase, syncSession } from '/p/js/supabaseClient.js';
 
     // ==== 登录状态全局同步 ====
-    await syncSession();
-    const session = getSession();
+    const session = await syncSession();
 
     // 时间格式化辅助
     function formatTime(iso) {
