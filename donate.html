@@ -134,6 +134,25 @@
       transition: transform .25s ease;
     }
 
+    .qrcode.flash {
+      animation: qrFlash 0.35s ease;
+    }
+
+    @keyframes qrFlash {
+      0%   { transform: scale(1); box-shadow: 0 0 0 rgba(113,248,252,0); }
+      50%  { transform: scale(1.06); box-shadow: 0 0 20px rgba(113,248,252,0.6); }
+      100% { transform: scale(1); box-shadow: 0 0 0 rgba(113,248,252,0); }
+    }
+
+    .amount-flash {
+      animation: amountFlash 0.4s ease;
+    }
+
+    @keyframes amountFlash {
+      from { opacity: 0.3; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
     .qrcode:hover img {
       transform: scale(1.05);
     }
@@ -940,21 +959,42 @@
     const amountText = document.getElementById("amountText");
 
     function updateQrByTier(tier) {
+      let wxSrc = "";
+      let zfbSrc = "";
+      let amount = "";
+
       if (tier === "coffee") {
-        wxQr.src = "p/ten_wx.jpeg";
-        zfbQr.src = "p/ten_zfb.jpeg";
-        amountText.textContent = "当前金额：¥10";
+        wxSrc = "p/ten_wx.jpeg";
+        zfbSrc = "p/ten_zfb.jpeg";
+        amount = "当前金额：¥10";
       }
       if (tier === "meal") {
-        wxQr.src = "p/twenty_wx.jpeg";
-        zfbQr.src = "p/twenty_zfb.jpeg";
-        amountText.textContent = "当前金额：¥20";
+        wxSrc = "p/twenty_wx.jpeg";
+        zfbSrc = "p/twenty_zfb.jpeg";
+        amount = "当前金额：¥20";
       }
       if (tier === "biglove") {
-        wxQr.src = "p/fifty_wx.jpeg";
-        zfbQr.src = "p/fifty_zfb.jpeg";
-        amountText.textContent = "当前金额：¥50";
+        wxSrc = "p/fifty_wx.jpeg";
+        zfbSrc = "p/fifty_zfb.jpeg";
+        amount = "当前金额：¥50";
       }
+
+      if (!wxSrc) return;
+
+      wxQr.src = wxSrc;
+      zfbQr.src = zfbSrc;
+      amountText.textContent = amount;
+
+      // 触发视觉反馈
+      document.querySelectorAll(".qrcode").forEach(box => {
+        box.classList.remove("flash");
+        void box.offsetWidth; // 强制重绘
+        box.classList.add("flash");
+      });
+
+      amountText.classList.remove("amount-flash");
+      void amountText.offsetWidth;
+      amountText.classList.add("amount-flash");
     }
 
     tierBtns.forEach(btn => {
@@ -982,7 +1022,8 @@
     // 扫码点击感谢动画
     const toast = document.getElementById("thanksToast");
     document.querySelectorAll(".qrcode img").forEach(img => {
-      img.addEventListener("click", () => {
+      img.addEventListener("click", (e) => {
+        e.stopPropagation(); // 不影响档位逻辑
         toast.classList.add("show");
         setTimeout(() => toast.classList.remove("show"), 1800);
       });
