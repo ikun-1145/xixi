@@ -5,6 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title id="pageTitle">捐赠支持 - 霜蓝</title>
   <style>
+    body {
+  visibility: hidden;
+}
 html, body {
   background-color: #161823;
 }
@@ -738,15 +741,18 @@ html, body {
     }
     window.applyLangDonate = applyLangDonate;
 
-    window.addEventListener('load', () => {
-      document.body.classList.add('fade-in');
-      const loader = document.getElementById('loading');
-      if (loader) {
-        loader.style.opacity = '0';
-        setTimeout(() => loader.style.display = 'none', 600);
-      }
-      window.applyLangDonate && window.applyLangDonate(null);
-    });
+window.addEventListener('load', () => {
+  // ✅ Reveal page ONLY after loading finishes
+  document.body.style.visibility = 'visible';
+
+  document.body.classList.add('fade-in');
+  const loader = document.getElementById('loading');
+  if (loader) {
+    loader.style.opacity = '0';
+    setTimeout(() => loader.style.display = 'none', 600);
+  }
+  window.applyLangDonate && window.applyLangDonate(null);
+});
 
     // 所有 a[href] 和按钮跳转添加淡出动画
     document.addEventListener("DOMContentLoaded", () => {
