@@ -478,11 +478,11 @@
     
     <div class="qrcode-section">
       <div class="qrcode">
-        <img src="p/wx.jpeg" alt="微信收款码" />
+        <img id="wxQr" src="p/ten_wx.png" alt="微信收款码" />
         <p id="wxPayText"></p>
       </div>
       <div class="qrcode">
-        <img src="p/zfb.jpeg" alt="支付宝收款码" />
+        <img id="zfbQr" src="p/ten_zfb.png" alt="支付宝收款码" />
         <p id="aliPayText"></p>
       </div>
     </div>
@@ -935,11 +935,30 @@
     const hint = document.getElementById("tierHint");
     let selectedTier = null;
 
+    const wxQr = document.getElementById("wxQr");
+    const zfbQr = document.getElementById("zfbQr");
+
+    function updateQrByTier(tier) {
+      if (tier === "coffee") {
+        wxQr.src = "p/ten_wx.png";
+        zfbQr.src = "p/ten_zfb.png";
+      }
+      if (tier === "meal") {
+        wxQr.src = "p/twenty_wx.png";
+        zfbQr.src = "p/twenty_zfb.png";
+      }
+      if (tier === "biglove") {
+        wxQr.src = "p/fifty_wx.png";
+        zfbQr.src = "p/fifty_zfb.png";
+      }
+    }
+
     tierBtns.forEach(btn => {
       btn.addEventListener("click", () => {
         tierBtns.forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         selectedTier = btn.dataset.tier;
+        updateQrByTier(selectedTier);
 
         if (selectedTier === "coffee") hint.textContent = "☕ 已选择：咖啡档位，感谢你的温柔支持～";
         if (selectedTier === "meal") hint.textContent = "🍔 已选择：吃饭档位，今天加个鸡腿！";
