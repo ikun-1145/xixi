@@ -84,7 +84,7 @@ const i18n = {
 };
 function detectLang(){
   const saved = localStorage.getItem("lang");
-  if (saved) return saved;
+  if (saved && i18n[saved]) return saved;
 
   const nav = navigator.language || "zh";
   if (nav.startsWith("ja")) return "ja";
