@@ -293,6 +293,10 @@
     }
 
     .like-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      font-weight: 500;
       background: rgba(62,237,231,0.15);
       border: 1px solid rgba(62,237,231,0.6);
       color: var(--primary);
@@ -303,13 +307,48 @@
       transition: .2s ease;
     }
 
-    .like-btn:hover {
-      background: rgba(62,237,231,0.35);
+    .like-btn .heart {
+      width: 14px;
+      height: 14px;
+      position: relative;
+      transform: rotate(-45deg);
+      background: var(--primary);
+    }
+
+    .like-btn .heart::before,
+    .like-btn .heart::after {
+      content: "";
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      background: var(--primary);
+      border-radius: 50%;
+      top: 0;
+      left: 0;
+    }
+
+    .like-btn .heart::after {
+      left: 7px;
     }
 
     .like-btn.liked {
       background: var(--primary);
       color: #000;
+    }
+
+    .like-btn.liked .heart {
+      filter: drop-shadow(0 0 6px rgba(62,237,231,0.8));
+      animation: heartPop 0.3s ease;
+    }
+
+    .like-btn:not(.liked) .heart {
+      opacity: 0.35;
+    }
+
+    @keyframes heartPop {
+      0% { transform: scale(1) rotate(-45deg); }
+      50% { transform: scale(1.3) rotate(-45deg); }
+      100% { transform: scale(1) rotate(-45deg); }
     }
 
     .thanks-form {
@@ -811,16 +850,15 @@
 
         const html = data.map(item => {
           const isMine = currentUserEmail && item.name === currentUserEmail;
-
           return `
           <div class="thanks-item ${isMine ? "mine" : ""}" data-id="${item.id}">
             <div class="name">${item.name || "匿名朋友"}</div>
             <div class="msg">${item.message || "感谢支持！"}</div>
-
             <div class="like-row">
               <div class="time">${formatTime(item.created_at)}</div>
               <button class="like-btn">
-                🤍 0
+                <span class="heart"></span>
+                <span class="like-count">0</span>
               </button>
             </div>
           </div>
@@ -878,6 +916,9 @@
       btn.disabled = true;
 
       const isLiked = btn.classList.contains("liked");
+      // Find the like-count span for updating
+      const countSpan = btn.querySelector(".like-count");
+      let count = parseInt(countSpan ? countSpan.textContent : "0", 10);
 
       if (!isLiked) {
         // 点赞
@@ -887,8 +928,8 @@
         });
 
         if (!error) {
-          const count = parseInt(btn.textContent.replace(/[^\d]/g, "")) + 1;
-          btn.textContent = `❤️ ${count}`;
+          count = count + 1;
+          if (countSpan) countSpan.textContent = count;
           btn.classList.add("liked");
         }
       } else {
@@ -900,11 +941,8 @@
           .eq("user_id", currentUserId);
 
         if (!error) {
-          const count = Math.max(
-            0,
-            parseInt(btn.textContent.replace(/[^\d]/g, "")) - 1
-          );
-          btn.textContent = `🤍 ${count}`;
+          count = Math.max(0, count - 1);
+          if (countSpan) countSpan.textContent = count;
           btn.classList.remove("liked");
         }
       }
