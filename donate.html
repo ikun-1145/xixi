@@ -8,15 +8,17 @@
     body {
   visibility: hidden;
 }
-html, body {
-  background-color: #161823;
-}
+
+    html {
+      background: #b9dde5;
+    }
+
 :root {
   /* 日间主题（主页同款） */
-  --bg-main-day: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center / cover no-repeat fixed;
+  --bg-main-day: linear-gradient(135deg, #b9dde5, #d2ebf0), url('p/bg.png') center / cover no-repeat fixed;
   --card-bg-day: rgba(255,255,255,0.55);
-  --text-day: #1A1A1A;
-  --accent-day: #71f8fc;
+  --text-day: #1f2f33;     /* 主文字，明显更深 */
+  --accent-day: #2fbec4;  /* 去荧光的蓝绿强调色 */
 
   /* 夜间主题（donate 当前） */
   --bg-main-night: #161823;
@@ -47,12 +49,23 @@ html, body {
       box-shadow: 0 0 24px rgba(62, 237, 231, 0.35);
       animation: fadeInUp 1s ease-out;
     }
-
     body.day .container {
-      background-color: var(--card-bg-day);
-      box-shadow: 0 12px 30px rgba(0,0,0,0.12);
+      background-color: rgba(225, 242, 247, 0.92);
+      box-shadow: 0 18px 40px rgba(0,0,0,0.16);
     }
 
+    body.day p,
+    body.day span,
+    body.day .thanks-item .msg,
+    body.day .thanks-item .time,
+    body.day #tierHintText {
+      color: var(--text-day);
+    }
+
+body.day .thanks-item {
+  background: rgba(225, 240, 244, 0.95);
+  border-color: rgba(47,190,196,0.45);
+}
     @keyframes fadeInUp {
       from { opacity: 0; transform: translateY(30px); }
       to { opacity: 1; transform: translateY(0); }
@@ -238,7 +251,9 @@ html, body {
       color: #ccc;
       font-size: 14px;
     }
-
+body.day .footer {
+  color: #3f5f66;
+}
     @media (max-width: 600px) {
       .qrcode-section {
         grid-template-columns: 1fr;
@@ -331,32 +346,32 @@ html, body {
 
     .like-btn .heart {
       position: relative;
-      width: 16px;
-      height: 14px;
+      width: 10px;
+      height: 10px;
+      transform: rotate(-45deg);
       display: inline-block;
+      background: var(--primary);
+      border-radius: 2px;
     }
 
     .like-btn .heart::before,
     .like-btn .heart::after {
       content: "";
       position: absolute;
-      width: 8px;
-      height: 12px;
+      width: 10px;
+      height: 10px;
       background: var(--primary);
-      border-radius: 8px 8px 0 0;
-      top: 2px;
+      border-radius: 50%;
     }
 
     .like-btn .heart::before {
-      left: 4px;
-      transform: rotate(-45deg);
-      transform-origin: 0 100%;
+      top: -5px;
+      left: 0;
     }
 
     .like-btn .heart::after {
-      right: 4px;
-      transform: rotate(45deg);
-      transform-origin: 100% 100%;
+      left: 5px;
+      top: 0;
     }
 
     .like-btn.liked {
@@ -390,6 +405,23 @@ html, body {
       padding: 18px 16px 20px;
       box-shadow: 0 10px 35px rgba(62,237,231,0.18);
     }
+    body.day .thanks-form {
+  background: rgba(215, 235, 240, 0.95);
+  border-color: rgba(47,190,196,0.45);
+  box-shadow: 0 14px 32px rgba(0,0,0,0.18);
+}
+
+body.day .thanks-form input,
+body.day .thanks-form textarea {
+  background: rgba(255,255,255,0.85);
+  color: #1f2f33;
+  border-color: rgba(47,190,196,0.45);
+}
+
+body.day .thanks-form input::placeholder,
+body.day .thanks-form textarea::placeholder {
+  color: #6b8a91;
+}
 
     .thanks-title {
       margin: 0;
@@ -516,7 +548,7 @@ html, body {
       background: radial-gradient(
         circle at center,
         rgba(113,248,252,0.18),
-        #ffffff 65%
+        #f2feff 65%
       );
     }
 
@@ -583,7 +615,7 @@ html, body {
 
   <div class="container">
     <h1 id="titleText"></h1>
-    <p id="userGreeting" style="text-align:center; margin-top:-10px; color:#bffcff;"></p>
+    <p id="userGreeting" style="text-align:center; margin-top:-10px; color: var(--primary);"></p>
     <button id="logoutBtn" style="
       position:absolute;
       top:20px;
