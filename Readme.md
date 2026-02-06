@@ -51,4 +51,5 @@
 - 将页面级样式与组件样式拆分整理
 - 根据需要接入 Supabase / 自建后端以实现完整数据流
 
+示例网站：https://sunland.dev
 <img src="https://raw.githubusercontent.com/ikun-1145/xixi/main/follow.svg" width="300" />
