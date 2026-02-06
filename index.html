@@ -335,7 +335,7 @@
   <div id="langSwitcher" class="lang-switcher" role="navigation" aria-label="语言切换">
     <button data-lang="zh" aria-label="切换到中文">中文</button>
     <button data-lang="en" aria-label="Switch to English">EN</button>
-    <button data-lang="jp" aria-label="日本語に切り替え">日本語</button>
+    <button data-lang="ja" aria-label="日本語に切り替え">日本語</button>
   </div>
   <div id="loading">
     <div class="loader"></div>
@@ -379,7 +379,7 @@
     </div>
   </div>
 
-  <footer>Copyright © 2024-2026 霜蓝, All Rights Reserved.</footer>
+  <footer>Copyright © 2024-2025 霜蓝, All Rights Reserved.</footer>
 
   <script type="module">
     import { supabase } from './p/js/supabaseClient.js';
@@ -403,14 +403,41 @@
       return sessionCache;
     }
 
+    // 检查是否是 OAuth 回调（登录成功后返回主页的情况）
+    async function checkOAuthCallback() {
+      const hash = window.location.hash;
+      if (hash && hash.includes('access_token')) {
+        // OAuth 登录成功，清理 URL hash
+        history.replaceState(null, '', window.location.pathname);
+        
+        // 等待 session 同步
+        await syncSession();
+        
+        // 短暂延迟后跳转到 donate 页面
+        setTimeout(() => {
+          document.body.style.opacity = '0';
+          setTimeout(() => location.href = "donate.html", 600);
+        }, 800);
+        
+        return true;
+      }
+      return false;
+    }
+
     window.addEventListener('load', async () => {
       try {
-        await syncSession();
+        // 先检查是否是 OAuth 回调
+        const isOAuthCallback = await checkOAuthCallback();
+        
+        if (!isOAuthCallback) {
+          // 正常加载流程
+          await syncSession();
 
-        const donateBtn = document.getElementById("donateBtn");
-        donateBtn.disabled = false;
-        donateBtn.style.opacity = "1";
-        donateBtn.style.cursor = "pointer";
+          const donateBtn = document.getElementById("donateBtn");
+          donateBtn.disabled = false;
+          donateBtn.style.opacity = "1";
+          donateBtn.style.cursor = "pointer";
+        }
       } catch(e){
         console.warn('Supabase 加载失败:', e);
       }
@@ -458,14 +485,14 @@
     document.getElementById("githubLoginBtn").onclick = async () => {
       await supabase.auth.signInWithOAuth({
         provider:'github',
-        options:{ redirectTo: location.origin + '/donate.html' }
+        options:{ redirectTo: location.origin + '/index.html' }  // 改为返回主页
       });
     };
 
     document.getElementById("googleLoginBtn").onclick = async () => {
       await supabase.auth.signInWithOAuth({
         provider:'google',
-        options:{ redirectTo: location.origin + '/donate.html' }
+        options:{ redirectTo: location.origin + '/index.html' }  // 改为返回主页
       });
     };
   </script>
@@ -474,7 +501,7 @@
   const i18n = {
     zh: {
       greeting: "你好",
-      intro: "欢迎来到我的个人主页，这里记录着我的创作、想法与旅程。",
+      intro: "欢迎来到我的个人主页,这里记录着我的创作、想法与旅程。",
       shoushe: "兽设介绍",
       banquan: "版权信息",
       guanzhu: "关注我",
@@ -498,7 +525,7 @@
       donate: "Support Me",
       loading: "Loading..."
     },
-    jp: {
+    ja: {
       greeting: "こんにちは",
       intro: "私の個人サイトへようこそ。ここでは創作と旅の記録を紹介しています。",
       shoushe: "設定紹介",
@@ -554,8 +581,8 @@
 
   window.addEventListener("load", () => {
     // 浏览器语言检测
-    const browserLang = navigator.language.split('-')[0]; // 'zh-CN' → 'zh'
-    const supportedLangs = ['zh', 'en', 'jp'];
+    const browserLang = navigator.language.split('-')[0]; // 'zh-CN' → 'zh', 'ja-JP' → 'ja'
+    const supportedLangs = ['zh', 'en', 'ja'];  // 修正：jp → ja
     const defaultLang = supportedLangs.includes(browserLang) ? browserLang : 'zh';
     const saved = localStorage.getItem("lang") || defaultLang;
     
