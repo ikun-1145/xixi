@@ -2,15 +2,19 @@
 <html lang="zh-Hans">
 <head>
   <meta charset="UTF-8" />
-  <meta http-equiv="x-dns-prefetch-control" content="off">
+  <meta http-equiv="x-dns-prefetch-control" content="on">
   <meta name="baidu-site-verification" content="codeva-ZHYrUXwN49" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#71f8fc">
+  <meta name="theme-color" content="#3EEDE7" media="(prefers-color-scheme: dark)">
   <title>霜蓝的个人主页</title>
   <link rel="sitemap" type="application/xml" href="/sitemap.xml">
   <link rel="icon" href="/favicon.png">
   <link rel="icon" sizes="32x32" href="/favicon-32.png">
   <link rel="icon" sizes="192x192" href="/icon-192.png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <link rel="preload" href="p/tx.jpeg" as="image">
+  <link rel="preload" href="p/bg.png" as="image">
   <meta name="keywords" content="霜蓝,霜蓝CCC,福瑞,furry" />
   <meta name="description" content="霜蓝的个人主页，展示我的作品、联系方式和动态，欢迎访问与交流。">
   <style>
@@ -25,7 +29,7 @@
     /* Night theme (donate style) */
     body.night {
       --bg-main: #161823;
-      --card-bg: rgba(22,24,35,0.9);
+      --card-bg: rgba(22,24,35,0.95);
       --text-main: #E8FFFF;
       --accent: #3EEDE7;
     }
@@ -108,59 +112,58 @@
     }
     h1 { font-size:2rem; margin-bottom:1rem; }
 
-#greeting {
-  display: block;
-  margin: 0.6rem auto 0.2rem;
-  font-size: 2rem;
-  line-height: 1.2;
-  text-align: center;
-  white-space: nowrap;
-  border-right: 3px solid var(--accent);
+    #greeting {
+      display: block;
+      margin: 0.6rem auto 0.2rem;
+      font-size: 2rem;
+      line-height: 1.2;
+      text-align: center;
+      white-space: nowrap;
+      border-right: 3px solid var(--accent);
 
-  opacity: 0;
-  transform: translateY(8px) scale(0.96);
+      opacity: 0;
+      transform: translateY(8px) scale(0.96);
 
-  animation:
-    blink 0.8s step-end infinite,
-    greetFadeBounce 0.7s cubic-bezier(.18,.89,.32,1.28) forwards,
-    greetGlow 1.6s ease-out forwards;
+      animation:
+        blink 0.8s step-end infinite,
+        greetFadeBounce 0.7s cubic-bezier(.18,.89,.32,1.28) forwards,
+        greetGlow 1.6s ease-out forwards;
 
-  min-height: 2.6rem;
-}
+      min-height: 2.6rem;
+    }
 
+    /* 光标闪烁（更稳定版本） */
+    @keyframes blink {
+      from, to   { border-color: transparent }
+      50%        { border-color: var(--accent); }
+    }
 
-/* 光标闪烁（更稳定版本） */
-@keyframes blink {
-  from, to   { border-color: transparent }
-  50%        { border-color: var(--accent); }
-}
+    @keyframes greetFadeBounce {
+      0%   { opacity: 0; transform: translateY(10px) scale(0.95); }
+      60%  { opacity: 1; transform: translateY(-2px) scale(1.02); }
+      100% { opacity: 1; transform: translateY(0) scale(1); }
+    }
 
-@keyframes greetFadeBounce {
-  0%   { opacity: 0; transform: translateY(10px) scale(0.95); }
-  60%  { opacity: 1; transform: translateY(-2px) scale(1.02); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
-}
+    @keyframes greetGlow {
+      0%   { text-shadow: 0 0 0 rgba(113,248,252,0); }
+      40%  { text-shadow: 0 0 12px rgba(113,248,252,0.6); }
+      100% { text-shadow: 0 0 0 rgba(113,248,252,0); }
+    }
 
-@keyframes greetGlow {
-  0%   { text-shadow: 0 0 0 rgba(113,248,252,0); }
-  40%  { text-shadow: 0 0 12px rgba(113,248,252,0.6); }
-  100% { text-shadow: 0 0 0 rgba(113,248,252,0); }
-}
-
-#greeting.finished {
-  border-right: none;
-  animation: none;
-  opacity: 1;
-  transform: translateY(0) scale(1);
-  text-shadow: none;
-}
+    #greeting.finished {
+      border-right: none;
+      animation: none;
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      text-shadow: none;
+    }
     .buttons {
       display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
       gap: 1rem; margin-top: 1.5rem;
     }
 
     .buttons a, .donate-button {
-      animation: breatheGlow 4s ease-in-out infinite;
+      animation: breatheGlow 3s ease-in-out infinite;
       display:inline-block; padding:0.8rem 1.5rem;
       background: var(--accent); border-radius:30px;
       text-decoration:none; color:black; font-weight:bold; font-size:1.1rem;
@@ -176,8 +179,10 @@
       inset: 0;
       z-index: 9999;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
+      gap: 1rem;
       transition: opacity 0.6s ease;
       background: radial-gradient(
         circle at center,
@@ -210,9 +215,16 @@
       border: 6px solid rgba(255,255,255,0.14);
       box-shadow: 0 0 24px rgba(62,237,231,0.55);
     }
+
+    #loading p {
+      color: var(--text-main);
+      font-size: 0.9rem;
+      opacity: 0.8;
+    }
+
     @keyframes spin { to {transform:rotate(360deg);} }
 
-    .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); opacity:0; transition:.4s; }
+    .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); opacity:0; transition:.4s; z-index: 1000; }
     .modal.active { display:block; opacity:1; }
     .modal-content {
       background: var(--card-bg); 
@@ -225,14 +237,20 @@
     /* 兼容性兜底：不支持 backdrop-filter 的浏览器使用更实的背景 */
     @supports not ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
       .container {
-        background: var(--card-bg);
+        background: rgba(255,255,255,0.9);
+      }
+      body.night .container {
+        background: rgba(22,24,35,0.95);
       }
       .modal-content {
         background: rgba(255,255,255,0.95);
       }
+      body.night .modal-content {
+        background: rgba(22,24,35,0.95);
+      }
     }
     @keyframes modalPop { from{opacity:0;transform:scale(.8);} to{opacity:1;transform:scale(1);} }
-    .close { float:right; font-size:1.5rem; cursor:pointer; }
+    .close { float:right; font-size:1.5rem; cursor:pointer; line-height: 1; }
 
     .lang-switcher {
       position: fixed;
@@ -247,6 +265,10 @@
       border-radius: 999px;
       box-shadow: 0 6px 18px rgba(80,140,200,0.25);
       z-index: 20;
+    }
+
+    body.night .lang-switcher {
+      background: rgba(22,24,35,0.75);
     }
 
     .lang-switcher button {
@@ -269,19 +291,59 @@
       color: #000;
       box-shadow: 0 4px 12px rgba(113,248,252,0.45);
     }
+
+    /* 移动端适配 */
+    @media (max-width: 480px) {
+      .lang-switcher {
+        top: 8px;
+        right: 8px;
+        padding: 4px;
+      }
+      
+      .lang-switcher button {
+        padding: 4px 10px;
+        font-size: 0.9rem;
+      }
+      
+      .oauth-btn img {
+        width: 18px !important;
+        height: 18px !important;
+      }
+      
+      h1, #greeting {
+        font-size: 1.6rem;
+      }
+
+      .container {
+        padding: 1.5rem;
+        margin-top: 1rem;
+      }
+
+      .avatar {
+        width: 120px;
+        height: 120px;
+      }
+
+      .buttons {
+        grid-template-columns: 1fr;
+      }
+    }
   </style>
 </head>
 
 <body class="preload">
-  <div id="langSwitcher" class="lang-switcher">
-    <button data-lang="zh">中文</button>
-    <button data-lang="en">EN</button>
-    <button data-lang="jp">日本語</button>
+  <div id="langSwitcher" class="lang-switcher" role="navigation" aria-label="语言切换">
+    <button data-lang="zh" aria-label="切换到中文">中文</button>
+    <button data-lang="en" aria-label="Switch to English">EN</button>
+    <button data-lang="jp" aria-label="日本語に切り替え">日本語</button>
   </div>
-  <div id="loading"><div class="loader"></div></div>
+  <div id="loading">
+    <div class="loader"></div>
+    <p id="loadingText">加载中...</p>
+  </div>
 
   <div class="container">
-    <img src="p/tx.jpeg" alt="头像" class="avatar">
+    <img src="p/tx.jpeg" alt="霜蓝的头像" class="avatar">
     <h1 id="greeting"></h1>
     <p class="intro" id="introText"></p>
 
@@ -299,25 +361,25 @@
     </div>
   </div>
 
-  <div id="loginModal" class="modal">
+  <div id="loginModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal-content">
-      <span class="close">×</span>
+      <span class="close" aria-label="关闭对话框">×</span>
 
-      <p style="margin-bottom:1rem;">请先登录后继续</p>
+      <h2 id="modalTitle" style="margin-bottom:1rem; font-size: 1.3rem;">请先登录后继续</h2>
 
       <button id="githubLoginBtn" class="donate-button oauth-btn" style="width:100%; margin-bottom:0.6rem; display:flex; align-items:center; justify-content:center; gap:10px;">
-        <img src="p/gh.png" alt="GitHub" style="width:22px; height:22px;">
+        <img src="p/gh.png" alt="" style="width:22px; height:22px;" aria-hidden="true">
         使用 GitHub 登录
       </button>
 
       <button id="googleLoginBtn" class="donate-button oauth-btn" style="width:100%; display:flex; align-items:center; justify-content:center; gap:10px;">
-        <img src="p/IMG_3879.png" alt="Google" style="width:22px; height:22px;">
+        <img src="p/IMG_3879.png" alt="" style="width:22px; height:22px;" aria-hidden="true">
         使用 Google 登录
       </button>
     </div>
   </div>
 
-  <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
+  <footer>Copyright © 2024-2026 霜蓝, All Rights Reserved.</footer>
 
   <script type="module">
     import { supabase } from './p/js/supabaseClient.js';
@@ -325,11 +387,12 @@
     function applyAutoTheme() {
       const hour = new Date().getHours();
       const isNight = hour >= 18 || hour < 6; // 18:00–06:00
-
       document.body.classList.toggle('night', isNight);
     }
 
+    // 初始化主题
     applyAutoTheme();
+    // 每10分钟检查一次主题
     setInterval(applyAutoTheme, 10 * 60 * 1000);
 
     let sessionCache = null;
@@ -365,11 +428,21 @@
       document.getElementById("loginModal").classList.remove("active");
     });
 
-    // 以上登录状态监听与 bfcache 恢复相关逻辑已移除，统一由 syncSession 单一来源管理
+    function closeModal(){ 
+      document.getElementById("loginModal").classList.remove("active"); 
+    }
 
-    function closeModal(){ document.getElementById("loginModal").classList.remove("active"); }
+    // ESC 键关闭模态框
+    document.addEventListener('keydown', (e) => {
+      if (e.key === 'Escape') {
+        closeModal();
+      }
+    });
+
     document.querySelector(".close").onclick = closeModal;
-    document.getElementById("loginModal").onclick = (e)=>{ if(e.target===e.currentTarget) closeModal(); };
+    document.getElementById("loginModal").onclick = (e)=>{ 
+      if(e.target===e.currentTarget) closeModal(); 
+    };
 
     document.getElementById("donateBtn").onclick = async () => {
       await syncSession();
@@ -404,24 +477,26 @@
       intro: "欢迎来到我的个人主页，这里记录着我的创作、想法与旅程。",
       shoushe: "兽设介绍",
       banquan: "版权信息",
-      guanzhu: "关注我们",
-      lianxi: "联系我们",
+      guanzhu: "关注我",
+      lianxi: "联系我",
       comment: "评论留言",
       fans: "实时粉丝数",
       game: "小游戏",
-      donate: "捐赠支持"
+      donate: "捐赠支持",
+      loading: "加载中..."
     },
     en: {
       greeting: "Hello",
       intro: "Welcome to my personal website, where I share my creations and journey.",
-      shoushe: "About",
+      shoushe: "My Fursona",
       banquan: "Copyright",
       guanzhu: "Follow Me",
       lianxi: "Contact",
       comment: "Comments",
       fans: "Fans",
       game: "Mini Game",
-      donate: "Support Me"
+      donate: "Support Me",
+      loading: "Loading..."
     },
     jp: {
       greeting: "こんにちは",
@@ -433,12 +508,19 @@
       comment: "コメント",
       fans: "フォロワー数",
       game: "ミニゲーム",
-      donate: "支援する"
+      donate: "支援する",
+      loading: "読み込み中..."
     }
   };
 
   function applyLang(lang) {
     const t = i18n[lang];
+
+    // 更新加载文本
+    const loadingText = document.getElementById("loadingText");
+    if (loadingText) {
+      loadingText.textContent = t.loading;
+    }
 
     document.getElementById("introText").textContent = t.intro;
     document.getElementById("btnShoushe").textContent = t.shoushe;
@@ -471,7 +553,12 @@
   }
 
   window.addEventListener("load", () => {
-    const saved = localStorage.getItem("lang") || "zh";
+    // 浏览器语言检测
+    const browserLang = navigator.language.split('-')[0]; // 'zh-CN' → 'zh'
+    const supportedLangs = ['zh', 'en', 'jp'];
+    const defaultLang = supportedLangs.includes(browserLang) ? browserLang : 'zh';
+    const saved = localStorage.getItem("lang") || defaultLang;
+    
     applyLang(saved);
 
     document.querySelectorAll("#langSwitcher button").forEach(btn => {
