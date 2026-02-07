@@ -2,16 +2,20 @@ name: Supabase Keep Alive
 
 on:
   schedule:
-    - cron: "0 3 * * *"   # 每天 UTC 03:00（北京时间 11:00）
+    - cron: "0 3 * * *"   # UTC 03:00 = 北京 11:00
   workflow_dispatch:
 
 jobs:
   ping:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase
+      - name: Ping Supabase (Keep Alive)
         run: |
-          curl -s \
-          -H "apikey: eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtseXJhc3JxZ3hpandyeHVvZXZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4ODUyMzcsImV4cCI6MjA2ODQ2MTIzN30.qjeTrLp_QquSwvF09HrrQd-stPtgu6H51-Zdb4JUeSM" \
-          -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtseXJhc3JxZ3hpandyeHVvZXZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4ODUyMzcsImV4cCI6MjA2ODQ2MTIzN30.qjeTrLp_QquSwvF09HrrQd-stPtgu6H51-Zdb4JUeSM" \
-          "https://klyrasrqgxijwrxuoevj.supabase.co/rest/v1/thanks?select=id&limit=1"
+          echo "Pinging Supabase..."
+          curl -f -i \
+            -H "apikey: $SUPABASE_ANON_KEY" \
+            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            "$SUPABASE_URL/rest/v1/thanks?select=id&limit=1"
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
