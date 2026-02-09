@@ -403,6 +403,26 @@
       return sessionCache;
     }
 
+    // 新增：根据 session 刷新“捐赠支持”按钮视觉反馈
+    function updateDonateButtonBySession(session) {
+      const donateBtn = document.getElementById("donateBtn");
+      const donateText = document.getElementById("btnDonate");
+
+      if (!donateBtn || !donateText) return;
+
+      if (session) {
+        donateBtn.disabled = false;
+        donateBtn.style.opacity = "1";
+        donateBtn.style.cursor = "pointer";
+        donateText.textContent = "捐赠支持（已登录）";
+      } else {
+        donateBtn.disabled = false;
+        donateBtn.style.opacity = "1";
+        donateBtn.style.cursor = "pointer";
+        donateText.textContent = "捐赠支持";
+      }
+    }
+
     // 检查是否是 OAuth 回调（登录成功后返回主页的情况）
     async function checkOAuthCallback() {
       const hash = window.location.hash;
@@ -432,11 +452,7 @@
         if (!isOAuthCallback) {
           // 正常加载流程
           await syncSession();
-
-          const donateBtn = document.getElementById("donateBtn");
-          donateBtn.disabled = false;
-          donateBtn.style.opacity = "1";
-          donateBtn.style.cursor = "pointer";
+          updateDonateButtonBySession(sessionCache);
         }
       } catch(e){
         console.warn('Supabase 加载失败:', e);
@@ -473,6 +489,7 @@
 
     document.getElementById("donateBtn").onclick = async () => {
       await syncSession();
+      updateDonateButtonBySession(sessionCache);
 
       if (sessionCache) {
         document.body.style.opacity = '0';

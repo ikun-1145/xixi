@@ -1,0 +1,19 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>登录处理中…</title>
+</head>
+<body>
+  <script type="module">
+    import { supabase } from './p/js/supabaseClient.js';
+
+    // 关键：让 Supabase 读取 URL hash 并写入 session
+    await supabase.auth.getSession();
+
+    // 清理 URL，并回到主页
+    location.replace('index.html');
+  </script>
+</body>
+</html>
