@@ -13,7 +13,7 @@
 <style>
 /* ================= CSS 变量（主页同款）================= */
 :root {
-  --bg-main: linear-gradient(135deg, #dcefff, #f8fdff), url('p/chengshi.png') center / cover no-repeat fixed;
+  --bg-main: linear-gradient(135deg, #dcefff, #f8fdff), url('p/chengshi.png') center / cover no-repeat;
   --card-bg: rgba(255,255,255,0.5);
   --text-main: #1A1A1A;
   --accent: #71f8fc;
@@ -34,7 +34,7 @@ body.night {
 }
 
 body.preload {
-  visibility: hidden;
+  opacity: 0;
 }
 
 body {
@@ -55,7 +55,7 @@ body {
 
 @supports (background-image: url("p/chengshi.webp")) {
   :root {
-    --bg-main: linear-gradient(135deg, #dcefff, #f8fdff), url('p/chengshi.webp') center / cover no-repeat fixed;
+    --bg-main: linear-gradient(135deg, #dcefff, #f8fdff), url('p/chengshi.webp') center / cover no-repeat;
   }
 }
 
@@ -394,7 +394,6 @@ const loadingEl = document.getElementById("loading");
 
 /* ================= 自适应缩放 ================= */
 let scale = 1;
-let transformSet = false;
 
 function resize(){
   const dpr = window.devicePixelRatio || 1;
@@ -417,8 +416,6 @@ function resize(){
   canvas.width = Math.round(CONFIG.LOGIC_W * scale * dpr);
   canvas.height = Math.round(CONFIG.LOGIC_H * scale * dpr);
 
-  // 重置 transform 标记
-  transformSet = false;
   
   // 如果游戏已开始，重绘当前帧
   if(gameState !== 'loading') {
@@ -585,13 +582,7 @@ function update(){
 /* ================= 绘制画面 ================= */
 function draw(){
   const dpr = window.devicePixelRatio || 1;
-  
-  // 只在需要时设置 transform
-  if(!transformSet){
-    ctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
-    transformSet = true;
-  }
-  
+  ctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
   ctx.clearRect(0, 0, CONFIG.LOGIC_W, CONFIG.LOGIC_H);
 
   // 绘制管道
