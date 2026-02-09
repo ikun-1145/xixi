@@ -1044,20 +1044,25 @@ window.addEventListener('load', () => {
       btn.disabled = false;
     });
 
-    // 退出登录（强制可用版）
+    // 退出登录（彻底清除 Supabase session）
     const logoutBtn = document.getElementById("logoutBtn");
     if (logoutBtn) {
       logoutBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         e.stopPropagation();
-
         try {
-          await supabase.auth.signOut();
-          console.log("Signed out");
+          // 彻底退出登录（清空所有本地会话）
+          await supabase.auth.signOut({ scope: 'global' });
+          // 保险：清理可能残留的 session 标记
+          try {
+            localStorage.removeItem('supabase.auth.token');
+            sessionStorage.removeItem('justLoggedIn');
+          } catch (e) {}
+          // 防自动恢复保险
+          sessionStorage.setItem("forceLoggedOut", "1");
         } catch (err) {
           console.warn("Sign out failed, redirect anyway:", err);
         }
-
         document.body.classList.add("fade-out");
         setTimeout(() => window.location.href = "/", 600);
       });
@@ -1128,18 +1133,20 @@ window.addEventListener('load', () => {
         zfbSrc = "p/ten_zfb.jpeg";
         amount = "当前金额：¥10";
       }
+
       if (tier === "meal") {
         wxSrc = "p/twenty_wx.jpeg";
         zfbSrc = "p/twenty_zfb.jpeg";
         amount = "当前金额：¥20";
       }
+
       if (tier === "biglove") {
         wxSrc = "p/fifty_wx.jpeg";
         zfbSrc = "p/fifty_zfb.jpeg";
         amount = "当前金额：¥50";
       }
 
-      if (!wxSrc) return;
+      if (!wxSrc || !zfbSrc) return;
 
       const wxWebp = document.getElementById("wxQrWebp");
       const zfbWebp = document.getElementById("zfbQrWebp");
@@ -1151,10 +1158,10 @@ window.addEventListener('load', () => {
       zfbQr.src = zfbSrc;
       amountText.textContent = amount;
 
-      // 触发视觉反馈
+      // 视觉反馈
       document.querySelectorAll(".qrcode").forEach(box => {
         box.classList.remove("flash");
-        void box.offsetWidth; // 强制重绘
+        void box.offsetWidth;
         box.classList.add("flash");
       });
 
