@@ -20,7 +20,6 @@ body{
   align-items:flex-start;
   user-select:none;
   -webkit-tap-highlight-color:transparent;
-  /* iOS Safari 高度修复 */
   min-height: 100svh;
 }
 @supports (background-image: url("p/chengshi.webp")) {
@@ -38,6 +37,7 @@ body{
 canvas{
   border-radius:12px;
   box-shadow:0 10px 20px rgba(0,0,0,.25);
+  touch-action: none;
 }
 
 .overlay{
@@ -49,6 +49,7 @@ canvas{
   align-items:center;
   gap:16px;
   background:rgba(0,0,0,.35);
+  border-radius:12px;
 }
 
 .overlay h1{
@@ -65,16 +66,49 @@ canvas{
   border:2px solid #fff;
   background:linear-gradient(#71f8fc,#40e0d0);
   color:#004d4d;
+  cursor:pointer;
+  transition:transform 0.1s;
 }
 
-/* ================= 横屏 UI + iOS 安全区 ================= */
+.overlay button:hover{
+  transform:scale(1.05);
+}
 
-/* 默认按钮样式（竖屏） */
+.overlay button:active{
+  transform:scale(0.95);
+}
+
+.loading {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: rgba(135, 206, 235, 0.95);
+  font-size: 24px;
+  color: white;
+  z-index: 1000;
+  gap: 20px;
+}
+
+.loading-spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .overlay button{
   margin-top: 12px;
 }
 
-/* 横屏时：按钮移动到右侧中部 */
 @media (orientation: landscape) and (max-width: 900px) {
   #gameWrapper{
     align-items: center;
@@ -96,7 +130,6 @@ canvas{
   }
 }
 
-/* iOS 底部安全区（Home Indicator） */
 @supports (padding: env(safe-area-inset-bottom)) {
   body{
     padding-bottom: env(safe-area-inset-bottom);
@@ -110,12 +143,17 @@ canvas{
 </head>
 
 <body>
-<div id="gameWrapper">
-  <canvas id="game"></canvas>
+<div class="loading" id="loading">
+  <div class="loading-spinner"></div>
+  <div>加载中...</div>
+</div>
 
-  <div class="overlay" id="overlay">
+<div id="gameWrapper">
+  <canvas id="game" role="img" aria-label="游戏画面"></canvas>
+
+  <div class="overlay" id="overlay" role="dialog" aria-labelledby="overText">
     <h1 id="overText">游戏结束</h1>
-    <button id="restart">再来一局</button>
+    <button id="restart" autofocus>再来一局</button>
   </div>
 </div>
 
@@ -124,23 +162,32 @@ const i18n = {
   zh: {
     title: "小游戏",
     gameOver: "游戏结束",
-    restart: "再来一局"
+    restart: "再来一局",
+    loading: "加载中...",
+    tapToStart: "点击屏幕开始",
+    highScore: "最高"
   },
   en: {
     title: "Mini Game",
     gameOver: "Game Over",
-    restart: "Play Again"
+    restart: "Play Again",
+    loading: "Loading...",
+    tapToStart: "Tap to Start",
+    highScore: "Best"
   },
   ja: {
     title: "ミニゲーム",
     gameOver: "ゲームオーバー",
-    restart: "もう一度"
+    restart: "もう一度",
+    loading: "読み込み中...",
+    tapToStart: "タップして開始",
+    highScore: "最高"
   }
 };
+
 function detectLang(){
   const saved = localStorage.getItem("lang");
   if (saved && i18n[saved]) return saved;
-
   const nav = navigator.language || "zh";
   if (nav.startsWith("ja")) return "ja";
   if (nav.startsWith("en")) return "en";
@@ -149,230 +196,282 @@ function detectLang(){
 
 const LANG = detectLang();
 const T = i18n[LANG] || i18n.zh;
-document.title = T.title;
-document.getElementById("overText").textContent = T.gameOver;
-document.getElementById("restart").textContent = T.restart;
-/* ================= 基础配置 ================= */
-const LOGIC_W = 400;
-const LOGIC_H = 650;
+
+const CONFIG = {
+  LOGIC_W: 400,
+  LOGIC_H: 650,
+  GRAVITY: 0.30,
+  JUMP_FORCE: -5.2,
+  PIPE_GAP: 170,
+  PIPE_WIDTH: 65,
+  PIPE_SPACING: 240,
+  PIPE_SPEED: 2.8,
+  MAX_FALL_SPEED: 12,
+  BIRD_SIZE: 34,
+  BIRD_START_X: 60,
+  BIRD_START_Y: 300,
+  COLLISION_PADDING: 4,
+  GROUND_OFFSET: 10,
+  MAX_SCALE: 2.0
+};
 
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 const overlay = document.getElementById("overlay");
 const restartBtn = document.getElementById("restart");
+const loadingEl = document.getElementById("loading");
 
-/* ================= 自适应 ================= */
 let scale = 1;
+let transformSet = false;
 
 function resize(){
   const dpr = window.devicePixelRatio || 1;
-
   const availableW = window.innerWidth;
   const availableH = window.innerHeight * 0.95;
-
-  // ====== 填满屏幕（cover 风格，而不是 contain）======
-  // 目标：宁可裁一点背景，也不要只占中间一小块
-  let widthBased = availableW / LOGIC_W;
-  let heightBased = availableH / LOGIC_H;
-
-  // 取较大的那个，优先填满屏幕
+  let widthBased = availableW / CONFIG.LOGIC_W;
+  let heightBased = availableH / CONFIG.LOGIC_H;
   scale = Math.max(widthBased, heightBased);
-
-  // 给一个上限，防止在超大屏幕上无限放大
-  scale = Math.min(scale, 2.0);
-
-  // CSS 显示尺寸
-  canvas.style.width = LOGIC_W * scale + "px";
-  canvas.style.height = LOGIC_H * scale + "px";
-
-  // 实际像素尺寸（乘 DPR，保证高清）
-  canvas.width = Math.round(LOGIC_W * scale * dpr);
-  canvas.height = Math.round(LOGIC_H * scale * dpr);
-
-  // 每次 resize 都重置坐标系，避免 scale 叠加
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.scale(scale * dpr, scale * dpr);
+  scale = Math.min(scale, CONFIG.MAX_SCALE);
+  canvas.style.width = CONFIG.LOGIC_W * scale + "px";
+  canvas.style.height = CONFIG.LOGIC_H * scale + "px";
+  canvas.width = Math.round(CONFIG.LOGIC_W * scale * dpr);
+  canvas.height = Math.round(CONFIG.LOGIC_H * scale * dpr);
+  transformSet = false;
+  if(gameState !== 'loading') {
+    draw();
+  }
 }
+
 window.addEventListener("resize", resize);
 resize();
 
-/* ================= 资源 ================= */
 const birdImg = new Image();
-birdImg.src = "p/bird.png";
+let assetsLoaded = false;
 
-/* ================= 游戏状态 ================= */
-let player, pipes, score, highScore, gameOver, rafId;
+function loadAssets(){
+  return new Promise((resolve) => {
+    let completed = false;
+    const finish = () => {
+      if(completed) return;
+      completed = true;
+      resolve();
+    };
+    birdImg.onload = () => {
+      console.log('鸟图片加载成功');
+      assetsLoaded = true;
+      finish();
+    };
+    birdImg.onerror = () => {
+      console.warn('鸟图片加载失败，使用降级样式');
+      assetsLoaded = false;
+      finish();
+    };
+    birdImg.src = "p/bird.png";
+    setTimeout(() => {
+      if(!completed) {
+        console.warn('图片加载超时，使用降级样式');
+        assetsLoaded = false;
+        finish();
+      }
+    }, 1000);
+  });
+}
 
-const gravity = 0.30;
-const jumpForce = -5.2;
-const pipeGap = 170;
-const pipeWidth = 65;
-const pipeSpacing = 240;
-const pipeSpeed = 2.8;
-
+let gameState = 'loading';
+let player, pipes, score, highScore, rafId;
 highScore = Number(localStorage.getItem("highScore")) || 0;
 
-/* ================= 初始化 ================= */
 function resetGame(){
-  player = { x:60, y:300, size:34, dy:0, angle:0 };
+  player = {
+    x: CONFIG.BIRD_START_X,
+    y: CONFIG.BIRD_START_Y,
+    size: CONFIG.BIRD_SIZE,
+    dy: 0,
+    angle: 0
+  };
   pipes = [];
   score = 0;
-  gameOver = false;
+  gameState = 'ready';
   overlay.style.display = "none";
-
-  for(let i=0;i<2;i++){
-    createPipe(LOGIC_W + 100 + i * pipeSpacing);
+  for(let i = 0; i < 2; i++){
+    createPipe(CONFIG.LOGIC_W + 100 + i * CONFIG.PIPE_SPACING);
   }
-
   cancelAnimationFrame(rafId);
   rafId = requestAnimationFrame(loop);
 }
 
-/* ================= 管道 ================= */
 function createPipe(x){
   const min = 50;
-  const max = LOGIC_H - pipeGap - 120;
+  const max = CONFIG.LOGIC_H - CONFIG.PIPE_GAP - 120;
   const top = Math.random() * (max - min) + min;
-
-  pipes.push({ x, top, passed:false });
+  pipes.push({ x, top, passed: false });
 }
 
-/* ================= 碰撞 ================= */
-function hit(a,b){
-  const pad = 4;
+function hit(a, b){
+  const pad = CONFIG.COLLISION_PADDING;
   return !(
-    a.x+a.w-pad < b.x ||
-    a.x+pad > b.x+b.w ||
-    a.y+a.h-pad < b.y ||
-    a.y+pad > b.y+b.h
+    a.x + a.w - pad < b.x ||
+    a.x + pad > b.x + b.w ||
+    a.y + a.h - pad < b.y ||
+    a.y + pad > b.y + b.h
   );
 }
 
-/* ================= 更新 ================= */
 function update(){
-  player.dy += gravity;
-  if(player.dy > 12) player.dy = 12;
+  if(gameState !== 'playing') return;
+  player.dy += CONFIG.GRAVITY;
+  if(player.dy > CONFIG.MAX_FALL_SPEED) player.dy = CONFIG.MAX_FALL_SPEED;
   player.y += player.dy;
-
-  if(pipes[pipes.length-1].x < LOGIC_W - pipeSpacing){
-    createPipe(LOGIC_W + 50);
+  if(pipes[pipes.length - 1].x < CONFIG.LOGIC_W - CONFIG.PIPE_SPACING){
+    createPipe(CONFIG.LOGIC_W + 50);
   }
-
-  pipes.forEach(p=>p.x -= pipeSpeed);
-  pipes = pipes.filter(p=>p.x + pipeWidth > -100);
-
-  const birdBox = { x:player.x,y:player.y,w:player.size,h:player.size };
-
+  pipes.forEach(p => p.x -= CONFIG.PIPE_SPEED);
+  pipes = pipes.filter(p => p.x + CONFIG.PIPE_WIDTH > -100);
+  const birdBox = {
+    x: player.x,
+    y: player.y,
+    w: player.size,
+    h: player.size
+  };
   for(const p of pipes){
-    const topBox = { x:p.x,y:0,w:pipeWidth,h:p.top };
-    const botBox = {
-      x:p.x,
-      y:p.top+pipeGap,
-      w:pipeWidth,
-      h:LOGIC_H-(p.top+pipeGap)
+    const topBox = {
+      x: p.x,
+      y: 0,
+      w: CONFIG.PIPE_WIDTH,
+      h: p.top
     };
-
-    if(hit(birdBox,topBox) || hit(birdBox,botBox)){
+    const botBox = {
+      x: p.x,
+      y: p.top + CONFIG.PIPE_GAP,
+      w: CONFIG.PIPE_WIDTH,
+      h: CONFIG.LOGIC_H - (p.top + CONFIG.PIPE_GAP)
+    };
+    if(hit(birdBox, topBox) || hit(birdBox, botBox)){
       endGame();
+      return;
     }
-
-    if(!p.passed && player.x+player.size/2 > p.x+pipeWidth/2){
+    if(!p.passed && player.x + player.size / 2 > p.x + CONFIG.PIPE_WIDTH / 2){
       score++;
       p.passed = true;
     }
   }
-
-  if(player.y + player.size > LOGIC_H-10 || player.y < -player.size){
+  if(player.y + player.size > CONFIG.LOGIC_H - CONFIG.GROUND_OFFSET || player.y < -player.size){
     endGame();
+    return;
   }
-
-  player.angle = Math.max(-0.35, Math.min(Math.PI/2, player.dy*0.12));
+  player.angle = Math.max(-0.35, Math.min(Math.PI / 2, player.dy * 0.12));
 }
 
-/* ================= 绘制 ================= */
 function draw(){
-  ctx.setTransform(scale,0,0,scale,0,0);
-  ctx.clearRect(0,0,canvas.width/scale,canvas.height/scale);
-
-  // 管道
-  ctx.fillStyle="#5cb85c";
-  pipes.forEach(p=>{
-    ctx.fillRect(p.x,0,pipeWidth,p.top);
+  const dpr = window.devicePixelRatio || 1;
+  if(!transformSet){
+    ctx.setTransform(scale * dpr, 0, 0, scale * dpr, 0, 0);
+    transformSet = true;
+  }
+  ctx.clearRect(0, 0, CONFIG.LOGIC_W, CONFIG.LOGIC_H);
+  ctx.fillStyle = "#5cb85c";
+  pipes.forEach(p => {
+    ctx.fillRect(p.x, 0, CONFIG.PIPE_WIDTH, p.top);
     ctx.fillRect(
       p.x,
-      p.top+pipeGap,
-      pipeWidth,
-      LOGIC_H-(p.top+pipeGap)
+      p.top + CONFIG.PIPE_GAP,
+      CONFIG.PIPE_WIDTH,
+      CONFIG.LOGIC_H - (p.top + CONFIG.PIPE_GAP)
     );
   });
-
-  // 鸟
   ctx.save();
-  ctx.translate(player.x+player.size/2,player.y+player.size/2);
+  ctx.translate(player.x + player.size / 2, player.y + player.size / 2);
   ctx.rotate(player.angle);
-
-  if(birdImg.complete){
-    ctx.drawImage(birdImg,-player.size/2,-player.size/2,player.size,player.size);
-  }else{
-    ctx.fillStyle="#ffcc00";
-    ctx.fillRect(-player.size/2,-player.size/2,player.size,player.size);
+  if(assetsLoaded && birdImg.complete){
+    ctx.drawImage(birdImg, -player.size / 2, -player.size / 2, player.size, player.size);
+  } else {
+    ctx.fillStyle = "#ffcc00";
+    ctx.fillRect(-player.size / 2, -player.size / 2, player.size, player.size);
   }
   ctx.restore();
-
-  // 分数
-  ctx.fillStyle="#fff";
-  ctx.font="900 42px sans-serif";
-  ctx.textAlign="center";
-  ctx.fillText(score,LOGIC_W/2,60);
+  ctx.fillStyle = "#fff";
+  ctx.font = "900 42px sans-serif";
+  ctx.textAlign = "center";
+  ctx.textBaseline = "top";
+  ctx.fillText(score, CONFIG.LOGIC_W / 2, 60);
+  ctx.font = "600 20px sans-serif";
+  ctx.fillText(T.highScore + ": " + highScore, CONFIG.LOGIC_W / 2, 110);
+  if(gameState === 'ready'){
+    ctx.fillStyle = "rgba(0,0,0,0.5)";
+    ctx.fillRect(0, CONFIG.LOGIC_H / 2 - 50, CONFIG.LOGIC_W, 100);
+    ctx.fillStyle = "#fff";
+    ctx.font = "bold 24px sans-serif";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText(T.tapToStart, CONFIG.LOGIC_W / 2, CONFIG.LOGIC_H / 2);
+  }
 }
 
-/* ================= 主循环 ================= */
 function loop(){
   update();
   draw();
-  if(!gameOver) rafId = requestAnimationFrame(loop);
+  if(gameState !== 'gameOver') {
+    rafId = requestAnimationFrame(loop);
+  }
 }
 
-/* ================= 结束 ================= */
 function endGame(){
-  if(gameOver) return;
-  gameOver = true;
-
-  highScore = Math.max(highScore, score);
-  localStorage.setItem("highScore", highScore);
-
+  if(gameState === 'gameOver') return;
+  gameState = 'gameOver';
+  if(score > highScore){
+    highScore = score;
+    localStorage.setItem("highScore", highScore);
+  }
   overlay.style.display = "flex";
 }
 
-/* ================= 输入 ================= */
 function jump(e){
-  if(e?.code==="Space") e.preventDefault();
-  if(!gameOver) player.dy = jumpForce;
+  if(e?.code === "Space") e.preventDefault();
+  if(gameState === 'ready'){
+    gameState = 'playing';
+  }
+  if(gameState === 'playing'){
+    player.dy = CONFIG.JUMP_FORCE;
+  }
 }
+
 document.addEventListener("keydown", jump);
 document.addEventListener("mousedown", jump);
-document.addEventListener("touchstart", jump, {passive:false});
+document.addEventListener("touchstart", jump, { passive: false });
 
-restartBtn.onclick = e=>{
+restartBtn.onclick = e => {
   e.stopPropagation();
   resetGame();
 };
 
-/* ================= 启动 ================= */
-birdImg.onload = resetGame;
-setTimeout(resetGame,200); // 兜底
-
-/* ================= iOS Safari 特殊适配 ================= */
 if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
   document.body.addEventListener("touchmove", e => {
     if (e.target === canvas) e.preventDefault();
-  }, { passive:false });
-
-  // 强制重新计算尺寸（解决横竖屏切换高度不准）
+  }, { passive: false });
   window.addEventListener("orientationchange", () => {
     setTimeout(resize, 300);
   });
 }
+
+async function init(){
+  try {
+    document.title = T.title;
+    document.getElementById("overText").textContent = T.gameOver;
+    document.getElementById("restart").textContent = T.restart;
+    loadingEl.querySelector('div:last-child').textContent = T.loading;
+    console.log('开始加载资源...');
+    await loadAssets();
+    console.log('资源加载完成，启动游戏');
+    loadingEl.style.display = 'none';
+    resetGame();
+  } catch(err) {
+    console.error('初始化错误:', err);
+    loadingEl.style.display = 'none';
+    resetGame();
+  }
+}
+
+init();
 </script>
 </body>
 </html>
