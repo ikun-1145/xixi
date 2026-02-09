@@ -498,6 +498,7 @@
   </script>
 
   <script>
+  let typingToken = 0;
   const i18n = {
     zh: {
       greeting: "你好",
@@ -559,20 +560,32 @@
     document.getElementById("btnGame").textContent = t.game;
     document.getElementById("btnDonate").textContent = t.donate;
 
-    // replay typing animation
-    const greetingEl = document.getElementById('greeting');
+    /* ===== 打字动画（防并发修复版）===== */
+
+    const greetingEl = document.getElementById("greeting");
     greetingEl.classList.remove("finished");
     greetingEl.textContent = "";
-    let i = 0;
+
     const text = t.greeting;
+    let i = 0;
+
+    // 为本次动画生成唯一标识
+    const myToken = ++typingToken;
 
     function typeNext() {
+      // 如果已经被新的语言切换打断，直接终止
+      if (myToken !== typingToken) return;
+
       if (i < text.length) {
         greetingEl.textContent += text.charAt(i);
         i++;
         setTimeout(typeNext, i === 1 ? 520 : 320);
       } else {
-        setTimeout(() => greetingEl.classList.add('finished'), 900);
+        setTimeout(() => {
+          if (myToken === typingToken) {
+            greetingEl.classList.add("finished");
+          }
+        }, 900);
       }
     }
 
