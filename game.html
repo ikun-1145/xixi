@@ -393,6 +393,7 @@ const restartBtn = document.getElementById("restart");
 const loadingEl = document.getElementById("loading");
 
 /* ================= 自适应缩放 ================= */
+let gameState = 'loading'; // 提前声明，防止 TDZ
 let scale = 1;
 
 function resize(){
@@ -418,7 +419,7 @@ function resize(){
 
   
   // 如果游戏已开始，重绘当前帧
-  if(gameState !== 'loading') {
+  if(typeof gameState !== 'undefined' && gameState !== 'loading') {
     draw();
   }
 }
@@ -468,7 +469,7 @@ function loadAssets(){
 }
 
 /* ================= 游戏状态 ================= */
-let gameState = 'loading'; // loading, ready, playing, gameOver
+// let gameState = 'loading'; // loading, ready, playing, gameOver  // 已提前声明于前面
 let player, pipes, score, highScore, rafId;
 
 highScore = Number(localStorage.getItem("highScore")) || 0;
