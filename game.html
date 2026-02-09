@@ -5,12 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>小游戏</title>
 
+<link rel="preload" as="image" href="p/chengshi.png">
+
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 body{
   font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC",
   "Microsoft YaHei",Arial,sans-serif;
-  background:url("p/chengshi.png") center/cover no-repeat fixed #87CEEB;
+  background:url("p/chengshi.png") center/cover no-repeat #87CEEB;
   min-height:100vh;
   display:flex;
   justify-content:center;
@@ -283,9 +285,8 @@ function update(){
 
 /* ================= 绘制 ================= */
 function draw(){
-  ctx.setTransform(1,0,0,1,0,0);
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  ctx.scale(scale,scale);
+  ctx.setTransform(scale,0,0,scale,0,0);
+  ctx.clearRect(0,0,canvas.width/scale,canvas.height/scale);
 
   // 管道
   ctx.fillStyle="#5cb85c";
