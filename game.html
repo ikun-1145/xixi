@@ -563,8 +563,12 @@ function update(){
       return;
     }
 
-    // 计分
-    if(!p.passed && player.x + player.size / 2 > p.x + CONFIG.PIPE_WIDTH / 2){
+    // 计分（仅在游戏进行中）
+    if(
+      gameState === 'playing' &&
+      !p.passed &&
+      player.x + player.size / 2 > p.x + CONFIG.PIPE_WIDTH / 2
+    ){
       score++;
       p.passed = true;
     }
