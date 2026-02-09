@@ -642,20 +642,26 @@ body.day .thanks-form textarea::placeholder {
     
     <div class="qrcode-section">
       <div class="qrcode">
-        <picture>
-          <source id="wxQrWebp" srcset="p/ten_wx.webp" type="image/webp">
-          <img id="wxQr" src="p/ten_wx.jpeg" alt="微信收款码" loading="lazy" decoding="async" />
-        </picture>
+        <img
+          id="wxQr"
+          src="p/ten_wx.jpeg"
+          alt="微信收款码"
+          loading="lazy"
+          decoding="async"
+        />
         <p id="wxPayText"></p>
       </div>
       <div class="amount-center">
         <span id="amountText"></span>
       </div>
       <div class="qrcode">
-        <picture>
-          <source id="zfbQrWebp" srcset="p/ten_zfb.webp" type="image/webp">
-          <img id="zfbQr" src="p/ten_zfb.jpeg" alt="支付宝收款码" loading="lazy" decoding="async" />
-        </picture>
+        <img
+          id="zfbQr"
+          src="p/ten_zfb.jpeg"
+          alt="支付宝收款码"
+          loading="lazy"
+          decoding="async"
+        />
         <p id="aliPayText"></p>
       </div>
     </div>
@@ -1147,12 +1153,6 @@ window.addEventListener('load', () => {
       }
 
       if (!wxSrc || !zfbSrc) return;
-
-      const wxWebp = document.getElementById("wxQrWebp");
-      const zfbWebp = document.getElementById("zfbQrWebp");
-
-      if (wxWebp) wxWebp.srcset = wxSrc.replace(".jpeg", ".webp");
-      if (zfbWebp) zfbWebp.srcset = zfbSrc.replace(".jpeg", ".webp");
 
       wxQr.src = wxSrc;
       zfbQr.src = zfbSrc;
