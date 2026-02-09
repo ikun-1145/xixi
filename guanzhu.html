@@ -7,7 +7,7 @@
   <style>
     :root {
       /* 日间主题 */
-      --bg-main: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center / cover no-repeat;
+      --bg-main: linear-gradient(135deg, #e0faff, #ffffff);
       --card-bg: rgba(255,255,255,0.5);
       --text-main: #1A1A1A;
       --accent: #71f8fc;
@@ -181,12 +181,48 @@
     <h1 id="titleText"></h1>
     <p id="descText"></p>
     <div class="logos">
-      <div><img src="p/bilibili.jpeg" loading="lazy" decoding="async"><div>B站</div></div>
-      <div><img src="p/dy.png" loading="lazy" decoding="async"><div>抖音</div></div>
-      <div><img src="p/gh.png" loading="lazy" decoding="async"><div>GitHub</div></div>
-      <div><img src="p/ks.png" loading="lazy" decoding="async"><div>快手</div></div>
-      <div><img src="p/x.png" loading="lazy" decoding="async"><div>X</div></div>
-      <div><img src="p/xhs.png" loading="lazy" decoding="async"><div>小红书</div></div>
+      <div>
+        <picture>
+          <source srcset="p/bilibili.webp" type="image/webp">
+          <img src="p/bilibili.jpeg" loading="lazy" decoding="async">
+        </picture>
+        <div>B站</div>
+      </div>
+      <div>
+        <picture>
+          <source srcset="p/dy.webp" type="image/webp">
+          <img src="p/dy.png" loading="lazy" decoding="async">
+        </picture>
+        <div>抖音</div>
+      </div>
+      <div>
+        <picture>
+          <source srcset="p/gh.webp" type="image/webp">
+          <img src="p/gh.png" loading="lazy" decoding="async">
+        </picture>
+        <div>GitHub</div>
+      </div>
+      <div>
+        <picture>
+          <source srcset="p/ks.webp" type="image/webp">
+          <img src="p/ks.png" loading="lazy" decoding="async">
+        </picture>
+        <div>快手</div>
+      </div>
+      <div>
+        <picture>
+          <source srcset="p/x.webp" type="image/webp">
+          <img src="p/x.png" loading="lazy" decoding="async">
+        </picture>
+        <div>X</div>
+      </div>
+      <div>
+        <picture>
+          <source srcset="p/xhs.webp" type="image/webp">
+          <img src="p/xhs.png" loading="lazy" decoding="async">
+        </picture>
+        <div>小红书</div>
+      </div>
     </div>
     <a href="index.html" class="back" id="backBtn"></a>
   </div>

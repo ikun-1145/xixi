@@ -10,7 +10,7 @@
 
     :root {
       /* 日间主题 */
-      --bg-main: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center / cover no-repeat;
+      --bg-main: #3EEDE7;
       --card-bg: rgba(255,255,255,0.55);
       --text-main: #1A1A1A;
       --accent: #71f8fc;
@@ -171,7 +171,10 @@
   <div class="container">
     <h1 id="titleText"></h1>
     <p id="descText"></p>
-    <img src="p/bq.jpeg" alt="版权证书" loading="lazy" decoding="async">
+    <picture>
+      <source srcset="p/bq.webp" type="image/webp">
+      <img src="p/bq.jpeg" alt="版权证书" loading="lazy" decoding="async">
+    </picture>
     <a href="index.html" class="back" id="backBtn"></a>
   </div>
 

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>小游戏</title>
 
+<link rel="preload" as="image" href="p/chengshi.webp" type="image/webp">
 <link rel="preload" as="image" href="p/chengshi.png">
 
 <style>
@@ -21,6 +22,11 @@ body{
   -webkit-tap-highlight-color:transparent;
   /* iOS Safari 高度修复 */
   min-height: 100svh;
+}
+@supports (background-image: url("p/chengshi.webp")) {
+  body {
+    background:url("p/chengshi.webp") center/cover no-repeat #87CEEB;
+  }
 }
 
 #gameWrapper{
