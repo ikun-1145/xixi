@@ -418,6 +418,13 @@
 
 
     window.addEventListener('load', async () => {
+      // 如果用户刚刚在 donate 页面主动退出，禁止 Supabase 自动恢复 session
+      if (sessionStorage.getItem("forceLoggedOut") === "1") {
+        try {
+          await supabase.auth.signOut({ scope: 'local' });
+        } catch (e) {}
+        sessionStorage.removeItem("forceLoggedOut");
+      }
       try {
         await syncSession();
         updateDonateButtonBySession(sessionCache);
