@@ -402,11 +402,22 @@ function resize(){
   const availableW = window.innerWidth;
   const availableH = window.innerHeight * 0.95;
 
-  // 填满屏幕（cover 风格）
   let widthBased = availableW / CONFIG.LOGIC_W;
   let heightBased = availableH / CONFIG.LOGIC_H;
 
-  scale = Math.max(widthBased, heightBased);
+  // 判断是否为移动端（触控为主 or 窄屏）
+  const isMobile =
+    window.matchMedia("(pointer: coarse)").matches ||
+    Math.min(availableW, availableH) < 700;
+
+  // 📱 手机：cover（铺满）
+  // 💻 电脑：contain（完整显示）
+  if (isMobile) {
+    scale = Math.max(widthBased, heightBased);
+  } else {
+    scale = Math.min(widthBased, heightBased);
+  }
+
   scale = Math.min(scale, CONFIG.MAX_SCALE);
 
   // CSS 显示尺寸
@@ -417,7 +428,6 @@ function resize(){
   canvas.width = Math.round(CONFIG.LOGIC_W * scale * dpr);
   canvas.height = Math.round(CONFIG.LOGIC_H * scale * dpr);
 
-  
   // 如果游戏已开始，重绘当前帧
   if(typeof gameState !== 'undefined' && gameState !== 'loading') {
     draw();
