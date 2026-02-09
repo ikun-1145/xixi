@@ -6,7 +6,7 @@
   <title id="pageTitle">捐赠支持 - 霜蓝</title>
   <style>
     body {
-  visibility: hidden;
+  opacity: 0;
 }
 
     html {
@@ -15,7 +15,7 @@
 
 :root {
   /* 日间主题（主页同款） */
-  --bg-main-day: linear-gradient(135deg, #b9dde5, #d2ebf0), url('p/bg.png') center / cover no-repeat fixed;
+  --bg-main-day: linear-gradient(135deg, #b9dde5, #d2ebf0), url('p/bg.png') center / cover no-repeat;
   --card-bg-day: rgba(255,255,255,0.55);
   --text-day: #1f2f33;     /* 主文字，明显更深 */
   --accent-day: #2fbec4;  /* 去荧光的蓝绿强调色 */
@@ -642,14 +642,14 @@ body.day .thanks-form textarea::placeholder {
     
     <div class="qrcode-section">
       <div class="qrcode">
-        <img id="wxQr" src="p/ten_wx.jpeg" alt="微信收款码" />
+        <img id="wxQr" src="p/ten_wx.jpeg" alt="微信收款码" loading="lazy" decoding="async" />
         <p id="wxPayText"></p>
       </div>
       <div class="amount-center">
         <span id="amountText"></span>
       </div>
       <div class="qrcode">
-        <img id="zfbQr" src="p/ten_zfb.jpeg" alt="支付宝收款码" />
+        <img id="zfbQr" src="p/ten_zfb.jpeg" alt="支付宝收款码" loading="lazy" decoding="async" />
         <p id="aliPayText"></p>
       </div>
     </div>
@@ -812,7 +812,7 @@ body.day .thanks-form textarea::placeholder {
 
 window.addEventListener('load', () => {
   // ✅ Reveal page ONLY after loading finishes
-  document.body.style.visibility = 'visible';
+  document.body.style.opacity = '1';
 
   document.body.classList.add('fade-in');
   const loader = document.getElementById('loading');

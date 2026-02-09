@@ -9,7 +9,7 @@
 
     :root {
       /* 日间主题 */
-      --bg-main: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center / cover no-repeat fixed;
+      --bg-main: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center / cover no-repeat;
       --card-bg: rgba(255,255,255,0.55);
       --text-main: #1A1A1A;
       --accent: #71f8fc;
@@ -25,7 +25,7 @@
 
     /* preload 阶段页面不可见 */
     body.preload {
-      visibility: hidden;
+      opacity: 0;
     }
 
     body {
@@ -186,8 +186,8 @@
     <h1 id="titleText"></h1>
     <p id="desc1"></p>
     <p id="desc2"></p>
-    <img src="p/xsst.jpeg" alt="霜蓝双视图">
-    <img src="p/xsst_tf.jpeg" alt="霜蓝双视图 - 有头发版">
+    <img src="p/xsst.jpeg" alt="霜蓝双视图" loading="lazy" decoding="async">
+    <img src="p/xsst_tf.jpeg" alt="霜蓝双视图 - 有头发版" loading="lazy" decoding="async">
     <a href="index.html" class="back" id="backBtn"></a>
   </div>
 

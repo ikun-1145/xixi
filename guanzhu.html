@@ -7,7 +7,7 @@
   <style>
     :root {
       /* 日间主题 */
-      --bg-main: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center / cover no-repeat fixed;
+      --bg-main: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center / cover no-repeat;
       --card-bg: rgba(255,255,255,0.5);
       --text-main: #1A1A1A;
       --accent: #71f8fc;
@@ -23,7 +23,7 @@
 
     /* preload 阶段：页面不可见 */
     body.preload {
-      visibility: hidden;
+      opacity: 0;
     }
 
     * { box-sizing: border-box; }
@@ -181,12 +181,12 @@
     <h1 id="titleText"></h1>
     <p id="descText"></p>
     <div class="logos">
-      <div><img src="p/bilibili.jpeg"><div>B站</div></div>
-      <div><img src="p/dy.png"><div>抖音</div></div>
-      <div><img src="p/gh.png"><div>GitHub</div></div>
-      <div><img src="p/ks.png"><div>快手</div></div>
-      <div><img src="p/x.png"><div>X</div></div>
-      <div><img src="p/xhs.png"><div>小红书</div></div>
+      <div><img src="p/bilibili.jpeg" loading="lazy" decoding="async"><div>B站</div></div>
+      <div><img src="p/dy.png" loading="lazy" decoding="async"><div>抖音</div></div>
+      <div><img src="p/gh.png" loading="lazy" decoding="async"><div>GitHub</div></div>
+      <div><img src="p/ks.png" loading="lazy" decoding="async"><div>快手</div></div>
+      <div><img src="p/x.png" loading="lazy" decoding="async"><div>X</div></div>
+      <div><img src="p/xhs.png" loading="lazy" decoding="async"><div>小红书</div></div>
     </div>
     <a href="index.html" class="back" id="backBtn"></a>
   </div>

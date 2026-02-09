@@ -9,7 +9,7 @@
 
     :root {
       /* 日间主题 */
-      --bg-main: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center / cover no-repeat fixed;
+      --bg-main: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center / cover no-repeat;
       --card-bg: rgba(255,255,255,0.5);
       --text-main: #1A1A1A;
       --accent: #71f8fc;
@@ -25,7 +25,7 @@
 
     /* preload 阶段隐藏页面 */
     body.preload {
-      visibility: hidden;
+      opacity: 0;
     }
 
     body {
