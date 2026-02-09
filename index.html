@@ -410,17 +410,10 @@
 
       if (!donateBtn || !donateText) return;
 
-      if (session) {
-        donateBtn.disabled = false;
-        donateBtn.style.opacity = "1";
-        donateBtn.style.cursor = "pointer";
-        donateText.textContent = "捐赠支持（已登录）";
-      } else {
-        donateBtn.disabled = false;
-        donateBtn.style.opacity = "1";
-        donateBtn.style.cursor = "pointer";
-        donateText.textContent = "捐赠支持";
-      }
+      donateBtn.disabled = false;
+      donateBtn.style.opacity = "1";
+      donateBtn.style.cursor = "pointer";
+      donateText.textContent = "捐赠支持";
     }
 
 
@@ -428,6 +421,14 @@
       try {
         await syncSession();
         updateDonateButtonBySession(sessionCache);
+        // 如果是刚完成 OAuth 登录，自动进入捐赠页面
+        if (sessionCache && sessionStorage.getItem("justLoggedIn") === "1") {
+          sessionStorage.removeItem("justLoggedIn");
+          setTimeout(() => {
+            document.body.style.opacity = '0';
+            setTimeout(() => location.href = "donate.html", 600);
+          }, 300);
+        }
       } catch(e){
         console.warn('Supabase 加载失败:', e);
       }
@@ -474,6 +475,7 @@
     };
 
     document.getElementById("githubLoginBtn").onclick = async () => {
+      sessionStorage.setItem("justLoggedIn", "1");
       await supabase.auth.signInWithOAuth({
         provider:'github',
         options:{ redirectTo: location.origin + '/oauth-callback.html' }
@@ -481,6 +483,7 @@
     };
 
     document.getElementById("googleLoginBtn").onclick = async () => {
+      sessionStorage.setItem("justLoggedIn", "1");
       await supabase.auth.signInWithOAuth({
         provider:'google',
         options:{ redirectTo: location.origin + '/oauth-callback.html' }
