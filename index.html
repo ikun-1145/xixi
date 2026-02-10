@@ -50,6 +50,10 @@
     body.loaded #loading {
       opacity: 0;
       pointer-events: none;
+      transition:
+        opacity 1.2s cubic-bezier(.4,0,.2,1),
+        backdrop-filter 1.2s cubic-bezier(.4,0,.2,1),
+        -webkit-backdrop-filter 1.2s cubic-bezier(.4,0,.2,1);
     }
 
     body.loaded {
@@ -270,23 +274,39 @@
     @keyframes modalPop { from{opacity:0;transform:scale(.8);} to{opacity:1;transform:scale(1);} }
     .close { float:right; font-size:1.5rem; cursor:pointer; line-height: 1; }
 
+    /* ===== Apple Liquid Glass 语言切换 ===== */
     .lang-switcher {
       position: fixed;
       top: 14px;
       right: 14px;
       display: flex;
-      gap: 6px;
-      background: rgba(255,255,255,0.55);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      gap: 4px;
       padding: 6px;
       border-radius: 999px;
-      box-shadow: 0 6px 18px rgba(80,140,200,0.25);
+      background:
+        linear-gradient(
+          180deg,
+          rgba(255,255,255,0.55),
+          rgba(255,255,255,0.25)
+        );
+      backdrop-filter: blur(18px) saturate(180%);
+      -webkit-backdrop-filter: blur(18px) saturate(180%);
+      box-shadow:
+        0 12px 30px rgba(0,0,0,0.18),
+        inset 0 1px 0 rgba(255,255,255,0.55);
       z-index: 20;
     }
 
     body.night .lang-switcher {
-      background: rgba(22,24,35,0.75);
+      background:
+        linear-gradient(
+          180deg,
+          rgba(30,34,50,0.85),
+          rgba(22,24,35,0.65)
+        );
+      box-shadow:
+        0 14px 34px rgba(0,0,0,0.45),
+        inset 0 1px 0 rgba(255,255,255,0.08);
     }
 
     .lang-switcher button {
@@ -294,20 +314,52 @@
       background: transparent;
       padding: 6px 14px;
       border-radius: 999px;
-      cursor: pointer;
       font-weight: 600;
+      font-size: 0.9rem;
+      cursor: pointer;
       color: var(--text-main);
-      transition: .2s ease;
+      transition:
+        background .25s ease,
+        box-shadow .25s ease,
+        transform .25s ease;
     }
 
     .lang-switcher button:hover {
-      background: rgba(62,237,231,0.35);
+      background: rgba(255,255,255,0.35);
+    }
+
+    body.night .lang-switcher button:hover {
+      background: rgba(255,255,255,0.08);
     }
 
     .lang-switcher button.active {
       background: var(--accent);
       color: #000;
-      box-shadow: 0 4px 12px rgba(113,248,252,0.45);
+      box-shadow:
+        0 6px 18px rgba(113,248,252,0.45),
+        inset 0 1px 0 rgba(255,255,255,0.6);
+    }
+
+    body.night .lang-switcher button.active {
+      box-shadow:
+        0 8px 22px rgba(62,237,231,0.55),
+        inset 0 1px 0 rgba(255,255,255,0.15);
+    }
+    /* ===== Apple 极致加载：内容浮现 ===== */
+    body.preload .container {
+      opacity: 0;
+      transform: translateY(12px) scale(0.98);
+      filter: blur(6px);
+    }
+
+    body.loaded .container {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+      filter: blur(0);
+      transition:
+        opacity 1.2s cubic-bezier(.4,0,.2,1),
+        transform 1.2s cubic-bezier(.4,0,.2,1),
+        filter 1.2s cubic-bezier(.4,0,.2,1);
     }
 
     /* 移动端适配 */
@@ -473,6 +525,10 @@
 
       // 页面首次加载时确保不显示登录弹窗
       document.getElementById("loginModal").classList.remove("active");
+      // Apple Liquid Glass 语言切换渐现
+      requestAnimationFrame(() => {
+        document.querySelector('.lang-switcher')?.classList.add('show');
+      });
     });
 
     // 兜底：最多 5 秒强制移除 loading
