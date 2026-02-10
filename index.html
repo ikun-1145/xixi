@@ -37,6 +37,24 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body.preload { opacity: 0; }
+    /* ===== 强制加载动画兜底（防止异常白屏） ===== */
+    body.preload {
+      overflow: hidden;
+    }
+
+    body.preload #loading {
+      opacity: 1;
+      pointer-events: all;
+    }
+
+    body.loaded #loading {
+      opacity: 0;
+      pointer-events: none;
+    }
+
+    body.loaded {
+      overflow: auto;
+    }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
@@ -440,18 +458,33 @@
         console.warn('Supabase 加载失败:', e);
       }
 
+      // 标记页面已完全加载
       document.body.classList.remove('preload');
+      document.body.classList.add('loaded');
       document.body.style.opacity = '1';
 
+      // 延迟移除 loading，保证动画完整
       const loader = document.getElementById('loading');
       if (loader) {
-        loader.style.opacity = '0';
-        setTimeout(() => loader.remove(), 600);
+        setTimeout(() => {
+          loader.remove();
+        }, 800);
       }
 
       // 页面首次加载时确保不显示登录弹窗
       document.getElementById("loginModal").classList.remove("active");
     });
+
+    // 兜底：最多 5 秒强制移除 loading
+    setTimeout(() => {
+      const loader = document.getElementById('loading');
+      if (loader) {
+        loader.remove();
+        document.body.classList.remove('preload');
+        document.body.classList.add('loaded');
+        document.body.style.opacity = '1';
+      }
+    }, 5000);
 
     function closeModal(){ 
       document.getElementById("loginModal").classList.remove("active"); 
