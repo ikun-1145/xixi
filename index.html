@@ -295,10 +295,14 @@
         inset 0 1px 0 rgba(255,255,255,0.45);
 
       z-index: 20;
+      outline: 1px solid rgba(255,255,255,0.16);
     }
 
     body.night .lang-switcher {
-      background: rgba(24,28,40,0.7);
+      background: rgba(24,28,40,0.78);
+      backdrop-filter: blur(18px) saturate(135%);
+      -webkit-backdrop-filter: blur(18px) saturate(135%);
+      outline: 1px solid rgba(255,255,255,0.08);
     }
 
     /* 按钮文字层 */
@@ -323,14 +327,28 @@
       height: calc(100% - 12px);
       width: 0;
       border-radius: 999px;
-      background: var(--accent);
+
+      /* 👇 双层结构，保证移动时不透明 */
+      background:
+        linear-gradient(
+          180deg,
+          rgba(255,255,255,0.35),
+          rgba(255,255,255,0.05)
+        ),
+        var(--accent);
+
+      opacity: 1;
+
       box-shadow:
-        0 6px 20px rgba(113,248,252,0.55),
+        0 4px 14px rgba(113,248,252,0.45),
         inset 0 1px 0 rgba(255,255,255,0.6);
+
       transition:
-        transform .45s cubic-bezier(.2,.8,.2,1),
-        width .45s cubic-bezier(.2,.8,.2,1);
+        transform .42s cubic-bezier(.22,.61,.36,1),
+        width .42s cubic-bezier(.22,.61,.36,1);
+
       z-index: 1;
+      will-change: transform, width;
     }
     /* ===== Apple 极致加载：内容浮现 ===== */
     body.preload .container {
@@ -742,23 +760,23 @@
     });
   });
 
-  // hover 才启用液化
+  // ===== Apple 风格液态玻璃交互（极简，仅 hover 液化） =====
+  let targetScale = 0;
+  let currentScale = 0;
+
+  function animateDisp() {
+    currentScale += (targetScale - currentScale) * 0.12;
+    dispMap.setAttribute('scale', currentScale.toFixed(2));
+    requestAnimationFrame(animateDisp);
+  }
+  animateDisp();
+
+  // hover 才液化（非常克制）
   switcher.addEventListener('mouseenter', () => {
-    dispMap.setAttribute('scale', '32');
+    targetScale = 10;
   });
   switcher.addEventListener('mouseleave', () => {
-    dispMap.setAttribute('scale', '0');
-  });
-
-  // 折射方向跟随鼠标
-  switcher.addEventListener('mousemove', e => {
-    const r = switcher.getBoundingClientRect();
-    const x = (e.clientX - r.left) / r.width;
-    const y = (e.clientY - r.top) / r.height;
-    dispMap.setAttribute(
-      'scale',
-      20 + Math.abs(x - 0.5) * 40 + Math.abs(y - 0.5) * 40
-    );
+    targetScale = 0;
   });
   </script>
 </body>
