@@ -274,7 +274,7 @@
     @keyframes modalPop { from{opacity:0;transform:scale(.8);} to{opacity:1;transform:scale(1);} }
     .close { float:right; font-size:1.5rem; cursor:pointer; line-height: 1; }
 
-    /* ===== Vision Pro · 真液态玻璃语言切换 ===== */
+    /* ===== 干净玻璃语言切换 ===== */
     .lang-switcher {
       position: fixed;
       top: 14px;
@@ -284,27 +284,23 @@
       padding: 6px;
       border-radius: 999px;
 
-      background: rgba(255,255,255,0.18);
-      backdrop-filter: blur(14px) saturate(160%);
-      -webkit-backdrop-filter: blur(14px) saturate(160%);
-
-      filter: url(#liquidGlassFilter);
+      background: rgba(255,255,255,0.55);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
 
       box-shadow:
-        0 12px 30px rgba(0,0,0,0.18),
-        inset 0 1px 0 rgba(255,255,255,0.45);
+        0 10px 30px rgba(0,0,0,0.15),
+        inset 0 1px 0 rgba(255,255,255,0.6);
 
       z-index: 20;
     }
 
     body.night .lang-switcher {
-      background: rgba(24,28,40,0.7);
+      background: rgba(22,24,35,0.9);
     }
 
-    /* 按钮文字层 */
+    /* 普通按钮高亮 */
     .lang-switcher button {
-      position: relative;
-      z-index: 2;
       border: none;
       background: transparent;
       padding: 6px 14px;
@@ -313,44 +309,12 @@
       font-size: 0.9rem;
       cursor: pointer;
       color: var(--text-main);
+      transition: background .25s ease, color .25s ease;
     }
 
-    /* ===== 液体指示胶囊 ===== */
-    .lang-liquid-indicator {
-      position: absolute;
-      top: 6px;
-      left: 6px;
-      height: calc(100% - 12px);
-      width: 0;
-      border-radius: 999px;
-
-      background:
-        linear-gradient(
-          180deg,
-          rgba(255,255,255,0.35),
-          rgba(255,255,255,0.05)
-        ),
-        var(--accent);
-
-      opacity: 1;
-
-      box-shadow:
-        0 4px 14px rgba(113,248,252,0.45),
-        inset 0 1px 0 rgba(255,255,255,0.6);
-
-      transition:
-        transform .42s cubic-bezier(.22,.61,.36,1),
-        width .42s cubic-bezier(.22,.61,.36,1);
-
-      z-index: 1;
-      will-change: transform, width;
-    }
-    .lang-switcher {
-      outline: 1px solid rgba(255,255,255,0.16);
-    }
-
-    body.night .lang-switcher {
-      outline: 1px solid rgba(255,255,255,0.08);
+    .lang-switcher button.active {
+      background: var(--accent);
+      color: #000;
     }
     /* ===== Apple 极致加载：内容浮现 ===== */
     body.preload .container {
@@ -409,35 +373,10 @@
 </head>
 
 <body class="preload">
-  <!-- ===== Vision Pro 级 · 真液态玻璃滤镜 ===== -->
-  <svg width="0" height="0" aria-hidden="true">
-    <filter id="liquidGlassFilter">
-      <feTurbulence
-        type="fractalNoise"
-        baseFrequency="0.012"
-        numOctaves="2"
-        seed="9"
-        result="noise">
-        <animate
-          attributeName="baseFrequency"
-          dur="10s"
-          values="0.010;0.018;0.010"
-          repeatCount="indefinite"/>
-      </feTurbulence>
-
-      <feDisplacementMap
-        in="SourceGraphic"
-        in2="noise"
-        scale="0"
-        xChannelSelector="R"
-        yChannelSelector="G"/>
-    </filter>
-  </svg>
   <div id="langSwitcher" class="lang-switcher" role="navigation" aria-label="语言切换">
-    <div class="lang-liquid-indicator"></div>
-    <button data-lang="zh" aria-label="切换到中文">中文</button>
-    <button data-lang="en" aria-label="Switch to English">EN</button>
-    <button data-lang="ja" aria-label="日本語に切り替え">日本語</button>
+    <button data-lang="zh">中文</button>
+    <button data-lang="en">EN</button>
+    <button data-lang="ja">日本語</button>
   </div>
   <div id="loading">
     <div class="loader"></div>
@@ -736,50 +675,6 @@
     });
   });
 
-  // ===== Vision Pro 级液态玻璃交互 =====
-  const switcher = document.querySelector('.lang-switcher');
-  const indicator = document.querySelector('.lang-liquid-indicator');
-  const buttons = [...switcher.querySelectorAll('button')];
-  const dispMap = document.querySelector('#liquidGlassFilter feDisplacementMap');
-
-  // 移动液体胶囊
-  function moveIndicator(btn) {
-    const rect = btn.getBoundingClientRect();
-    const parent = switcher.getBoundingClientRect();
-    indicator.style.width = rect.width + 'px';
-    indicator.style.transform =
-      `translateX(${rect.left - parent.left}px)`;
-  }
-
-  // 初始化位置
-  const initBtn = switcher.querySelector('button.active');
-  if (initBtn) moveIndicator(initBtn);
-
-  // 点击切换
-  buttons.forEach(btn => {
-    btn.addEventListener('click', () => {
-      moveIndicator(btn);
-    });
-  });
-
-  // ===== Apple 官网页别 · hover 缓入缓出液化 =====
-  let targetScale = 0;
-  let currentScale = 0;
-
-  function animateDisp() {
-    currentScale += (targetScale - currentScale) * 0.12;
-    dispMap.setAttribute('scale', currentScale.toFixed(2));
-    requestAnimationFrame(animateDisp);
-  }
-  animateDisp();
-
-  // 仅 hover 时轻微液化
-  switcher.addEventListener('mouseenter', () => {
-    targetScale = 10;
-  });
-  switcher.addEventListener('mouseleave', () => {
-    targetScale = 0;
-  });
   </script>
 </body>
 </html>
