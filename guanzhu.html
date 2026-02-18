@@ -20,9 +20,7 @@
       --accent: #3EEDE7;
     }
 
-    body.preload {
-      opacity: 0;
-    }
+    body.preload { opacity: 0; }
 
     * { box-sizing: border-box; }
 
@@ -58,35 +56,47 @@
       to { opacity: 1; transform: translateY(0); }
     }
 
-    h1 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
-    }
-
-    p {
-      font-size: 1.1rem;
-    }
+    h1 { font-size: 2rem; margin-bottom: 1rem; }
+    p { font-size: 1.1rem; }
 
     .logos {
       display: grid;
       grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-      gap: 1rem;
+      gap: 1.2rem;
       margin-top: 2rem;
     }
 
-    .logos div {
-      font-size: 0.9rem;
+    .logo-item {
       text-align: center;
+      font-size: 0.9rem;
     }
 
-    .logos img {
-  width: 60px;
-  height: auto;
-  max-height: 60px;
-  object-fit: contain;
-  display: block;
-  margin: 0 auto 0.5rem;
-}
+    /* 统一图标展示盒 */
+    .logo-box {
+      width: 72px;
+      height: 72px;
+      margin: 0 auto 0.6rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.25s ease;
+    }
+
+    .logo-box img {
+      max-width: 100%;
+      max-height: 100%;
+      object-fit: contain;
+    }
+
+    /* 横向图标视觉补偿 */
+    .logo-wide img {
+      transform: scale(1.15);
+    }
+
+    /* hover 轻微浮起 */
+    .logo-box:hover {
+      transform: translateY(-4px);
+    }
 
     .back {
       margin-top: 2rem;
@@ -101,9 +111,7 @@
       transition: transform 0.3s ease;
     }
 
-    .back:hover {
-      transform: translateY(-3px);
-    }
+    .back:hover { transform: translateY(-3px); }
 
     footer {
       margin: 2rem 0 1rem;
@@ -119,19 +127,15 @@
       align-items: center;
       justify-content: center;
       transition: opacity 0.6s ease;
-      background: radial-gradient(
-        circle at center,
+      background: radial-gradient(circle at center,
         rgba(113,248,252,0.18),
-        #ffffff 65%
-      );
+        #ffffff 65%);
     }
 
     body.night #loading {
-      background: radial-gradient(
-        circle at center,
+      background: radial-gradient(circle at center,
         rgba(62,237,231,0.14),
-        rgba(22,24,35,0.96) 65%
-      );
+        rgba(22,24,35,0.96) 65%);
     }
 
     .loader {
@@ -141,79 +145,72 @@
       border: 6px solid rgba(0,0,0,0.08);
       border-top-color: var(--accent);
       animation: spin 1s linear infinite;
-      box-shadow: 0 0 20px rgba(113,248,252,0.45);
     }
 
     body.night .loader {
       border: 6px solid rgba(255,255,255,0.14);
-      box-shadow: 0 0 24px rgba(62,237,231,0.55);
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
+    @keyframes spin { to { transform: rotate(360deg); } }
 
-    body.fade-in {
-      animation: fadeBody 0.8s ease;
-    }
+    body.fade-in { animation: fadeBody 0.8s ease; }
+    @keyframes fadeBody { from { opacity: 0; } to { opacity: 1; } }
 
-    @keyframes fadeBody {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
+    body.fade-out { animation: fadeOut 0.6s ease forwards; }
+    @keyframes fadeOut { to { opacity: 0; } }
 
-    body.fade-out {
-      animation: fadeOut 0.6s ease forwards;
-    }
-
-    @keyframes fadeOut {
-      to { opacity: 0; }
-    }
   </style>
 </head>
 
 <body>
-  <div id="loading">
-    <div class="loader"></div>
-  </div>
+  <div id="loading"><div class="loader"></div></div>
 
   <div class="container">
     <h1 id="titleText"></h1>
     <p id="descText"></p>
 
     <div class="logos">
-      <div>
-        <img src="p/bilibili.jpeg" loading="lazy">
+
+      <div class="logo-item">
+        <div class="logo-box"><img src="p/bilibili.jpeg"></div>
         <div>B站</div>
       </div>
-      <div>
-        <img src="p/dy.png" loading="lazy">
+
+      <div class="logo-item">
+        <div class="logo-box"><img src="p/dy.png"></div>
         <div>抖音</div>
       </div>
-      <div>
-        <img src="p/gh.png" loading="lazy">
+
+      <div class="logo-item">
+        <div class="logo-box"><img src="p/gh.png"></div>
         <div>GitHub</div>
       </div>
-      <div>
-        <img src="p/ks.png" loading="lazy">
+
+      <div class="logo-item">
+        <div class="logo-box"><img src="p/ks.png"></div>
         <div>快手</div>
       </div>
-      <div>
-        <img src="p/x.png" loading="lazy">
+
+      <div class="logo-item">
+        <div class="logo-box"><img src="p/x.png"></div>
         <div>X</div>
       </div>
-      <div>
-        <img src="p/xhs.png" loading="lazy">
+
+      <div class="logo-item">
+        <div class="logo-box"><img src="p/xhs.png"></div>
         <div>小红书</div>
       </div>
-      <div>
-        <img src="p/ithome.png" loading="lazy">
+
+      <div class="logo-item">
+        <div class="logo-box logo-wide"><img src="p/ithome.png"></div>
         <div>IT之家</div>
       </div>
-      <div>
-        <img src="p/youtube.png" loading="lazy">
+
+      <div class="logo-item">
+        <div class="logo-box logo-wide"><img src="p/youtube.png"></div>
         <div>YouTube</div>
       </div>
+
     </div>
 
     <a href="index.html" class="back" id="backBtn"></a>
@@ -226,12 +223,11 @@
 
     function applyAutoTheme() {
       const hour = new Date().getHours();
-      const isNight = hour >= 18 || hour < 6;
-      document.body.classList.toggle('night', isNight);
+      document.body.classList.toggle('night', hour >= 18 || hour < 6);
     }
 
     applyAutoTheme();
-    setInterval(applyAutoTheme, 10 * 60 * 1000);
+    setInterval(applyAutoTheme, 600000);
 
     const i18n = {
       zh: {
@@ -239,52 +235,30 @@
         desc: "全网搜索霜蓝，获取更多动态：",
         back: "← 返回主页",
         platforms: ["B站","抖音","GitHub","快手","X","小红书","IT之家","YouTube"]
-      },
-      en: {
-        title: "Follow Me",
-        desc: "Search \"Sunland\" on these platforms:",
-        back: "← Back to Home",
-        platforms: ["Bilibili","TikTok","GitHub","Kwai","X","RED","ITHome","YouTube"]
-      },
-      jp: {
-        title: "フォローする",
-        desc: "各プラットフォームで「フロスト」を検索してください：",
-        back: "← ホームへ戻る",
-        platforms: ["Biribiri","TikTok","GitHub","Kwaishou","X","RED","IT Home","YouTube"]
       }
     };
 
     function applyLang() {
-      const lang = localStorage.getItem("lang") || "zh";
-      const t = i18n[lang] || i18n.zh;
-
+      const t = i18n.zh;
       document.getElementById("titleText").textContent = t.title;
       document.getElementById("descText").textContent = t.desc;
       document.getElementById("backBtn").textContent = t.back;
-
-      const logoLabels = document.querySelectorAll(".logos div > div");
-      logoLabels.forEach((el, i) => {
-        if (t.platforms[i]) el.textContent = t.platforms[i];
-      });
     }
 
     window.addEventListener('load', () => {
       applyLang();
       document.body.classList.remove('preload');
       document.body.classList.add('fade-in');
-
       const loader = document.getElementById('loading');
-      if (loader) {
-        loader.style.opacity = '0';
-        setTimeout(() => loader.remove(), 600);
-      }
+      loader.style.opacity = '0';
+      setTimeout(() => loader.remove(), 600);
     });
 
     document.addEventListener("DOMContentLoaded", () => {
       const links = document.querySelectorAll("a[href]");
       links.forEach(link => {
         const href = link.getAttribute("href");
-        if (!href.startsWith("#") && !href.startsWith("javascript")) {
+        if (!href.startsWith("#")) {
           link.addEventListener("click", (e) => {
             e.preventDefault();
             document.body.classList.add("fade-out");
