@@ -4,16 +4,15 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>关注我们 - 霜蓝</title>
+
   <style>
     :root {
-      /* 日间主题 */
       --bg-main: linear-gradient(135deg, #e0faff, #ffffff);
       --card-bg: rgba(255,255,255,0.5);
       --text-main: #1A1A1A;
       --accent: #71f8fc;
     }
 
-    /* 夜间主题（donate 同款） */
     body.night {
       --bg-main: #161823;
       --card-bg: rgba(22,24,35,0.9);
@@ -21,7 +20,6 @@
       --accent: #3EEDE7;
     }
 
-    /* preload 阶段：页面不可见 */
     body.preload {
       opacity: 0;
     }
@@ -171,8 +169,8 @@
     }
   </style>
 </head>
+
 <body>
-  <!-- 加载动画 -->
   <div id="loading">
     <div class="loader"></div>
   </div>
@@ -180,34 +178,45 @@
   <div class="container">
     <h1 id="titleText"></h1>
     <p id="descText"></p>
+
     <div class="logos">
       <div>
-        <img src="p/bilibili.jpeg" loading="lazy" decoding="async">
+        <img src="p/bilibili.jpeg" loading="lazy">
         <div>B站</div>
       </div>
       <div>
-        <img src="p/dy.png" loading="lazy" decoding="async">
+        <img src="p/dy.png" loading="lazy">
         <div>抖音</div>
       </div>
       <div>
-        <img src="p/gh.png" loading="lazy" decoding="async">
+        <img src="p/gh.png" loading="lazy">
         <div>GitHub</div>
       </div>
       <div>
-        <img src="p/ks.png" loading="lazy" decoding="async">
+        <img src="p/ks.png" loading="lazy">
         <div>快手</div>
       </div>
       <div>
-        <img src="p/x.png" loading="lazy" decoding="async">
+        <img src="p/x.png" loading="lazy">
         <div>X</div>
       </div>
       <div>
-        <img src="p/xhs.png" loading="lazy" decoding="async">
+        <img src="p/xhs.png" loading="lazy">
         <div>小红书</div>
       </div>
+      <div>
+        <img src="p/ithome.png" loading="lazy">
+        <div>IT之家</div>
+      </div>
+      <div>
+        <img src="p/youtube.png" loading="lazy">
+        <div>YouTube</div>
+      </div>
     </div>
+
     <a href="index.html" class="back" id="backBtn"></a>
   </div>
+
   <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
 
   <script>
@@ -227,19 +236,19 @@
         title: "关注我们",
         desc: "全网搜索霜蓝，获取更多动态：",
         back: "← 返回主页",
-        platforms: ["B站", "抖音", "GitHub", "快手", "X", "小红书"]
+        platforms: ["B站","抖音","GitHub","快手","X","小红书","IT之家","YouTube"]
       },
       en: {
         title: "Follow Me",
         desc: "Search \"Sunland\" on these platforms:",
         back: "← Back to Home",
-        platforms: ["Bilibili", "TikTok", "GitHub", "Kwai", "X", "RED"]
+        platforms: ["Bilibili","TikTok","GitHub","Kwai","X","RED","ITHome","YouTube"]
       },
       jp: {
         title: "フォローする",
         desc: "各プラットフォームで「フロスト」を検索してください：",
         back: "← ホームへ戻る",
-        platforms: ["Biribiri", "TikTok", "GitHub", "Kwaishou", "X", "RED"]
+        platforms: ["Biribiri","TikTok","GitHub","Kwaishou","X","RED","IT Home","YouTube"]
       }
     };
 
@@ -259,8 +268,6 @@
 
     window.addEventListener('load', () => {
       applyLang();
-
-      // 页面解封
       document.body.classList.remove('preload');
       document.body.classList.add('fade-in');
 
@@ -271,7 +278,6 @@
       }
     });
 
-    // 跳转按钮淡出过渡
     document.addEventListener("DOMContentLoaded", () => {
       const links = document.querySelectorAll("a[href]");
       links.forEach(link => {
