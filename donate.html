@@ -1087,7 +1087,7 @@ window.addEventListener('load', () => {
         e.preventDefault();
         e.stopPropagation();
 
-        const { error } = await supabase.auth.signOut({ scope: 'local' });
+        const { error } = await supabase.auth.signOut({ scope: 'global' });
         if (error) {
           console.warn("Sign out failed:", error);
           return;
