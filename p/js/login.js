@@ -1,5 +1,8 @@
 // p/js/login.js
 import { supabase } from './supabaseClient.js';
+import { clearSupabaseAuthStorage } from './authState.js';
+
+let isRedirectingAfterLogout = false;
 
 // 登录函数
 function signInWithGitHub() {
@@ -13,8 +16,18 @@ function signInWithGitHub() {
 
 // 登出函数
 async function signOut() {
-  await supabase.auth.signOut();
-  location.reload();  // 退出后刷新页面
+  const { error } = await supabase.auth.signOut({ scope: 'global' });
+  if (error) {
+    console.warn('退出登录失败:', error);
+    return;
+  }
+
+  clearSupabaseAuthStorage(localStorage);
+
+  if (!isRedirectingAfterLogout) {
+    isRedirectingAfterLogout = true;
+    window.location.href = '/';
+  }
 }
 
 // 检查当前登录状态并更新界面
