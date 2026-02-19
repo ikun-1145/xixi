@@ -691,7 +691,6 @@ body.day .thanks-form textarea::placeholder {
     <div class="thanks-form">
       <h3 class="thanks-title"><span id="thanksFormTitle"></span></h3>
       <div class="thanks-fields">
-        <input id="thanksName" type="text" placeholder="">
         <textarea id="thanksMsg" rows="3" placeholder=""></textarea>
       </div>
       <button id="submitThanks"><span id="submitThanksText"></span></button>
@@ -812,9 +811,7 @@ body.day .thanks-form textarea::placeholder {
       document.getElementById("backBtn").textContent = t.back;
       document.getElementById("logoutBtn").textContent = t.logout;
 
-      const nameInput = document.getElementById("thanksName");
       const msgInput = document.getElementById("thanksMsg");
-      if (nameInput) nameInput.placeholder = t.namePh;
       if (msgInput) msgInput.placeholder = t.msgPh;
 
       const greet = document.getElementById("userGreeting");
@@ -953,7 +950,7 @@ window.addEventListener('load', () => {
           const isMine = currentUserEmail && item.name === currentUserEmail;
           return `
           <div class="thanks-item ${isMine ? "mine" : ""}" data-id="${item.id}">
-            <div class="name">${item.name || "匿名朋友"}</div>
+            <div class="name">${item.name || ""}</div>
             <div class="msg">${item.message || "感谢支持！"}</div>
             <div class="like-row">
               <div class="time">${formatTime(item.created_at)}</div>
@@ -1099,25 +1096,34 @@ window.addEventListener('load', () => {
     }
     // 提交鸣谢留言
     const submitBtn = document.getElementById("submitThanks");
-    const nameInput = document.getElementById("thanksName");
     const msgInput = document.getElementById("thanksMsg");
     const tip = document.getElementById("thanksTip");
 
     if (submitBtn) {
       submitBtn.addEventListener("click", async () => {
+        const user = currentSession?.user || null;
+        if (!user) {
+          tip.textContent = "请先登录后再提交";
+          submitBtn.disabled = true;
+          submitBtn.textContent = "请先登录";
+          msgInput.disabled = true;
+          return;
+        }
+
+        const name = user.user_metadata?.name || user.email;
+        if (!name) {
+          tip.textContent = "未获取到用户身份，请重新登录";
+          return;
+        }
+
+        const message = msgInput.value.trim();
+        if (!message) {
+          tip.textContent = "请输入留言内容";
+          return;
+        }
+
         submitBtn.disabled = true;
         submitBtn.textContent = "提交中...";
-
-        // 使用 session 判断登录
-        const user = currentSession?.user || null;
-
-        const name =
-          nameInput.value.trim() ||
-          user?.user_metadata?.name ||
-          user?.email ||
-          "匿名朋友";
-
-        const message = msgInput.value.trim() || "感谢支持！";
 
         const { error } = await supabase.from("thanks").insert({
           name,
@@ -1132,7 +1138,6 @@ window.addEventListener('load', () => {
           return;
         }
 
-        nameInput.value = "";
         msgInput.value = "";
         tip.textContent = "已提交，感谢你的支持！💙";
 
