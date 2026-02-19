@@ -870,12 +870,13 @@ window.addEventListener('load', () => {
   </script>
   <script type="module">
     import { supabase } from '/p/js/supabaseClient.js';
+    import { clearSupabaseAuthStorage } from '/p/js/authState.js';
       // ===== donate 页面登录守门 =====
   const {
-    data: { session }
+    data: { session: initialSession }
   } = await supabase.auth.getSession();
 
-  if (!session) {
+  if (!initialSession) {
     // 未登录，强制回主页
     location.replace('/');
     throw new Error('Not logged in');
@@ -981,15 +982,23 @@ window.addEventListener('load', () => {
     }
 
     // 显示用户昵称/邮箱，并保存当前用户邮箱
-    let user = session?.user || null;
-    currentUserEmail = user?.email || null;
-    currentUserId = user?.id || null;
+    let currentSession = initialSession;
 
-    const greet = document.getElementById("userGreeting");
-    if (greet) {
-      const name = user?.user_metadata?.name || user?.email || null;
-      window.applyLangDonate && window.applyLangDonate(name);
+    function syncUserFromSession() {
+      const user = currentSession?.user || null;
+      currentUserEmail = user?.email || null;
+      currentUserId = user?.id || null;
+
+      const greet = document.getElementById("userGreeting");
+      if (greet) {
+        const name = user?.user_metadata?.name || user?.email || null;
+        window.applyLangDonate && window.applyLangDonate(name);
+      }
+
+      return user;
     }
+
+    syncUserFromSession();
 
     loadThanks(true);
 
@@ -1005,7 +1014,7 @@ window.addEventListener('load', () => {
       const btn = e.target.closest(".like-btn");
       if (!btn) return;
 
-      if (!session) {
+      if (!currentSession) {
         alert("请先登录再点赞 💙");
         return;
       }
@@ -1050,30 +1059,44 @@ window.addEventListener('load', () => {
       btn.disabled = false;
     });
 
+    let isSigningOut = false;
+
+    function redirectAfterSignOut() {
+      if (isSigningOut) return;
+      isSigningOut = true;
+      sessionStorage.removeItem('justLoggedIn');
+      sessionStorage.setItem("forceLoggedOut", "1");
+      document.body.classList.add("fade-out");
+      setTimeout(() => window.location.href = "/", 600);
+    }
+
+    supabase.auth.onAuthStateChange((event, nextSession) => {
+      currentSession = nextSession;
+      syncUserFromSession();
+
+      if (event === 'SIGNED_OUT' || !nextSession) {
+        clearSupabaseAuthStorage(localStorage);
+        redirectAfterSignOut();
+      }
+    });
+
     // 退出登录（彻底清除 Supabase session）
     const logoutBtn = document.getElementById("logoutBtn");
     if (logoutBtn) {
       logoutBtn.addEventListener("click", async (e) => {
         e.preventDefault();
         e.stopPropagation();
-        try {
-          // 彻底退出登录（清空所有本地会话）
-          await supabase.auth.signOut({ scope: 'global' });
-          // 保险：清理可能残留的 session 标记
-          try {
-            localStorage.removeItem('supabase.auth.token');
-            sessionStorage.removeItem('justLoggedIn');
-          } catch (e) {}
-          // 防自动恢复保险
-          sessionStorage.setItem("forceLoggedOut", "1");
-        } catch (err) {
-          console.warn("Sign out failed, redirect anyway:", err);
+
+        const { error } = await supabase.auth.signOut({ scope: 'local' });
+        if (error) {
+          console.warn("Sign out failed:", error);
+          return;
         }
-        document.body.classList.add("fade-out");
-        setTimeout(() => window.location.href = "/", 600);
+
+        clearSupabaseAuthStorage(localStorage);
+        redirectAfterSignOut();
       });
     }
-
     // 提交鸣谢留言
     const submitBtn = document.getElementById("submitThanks");
     const nameInput = document.getElementById("thanksName");
@@ -1086,7 +1109,7 @@ window.addEventListener('load', () => {
         submitBtn.textContent = "提交中...";
 
         // 使用 session 判断登录
-        let user = session?.user || null;
+        const user = currentSession?.user || null;
 
         const name =
           nameInput.value.trim() ||
