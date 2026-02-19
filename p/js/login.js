@@ -6,7 +6,7 @@ function signInWithGitHub() {
   supabase.auth.signInWithOAuth({
     provider: 'github',
     options: {
-      redirectTo: window.location.origin + '/donate.html'  // 登陆后跳转回来
+      redirectTo: window.location.origin + '/donate.html'  // 登录后跳转回来
     }
   });
 }
