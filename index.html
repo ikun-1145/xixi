@@ -36,10 +36,18 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body.preload { opacity: 0; }
     /* ===== 强制加载动画兜底（防止异常白屏） ===== */
     body.preload {
       overflow: hidden;
+    }
+
+    /* 防止 FOUC：预加载阶段仅显示加载界面 */
+    body.preload .container,
+    body.preload footer,
+    body.preload .lang-switcher,
+    body.preload .modal {
+      opacity: 0;
+      visibility: hidden;
     }
 
     body.preload #loading {
@@ -58,6 +66,15 @@
 
     body.loaded {
       overflow: auto;
+    }
+
+    body.loaded .container,
+    body.loaded footer,
+    body.loaded .lang-switcher,
+    body.loaded .modal {
+      opacity: 1;
+      visibility: visible;
+      transition: opacity 0.8s ease;
     }
 
     body {
@@ -197,6 +214,10 @@
     footer { margin:2rem 0 1rem; font-size:.9rem; text-align:center; }
 
     #loading {
+      --loading-primary: #71f8fc;
+      --loading-bg1: #060b17;
+      --loading-bg2: #071a2f;
+      --loading-bg3: #02272c;
       position: fixed;
       inset: 0;
       z-index: 9999;
@@ -204,47 +225,137 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 1rem;
-      transition: opacity 0.6s ease;
-      background: radial-gradient(
-        circle at center,
-        rgba(113,248,252,0.18),
-        #ffffff 65%
-      );
+      gap: 1.2rem;
+      overflow: hidden;
+      transition: opacity 0.85s cubic-bezier(.4,0,.2,1), visibility 0.85s;
+      background:
+        radial-gradient(circle at 10% 20%, rgba(113,248,252,0.13), transparent 42%),
+        radial-gradient(circle at 90% 80%, rgba(113,248,252,0.11), transparent 48%),
+        linear-gradient(135deg, var(--loading-bg1) 0%, var(--loading-bg2) 52%, var(--loading-bg3) 100%);
     }
 
-    /* Night = donate 风格 */
-    body.night #loading {
-      background: radial-gradient(
-        circle at center,
-        rgba(62,237,231,0.14),
-        rgba(22,24,35,0.96) 65%
-      );
-    }
-
-    .loader {
-      width: 56px;
-      height: 56px;
+    #loading::before,
+    #loading::after {
+      content: "";
+      position: absolute;
+      width: 46vmax;
+      height: 46vmax;
       border-radius: 50%;
-      border: 6px solid rgba(0,0,0,0.08);
-      border-top-color: var(--accent);
-      animation: spin 1s linear infinite;
-      box-shadow: 0 0 20px rgba(113,248,252,0.45);
+      filter: blur(48px);
+      opacity: 0.45;
+      pointer-events: none;
+      animation: loadingFlow 14s ease-in-out infinite alternate;
     }
 
-    /* Night loader 更亮 */
-    body.night .loader {
-      border: 6px solid rgba(255,255,255,0.14);
-      box-shadow: 0 0 24px rgba(62,237,231,0.55);
+    #loading::before {
+      top: -16vmax;
+      left: -8vmax;
+      background: radial-gradient(circle, rgba(113,248,252,0.42), rgba(113,248,252,0));
     }
 
-    #loading p {
-      color: var(--text-main);
+    #loading::after {
+      right: -14vmax;
+      bottom: -18vmax;
+      background: radial-gradient(circle, rgba(113,248,252,0.38), rgba(113,248,252,0));
+      animation-duration: 18s;
+      animation-direction: alternate-reverse;
+    }
+
+    .loading-core {
+      position: relative;
+      width: min(34vw, 190px);
+      aspect-ratio: 1;
+      display: grid;
+      place-items: center;
+      filter: drop-shadow(0 0 20px rgba(113,248,252,0.46));
+    }
+
+    .loading-svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .orbit {
+      transform-origin: center;
+      animation: orbitSpin 6s linear infinite;
+    }
+
+    .orbit-2 {
+      animation-direction: reverse;
+      animation-duration: 4.8s;
+    }
+
+    .pulse-ring {
+      transform-origin: center;
+      animation: pulseOut 2s ease-out infinite;
+    }
+
+    .core {
+      animation: corePulse 2.2s ease-in-out infinite;
+    }
+
+    .loading-status {
+      position: relative;
+      width: min(64vw, 300px);
+      display: grid;
+      gap: 0.45rem;
+      text-align: center;
+      color: #d8fcff;
+      letter-spacing: 0.08em;
+    }
+
+    .loading-bar-track {
+      height: 6px;
+      border-radius: 999px;
+      background: rgba(125, 213, 229, 0.18);
+      overflow: hidden;
+      box-shadow: inset 0 0 8px rgba(12, 41, 51, 0.7);
+    }
+
+    .loading-bar {
+      width: 0%;
+      height: 100%;
+      border-radius: inherit;
+      background: linear-gradient(90deg, rgba(113,248,252,0.45), rgba(113,248,252,1));
+      box-shadow: 0 0 14px rgba(113,248,252,0.9);
+      transition: width 0.24s ease;
+    }
+
+    #loadingPercent {
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
       font-size: 0.9rem;
-      opacity: 0.8;
     }
 
-    @keyframes spin { to {transform:rotate(360deg);} }
+    #loadingText {
+      opacity: 0.85;
+      font-size: 0.85rem;
+    }
+
+    body.loaded #loading {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+    }
+
+    @keyframes orbitSpin {
+      to { transform: rotate(360deg); }
+    }
+
+    @keyframes pulseOut {
+      0% { transform: scale(0.85); opacity: 0.95; }
+      100% { transform: scale(1.15); opacity: 0.08; }
+    }
+
+    @keyframes corePulse {
+      0%, 100% { transform: scale(0.94); }
+      50% { transform: scale(1.06); }
+    }
+
+    @keyframes loadingFlow {
+      0% { transform: translate3d(0, 0, 0); }
+      100% { transform: translate3d(4vmax, -3vmax, 0); }
+    }
 
     .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); opacity:0; transition:.4s; z-index: 1000; }
     .modal.active { display:block; opacity:1; }
@@ -378,9 +489,35 @@
     <button data-lang="en">EN</button>
     <button data-lang="ja">日本語</button>
   </div>
-  <div id="loading">
-    <div class="loader"></div>
-    <p id="loadingText">加载中...</p>
+  <div id="loading" aria-live="polite" aria-label="页面加载中">
+    <div class="loading-core" aria-hidden="true">
+      <svg class="loading-svg" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="loadingGradient" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stop-color="#71f8fc" stop-opacity="0.45"/>
+            <stop offset="55%" stop-color="#71f8fc" stop-opacity="1"/>
+            <stop offset="100%" stop-color="#71f8fc" stop-opacity="0.45"/>
+          </linearGradient>
+        </defs>
+        <circle class="pulse-ring" cx="90" cy="90" r="52" fill="none" stroke="url(#loadingGradient)" stroke-width="2.4"/>
+        <g class="orbit orbit-1">
+          <path d="M90 31 C124 31 149 56 149 90 C149 124 124 149 90 149 C56 149 31 124 31 90 C31 56 56 31 90 31 Z"
+            fill="none" stroke="url(#loadingGradient)" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="24 18"/>
+        </g>
+        <g class="orbit orbit-2">
+          <path d="M90 44 C117 44 136 63 136 90 C136 117 117 136 90 136 C63 136 44 117 44 90 C44 63 63 44 90 44 Z"
+            fill="none" stroke="url(#loadingGradient)" stroke-width="2" stroke-dasharray="16 10"/>
+        </g>
+        <circle class="core" cx="90" cy="90" r="10" fill="url(#loadingGradient)"/>
+      </svg>
+    </div>
+    <div class="loading-status">
+      <div class="loading-bar-track">
+        <div id="loadingBar" class="loading-bar"></div>
+      </div>
+      <p id="loadingPercent">0%</p>
+      <p id="loadingText">加载中...</p>
+    </div>
   </div>
 
   <div class="container">
@@ -458,6 +595,54 @@
     }
 
 
+    const loadingState = {
+      value: 0,
+      done: false,
+      rafId: 0,
+      barEl: null,
+      percentEl: null,
+      sync(value) {
+        this.value = Math.max(this.value, Math.min(100, value));
+        if (!this.barEl || !this.percentEl) return;
+        this.barEl.style.width = `${this.value}%`;
+        this.percentEl.textContent = `${Math.round(this.value)}%`;
+      },
+      start() {
+        this.barEl = document.getElementById('loadingBar');
+        this.percentEl = document.getElementById('loadingPercent');
+
+        const tick = () => {
+          if (this.done) return;
+          const target = document.readyState === 'complete' ? 90 : 78;
+          const speed = document.readyState === 'complete' ? 0.5 : 0.25;
+          this.sync(this.value + (target - this.value) * speed * 0.06);
+          this.rafId = requestAnimationFrame(tick);
+        };
+
+        this.sync(2);
+        this.rafId = requestAnimationFrame(tick);
+      },
+      finish() {
+        this.done = true;
+        cancelAnimationFrame(this.rafId);
+        this.sync(100);
+      }
+    };
+
+    loadingState.start();
+
+    function endLoadingScreen() {
+      loadingState.finish();
+      document.body.classList.remove('preload');
+      document.body.classList.add('loaded');
+      document.body.style.opacity = '1';
+
+      const loader = document.getElementById('loading');
+      if (loader) {
+        setTimeout(() => loader.remove(), 900);
+      }
+    }
+
     window.addEventListener('load', async () => {
       // 如果用户刚刚在 donate 页面主动退出，禁止 Supabase 自动恢复 session
       if (sessionStorage.getItem("forceLoggedOut") === "1") {
@@ -481,18 +666,7 @@
         console.warn('Supabase 加载失败:', e);
       }
 
-      // 标记页面已完全加载
-      document.body.classList.remove('preload');
-      document.body.classList.add('loaded');
-      document.body.style.opacity = '1';
-
-      // 延迟移除 loading，保证动画完整
-      const loader = document.getElementById('loading');
-      if (loader) {
-        setTimeout(() => {
-          loader.remove();
-        }, 800);
-      }
+      endLoadingScreen();
 
       // 页面首次加载时确保不显示登录弹窗
       document.getElementById("loginModal").classList.remove("active");
@@ -502,16 +676,12 @@
       });
     });
 
-    // 兜底：最多 5 秒强制移除 loading
+    // 兜底：最多 8 秒强制移除 loading
     setTimeout(() => {
-      const loader = document.getElementById('loading');
-      if (loader) {
-        loader.remove();
-        document.body.classList.remove('preload');
-        document.body.classList.add('loaded');
-        document.body.style.opacity = '1';
+      if (!loadingState.done) {
+        endLoadingScreen();
       }
-    }, 5000);
+    }, 8000);
 
     function closeModal(){ 
       document.getElementById("loginModal").classList.remove("active"); 
