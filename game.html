@@ -344,7 +344,8 @@ body.night .loader {
   </div>
 </div>
 
-<script>
+<script src="p/js/langState.js"></script>
+  <script>
 /* ================= 自动主题切换（主页同款）================= */
 function applyAutoTheme() {
   const hour = new Date().getHours();
@@ -386,7 +387,7 @@ const i18n = {
 };
 
 function detectLang(){
-  const saved = localStorage.getItem("lang");
+  const saved = LangState.getLang();
   if (saved && i18n[saved]) return saved;
 
   const nav = navigator.language || "zh";
