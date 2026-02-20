@@ -63,11 +63,17 @@
     const stored = normalizeLang(safeReadStorage(LANG_STORAGE_KEY));
     if (isSupportedLang(stored)) {
       safeWriteStorage(LANG_STORAGE_KEY, stored);
+    const stored = normalizeLang(localStorage.getItem(LANG_STORAGE_KEY));
+    if (isSupportedLang(stored)) {
+      if (stored !== localStorage.getItem(LANG_STORAGE_KEY)) {
+        localStorage.setItem(LANG_STORAGE_KEY, stored);
+      }
       return stored;
     }
 
     const fallback = getBrowserLang();
     safeWriteStorage(LANG_STORAGE_KEY, fallback);
+    localStorage.setItem(LANG_STORAGE_KEY, fallback);
     return fallback;
   }
 
@@ -94,6 +100,10 @@
     });
   }
 
+    localStorage.setItem(LANG_STORAGE_KEY, next);
+    return next;
+  }
+
   function initLanguage(options) {
     const { applyLang, switcherSelector } = options;
     if (typeof applyLang !== "function") {
@@ -104,6 +114,7 @@
     writeLangToQuery(current);
     applyLang(current);
     syncLinks(current);
+    applyLang(current);
 
     if (!switcherSelector) return current;
 
@@ -139,5 +150,6 @@
     setLang,
     initLanguage,
     syncLinks
+    initLanguage
   };
 })(window);
