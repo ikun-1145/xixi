@@ -205,6 +205,7 @@
   <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
 
   <!-- 动效脚本 -->
+  <script src="p/js/langState.js"></script>
   <script>
     document.body.classList.add('preload');
 
@@ -233,7 +234,7 @@
         back: "← Back to Home",
         updatePrefix: "Last updated: "
       },
-      jp: {
+      ja: {
         pageTitle: "フォロワー数 - フロスト",
         title: "フォロワー数",
         thanks: "いつも応援ありがとうございます！",
@@ -242,7 +243,7 @@
       }
     };
 
-    const currentLang = localStorage.getItem("lang") || "zh";
+    const currentLang = LangState.getLang();
     const t = i18n[currentLang] || i18n.zh;
 
     document.title = t.pageTitle;
