@@ -558,6 +558,7 @@
     };
   </script>
 
+  <script src="p/js/langState.js"></script>
   <script>
   let typingToken = 0;
   const i18n = {
@@ -654,24 +655,9 @@
   }
 
   window.addEventListener("load", () => {
-    // 浏览器语言检测
-    const browserLang = navigator.language.split('-')[0]; // 'zh-CN' → 'zh', 'ja-JP' → 'ja'
-    const supportedLangs = ['zh', 'en', 'ja'];  // 修正：jp → ja
-    const defaultLang = supportedLangs.includes(browserLang) ? browserLang : 'zh';
-    const saved = localStorage.getItem("lang") || defaultLang;
-    
-    applyLang(saved);
-
-    document.querySelectorAll("#langSwitcher button").forEach(btn => {
-      btn.classList.toggle("active", btn.dataset.lang === saved);
-      btn.onclick = () => {
-        const lang = btn.dataset.lang;
-        localStorage.setItem("lang", lang);
-        document.querySelectorAll("#langSwitcher button")
-          .forEach(b => b.classList.remove("active"));
-        btn.classList.add("active");
-        applyLang(lang);
-      };
+    LangState.initLanguage({
+      applyLang,
+      switcherSelector: "#langSwitcher"
     });
   });
 

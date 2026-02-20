@@ -218,6 +218,7 @@
 
   <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
 
+  <script src="p/js/langState.js"></script>
   <script>
     document.body.classList.add('preload');
 
@@ -233,16 +234,27 @@
       zh: {
         title: "关注我们",
         desc: "全网搜索霜蓝，获取更多动态：",
-        back: "← 返回主页",
-        platforms: ["B站","抖音","GitHub","快手","X","小红书","IT之家","YouTube"]
+        back: "← 返回主页"
+      },
+      en: {
+        title: "Follow Me",
+        desc: "Search Sunland across platforms for more updates:",
+        back: "← Back to Home"
+      },
+      ja: {
+        title: "フォロー",
+        desc: "各プラットフォームでフロストを検索して最新情報をチェック：",
+        back: "← ホームへ戻る"
       }
     };
 
     function applyLang() {
-      const t = i18n.zh;
+      const lang = LangState.getLang();
+      const t = i18n[lang] || i18n.zh;
       document.getElementById("titleText").textContent = t.title;
       document.getElementById("descText").textContent = t.desc;
       document.getElementById("backBtn").textContent = t.back;
+      document.title = `${t.title} - 霜蓝`;
     }
 
     window.addEventListener('load', () => {

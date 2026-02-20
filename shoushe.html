@@ -199,6 +199,7 @@
 
   <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
 
+  <script src="p/js/langState.js"></script>
   <script>
     document.body.classList.add('preload');
 
@@ -227,7 +228,7 @@
         desc2: "Below are the front and back views of Sunland:",
         back: "← Back to Home"
       },
-      jp: {
+      ja: {
         pageTitle: "キャラクター紹介 - フロスト",
         title: "フロスト - キャラクター紹介",
         desc1: "フロストは氷のような青をテーマにしたオリジナルキャラクターで、冷静さと知性を象徴しています。",
@@ -237,7 +238,7 @@
     };
 
     function applyLang() {
-      const lang = localStorage.getItem("lang") || "zh";
+      const lang = LangState.getLang();
       const t = i18n[lang] || i18n.zh;
 
       document.title = t.pageTitle;
