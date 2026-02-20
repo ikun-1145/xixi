@@ -169,6 +169,7 @@
   <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
 
   <!-- 淡入淡出 + 跳转逻辑 -->
+  <script src="p/js/langState.js"></script>
   <script>
     document.body.classList.add('preload');
 
@@ -194,7 +195,7 @@
         back: "← Back to Home",
         giscusLang: "en"
       },
-      jp: {
+      ja: {
         pageTitle: "コメント - フロスト",
         title: "コメント",
         back: "← ホームへ戻る",
@@ -226,7 +227,7 @@
     }
 
     function applyLang() {
-      const lang = localStorage.getItem("lang") || "zh";
+      const lang = LangState.getLang();
       const t = i18n[lang] || i18n.zh;
 
       document.title = t.pageTitle;
