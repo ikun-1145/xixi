@@ -422,6 +422,7 @@
 
   <footer>Copyright © 2024-2026 霜蓝, All Rights Reserved.</footer>
 
+  <script src="p/js/theme-controller.js"></script>
   <script type="module">
     import { supabase } from './p/js/supabaseClient.js';
 
@@ -432,9 +433,7 @@
     }
 
     // 初始化主题
-    applyAutoTheme();
-    // 每10分钟检查一次主题
-    setInterval(applyAutoTheme, 10 * 60 * 1000);
+    initThemeController({ applyAutoTheme, intervalMs: 10 * 60 * 1000 });
 
     let sessionCache = null;
 

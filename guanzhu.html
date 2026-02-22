@@ -219,6 +219,7 @@
   <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
 
   <script src="p/js/langState.js"></script>
+  <script src="p/js/theme-controller.js"></script>
   <script>
     document.body.classList.add('preload');
 
@@ -227,8 +228,7 @@
       document.body.classList.toggle('night', hour >= 18 || hour < 6);
     }
 
-    applyAutoTheme();
-    setInterval(applyAutoTheme, 600000);
+    initThemeController({ applyAutoTheme, intervalMs: 600000 });
 
     const i18n = {
       zh: {
