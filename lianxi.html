@@ -167,6 +167,7 @@
   <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
 
   <script src="p/js/langState.js"></script>
+  <script src="p/js/theme-controller.js"></script>
   <script>
     document.body.classList.add('preload');
 
@@ -176,8 +177,7 @@
       document.body.classList.toggle('night', isNight);
     }
 
-    applyAutoTheme();
-    setInterval(applyAutoTheme, 10 * 60 * 1000);
+    initThemeController({ applyAutoTheme, intervalMs: 10 * 60 * 1000 });
 
     const i18n = {
       zh: {

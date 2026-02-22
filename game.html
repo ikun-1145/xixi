@@ -345,6 +345,7 @@ body.night .loader {
 </div>
 
 <script src="p/js/langState.js"></script>
+  <script src="p/js/theme-controller.js"></script>
   <script>
 /* ================= 自动主题切换（主页同款）================= */
 function applyAutoTheme() {
@@ -353,10 +354,7 @@ function applyAutoTheme() {
   document.body.classList.toggle('night', isNight);
 }
 
-// 初始化主题
-applyAutoTheme();
-// 每10分钟检查一次主题
-setInterval(applyAutoTheme, 10 * 60 * 1000);
+initThemeController({ applyAutoTheme, intervalMs: 10 * 60 * 1000 });
 
 /* ================= 国际化 ================= */
 const i18n = {
