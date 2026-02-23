@@ -37,45 +37,6 @@
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     /* ===== 强制加载动画兜底（防止异常白屏） ===== */
-    body.preload {
-      overflow: hidden;
-    }
-
-    /* 防止 FOUC：预加载阶段仅显示加载界面 */
-    body.preload .container,
-    body.preload footer,
-    body.preload .lang-switcher,
-    body.preload .modal {
-      opacity: 0;
-      visibility: hidden;
-    }
-
-    body.preload #loading {
-      opacity: 1;
-      pointer-events: all;
-    }
-
-    body.loaded #loading {
-      opacity: 0;
-      pointer-events: none;
-      transition:
-        opacity 1.2s cubic-bezier(.4,0,.2,1),
-        backdrop-filter 1.2s cubic-bezier(.4,0,.2,1),
-        -webkit-backdrop-filter 1.2s cubic-bezier(.4,0,.2,1);
-    }
-
-    body.loaded {
-      overflow: auto;
-    }
-
-    body.loaded .container,
-    body.loaded footer,
-    body.loaded .lang-switcher,
-    body.loaded .modal {
-      opacity: 1;
-      visibility: visible;
-      transition: opacity 0.8s ease;
-    }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
@@ -227,11 +188,16 @@
       justify-content: center;
       gap: 1.2rem;
       overflow: hidden;
-      transition: opacity 0.85s cubic-bezier(.4,0,.2,1), visibility 0.85s;
       background:
         radial-gradient(circle at 10% 20%, rgba(113,248,252,0.13), transparent 42%),
         radial-gradient(circle at 90% 80%, rgba(113,248,252,0.11), transparent 48%),
         linear-gradient(135deg, var(--loading-bg1) 0%, var(--loading-bg2) 52%, var(--loading-bg3) 100%);
+    }
+
+    #loading.fade {
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.8s ease, visibility 0.8s ease;
     }
 
     #loading::before,
@@ -261,100 +227,32 @@
       animation-direction: alternate-reverse;
     }
 
-    .loading-core {
-      position: relative;
-      width: min(34vw, 190px);
-      aspect-ratio: 1;
-      display: grid;
-      place-items: center;
-      filter: drop-shadow(0 0 20px rgba(113,248,252,0.46));
+
+    .splash-logo {
+      width: min(80vw, 520px);
+      display: flex;
+      justify-content: center;
+      align-items: center;
     }
 
-    .loading-svg {
-      width: 100%;
-      height: 100%;
+    .splash-svg text {
+      font-size: 96px;
+      fill: none;
+      stroke: var(--accent);
+      stroke-width: 3;
+      stroke-dasharray: 1200;
+      stroke-dashoffset: 1200;
+      animation:
+        logoDraw 4s linear forwards,
+        logoFill 1.4s ease forwards 4s;
     }
 
-    .orbit {
-      transform-origin: center;
-      animation: orbitSpin 6s linear infinite;
+    @keyframes logoDraw {
+      to { stroke-dashoffset: 0; }
     }
 
-    .orbit-2 {
-      animation-direction: reverse;
-      animation-duration: 4.8s;
-    }
-
-    .pulse-ring {
-      transform-origin: center;
-      animation: pulseOut 2s ease-out infinite;
-    }
-
-    .core {
-      animation: corePulse 2.2s ease-in-out infinite;
-    }
-
-    .loading-status {
-      position: relative;
-      width: min(64vw, 300px);
-      display: grid;
-      gap: 0.45rem;
-      text-align: center;
-      color: #d8fcff;
-      letter-spacing: 0.08em;
-    }
-
-    .loading-bar-track {
-      height: 6px;
-      border-radius: 999px;
-      background: rgba(125, 213, 229, 0.18);
-      overflow: hidden;
-      box-shadow: inset 0 0 8px rgba(12, 41, 51, 0.7);
-    }
-
-    .loading-bar {
-      width: 0%;
-      height: 100%;
-      border-radius: inherit;
-      background: linear-gradient(90deg, rgba(113,248,252,0.45), rgba(113,248,252,1));
-      box-shadow: 0 0 14px rgba(113,248,252,0.9);
-      transition: width 0.24s ease;
-    }
-
-    #loadingPercent {
-      font-variant-numeric: tabular-nums;
-      font-weight: 600;
-      font-size: 0.9rem;
-    }
-
-    #loadingText {
-      opacity: 0.85;
-      font-size: 0.85rem;
-    }
-
-    body.loaded #loading {
-      opacity: 0;
-      visibility: hidden;
-      pointer-events: none;
-    }
-
-    @keyframes orbitSpin {
-      to { transform: rotate(360deg); }
-    }
-
-    @keyframes pulseOut {
-      0% { transform: scale(0.85); opacity: 0.95; }
-      100% { transform: scale(1.15); opacity: 0.08; }
-    }
-
-    @keyframes corePulse {
-      0%, 100% { transform: scale(0.94); }
-      50% { transform: scale(1.06); }
-    }
-
-    @keyframes loadingFlow {
-      0% { transform: translate3d(0, 0, 0); }
-      100% { transform: translate3d(4vmax, -3vmax, 0); }
+    @keyframes logoFill {
+      to { fill: var(--accent); }
     }
 
     .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); opacity:0; transition:.4s; z-index: 1000; }
@@ -427,22 +325,6 @@
       background: var(--accent);
       color: #000;
     }
-    /* ===== Apple 极致加载：内容浮现 ===== */
-    body.preload .container {
-      opacity: 0;
-      transform: translateY(12px) scale(0.98);
-      filter: blur(6px);
-    }
-
-    body.loaded .container {
-      opacity: 1;
-      transform: translateY(0) scale(1);
-      filter: blur(0);
-      transition:
-        opacity 1.2s cubic-bezier(.4,0,.2,1),
-        transform 1.2s cubic-bezier(.4,0,.2,1),
-        filter 1.2s cubic-bezier(.4,0,.2,1);
-    }
 
     /* 移动端适配 */
     @media (max-width: 480px) {
@@ -483,40 +365,17 @@
   </style>
 </head>
 
-<body class="preload">
+<body>
   <div id="langSwitcher" class="lang-switcher" role="navigation" aria-label="语言切换">
     <button data-lang="zh">中文</button>
     <button data-lang="en">EN</button>
     <button data-lang="ja">日本語</button>
   </div>
   <div id="loading" aria-live="polite" aria-label="页面加载中">
-    <div class="loading-core" aria-hidden="true">
-      <svg class="loading-svg" viewBox="0 0 180 180" xmlns="http://www.w3.org/2000/svg">
-        <defs>
-          <linearGradient id="loadingGradient" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stop-color="#71f8fc" stop-opacity="0.45"/>
-            <stop offset="55%" stop-color="#71f8fc" stop-opacity="1"/>
-            <stop offset="100%" stop-color="#71f8fc" stop-opacity="0.45"/>
-          </linearGradient>
-        </defs>
-        <circle class="pulse-ring" cx="90" cy="90" r="52" fill="none" stroke="url(#loadingGradient)" stroke-width="2.4"/>
-        <g class="orbit orbit-1">
-          <path d="M90 31 C124 31 149 56 149 90 C149 124 124 149 90 149 C56 149 31 124 31 90 C31 56 56 31 90 31 Z"
-            fill="none" stroke="url(#loadingGradient)" stroke-width="2.5" stroke-linecap="round" stroke-dasharray="24 18"/>
-        </g>
-        <g class="orbit orbit-2">
-          <path d="M90 44 C117 44 136 63 136 90 C136 117 117 136 90 136 C63 136 44 117 44 90 C44 63 63 44 90 44 Z"
-            fill="none" stroke="url(#loadingGradient)" stroke-width="2" stroke-dasharray="16 10"/>
-        </g>
-        <circle class="core" cx="90" cy="90" r="10" fill="url(#loadingGradient)"/>
+    <div class="splash-logo">
+      <svg viewBox="0 0 600 160" class="splash-svg">
+        <text x="50%" y="60%" text-anchor="middle">SUNLAND</text>
       </svg>
-    </div>
-    <div class="loading-status">
-      <div class="loading-bar-track">
-        <div id="loadingBar" class="loading-bar"></div>
-      </div>
-      <p id="loadingPercent">0%</p>
-      <p id="loadingText">加载中...</p>
     </div>
   </div>
 
@@ -595,55 +454,9 @@
     }
 
 
-    const loadingState = {
-      value: 0,
-      done: false,
-      rafId: 0,
-      barEl: null,
-      percentEl: null,
-      sync(value) {
-        this.value = Math.max(this.value, Math.min(100, value));
-        if (!this.barEl || !this.percentEl) return;
-        this.barEl.style.width = `${this.value}%`;
-        this.percentEl.textContent = `${Math.round(this.value)}%`;
-      },
-      start() {
-        this.barEl = document.getElementById('loadingBar');
-        this.percentEl = document.getElementById('loadingPercent');
 
-        const tick = () => {
-          if (this.done) return;
-          const target = document.readyState === 'complete' ? 90 : 78;
-          const speed = document.readyState === 'complete' ? 0.5 : 0.25;
-          this.sync(this.value + (target - this.value) * speed * 0.06);
-          this.rafId = requestAnimationFrame(tick);
-        };
 
-        this.sync(2);
-        this.rafId = requestAnimationFrame(tick);
-      },
-      finish() {
-        this.done = true;
-        cancelAnimationFrame(this.rafId);
-        this.sync(100);
-      }
-    };
-
-    loadingState.start();
-
-    function endLoadingScreen() {
-      loadingState.finish();
-      document.body.classList.remove('preload');
-      document.body.classList.add('loaded');
-      document.body.style.opacity = '1';
-
-      const loader = document.getElementById('loading');
-      if (loader) {
-        setTimeout(() => loader.remove(), 900);
-      }
-    }
-
-    window.addEventListener('load', async () => {
+    document.addEventListener('DOMContentLoaded', async () => {
       // 如果用户刚刚在 donate 页面主动退出，禁止 Supabase 自动恢复 session
       if (sessionStorage.getItem("forceLoggedOut") === "1") {
         try {
@@ -666,8 +479,6 @@
         console.warn('Supabase 加载失败:', e);
       }
 
-      endLoadingScreen();
-
       // 页面首次加载时确保不显示登录弹窗
       document.getElementById("loginModal").classList.remove("active");
       // Apple Liquid Glass 语言切换渐现
@@ -675,13 +486,6 @@
         document.querySelector('.lang-switcher')?.classList.add('show');
       });
     });
-
-    // 兜底：最多 8 秒强制移除 loading
-    setTimeout(() => {
-      if (!loadingState.done) {
-        endLoadingScreen();
-      }
-    }, 8000);
 
     function closeModal(){ 
       document.getElementById("loginModal").classList.remove("active"); 
@@ -726,9 +530,27 @@
         options:{ redirectTo: location.origin + '/oauth-callback.html' }
       });
     };
-  </script>
+    // Splash 完全交给 CSS 控制，JS 只在动画结束后启动页面
+
+    /* Splash 控制：参考 Crythane 结构 */
+    window.addEventListener('load', () => {
+      setTimeout(() => {
+        const splash = document.getElementById('loading');
+        splash.classList.add('fade');
+
+        setTimeout(() => {
+          splash.remove();
+          document.dispatchEvent(new Event('app-ready'));
+        }, 800);
+
+      }, 2000);
+    });
+</script>
 
   <script>
+  document.addEventListener('DOMContentLoaded', () => {
+    // 确保 DOM 已准备，但动画等待 app-ready 触发
+  });
   let typingToken = 0;
   const i18n = {
     zh: {
@@ -823,7 +645,7 @@
     setTimeout(typeNext, 300);
   }
 
-  window.addEventListener("load", () => {
+  document.addEventListener("app-ready", () => {
     // 浏览器语言检测
     const browserLang = navigator.language.split('-')[0]; // 'zh-CN' → 'zh', 'ja-JP' → 'ja'
     const supportedLangs = ['zh', 'en', 'ja'];  // 修正：jp → ja
