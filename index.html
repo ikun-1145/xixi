@@ -36,8 +36,7 @@
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
-    body.preload { opacity: 0; }
-    /* ===== 强制加载动画兜底（防止异常白屏） ===== */
+    /* ===== 首屏阶段：锁定滚动，优先展示 SUNLAND 字符动画 ===== */
     body.preload {
       overflow: hidden;
     }
@@ -371,7 +370,7 @@
   </style>
 </head>
 
-<body class="preload">
+<body class="preload splash-lock splash-active">
   <div id="langSwitcher" class="lang-switcher" role="navigation" aria-label="语言切换">
     <button data-lang="zh">中文</button>
     <button data-lang="en">EN</button>
@@ -426,6 +425,34 @@
   <script type="module">
     import { supabase } from './p/js/supabaseClient.js';
 
+    const SPLASH_ANIMATION_MS = 2400;
+    let splashAnimationDone = false;
+    let pageLoaded = false;
+
+    function finishSplashIfReady() {
+      if (!splashAnimationDone || !pageLoaded) return;
+
+      const splash = document.getElementById('splash');
+      document.body.classList.remove('preload');
+      document.body.classList.add('loaded');
+      document.body.style.opacity = '1';
+
+      if (!splash) {
+        document.body.classList.remove('splash-active', 'splash-lock');
+        return;
+      }
+
+      splash.classList.add('is-fading');
+      document.body.classList.remove('splash-active', 'splash-lock');
+      setTimeout(() => splash.remove(), 520);
+
+      // 页面首次加载时确保不显示登录弹窗
+      document.getElementById("loginModal")?.classList.remove("active");
+      requestAnimationFrame(() => {
+        document.querySelector('.lang-switcher')?.classList.add('show');
+      });
+    }
+
     function applyAutoTheme() {
       const hour = new Date().getHours();
       const isNight = hour >= 18 || hour < 6; // 18:00–06:00
@@ -457,7 +484,28 @@
     }
 
 
-    window.addEventListener('load', async () => {
+    document.addEventListener('DOMContentLoaded', () => {
+      const splashText = document.querySelector('#splash .splash-logo text');
+      if (splashText) {
+        splashText.addEventListener('animationend', (event) => {
+          if (event.animationName !== 'splashFill') return;
+          splashAnimationDone = true;
+          finishSplashIfReady();
+        }, { once: true });
+      }
+
+      // 动画兜底：确保最晚在设定时长后进入最后一帧
+      setTimeout(() => {
+        splashAnimationDone = true;
+        finishSplashIfReady();
+      }, SPLASH_ANIMATION_MS);
+    });
+
+    window.addEventListener('load', () => {
+      pageLoaded = true;
+      finishSplashIfReady();
+
+      (async () => {
       // 如果用户刚刚在 donate 页面主动退出，禁止 Supabase 自动恢复 session
       if (sessionStorage.getItem("forceLoggedOut") === "1") {
         try {
@@ -479,43 +527,8 @@
       } catch(e){
         console.warn('Supabase 加载失败:', e);
       }
-
-      // 标记页面已完全加载
-      document.body.classList.remove('preload');
-      document.body.classList.add('loaded');
-      document.body.classList.add('splash-lock', 'splash-active');
-      document.body.style.opacity = '1';
-
-      // splash：描边 1.6s + 延迟 0.2s + 填充 0.6s 后淡出
-      const splash = document.getElementById('splash');
-      if (splash) {
-        setTimeout(() => {
-          splash.classList.add('is-fading');
-          document.body.classList.remove('splash-active', 'splash-lock');
-          // 可选：动画完成后移除 splash DOM，避免长期占用
-          setTimeout(() => splash.remove(), 520);
-        }, 2350);
-      }
-
-      // 页面首次加载时确保不显示登录弹窗
-      document.getElementById("loginModal").classList.remove("active");
-      // Apple Liquid Glass 语言切换渐现
-      requestAnimationFrame(() => {
-        document.querySelector('.lang-switcher')?.classList.add('show');
-      });
+      })();
     });
-
-    // 兜底：最多 5 秒强制移除 loading
-    setTimeout(() => {
-      const splash = document.getElementById('splash');
-      if (splash) {
-        splash.remove();
-        document.body.classList.remove('splash-active', 'splash-lock');
-        document.body.classList.remove('preload');
-        document.body.classList.add('loaded');
-        document.body.style.opacity = '1';
-      }
-    }, 5000);
 
     function closeModal(){ 
       document.getElementById("loginModal").classList.remove("active"); 
