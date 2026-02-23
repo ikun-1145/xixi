@@ -42,22 +42,12 @@
       overflow: hidden;
     }
 
-    body.preload #loading {
-      opacity: 1;
-      pointer-events: all;
-    }
-
-    body.loaded #loading {
-      opacity: 0;
-      pointer-events: none;
-      transition:
-        opacity 1.2s cubic-bezier(.4,0,.2,1),
-        backdrop-filter 1.2s cubic-bezier(.4,0,.2,1),
-        -webkit-backdrop-filter 1.2s cubic-bezier(.4,0,.2,1);
-    }
-
     body.loaded {
       overflow: auto;
+    }
+
+    body.splash-lock {
+      overflow: hidden;
     }
 
     body {
@@ -196,55 +186,64 @@
 
     footer { margin:2rem 0 1rem; font-size:.9rem; text-align:center; }
 
-    #loading {
+    #splash {
       position: fixed;
       inset: 0;
       z-index: 9999;
       display: flex;
-      flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 1rem;
-      transition: opacity 0.6s ease;
-      background: radial-gradient(
-        circle at center,
-        rgba(113,248,252,0.18),
-        #ffffff 65%
-      );
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
+      background: var(--bg-main);
+      transition: opacity .48s cubic-bezier(.22,.61,.36,1), visibility 0s linear .48s;
     }
 
-    /* Night = donate 风格 */
-    body.night #loading {
-      background: radial-gradient(
-        circle at center,
-        rgba(62,237,231,0.14),
-        rgba(22,24,35,0.96) 65%
-      );
+    body.splash-active #splash {
+      opacity: 1;
+      visibility: visible;
+      pointer-events: all;
+      transition-delay: 0s;
     }
 
-    .loader {
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      border: 6px solid rgba(0,0,0,0.08);
-      border-top-color: var(--accent);
-      animation: spin 1s linear infinite;
-      box-shadow: 0 0 20px rgba(113,248,252,0.45);
+    #splash.is-fading {
+      opacity: 0;
+      visibility: hidden;
+      pointer-events: none;
     }
 
-    /* Night loader 更亮 */
-    body.night .loader {
-      border: 6px solid rgba(255,255,255,0.14);
-      box-shadow: 0 0 24px rgba(62,237,231,0.55);
+    .splash-logo {
+      width: min(78vw, 760px);
+      height: auto;
     }
 
-    #loading p {
-      color: var(--text-main);
-      font-size: 0.9rem;
-      opacity: 0.8;
+    .splash-logo text {
+      fill: none;
+      stroke: var(--accent);
+      font-size: 168px;
+      font-weight: 700;
+      letter-spacing: 10px;
+      font-family: "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+      stroke-width: 5;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+      stroke-dasharray: 860;
+      stroke-dashoffset: 860;
+      paint-order: stroke fill;
+      animation:
+        splashStroke 1.6s cubic-bezier(.35,0,.25,1) forwards,
+        splashFill .6s cubic-bezier(.2,.65,.25,1) 1.8s forwards;
     }
 
-    @keyframes spin { to {transform:rotate(360deg);} }
+    @keyframes splashStroke {
+      to { stroke-dashoffset: 0; }
+    }
+
+    @keyframes splashFill {
+      from { fill: transparent; }
+      to { fill: var(--accent); }
+    }
 
     .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); opacity:0; transition:.4s; z-index: 1000; }
     .modal.active { display:block; opacity:1; }
@@ -378,9 +377,10 @@
     <button data-lang="en">EN</button>
     <button data-lang="ja">日本語</button>
   </div>
-  <div id="loading">
-    <div class="loader"></div>
-    <p id="loadingText">加载中...</p>
+  <div id="splash" aria-hidden="true">
+    <svg class="splash-logo" viewBox="0 0 1200 240" role="img" aria-label="SUNLAND">
+      <text x="50%" y="50%" dominant-baseline="middle" text-anchor="middle">SUNLAND</text>
+    </svg>
   </div>
 
   <div class="container">
@@ -483,14 +483,18 @@
       // 标记页面已完全加载
       document.body.classList.remove('preload');
       document.body.classList.add('loaded');
+      document.body.classList.add('splash-lock', 'splash-active');
       document.body.style.opacity = '1';
 
-      // 延迟移除 loading，保证动画完整
-      const loader = document.getElementById('loading');
-      if (loader) {
+      // splash：描边 1.6s + 延迟 0.2s + 填充 0.6s 后淡出
+      const splash = document.getElementById('splash');
+      if (splash) {
         setTimeout(() => {
-          loader.remove();
-        }, 800);
+          splash.classList.add('is-fading');
+          document.body.classList.remove('splash-active', 'splash-lock');
+          // 可选：动画完成后移除 splash DOM，避免长期占用
+          setTimeout(() => splash.remove(), 520);
+        }, 2350);
       }
 
       // 页面首次加载时确保不显示登录弹窗
@@ -503,9 +507,10 @@
 
     // 兜底：最多 5 秒强制移除 loading
     setTimeout(() => {
-      const loader = document.getElementById('loading');
-      if (loader) {
-        loader.remove();
+      const splash = document.getElementById('splash');
+      if (splash) {
+        splash.remove();
+        document.body.classList.remove('splash-active', 'splash-lock');
         document.body.classList.remove('preload');
         document.body.classList.add('loaded');
         document.body.style.opacity = '1';
@@ -572,7 +577,6 @@
       fans: "实时粉丝数",
       game: "小游戏",
       donate: "捐赠支持",
-      loading: "加载中..."
     },
     en: {
       greeting: "Hello",
@@ -585,7 +589,6 @@
       fans: "Fans",
       game: "Mini Game",
       donate: "Support Me",
-      loading: "Loading..."
     },
     ja: {
       greeting: "こんにちは",
@@ -598,18 +601,11 @@
       fans: "フォロワー数",
       game: "ミニゲーム",
       donate: "支援する",
-      loading: "読み込み中..."
     }
   };
 
   function applyLang(lang) {
     const t = i18n[lang];
-
-    // 更新加载文本
-    const loadingText = document.getElementById("loadingText");
-    if (loadingText) {
-      loadingText.textContent = t.loading;
-    }
 
     document.getElementById("introText").textContent = t.intro;
     document.getElementById("btnShoushe").textContent = t.shoushe;
