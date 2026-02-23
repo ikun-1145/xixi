@@ -569,13 +569,26 @@ body.day .thanks-form textarea::placeholder {
     }
 
     .loader {
-      border: 6px solid rgba(255,255,255,0.12);
-      border-top: 6px solid var(--primary);
+      border: clamp(4px, 0.8vw, 6px) solid rgba(255,255,255,0.12);
+      border-top: clamp(4px, 0.8vw, 6px) solid var(--primary);
       border-radius: 50%;
-      width: 56px;
-      height: 56px;
+      width: clamp(44px, 10vw, 56px);
+      height: clamp(44px, 10vw, 56px);
       animation: spin 1s linear infinite;
       box-shadow: 0 0 20px rgba(62,237,231,0.35);
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      .loader,
+      body.fade-in,
+      body.fade-out {
+        animation: none !important;
+      }
+
+      body,
+      #loading {
+        transition-duration: 0ms !important;
+      }
     }
 
     @keyframes spin {
@@ -820,18 +833,25 @@ body.day .thanks-form textarea::placeholder {
     }
     window.applyLangDonate = applyLangDonate;
 
-window.addEventListener('load', () => {
-  // ✅ Reveal page ONLY after loading finishes
+function hideDonateLoading() {
   document.body.style.opacity = '1';
-
   document.body.classList.add('fade-in');
+
   const loader = document.getElementById('loading');
-  if (loader) {
-    loader.style.opacity = '0';
-    setTimeout(() => loader.style.display = 'none', 600);
-  }
+  if (!loader || loader.dataset.finished === '1') return;
+
+  loader.dataset.finished = '1';
+  loader.style.opacity = '0';
+  setTimeout(() => loader.style.display = 'none', 600);
+}
+
+window.addEventListener('load', () => {
+  hideDonateLoading();
   window.applyLangDonate && window.applyLangDonate(null);
 });
+
+window.addEventListener('pageshow', hideDonateLoading, { once: true });
+setTimeout(hideDonateLoading, 5000);
 
     // 所有 a[href] 和按钮跳转添加淡出动画
     document.addEventListener("DOMContentLoaded", () => {

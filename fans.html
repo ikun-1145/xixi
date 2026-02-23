@@ -273,13 +273,9 @@
       // 页面解封
       document.body.classList.remove('preload');
       document.body.classList.add('fade-in');
-
-      const loader = document.getElementById('loading');
-      if (loader) {
-        loader.style.opacity = '0';
-        setTimeout(() => loader.remove(), 600);
-      }
     });
+
+    bindLoadingGuard({ timeoutMs: 5000, fadeMs: 600, removeNode: true });
 
     // 页面跳转动画
     document.addEventListener("DOMContentLoaded", () => {
