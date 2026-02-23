@@ -10,7 +10,7 @@
 
     :root {
       /* 日间主题 */
-      --bg-main: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center / cover no-repeat;
+      --bg-main: linear-gradient(135deg, #e0faff, #ffffff), url('p/bj.png') center / cover no-repeat;
       --card-bg: rgba(255,255,255,0.55);
       --text-main: #1A1A1A;
       --accent: #71f8fc;
@@ -169,6 +169,8 @@
   <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
 
   <!-- 淡入淡出 + 跳转逻辑 -->
+  <script src="p/js/langState.js"></script>
+  <script src="p/js/theme-controller.js"></script>
   <script>
     document.body.classList.add('preload');
 
@@ -178,8 +180,7 @@
       document.body.classList.toggle('night', isNight);
     }
 
-    applyAutoTheme();
-    setInterval(applyAutoTheme, 10 * 60 * 1000);
+    initThemeController({ applyAutoTheme, intervalMs: 10 * 60 * 1000 });
     /* --------- i18n --------- */
     const i18n = {
       zh: {
@@ -194,7 +195,7 @@
         back: "← Back to Home",
         giscusLang: "en"
       },
-      jp: {
+      ja: {
         pageTitle: "コメント - フロスト",
         title: "コメント",
         back: "← ホームへ戻る",
@@ -226,7 +227,7 @@
     }
 
     function applyLang() {
-      const lang = localStorage.getItem("lang") || "zh";
+      const lang = LangState.getLang();
       const t = i18n[lang] || i18n.zh;
 
       document.title = t.pageTitle;

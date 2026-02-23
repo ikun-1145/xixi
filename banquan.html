@@ -181,6 +181,8 @@
   <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
 
   <!-- 页面加载 + 跳转动画 -->
+  <script src="p/js/langState.js"></script>
+  <script src="p/js/theme-controller.js"></script>
   <script>
     // --------- 主题自动切换 + preload ---------
     document.body.classList.add('preload');
@@ -191,8 +193,7 @@
       document.body.classList.toggle('night', isNight);
     }
 
-    applyAutoTheme();
-    setInterval(applyAutoTheme, 10 * 60 * 1000);
+    initThemeController({ applyAutoTheme, intervalMs: 10 * 60 * 1000 });
 
     /* --------- i18n --------- */
     const i18n = {
@@ -208,7 +209,7 @@
         desc: "All materials on this site (including avatar, character images, and color schemes) are original and for display only. Reproduction or commercial use without permission is prohibited.",
         back: "← Back to Home"
       },
-      jp: {
+      ja: {
         pageTitle: "著作権情報 - フロスト",
         title: "著作権情報",
         desc: "本サイトのすべての素材（アイコン、キャラクター画像、配色など）はオリジナルであり、展示目的のみ使用されています。無断転載・商用利用は禁止されています。",
@@ -217,7 +218,7 @@
     };
 
     function applyLang() {
-      const lang = localStorage.getItem("lang") || "zh";
+      const lang = LangState.getLang();
       const t = i18n[lang] || i18n.zh;
 
       document.title = t.pageTitle;

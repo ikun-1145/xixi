@@ -51,6 +51,7 @@ body {
   -webkit-tap-highlight-color: transparent;
   color: var(--text-main);
   transition: opacity 0.8s ease;
+  overflow: hidden;
 }
 
 @supports (background-image: url("p/chengshi.webp")) {
@@ -91,9 +92,13 @@ body.night::before {
 /* ================= 游戏容器 ================= */
 #gameWrapper {
   position: relative;
-  margin: 2vh auto;
+  margin: 2dvh auto;
+  width: min(96vw, calc(100dvh * 0.95 * 0.62));
+  max-width: min(96vw, 52rem);
+  aspect-ratio: 400 / 650;
   display: flex;
   justify-content: center;
+  align-items: center;
   animation: fadeInUp 1s ease-out;
 }
 
@@ -109,12 +114,39 @@ body.night::before {
 }
 
 canvas {
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
   border-radius: 16px;
   box-shadow: 0 20px 50px rgba(80, 140, 200, 0.25), 
               inset 0 0 40px rgba(200, 240, 255, 0.4), 
               0 10px 30px rgba(0,0,0,0.08);
   touch-action: none;
   animation: float 6s ease-in-out infinite;
+}
+
+@media (min-width: 1024px) {
+  #gameWrapper {
+    width: min(88vw, calc(100dvh * 0.92 * 0.615));
+    max-width: 58rem;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  #gameWrapper {
+    width: min(92vw, calc(100dvh * 0.92 * 0.615));
+    max-width: 46rem;
+  }
+
+  .overlay h1 {
+    font-size: clamp(2rem, 4vw, 2.6rem);
+  }
+
+  .overlay button {
+    font-size: clamp(1rem, 2vw, 1.2rem);
+  }
 }
 
 @keyframes float {
@@ -312,7 +344,9 @@ body.night .loader {
   </div>
 </div>
 
-<script>
+<script src="p/js/langState.js"></script>
+  <script src="p/js/theme-controller.js"></script>
+  <script>
 /* ================= 自动主题切换（主页同款）================= */
 function applyAutoTheme() {
   const hour = new Date().getHours();
@@ -320,10 +354,7 @@ function applyAutoTheme() {
   document.body.classList.toggle('night', isNight);
 }
 
-// 初始化主题
-applyAutoTheme();
-// 每10分钟检查一次主题
-setInterval(applyAutoTheme, 10 * 60 * 1000);
+initThemeController({ applyAutoTheme, intervalMs: 10 * 60 * 1000 });
 
 /* ================= 国际化 ================= */
 const i18n = {
@@ -354,7 +385,7 @@ const i18n = {
 };
 
 function detectLang(){
-  const saved = localStorage.getItem("lang");
+  const saved = LangState.getLang();
   if (saved && i18n[saved]) return saved;
 
   const nav = navigator.language || "zh";
@@ -399,26 +430,22 @@ let scale = 1;
 function resize(){
   const dpr = window.devicePixelRatio || 1;
 
-  const availableW = window.innerWidth;
-  const availableH = window.innerHeight * 0.95;
+  const viewportW = window.innerWidth;
+  const viewportH = window.innerHeight;
+  const isPad = viewportW >= 768 && viewportW < 1024;
+  const verticalPadding = isPad ? 0.92 : 0.95;
 
-  let widthBased = availableW / CONFIG.LOGIC_W;
-  let heightBased = availableH / CONFIG.LOGIC_H;
+  const availableW = viewportW * 0.96;
+  const availableH = viewportH * verticalPadding;
 
-  // 判断是否为移动端（触控为主 or 窄屏）
-  const isMobile =
-    window.matchMedia("(pointer: coarse)").matches ||
-    Math.min(availableW, availableH) < 700;
+  const widthBased = availableW / CONFIG.LOGIC_W;
+  const heightBased = availableH / CONFIG.LOGIC_H;
 
-  // 📱 手机：cover（铺满）
-  // 💻 电脑：contain（完整显示）
-  if (isMobile) {
-    scale = Math.max(widthBased, heightBased);
-  } else {
-    scale = Math.min(widthBased, heightBased);
-  }
+  // 统一使用 contain，确保不变形、不裁剪
+  scale = Math.min(widthBased, heightBased);
 
   scale = Math.min(scale, CONFIG.MAX_SCALE);
+  scale = Math.max(scale, 0.5);
 
   // CSS 显示尺寸
   canvas.style.width = CONFIG.LOGIC_W * scale + "px";
@@ -675,7 +702,7 @@ function endGame(){
 
 /* ================= 输入处理 ================= */
 function jump(e){
-  if(e && e.code === "Space") e.preventDefault();
+  if(e && (e.code === "Space" || e.type.startsWith("touch"))) e.preventDefault();
   
   if(gameState === 'ready'){
     // 开始游戏
@@ -687,9 +714,23 @@ function jump(e){
   }
 }
 
+function handleTouchMove(e){
+  if (e.target === canvas && gameState !== 'gameOver') {
+    e.preventDefault();
+  }
+}
+
+function handleTouchEnd(e){
+  if (e.target === canvas) {
+    e.preventDefault();
+  }
+}
+
 document.addEventListener("keydown", jump);
 document.addEventListener("mousedown", jump);
-document.addEventListener("touchstart", jump, { passive: false });
+canvas.addEventListener("touchstart", jump, { passive: false });
+canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
+canvas.addEventListener("touchend", handleTouchEnd, { passive: false });
 
 restartBtn.onclick = e => {
   e.stopPropagation();
@@ -698,9 +739,7 @@ restartBtn.onclick = e => {
 
 /* ================= iOS Safari 特殊适配 ================= */
 if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-  document.body.addEventListener("touchmove", e => {
-    if (e.target === canvas) e.preventDefault();
-  }, { passive: false });
+  document.body.addEventListener("touchmove", handleTouchMove, { passive: false });
 
   // 强制重新计算尺寸（解决横竖屏切换高度不准）
   window.addEventListener("orientationchange", () => {
