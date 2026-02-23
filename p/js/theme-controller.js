@@ -2,6 +2,7 @@
   const THEME_KEY = 'theme';
   const NIGHT_CLASS = 'night';
   const TRANSITION_MS = 400;
+  const DEFAULT_LOADING_TIMEOUT_MS = 5000;
 
   function getStoredTheme() {
     const value = localStorage.getItem(THEME_KEY);
@@ -75,6 +76,33 @@
         transform: translateY(-1px) scale(1.03);
       }
 
+      #loading {
+        transition: opacity 0.6s ease;
+      }
+
+      #loading .loader {
+        width: clamp(44px, 10vw, 64px);
+        height: clamp(44px, 10vw, 64px);
+        border-width: clamp(4px, 0.8vw, 6px);
+      }
+
+      @media (prefers-reduced-motion: reduce) {
+        #loading .loader,
+        #greeting,
+        #greeting::after {
+          animation: none !important;
+        }
+
+        .container,
+        .card,
+        .panel,
+        .modal-content,
+        .lang-switcher,
+        .theme-toggle-btn {
+          transition-duration: 0ms !important;
+        }
+      }
+
       @media (max-width: 480px) {
         .theme-toggle-btn {
           top: 8px;
@@ -86,6 +114,38 @@
       }
     `;
     document.head.appendChild(style);
+  }
+
+  function finishLoading(options) {
+    const opts = options || {};
+    const loadingId = opts.loadingId || 'loading';
+    const fadeMs = opts.fadeMs || 600;
+    const removeNode = opts.removeNode !== false;
+    const loadingEl = document.getElementById(loadingId);
+    if (!loadingEl || loadingEl.dataset.finished === '1') return;
+
+    loadingEl.dataset.finished = '1';
+    loadingEl.style.opacity = '0';
+
+    const cleanup = () => {
+      if (removeNode) {
+        loadingEl.remove();
+      } else {
+        loadingEl.style.display = 'none';
+      }
+    };
+
+    setTimeout(cleanup, fadeMs);
+  }
+
+  function bindLoadingGuard(options) {
+    const opts = options || {};
+    const timeoutMs = opts.timeoutMs || DEFAULT_LOADING_TIMEOUT_MS;
+    const hide = () => finishLoading(opts);
+
+    window.addEventListener('load', hide, { once: true });
+    window.addEventListener('pageshow', hide, { once: true });
+    setTimeout(hide, timeoutMs);
   }
 
   function updateButton(theme, isAutoMode) {
@@ -149,4 +209,6 @@
   }
 
   global.initThemeController = initThemeController;
+  global.finishLoading = finishLoading;
+  global.bindLoadingGuard = bindLoadingGuard;
 })(window);

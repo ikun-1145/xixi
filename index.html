@@ -625,9 +625,16 @@
 
     const text = t.greeting;
     let i = 0;
+    const reduceMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
     // 为本次动画生成唯一标识
     const myToken = ++typingToken;
+
+    if (reduceMotion) {
+      greetingEl.textContent = text;
+      greetingEl.classList.add('finished');
+      return;
+    }
 
     function typeNext() {
       // 如果已经被新的语言切换打断，直接终止

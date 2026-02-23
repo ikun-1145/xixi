@@ -748,6 +748,14 @@ if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
 }
 
 /* ================= 启动游戏 ================= */
+
+// 兜底：资源超时或浏览器缓存异常时，确保加载层不会卡住
+setTimeout(() => {
+  document.body.classList.remove('preload');
+  document.body.style.opacity = '1';
+  finishLoading({ fadeMs: 600, removeNode: true });
+}, 5000);
+
 window.addEventListener('load', async function() {
   try {
     // 更新 UI 文本
@@ -768,8 +776,7 @@ window.addEventListener('load', async function() {
     document.body.style.opacity = '1';
 
     // 隐藏加载画面（主页同款动画）
-    loadingEl.style.opacity = '0';
-    setTimeout(() => loadingEl.remove(), 600);
+    finishLoading({ fadeMs: 600, removeNode: true });
 
     // 启动游戏
     resetGame();
@@ -779,8 +786,7 @@ window.addEventListener('load', async function() {
     console.error('Initialization error:', error);
     // 即使出错也隐藏加载画面并启动游戏
     document.body.classList.remove('preload');
-    loadingEl.style.opacity = '0';
-    setTimeout(() => loadingEl.remove(), 600);
+    finishLoading({ fadeMs: 600, removeNode: true });
     resetGame();
   }
 });
