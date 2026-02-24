@@ -117,20 +117,34 @@
     }
 
     .social-icon {
-      width: 36px;
-      height: 36px;
-      border-radius: 10px;
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
       display: flex;
       align-items: center;
       justify-content: center;
-      font-size: 1rem;
-      background: rgba(113,248,252,0.15);
-      transition: background .25s ease, transform .25s ease;
+      background: rgba(255,255,255,0.45);
+      border: 1px solid var(--border-soft);
+      transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
+    }
+
+    .social-icon img {
+      width: 22px;
+      height: 22px;
+      object-fit: contain;
+      filter: grayscale(20%);
+      transition: transform .25s ease, filter .25s ease;
     }
 
     .social-item:hover .social-icon {
-      background: rgba(113,248,252,0.25);
-      transform: scale(1.05);
+      background: rgba(113,248,252,0.18);
+      box-shadow: 0 6px 18px rgba(113,248,252,0.25);
+      transform: translateY(-2px);
+    }
+
+    .social-item:hover .social-icon img {
+      transform: scale(1.08);
+      filter: grayscale(0%);
     }
 
     .social-name {
@@ -274,22 +288,22 @@
     <div class="contact-card">
       <div class="social-grid">
         <a href="https://github.com/" target="_blank" class="social-item">
-          <div class="social-icon">⬡</div>
+          <div class="social-icon"><img src="p/gh.svg" alt="GitHub"></div>
           <div class="social-name">GitHub</div>
         </a>
 
         <a href="https://bilibili.com/" target="_blank" class="social-item">
-          <div class="social-icon">▶</div>
+          <div class="social-icon"><img src="p/bilibili.svg" alt="Bilibili"></div>
           <div class="social-name">Bilibili</div>
         </a>
 
         <a href="https://x.com/" target="_blank" class="social-item">
-          <div class="social-icon">𝕏</div>
+          <div class="social-icon"><img src="p/x.svg" alt="X"></div>
           <div class="social-name">X</div>
         </a>
 
         <a href="https://xiaohongshu.com/" target="_blank" class="social-item">
-          <div class="social-icon">✿</div>
+          <div class="social-icon"><img src="p/xhs.svg" alt="小红书"></div>
           <div class="social-name">小红书</div>
         </a>
       </div>
