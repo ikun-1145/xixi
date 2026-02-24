@@ -4,11 +4,11 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title id="pageTitle">联系我们 - 霜蓝</title>
-  <link href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
   <style>
     :root {
-      --bg-main: linear-gradient(135deg,#e8fbff,#ffffff), url('p/bg.png') center/cover no-repeat;
-      --card-bg: rgba(255,255,255,0.55);
+      --bg-main: linear-gradient(160deg,#eef9fb,#f7fcfd);
+      --card-bg: rgba(255,255,255,0.18);
       --text-main: #1a1a1a;
       --accent: #71f8fc;
       --border-soft: rgba(0,0,0,0.06);
@@ -34,7 +34,7 @@
 
     body {
       margin: 0;
-      font-family: 'Product Sans', sans-serif;
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: var(--bg-main);
       display: flex;
       flex-direction: column;
@@ -44,13 +44,14 @@
     }
 
     .container {
-      margin-top: 6rem;
+      margin-top: 7rem;
       padding: 3rem 2.8rem;
+      padding-bottom: 3.2rem;
       width: 92%;
       max-width: 560px;
       background: var(--card-bg);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
       border-radius: 20px;
       border: 1px solid var(--border-soft);
       box-shadow: var(--shadow-soft);
@@ -59,16 +60,21 @@
     }
 
     .contact-card {
+      position: relative;
       margin-top: 1.8rem;
       padding: 1.6rem 1.4rem;
       border-radius: 16px;
-      background: rgba(255,255,255,0.35);
+      background: linear-gradient(145deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
       border: 1px solid var(--border-soft);
       transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
     }
 
+    .contact-card + .contact-card {
+      margin-top: 2.4rem;
+    }
+
     body.night .contact-card {
-      background: rgba(255,255,255,0.05);
+      background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
     }
 
     .contact-card:hover {
@@ -76,19 +82,38 @@
       box-shadow: 0 14px 30px rgba(0,0,0,0.12);
     }
 
+    .contact-label {
+      font-size: 0.72rem;
+      letter-spacing: 0.25em;
+      opacity: 0.55;
+      text-transform: uppercase;
+      margin-bottom: 0.8rem;
+    }
+
     .social-grid {
+      padding-top: 1.6rem;
+      border-top: 1px solid var(--border-soft);
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+      grid-template-columns: repeat(5, 1fr);
       gap: 14px;
+      align-items: stretch;
       margin-top: 1.5rem;
+    }
+
+    @media (max-width: 600px) {
+      .social-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
     }
 
     .social-item {
       position: relative;
-      padding: 1rem 0.8rem;
-      border-radius: 14px;
-      background: rgba(255,255,255,0.32);
+      padding: 1.1rem 0.8rem 1rem;
+      border-radius: 16px;
+      background: linear-gradient(145deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06));
       border: 1px solid var(--border-soft);
+      cursor: pointer;
+      user-select: none;
       text-decoration: none;
       color: var(--text-main);
       font-size: 0.85rem;
@@ -97,59 +122,87 @@
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      gap: 8px;
-      transition: transform .25s ease,
-                  box-shadow .25s ease,
-                  background .25s ease,
-                  border-color .25s ease;
+      gap: 10px;
       overflow: hidden;
+      transition: transform .35s cubic-bezier(.2,.8,.2,1),
+                  box-shadow .35s cubic-bezier(.2,.8,.2,1),
+                  border-color .35s ease,
+                  background .25s ease;
+      will-change: transform;
+      transform-style: preserve-3d;
+      perspective: 800px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+    }
+    .social-item:active {
+      transform: scale(0.97);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.18);
+    }
+    .social-item .hover-light {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(113,248,252,0.35), transparent 60%);
+      opacity: 0;
+      transition: opacity .25s ease;
+    }
+
+    .social-item.active-light .hover-light {
+      opacity: 1;
+    }
+
+
+    .social-item::after {
+      content: '';
+      position: absolute;
+      width: 120%;
+      height: 120%;
+      top: -10%;
+      left: -10%;
+      background: radial-gradient(circle at center, rgba(113,248,252,0.18), transparent 60%);
+      opacity: 0.08;
+      transform: scale(0.8);
+      transition: opacity .4s ease, transform .4s ease;
     }
 
     body.night .social-item {
-      background: rgba(255,255,255,0.06);
+      background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
     }
 
     .social-item:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 14px 28px rgba(0,0,0,0.12);
-      border-color: var(--accent);
-      background: rgba(113,248,252,0.08);
+      transform: translateY(-3px);
+      box-shadow: 0 10px 24px rgba(0,0,0,0.12);
+    }
+
+
+    .social-item:hover::after {
+      opacity: 1;
+      transform: scale(1);
     }
 
     .social-icon {
-      width: 40px;
-      height: 40px;
-      border-radius: 12px;
+      width: 42px;
+      height: 42px;
+      border-radius: 10px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(255,255,255,0.45);
-      border: 1px solid var(--border-soft);
-      transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
-    }
-
-    .social-icon img {
-      width: 22px;
-      height: 22px;
-      object-fit: contain;
-      filter: grayscale(20%);
-      transition: transform .25s ease, filter .25s ease;
+      font-size: 1rem;
+      background: rgba(0,0,0,0.04);
+      transition: background .25s ease, transform .25s ease;
+      overflow: hidden;
     }
 
     .social-item:hover .social-icon {
-      background: rgba(113,248,252,0.18);
-      box-shadow: 0 6px 18px rgba(113,248,252,0.25);
+      background: rgba(113,248,252,0.28);
+      box-shadow: 0 8px 20px rgba(113,248,252,0.35);
       transform: translateY(-2px);
     }
 
-    .social-item:hover .social-icon img {
-      transform: scale(1.08);
-      filter: grayscale(0%);
-    }
-
     .social-name {
-      font-size: 0.75rem;
+      font-size: 0.8rem;
+      font-weight: 600;
       letter-spacing: 0.05em;
+      transition: transform .25s ease;
     }
 
     @keyframes fadeInUp {
@@ -158,16 +211,21 @@
     }
 
     h1 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
+      font-family: 'Playfair Display', serif;
+      font-size: 2.2rem;
+      font-weight: 600;
+      letter-spacing: 0.02em;
+      margin-bottom: 0.6rem;
     }
 
     .email {
-      font-size: 1.6rem;
-      font-weight: 700;
-      margin: 2.2rem 0 1.4rem;
-      letter-spacing: 1px;
+      font-size: 1.55rem;
+      font-weight: 600;
+      margin: 1.4rem 0 1.2rem;
+      letter-spacing: 0.04em;
       word-break: break-all;
+      font-family: 'Inter', sans-serif;
+      font-variant-numeric: tabular-nums;
     }
 
     .copy-btn {
@@ -176,6 +234,7 @@
       border-radius: 999px;
       border: 1px solid var(--border-soft);
       background: transparent;
+      backdrop-filter: blur(8px);
       color: var(--text-main);
       font-weight: 500;
       font-size: 0.85rem;
@@ -190,21 +249,24 @@
     }
 
     .back {
-      margin-top: 2rem;
+      margin-top: 2.4rem;
       display: inline-block;
-      padding: 0.7rem 1.4rem;
-      border-radius: 20px;
-      border: 1px solid rgba(0,0,0,0.1);
+      padding: 0.65rem 1.4rem;
+      border-radius: 999px;
+      border: 1px solid var(--border-soft);
+      backdrop-filter: blur(6px);
       text-decoration: none;
       color: var(--text-main);
       font-weight: 500;
-      font-size: 0.95rem;
-      transition: background 0.25s ease, transform 0.2s ease;
+      font-size: 0.9rem;
+      letter-spacing: 0.04em;
+      transition: all 0.25s ease;
     }
 
     .back:hover {
-      background: rgba(0,0,0,0.05);
-      transform: translateY(-2px);
+      background: rgba(0,0,0,0.04);
+      transform: translateY(-1px);
+      box-shadow: 0 8px 18px rgba(0,0,0,0.08);
     }
 
     footer {
@@ -279,7 +341,7 @@
   <div class="container">
     <h1 id="titleText"></h1>
     <div class="contact-card">
-      <div style="font-size:0.8rem; letter-spacing:2px; opacity:.6; text-transform:uppercase;">
+      <div class="contact-label">
         Primary Contact
       </div>
       <div class="email" id="emailText">sunlandccc@outlook.com</div>
@@ -288,23 +350,43 @@
     <div class="contact-card">
       <div class="social-grid">
         <a href="https://github.com/" target="_blank" class="social-item">
-          <div class="social-icon"><img src="p/github.svg" alt="GitHub"></div>
+          <div class="social-icon">
+            <img src="p/github.svg" alt="GitHub" style="width:22px;height:22px;">
+          </div>
           <div class="social-name">GitHub</div>
+          <div class="hover-light"></div>
         </a>
 
         <a href="https://bilibili.com/" target="_blank" class="social-item">
-          <div class="social-icon"><img src="p/bilibili.svg" alt="Bilibili"></div>
+          <div class="social-icon">
+            <img src="p/bilibili.svg" alt="Bilibili" style="width:22px;height:22px;">
+          </div>
           <div class="social-name">Bilibili</div>
+          <div class="hover-light"></div>
+        </a>
+
+        <a href="https://douyin.com/" target="_blank" class="social-item">
+          <div class="social-icon">
+            <img src="p/dy.svg" alt="Douyin" style="width:22px;height:22px;">
+          </div>
+          <div class="social-name">抖音</div>
+          <div class="hover-light"></div>
         </a>
 
         <a href="https://x.com/" target="_blank" class="social-item">
-          <div class="social-icon"><img src="p/x.svg" alt="X"></div>
+          <div class="social-icon">
+            <img src="p/x.svg" alt="X" style="width:22px;height:22px;">
+          </div>
           <div class="social-name">X</div>
+          <div class="hover-light"></div>
         </a>
 
         <a href="https://xiaohongshu.com/" target="_blank" class="social-item">
-          <div class="social-icon"><img src="p/xhs.svg" alt="小红书"></div>
+          <div class="social-icon">
+            <img src="p/xhs.svg" alt="小红书" style="width:22px;height:22px;">
+          </div>
           <div class="social-name">小红书</div>
+          <div class="hover-light"></div>
         </a>
       </div>
     </div>
