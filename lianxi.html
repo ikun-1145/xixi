@@ -17,12 +17,15 @@
 
     /* 夜间主题（donate 同款） */
     body.night {
-      --bg-main: #161823;
+      --bg-main:
+        linear-gradient(rgba(12,16,24,0.78), rgba(12,16,24,0.92)),
+        url('p/background.png') center / cover no-repeat fixed;
       --card-bg: rgba(22,24,35,0.85);
       --text-main: #E8FFFF;
       --accent: #3EEDE7;
       --border-soft: rgba(255,255,255,0.08);
       --shadow-soft: 0 20px 60px rgba(0,0,0,0.35);
+      background-blend-mode: overlay;
     }
 
     /* preload 阶段隐藏页面 */
@@ -36,6 +39,7 @@
       margin: 0;
       font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
       background: var(--bg-main);
+      background-attachment: fixed;
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -50,8 +54,8 @@
       width: 92%;
       max-width: 560px;
       background: var(--card-bg);
-      backdrop-filter: blur(8px);
-      -webkit-backdrop-filter: blur(8px);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
       border-radius: 20px;
       border: 1px solid var(--border-soft);
       box-shadow: var(--shadow-soft);
@@ -88,6 +92,14 @@
       opacity: 0.55;
       text-transform: uppercase;
       margin-bottom: 0.8rem;
+    }
+
+    .social-hint {
+      font-size: 0.75rem;
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      opacity: 0.5;
+      margin-bottom: 1rem;
     }
 
     .social-grid {
@@ -348,8 +360,9 @@
       <div class="copy-btn" id="copyBtn">复制邮箱</div>
     </div>
     <div class="contact-card">
+      <div class="social-hint">点击图标访问我的社交平台</div>
       <div class="social-grid">
-        <a href="https://github.com/" target="_blank" class="social-item">
+        <a href="https://github.com/ikun-1145" target="_blank" class="social-item">
           <div class="social-icon">
             <img src="p/github.svg" alt="GitHub" style="width:22px;height:22px;">
           </div>
@@ -357,7 +370,7 @@
           <div class="hover-light"></div>
         </a>
 
-        <a href="https://bilibili.com/" target="_blank" class="social-item">
+        <a href="https://space.bilibili.com/3537110472592282?spm_id_from=333.337.0.0" target="_blank" class="social-item">
           <div class="social-icon">
             <img src="p/bilibili.svg" alt="Bilibili" style="width:22px;height:22px;">
           </div>
@@ -365,7 +378,7 @@
           <div class="hover-light"></div>
         </a>
 
-        <a href="https://douyin.com/" target="_blank" class="social-item">
+        <a href="https://www.douyin.com/user/MS4wLjABAAAAhltnZRm9HGKJhr2GANY0gEeaNgdto05Dw4fmj0VHu4w?from_tab_name=main" target="_blank" class="social-item">
           <div class="social-icon">
             <img src="p/dy.svg" alt="Douyin" style="width:22px;height:22px;">
           </div>
@@ -381,7 +394,7 @@
           <div class="hover-light"></div>
         </a>
 
-        <a href="https://xiaohongshu.com/" target="_blank" class="social-item">
+        <a href="https://www.xiaohongshu.com/user/profile/6724bcd9000000001c01ae54?xsec_token=ABRwvfNwkP7DMdMVvZ8SQforCoXBlVi3Un2eR7cOZ56UE%3D&xsec_source=pc_search" target="_blank" class="social-item">
           <div class="social-icon">
             <img src="p/xhs.svg" alt="小红书" style="width:22px;height:22px;">
           </div>
