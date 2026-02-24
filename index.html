@@ -428,6 +428,14 @@
     const SPLASH_ANIMATION_MS = 2400;
     let splashAnimationDone = false;
     let pageLoaded = false;
+    const shouldPlaySplash = !sessionStorage.getItem('homeVisited');
+    let appReadyDispatched = false;
+
+    function dispatchAppReadyOnce() {
+      if (appReadyDispatched) return;
+      appReadyDispatched = true;
+      document.dispatchEvent(new Event('app-ready'));
+    }
 
     function finishSplashIfReady() {
       if (!splashAnimationDone || !pageLoaded) return;
@@ -437,14 +445,27 @@
       document.body.classList.add('loaded');
       document.body.style.opacity = '1';
 
+      if (!shouldPlaySplash) {
+        splash?.remove();
+        document.body.classList.remove('splash-active', 'splash-lock');
+        dispatchAppReadyOnce();
+        return;
+      }
+
       if (!splash) {
         document.body.classList.remove('splash-active', 'splash-lock');
+        sessionStorage.setItem('homeVisited', '1');
+        dispatchAppReadyOnce();
         return;
       }
 
       splash.classList.add('is-fading');
       document.body.classList.remove('splash-active', 'splash-lock');
-      setTimeout(() => splash.remove(), 520);
+      setTimeout(() => {
+        splash.remove();
+        sessionStorage.setItem('homeVisited', '1');
+        dispatchAppReadyOnce();
+      }, 520);
 
       // 页面首次加载时确保不显示登录弹窗
       document.getElementById("loginModal")?.classList.remove("active");
@@ -485,6 +506,11 @@
 
 
     document.addEventListener('DOMContentLoaded', () => {
+      if (!shouldPlaySplash) {
+        splashAnimationDone = true;
+        return;
+      }
+
       const splashText = document.querySelector('#splash .splash-logo text');
       if (splashText) {
         splashText.addEventListener('animationend', (event) => {
