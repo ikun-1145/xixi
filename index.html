@@ -114,6 +114,11 @@
       animation: float 6s ease-in-out infinite;
     }
 
+    body.ready .container {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
     .avatar { width:150px; height:150px; border-radius:50%; object-fit:cover; margin-bottom:0.5rem; box-shadow: 0 0 25px var(--accent); 
     animation: float 5s ease-in-out infinite, avatarGlow 5s ease-in-out infinite;
     }
@@ -544,33 +549,76 @@
     };
     // Splash 完全交给 CSS 控制，JS 只在动画结束后启动页面
 
-    /* Splash 控制：参考 Crythane 结构 */
+    // 站内跳转时标记，返回首页不重播 Splash
+    document.querySelectorAll('.buttons a').forEach(link => {
+      link.addEventListener('click', () => {
+        sessionStorage.setItem("skipSplash", "1");
+      });
+    });
+
+    /* ===== 稳定版 Splash 控制（支持返回不重播） ===== */
+
+    const navEntry = performance.getEntriesByType("navigation")[0];
+
+    // 站内跳转返回控制（避免重播 Splash）
+    const skipSplashBySession = sessionStorage.getItem("skipSplash") === "1";
+    if (skipSplashBySession) {
+      sessionStorage.removeItem("skipSplash");
+    }
+
+    const isBackForward =
+      (navEntry && navEntry.type === "back_forward") || skipSplashBySession;
+
+    // Safari BFCache 处理
+    window.addEventListener("pageshow", (event) => {
+      if (event.persisted || isBackForward) {
+        const splash = document.getElementById("loading");
+        if (splash) splash.remove();
+        document.body.classList.add("ready");
+        document.dispatchEvent(new Event("app-ready"));
+      }
+    });
+
     window.addEventListener('load', () => {
-      setTimeout(() => {
-        const splash = document.getElementById('loading');
+      // 如果是后退返回，不播放动画
+      if (isBackForward) return;
+
+      const splash = document.getElementById('loading');
+      const logoText = document.querySelector('.splash-svg text');
+
+      if (!splash || !logoText) {
+        document.body.classList.add('ready');
+        document.dispatchEvent(new Event('app-ready'));
+        return;
+      }
+
+      let finished = false;
+
+      function finishSplash() {
+        if (finished) return;
+        finished = true;
+
         splash.classList.add('fade');
 
         setTimeout(() => {
           splash.remove();
-
-          // 显式显示页面内容
-          const container = document.querySelector('.container');
-          if (container) {
-            container.style.opacity = '1';
-            container.style.transform = 'translateY(0)';
-          }
-
+          document.body.classList.add('ready');
           document.dispatchEvent(new Event('app-ready'));
         }, 800);
+      }
 
-      }, 2000);
+      logoText.addEventListener('animationend', (e) => {
+        if (e.animationName === 'logoFill') {
+          finishSplash();
+        }
+      });
+
+      // 兜底机制
+      setTimeout(finishSplash, 6000);
     });
 </script>
 
   <script>
-  document.addEventListener('DOMContentLoaded', () => {
-    // 确保 DOM 已准备，但动画等待 app-ready 触发
-  });
   let typingToken = 0;
   const i18n = {
     zh: {

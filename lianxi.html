@@ -7,19 +7,22 @@
   <link href="https://fonts.googleapis.com/css2?family=Product+Sans&display=swap" rel="stylesheet">
   <style>
     :root {
-      /* 日间主题 */
-      --bg-main: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center / cover no-repeat;
-      --card-bg: rgba(255,255,255,0.5);
-      --text-main: #1A1A1A;
+      --bg-main: linear-gradient(135deg,#e8fbff,#ffffff), url('p/bg.png') center/cover no-repeat;
+      --card-bg: rgba(255,255,255,0.55);
+      --text-main: #1a1a1a;
       --accent: #71f8fc;
+      --border-soft: rgba(0,0,0,0.06);
+      --shadow-soft: 0 20px 50px rgba(0,0,0,0.08);
     }
 
     /* 夜间主题（donate 同款） */
     body.night {
       --bg-main: #161823;
-      --card-bg: rgba(22,24,35,0.9);
+      --card-bg: rgba(22,24,35,0.85);
       --text-main: #E8FFFF;
       --accent: #3EEDE7;
+      --border-soft: rgba(255,255,255,0.08);
+      --shadow-soft: 0 20px 60px rgba(0,0,0,0.35);
     }
 
     /* preload 阶段隐藏页面 */
@@ -41,16 +44,98 @@
     }
 
     .container {
-      margin-top: 2rem;
-      padding: 2rem;
-      width: 90%;
-      max-width: 720px;
+      margin-top: 6rem;
+      padding: 3rem 2.8rem;
+      width: 92%;
+      max-width: 560px;
       background: var(--card-bg);
-      backdrop-filter: blur(10px);
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border-radius: 20px;
+      border: 1px solid var(--border-soft);
+      box-shadow: var(--shadow-soft);
       text-align: center;
-      animation: fadeInUp 1s ease-out;
+      animation: fadeInUp 0.8s cubic-bezier(.4,0,.2,1);
+    }
+
+    .contact-card {
+      margin-top: 1.8rem;
+      padding: 1.6rem 1.4rem;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.35);
+      border: 1px solid var(--border-soft);
+      transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
+    }
+
+    body.night .contact-card {
+      background: rgba(255,255,255,0.05);
+    }
+
+    .contact-card:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 14px 30px rgba(0,0,0,0.12);
+    }
+
+    .social-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(90px, 1fr));
+      gap: 14px;
+      margin-top: 1.5rem;
+    }
+
+    .social-item {
+      position: relative;
+      padding: 1rem 0.8rem;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.32);
+      border: 1px solid var(--border-soft);
+      text-decoration: none;
+      color: var(--text-main);
+      font-size: 0.85rem;
+      font-weight: 500;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: transform .25s ease,
+                  box-shadow .25s ease,
+                  background .25s ease,
+                  border-color .25s ease;
+      overflow: hidden;
+    }
+
+    body.night .social-item {
+      background: rgba(255,255,255,0.06);
+    }
+
+    .social-item:hover {
+      transform: translateY(-4px);
+      box-shadow: 0 14px 28px rgba(0,0,0,0.12);
+      border-color: var(--accent);
+      background: rgba(113,248,252,0.08);
+    }
+
+    .social-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1rem;
+      background: rgba(113,248,252,0.15);
+      transition: background .25s ease, transform .25s ease;
+    }
+
+    .social-item:hover .social-icon {
+      background: rgba(113,248,252,0.25);
+      transform: scale(1.05);
+    }
+
+    .social-name {
+      font-size: 0.75rem;
+      letter-spacing: 0.05em;
     }
 
     @keyframes fadeInUp {
@@ -64,32 +149,55 @@
     }
 
     .email {
-      font-size: 1.5rem;
-      font-weight: bold;
-      margin: 2rem 0;
+      font-size: 1.6rem;
+      font-weight: 700;
+      margin: 2.2rem 0 1.4rem;
+      letter-spacing: 1px;
+      word-break: break-all;
+    }
+
+    .copy-btn {
+      display: inline-block;
+      padding: 0.55rem 1.3rem;
+      border-radius: 999px;
+      border: 1px solid var(--border-soft);
+      background: transparent;
+      color: var(--text-main);
+      font-weight: 500;
+      font-size: 0.85rem;
+      cursor: pointer;
+      transition: background .25s ease, transform .2s ease;
+      margin-bottom: 1.2rem;
+    }
+
+    .copy-btn:hover {
+      background: rgba(0,0,0,0.05);
+      transform: translateY(-2px);
     }
 
     .back {
-      margin-top: 1rem;
+      margin-top: 2rem;
       display: inline-block;
-      padding: 0.8rem 1.5rem;
-      background: linear-gradient(to right, var(--accent), #a0fff8);
-      border-radius: 30px;
+      padding: 0.7rem 1.4rem;
+      border-radius: 20px;
+      border: 1px solid rgba(0,0,0,0.1);
       text-decoration: none;
-      color: black;
-      font-weight: bold;
-      font-size: 1.1rem;
-      transition: transform 0.3s ease;
+      color: var(--text-main);
+      font-weight: 500;
+      font-size: 0.95rem;
+      transition: background 0.25s ease, transform 0.2s ease;
     }
 
     .back:hover {
-      transform: translateY(-3px);
+      background: rgba(0,0,0,0.05);
+      transform: translateY(-2px);
     }
 
     footer {
-      margin: 2rem 0 1rem;
-      font-size: 0.9rem;
-      color: #000;
+      margin: 3rem 0 1.2rem;
+      font-size: 0.85rem;
+      opacity: 0.7;
+      text-align: center;
     }
 
     /* 加载动画样式 */
@@ -101,11 +209,7 @@
       align-items: center;
       justify-content: center;
       transition: opacity 0.6s ease;
-      background: radial-gradient(
-        circle at center,
-        rgba(113,248,252,0.18),
-        #ffffff 65%
-      );
+      background: var(--bg-main);
     }
 
     body.night #loading {
@@ -123,7 +227,6 @@
       border: 6px solid rgba(0,0,0,0.08);
       border-top-color: var(--accent);
       animation: spin 1s linear infinite;
-      box-shadow: 0 0 20px rgba(113,248,252,0.45);
     }
 
     body.night .loader {
@@ -161,7 +264,36 @@
 
   <div class="container">
     <h1 id="titleText"></h1>
-    <div class="email">📧 sunlandccc@outlook.com</div>
+    <div class="contact-card">
+      <div style="font-size:0.8rem; letter-spacing:2px; opacity:.6; text-transform:uppercase;">
+        Primary Contact
+      </div>
+      <div class="email" id="emailText">sunlandccc@outlook.com</div>
+      <div class="copy-btn" id="copyBtn">复制邮箱</div>
+    </div>
+    <div class="contact-card">
+      <div class="social-grid">
+        <a href="https://github.com/" target="_blank" class="social-item">
+          <div class="social-icon">⬡</div>
+          <div class="social-name">GitHub</div>
+        </a>
+
+        <a href="https://bilibili.com/" target="_blank" class="social-item">
+          <div class="social-icon">▶</div>
+          <div class="social-name">Bilibili</div>
+        </a>
+
+        <a href="https://x.com/" target="_blank" class="social-item">
+          <div class="social-icon">𝕏</div>
+          <div class="social-name">X</div>
+        </a>
+
+        <a href="https://xiaohongshu.com/" target="_blank" class="social-item">
+          <div class="social-icon">✿</div>
+          <div class="social-name">小红书</div>
+        </a>
+      </div>
+    </div>
     <a href="index.html" class="back" id="backBtn"></a>
   </div>
   <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
@@ -205,8 +337,24 @@
       document.getElementById("backBtn").textContent = t.back;
     }
 
+    function setupCopyButton() {
+      const btn = document.getElementById("copyBtn");
+      const email = document.getElementById("emailText").textContent.replace("📧 ", "");
+
+      btn.addEventListener("click", async () => {
+        try {
+          await navigator.clipboard.writeText(email);
+          btn.textContent = "已复制 ✓";
+          setTimeout(() => btn.textContent = "复制邮箱", 1500);
+        } catch (err) {
+          btn.textContent = "复制失败";
+        }
+      });
+    }
+
     window.addEventListener('load', () => {
       applyLang();
+      setupCopyButton();
 
       // 页面解封
       document.body.classList.remove('preload');
