@@ -501,6 +501,15 @@
       <svg viewBox="0 0 600 160" class="splash-svg">
         <text x="50%" y="60%" text-anchor="middle">SUNLAND</text>
       </svg>
+      <div id="firstVisitTip" style="
+        margin-top: 12px;
+        font-size: 0.9rem;
+        color: var(--accent);
+        opacity: 0;
+        transform: translateY(6px);
+        transition: opacity 0.6s ease, transform 0.6s ease;
+      ">
+      </div>
     </div>
   </div>
 
@@ -691,6 +700,21 @@
       // 如果是后退返回，不播放动画
       if (isBackForward) return;
 
+      // 新增首次访问提示逻辑
+      const firstVisitKey = "siteVisited";
+      const isFirstVisit = !localStorage.getItem(firstVisitKey);
+      if (isFirstVisit) {
+        localStorage.setItem(firstVisitKey, "1");
+      }
+
+      const firstVisitTip = document.getElementById("firstVisitTip");
+      if (isFirstVisit && firstVisitTip) {
+        setTimeout(() => {
+          firstVisitTip.style.opacity = "1";
+          firstVisitTip.style.transform = "translateY(0)";
+        }, 4500); // 在 logoDraw 结束后出现
+      }
+
       const splash = document.getElementById('loading');
       const logoText = document.querySelector('.splash-svg text');
 
@@ -740,7 +764,8 @@
       fans: "实时粉丝数",
       game: "小游戏",
       donate: "捐赠支持",
-      loading: "加载中..."
+      loading: "加载中...",
+      firstVisitTip: "首次加载可能较慢，请耐心等待",
     },
     en: {
       greeting: "Hello",
@@ -753,7 +778,8 @@
       fans: "Fans",
       game: "Mini Game",
       donate: "Support Me",
-      loading: "Loading..."
+      loading: "Loading...",
+      firstVisitTip: "First load may take a little longer. Please wait patiently.",
     },
     ja: {
       greeting: "こんにちは",
@@ -766,7 +792,8 @@
       fans: "フォロワー数",
       game: "ミニゲーム",
       donate: "支援する",
-      loading: "読み込み中..."
+      loading: "読み込み中...",
+      firstVisitTip: "初回読み込みには時間がかかる場合があります。しばらくお待ちください。",
     }
   };
 
@@ -777,6 +804,10 @@
     const loadingText = document.getElementById("loadingText");
     if (loadingText) {
       loadingText.textContent = t.loading;
+    }
+    const firstVisitTipEl = document.getElementById("firstVisitTip");
+    if (firstVisitTipEl) {
+      firstVisitTipEl.textContent = t.firstVisitTip;
     }
 
     document.getElementById("introText").textContent = t.intro;
@@ -858,16 +889,29 @@
     });
   });
   document.addEventListener("app-ready", () => {
-    // 浏览器语言检测
-    const browserLang = navigator.language.split('-')[0]; // 'zh-CN' → 'zh', 'ja-JP' → 'ja'
-    const supportedLangs = ['zh', 'en', 'ja'];  // 修正：jp → ja
-    const defaultLang = supportedLangs.includes(browserLang) ? browserLang : 'zh';
-    const saved = localStorage.getItem("lang") || defaultLang;
-    
-    applyLang(saved);
+    // 浏览器语言检测（增强版）
+    const rawLang = navigator.language || navigator.userLanguage || "en";
+    const browserLang = rawLang.toLowerCase();
+
+    let autoLang = "en"; // 默认回退英语
+
+    if (browserLang.startsWith("zh")) {
+      autoLang = "zh";
+    } else if (browserLang.startsWith("ja")) {
+      autoLang = "ja";
+    } else if (browserLang.startsWith("en")) {
+      autoLang = "en";
+    } else {
+      autoLang = "en"; // 其他语言统一回退到英语
+    }
+
+    const saved = localStorage.getItem("lang");
+    const finalLang = saved || autoLang;
+
+    applyLang(finalLang);
 
     document.querySelectorAll("#langSwitcher button").forEach(btn => {
-      btn.classList.toggle("active", btn.dataset.lang === saved);
+      btn.classList.toggle("active", btn.dataset.lang === finalLang);
       btn.onclick = () => {
         const lang = btn.dataset.lang;
         localStorage.setItem("lang", lang);
