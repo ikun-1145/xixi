@@ -48,9 +48,11 @@
 <body>
 
 <div id="boot"></div>
+<input id="mobileInput" type="text" style="position:absolute;opacity:0;height:0;pointer-events:none;">
 
 <script>
 const boot = document.getElementById("boot");
+const mobileInput = document.getElementById("mobileInput");
 
 let lines = [];
 let index = 0;
@@ -63,6 +65,12 @@ fetch("boot.txt")
   .then(text => {
     lines = text.split("\n");
     printNext();
+    // 自动聚焦隐藏输入框（移动端）
+    function focusMobile(){
+      mobileInput.focus();
+    }
+    document.addEventListener("touchstart", focusMobile, { once:true });
+    boot.addEventListener("click", focusMobile);
   });
 
 function printNext() {
@@ -130,6 +138,7 @@ function addInputListener() {
 }
 
 function handleInput(e) {
+  mobileInput.focus();
   const cursor = document.querySelector(".blink");
 
   if (e.key === "Backspace") {
@@ -199,6 +208,7 @@ function addShellListener() {
 }
 
 function handleShell(e) {
+  mobileInput.focus();
   const cursor = document.querySelector(".blink");
 
   if (e.key === "Backspace") {
