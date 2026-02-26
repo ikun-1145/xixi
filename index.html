@@ -840,6 +840,12 @@
       if (clickCount >= 7) {
         clickCount = 0;
 
+        // ===== 写入彩蛋访问凭证 =====
+        const token = Math.random().toString(36).slice(2, 18);
+        sessionStorage.setItem("eggAccess", "1");
+        sessionStorage.setItem("eggTime", Date.now().toString());
+        sessionStorage.setItem("eggToken", token);
+
         // 触发溶解动画
         document.body.classList.add("egg-dissolve");
         avatar.classList.add("egg-burst");
