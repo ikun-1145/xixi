@@ -481,6 +481,7 @@ body.entering-deep #console{
     };
 
     hiddenInput.addEventListener("keydown", (e) => {
+      e.preventDefault();
       if (e.key.length === 1 && buffer.length < 80) {
         buffer = buffer.slice(0, cursorPos) + e.key + buffer.slice(cursorPos);
         cursorPos++;
@@ -553,7 +554,9 @@ body.entering-deep #console{
 
       // Ctrl+L 清屏
       if (e.ctrlKey && e.key === "l"){
+        const currentLine = document.getElementById("currentLine");
         terminal.innerHTML = "";
+        terminal.appendChild(currentLine);
         return;
       }
 
@@ -604,6 +607,15 @@ body.entering-deep #console{
           inputEl.textContent = "";
           hiddenInput.value = "";
           cursorPos = 0;
+          return;
+        }
+
+        if (cmd === ""){
+          buffer = "";
+          inputEl.textContent = "";
+          hiddenInput.value = "";
+          cursorPos = 0;
+          updatePrompt();
           return;
         }
 
@@ -717,11 +729,32 @@ body.entering-deep #console{
         if (response === "__REBOOT__"){
           printLine("Broadcast message from root@hidden-layer");
           printLine("System reboot initiated...");
+
+          hiddenInput.disabled = true;
+
           setTimeout(()=>{
-            terminal.innerHTML="";
+            terminal.innerHTML = "";
+
+            // 重置状态
+            isRoot = false;
+            currentUser = "霜蓝";
+            currentPath = "~";
+            awaitingPassword = false;
+            history = [];
+            historyIndex = -1;
+
             printLine("System restarted.");
+
             updatePrompt();
+
+            // 重新插入 currentLine
+            const currentLine = document.getElementById("currentLine");
+            terminal.appendChild(currentLine);
+
+            hiddenInput.disabled = false;
+            hiddenInput.focus();
           },1500);
+
           buffer="";
           inputEl.textContent="";
           hiddenInput.value="";
