@@ -1,0 +1,256 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>hidden-layer</title>
+
+  <style>
+    body {
+      margin: 0;
+      background: #000;
+      color: #cfcfcf;
+      font-family: "Ubuntu Mono", "Courier New", monospace;
+      font-size: 14px;
+      overflow: hidden;
+    }
+
+    #boot {
+      padding: 20px;
+      height: 100vh;
+      overflow-y: auto;
+      white-space: pre-wrap;
+    }
+
+    .blink {
+      display: inline-block;
+      width: 8px;
+      background: #cfcfcf;
+      margin-left: 2px;
+      animation: blink 1s steps(1) infinite;
+    }
+
+    @keyframes blink {
+      50% { opacity: 0; }
+    }
+
+    .info { color: #4fc3f7; }
+    .kernel { color: #9cdcfe; }
+    .systemd { color: #c586c0; }
+    .snap { color: #dcdcaa; }
+    .ok { color: #6a9955; }
+    .fail { color: #f44747; }
+    .warn { color: #ff8800; }
+    .prompt { color: #4fc3f7; }
+    .input { color: #ffffff; }
+  </style>
+</head>
+<body>
+
+<div id="boot"></div>
+
+<script>
+const boot = document.getElementById("boot");
+
+let lines = [];
+let index = 0;
+let baseSpeed = 1;
+let slowSpeed = 60;
+let pauseSpeed = 800;
+
+fetch("boot.txt")
+  .then(res => res.text())
+  .then(text => {
+    lines = text.split("\n");
+    printNext();
+  });
+
+function printNext() {
+  if (index >= lines.length) {
+    showLogin();
+    return;
+  }
+
+  const line = lines[index];
+  let coloredLine = line;
+
+  if (/FAILED|Failure|exit-code/i.test(line)) {
+    coloredLine = `<span class="fail">${line}</span>`;
+  } else if (/warning|timeout|error/i.test(line)) {
+    coloredLine = `<span class="warn">${line}</span>`;
+  } else if (/kernel:/i.test(line)) {
+    coloredLine = `<span class="kernel">${line}</span>`;
+  } else if (/systemd/i.test(line)) {
+    coloredLine = `<span class="systemd">${line}</span>`;
+  } else if (/snapd/i.test(line)) {
+    coloredLine = `<span class="snap">${line}</span>`;
+  } else if (/Started|Mounted|OK/i.test(line)) {
+    coloredLine = `<span class="ok">${line}</span>`;
+  }
+
+  boot.innerHTML += coloredLine + "\n";
+  boot.scrollTop = boot.scrollHeight;
+  index++;
+
+  let delay = baseSpeed;
+
+  if (/FAILED|Failure|exit-code/i.test(line)) {
+    delay = pauseSpeed;
+  }
+
+  if (/cryptsetup|Deriving key material/i.test(line)) {
+    delay = slowSpeed;
+  }
+
+  setTimeout(printNext, delay);
+}
+
+function showLogin() {
+  boot.innerHTML += "\nUbuntu 24.04 LTS hidden-layer tty1\n\n";
+  boot.scrollTop = boot.scrollHeight;
+
+  startLogin();
+}
+
+let loginStage = "username";
+let currentInput = "";
+let loggedUser = "";
+
+function startLogin() {
+  boot.innerHTML += `<span class="prompt">hidden-layer login:</span> `;
+  addInputListener();
+}
+
+function addInputListener() {
+  const cursor = document.createElement("span");
+  cursor.className = "blink";
+  boot.appendChild(cursor);
+
+  document.addEventListener("keydown", handleInput);
+}
+
+function handleInput(e) {
+  const cursor = document.querySelector(".blink");
+
+  if (e.key === "Backspace") {
+    if (currentInput.length > 0) {
+      currentInput = currentInput.slice(0, -1);
+      cursor.previousSibling.remove();
+    }
+    return;
+  }
+
+  if (e.key === "Enter") {
+    cursor.remove();
+    boot.innerHTML += "\n";
+    processInput();
+    return;
+  }
+
+  if (e.key.length === 1) {
+    currentInput += e.key;
+    const span = document.createElement("span");
+    span.className = "input";
+    span.textContent = loginStage === "password" ? "*" : e.key;
+    cursor.before(span);
+  }
+
+  boot.scrollTop = boot.scrollHeight;
+}
+
+function processInput() {
+  if (loginStage === "username") {
+    loggedUser = currentInput;
+    currentInput = "";
+    loginStage = "password";
+    boot.innerHTML += `<span class="prompt">Password:</span> `;
+    addInputListener();
+    return;
+  }
+
+  if (loginStage === "password") {
+    document.removeEventListener("keydown", handleInput);
+
+    if (loggedUser === "root" && currentInput === "sunland") {
+      boot.innerHTML += "Login successful\n";
+      startShell();
+    } else {
+      boot.innerHTML += "Login incorrect\n\n";
+      loginStage = "username";
+      currentInput = "";
+      startLogin();
+    }
+
+    currentInput = "";
+  }
+}
+
+function startShell() {
+  loginStage = "shell";
+  boot.innerHTML += `<span class="prompt">root@hidden-layer:~#</span> `;
+  addShellListener();
+}
+
+function addShellListener() {
+  const cursor = document.createElement("span");
+  cursor.className = "blink";
+  boot.appendChild(cursor);
+  document.addEventListener("keydown", handleShell);
+}
+
+function handleShell(e) {
+  const cursor = document.querySelector(".blink");
+
+  if (e.key === "Backspace") {
+    if (currentInput.length > 0) {
+      currentInput = currentInput.slice(0, -1);
+      cursor.previousSibling.remove();
+    }
+    return;
+  }
+
+  if (e.key === "Enter") {
+    cursor.remove();
+    boot.innerHTML += "\n";
+    executeCommand(currentInput);
+    currentInput = "";
+    return;
+  }
+
+  if (e.key.length === 1) {
+    currentInput += e.key;
+    const span = document.createElement("span");
+    span.className = "input";
+    span.textContent = e.key;
+    cursor.before(span);
+  }
+
+  boot.scrollTop = boot.scrollHeight;
+}
+
+function executeCommand(cmd) {
+  if (cmd === "exit") {
+    boot.innerHTML += "logout\n";
+    loginStage = "username";
+    startLogin();
+    return;
+  }
+
+  if (cmd === "whoami") {
+    boot.innerHTML += "root\n";
+  } else if (cmd === "ls") {
+    boot.innerHTML += "boot.txt  deep.html  secrets\n";
+  } else if (cmd === "uname -a") {
+    boot.innerHTML += "Linux hidden-layer 6.8.0-xx-generic x86_64 GNU/Linux\n";
+  } else {
+    boot.innerHTML += `bash: ${cmd}: command not found\n`;
+  }
+
+  boot.innerHTML += `<span class="prompt">root@hidden-layer:~#</span> `;
+  addShellListener();
+}
+
+</script>
+
+</body>
+</html>

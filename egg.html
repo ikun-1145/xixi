@@ -1,0 +1,904 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Hidden Layer · 霜蓝协议</title>
+
+<style>
+:root{
+  --accent:#71f8fc;
+}
+
+*{
+  margin:0;
+  padding:0;
+  box-sizing:border-box;
+}
+
+body{
+  height:100vh;
+  background:
+    linear-gradient(135deg, #dcefff, #f8fdff),
+    url('p/bj.png') center / cover no-repeat fixed;
+  color:var(--accent);
+  font-family: "Courier New", "Consolas", "Lucida Console", monospace;
+  overflow:hidden;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  position:relative;
+  transition: background 2.5s ease;
+  user-select:text;
+  -webkit-user-select:text;
+}
+
+/* 扫描线 */
+body::after{
+  content:"";
+  position:fixed;
+  inset:0;
+  background:repeating-linear-gradient(
+    0deg,
+    rgba(113,248,252,0.05) 0px,
+    rgba(113,248,252,0.05) 2px,
+    transparent 2px,
+    transparent 6px
+  );
+  pointer-events:none;
+  animation:scanMove 8s linear infinite;
+}
+
+body::before{
+  content:"";
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  background:radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
+  background-size:3px 3px;
+  opacity:0;
+  transition:opacity 1s ease;
+}
+
+body.dark-mode::before{
+  opacity:0.4;
+}
+
+@keyframes scanMove{
+  from{ background-position:0 0; }
+  to{ background-position:0 100px; }
+}
+
+@keyframes backgroundShift {
+  0% {
+    background:
+      linear-gradient(135deg, #dcefff, #f8fdff),
+      url('p/bj.png') center / cover no-repeat fixed;
+  }
+  40% {
+    background:
+      linear-gradient(135deg, #c8e8ff, #e8faff),
+      url('p/bj.png') center / cover no-repeat fixed;
+  }
+  100% {
+    background:
+      radial-gradient(circle at 50% 40%, rgba(113,248,252,0.08), transparent 60%),
+      #05070d;
+  }
+}
+
+body.dark-mode{
+  animation: backgroundShift 3.5s ease forwards;
+}
+
+
+.container{
+  text-align:left;
+  width:min(700px,90%);
+  line-height:1.7;
+  font-size:15px;
+  opacity:0;
+  animation:fadeIn 2s ease forwards 3.8s;
+}
+
+@keyframes fadeIn{
+  to{ opacity:1; }
+}
+
+h1{
+  font-size:22px;
+  margin-bottom:1.2rem;
+  letter-spacing:1px;
+}
+
+.typing{
+  border-right:2px solid var(--accent);
+  white-space:nowrap;
+  overflow:hidden;
+  width:0;
+  animation:typing 4s steps(60,end) forwards 4.2s,
+           blink 1s step-end infinite 8.2s;
+}
+
+@keyframes typing{
+  to{ width:100%; }
+}
+
+@keyframes blink{
+  50%{ border-color:transparent; }
+}
+
+.log{
+  margin-top:1.5rem;
+  opacity:0;
+  animation:fadeIn 2s ease forwards 8.5s;
+}
+
+.return-btn{
+  margin-top:2rem;
+  display:inline-block;
+  padding:10px 18px;
+  border:1px solid var(--accent);
+  color:var(--accent);
+  text-decoration:none;
+  opacity:0;
+  transition:all .3s ease;
+  animation:fadeIn 2s ease forwards 13s;
+}
+
+.return-btn:hover{
+  background:var(--accent);
+  color:#000;
+  box-shadow:0 0 20px var(--accent);
+}
+
+/* 背景缓慢旋转 */
+@keyframes slowRotate{
+  from{ transform:rotate(0deg); }
+  to{ transform:rotate(360deg); }
+}
+
+ 
+
+
+.cursor-char{
+  background:var(--accent);
+  color:#000;
+  animation:cursorBlink 1s steps(1) infinite;
+}
+
+.cursor-block{
+  display:inline-block;
+  width:0.6ch;
+  height:1.2em;
+  background:var(--accent);
+  transform:translateY(2px);
+  animation:cursorBlink 1s steps(1) infinite;
+}
+
+@keyframes cursorBlink{
+  0%{ opacity:1; }
+  50%{ opacity:0; }
+  100%{ opacity:1; }
+}
+
+#currentLine{
+  display:flex;
+  align-items:flex-end;
+  margin-top:2px;
+}
+
+/* 新增 console 字体样式 */
+#console{
+  font-family:"Courier New", "SF Mono", monospace;
+  letter-spacing:0.5px;
+}
+
+
+#terminal{
+  max-height:420px;
+  height:420px;
+  overflow-y:auto;
+  padding-right:6px;
+  border:1px solid rgba(113,248,252,0.25);
+  padding:12px;
+  background:rgba(0,0,0,0.25);
+}
+
+#terminal p{
+  margin:2px 0;
+  line-height:1.4;
+}
+
+/* 新增隐藏输入框样式 */
+#hiddenInput{
+  position:absolute;
+  opacity:0;
+  pointer-events:none;
+  height:0;
+}
+
+@media (max-width:768px){
+  #console{
+    font-size:13px;
+  }
+  .prompt{
+    font-size:13px;
+  }
+  #terminal{
+    max-height:320px;
+    height:320px;
+  }
+}
+
+.bg-orb{
+  position:absolute;
+  width:900px;
+  height:900px;
+  border-radius:50%;
+  background:radial-gradient(circle,
+    rgba(113,248,252,0.08),
+    transparent 60%
+  );
+  animation:slowRotate 60s linear infinite;
+  z-index:-1;
+  transition: filter .3s ease;
+}
+
+
+.particles{
+  position:fixed;
+  inset:0;
+  pointer-events:none;
+  overflow:hidden;
+  z-index:-1;
+}
+
+.particles span{
+  position:absolute;
+  width:2px;
+  height:2px;
+  background:rgba(113,248,252,0.6);
+  border-radius:50%;
+  animation:particleFloat linear infinite;
+}
+
+@keyframes particleFloat{
+  from{ transform:translateY(100vh) scale(0.8); opacity:0; }
+  10%{ opacity:1; }
+  90%{ opacity:1; }
+  to{ transform:translateY(-10vh) scale(1.2); opacity:0; }
+}
+
+
+/* 黑幕层样式 */
+#blackout{
+  position:fixed;
+  inset:0;
+  background:#000;
+  opacity:0;
+  pointer-events:none;
+  transition:opacity 1s ease;
+  z-index:9999;
+}
+
+#blackout.active{
+  opacity:1;
+  pointer-events:auto;
+}
+
+body.entering-deep #console{
+  filter:brightness(0.4) contrast(0.8);
+  transform:scale(1.03);
+  transition:all 1.2s ease;
+}
+
+#accessFlash{
+  position:fixed;
+  inset:0;
+  display:flex;
+  align-items:center;
+  justify-content:center;
+  font-size:32px;
+  letter-spacing:4px;
+  color:#71f8fc;
+  opacity:0;
+  pointer-events:none;
+  z-index:10000;
+  transition:opacity .6s ease;
+}
+
+#accessFlash.active{
+  opacity:1;
+}
+
+</style>
+</head>
+
+<body>
+
+<div class="bg-orb"></div>
+<div class="particles" id="particles"></div>
+<div id="blackout"></div>
+<div id="accessFlash">ACCESS GRANTED</div>
+
+<div class="container">
+  <h1>霜蓝协议 · Hidden Layer</h1>
+
+  <div class="typing">
+    SYSTEM BREACH DETECTED · ACCESSING CORE MEMORY...
+  </div>
+
+  <div class="log" id="logArea">
+    <p>> 你已穿过主界面。</p>
+    <p>> 这里不是展示区。</p>
+    <p>> 这里是正在思考的部分。</p>
+    <p>> 项目状态：进行中</p>
+    <p>> 当前维度：未公开层</p>
+    <br>
+    <p>有些东西不会出现在首页。</p>
+    <p>但它们一直在运行。</p>
+  
+  <div id="console" style="margin-top:2rem; opacity:0; animation:fadeIn 2s ease forwards 10s; font-size:14px;">
+  <div id="terminal">
+    <div id="currentLine">
+      <span class="prompt" id="promptText">霜蓝@hidden-layer:~$ </span>
+      <span id="consoleInput"></span>
+    </div>
+  </div>
+  <input id="hiddenInput" type="text" autocomplete="off" />
+</div>
+  </div>
+
+  <a href="index.html" class="return-btn">返回现实</a>
+</div>
+
+<script>
+  window.addEventListener("load", () => {
+    // ===== 强化防直链访问 =====
+    const eggAccess = sessionStorage.getItem("eggAccess");
+    const eggTime = sessionStorage.getItem("eggTime");
+    const eggToken = sessionStorage.getItem("eggToken");
+
+    const now = Date.now();
+    const timeValid = eggTime && (now - parseInt(eggTime) < 5000);
+    const fromIndex = document.referrer.includes("index.html");
+    const tokenValid = eggToken && eggToken.length === 16;
+
+    if (!eggAccess || !timeValid || !fromIndex || !tokenValid) {
+      window.location.href = "index.html";
+      return;
+    }
+
+    // 用完即销毁，防止刷新绕过
+    sessionStorage.removeItem("eggAccess");
+    sessionStorage.removeItem("eggTime");
+    sessionStorage.removeItem("eggToken");
+    setTimeout(() => {
+      document.body.classList.add("dark-mode");
+    }, 300);
+
+    const particleContainer = document.getElementById("particles");
+    for(let i=0;i<60;i++){
+      const p=document.createElement("span");
+      p.style.left=Math.random()*100+"vw";
+      p.style.animationDuration=(8+Math.random()*12)+"s";
+      p.style.animationDelay=Math.random()*10+"s";
+      particleContainer.appendChild(p);
+    }
+
+    /* ===== 随机日志状态变化 ===== */
+    const logArea = document.getElementById("logArea");
+    const statusLine = document.createElement("p");
+    statusLine.style.marginTop = "10px";
+    logArea.appendChild(statusLine);
+
+    const states = [
+      "系统状态：稳定",
+      "核心温度：正常",
+      "信号强度：良好",
+      "维度波动：低频",
+      "数据同步：进行中"
+    ];
+
+    setInterval(()=>{
+      const randomState = states[Math.floor(Math.random()*states.length)];
+      statusLine.textContent = "> " + randomState;
+    },4000);
+
+
+    /* ===== 粒子逐渐减少 ===== */
+    setInterval(()=>{
+      const particles = particleContainer.querySelectorAll("span");
+      if(particles.length>10){
+        particles[0].remove();
+      }
+    },6000);
+
+
+    /* ===== Linux 风格终端交互 ===== */
+    const inputEl = document.getElementById("consoleInput");
+    const terminal = document.getElementById("terminal");
+    const hiddenInput = document.getElementById("hiddenInput");
+    let buffer = "";
+    let cursorPos = 0;
+
+    let currentUser = "霜蓝";
+    let isRoot = false;
+    let awaitingPassword = false;
+    let currentPath = "~";
+    let history = [];
+    let historyIndex = -1;
+
+    function updatePrompt(){
+      const symbol = isRoot ? "#" : "$";
+      document.getElementById("promptText").textContent = currentUser + "@hidden-layer:" + currentPath + symbol + " ";
+    }
+
+    function renderInput(){
+      const before = buffer.slice(0, cursorPos);
+      const after = buffer.slice(cursorPos);
+
+      if (after.length > 0){
+        inputEl.innerHTML = before +
+          '<span class="cursor-char">' + after[0] + '</span>' +
+          after.slice(1);
+      } else {
+        inputEl.innerHTML = before + '<span class="cursor-block"> </span>';
+      }
+    }
+
+    hiddenInput.focus();
+    document.addEventListener("touchstart", ()=>{
+      hiddenInput.focus();
+    }, { once:true });
+
+    // 点击控制台也自动聚焦
+    document.getElementById("console").addEventListener("click",()=>{
+      hiddenInput.focus();
+    });
+
+    const startTime = Date.now();
+
+    const commands = {
+      help: "可用指令：help / status / exit / clear / whoami / uptime / ls / pwd / sudo / su / cd / history / id / unlock / secret",
+      status: "系统运行正常 · Hidden Layer 在线",
+      whoami: () => currentUser,
+      pwd: () => currentPath,
+      ls: () => isRoot ? "deep.key  system.bin  shadow.cfg" : "core.log  memory.dat  dimension.cfg  hidden.key",
+      id: () => isRoot ? "uid=0(root) gid=0(root) groups=0(root)" : "uid=1000(霜蓝) gid=1000(users)",
+      sudo: "sudo: 需要密码。",
+      su: "__SU__",
+      "sudo su": "__SU__",
+      "su root": "__SU__",
+      cd: "__CD__",
+      history: "__HISTORY__",
+      unlock: "访问被拒绝：缺少密钥。",
+      uptime: "__UPTIME__",
+      exit: "正在返回现实...",
+      clear: "__CLEAR__",
+      secret: "__SECRET__",
+      echo: "__ECHO__",
+      date: "__DATE__",
+      uname: "__UNAME__",
+      reboot: "__REBOOT__",
+      cat: "__CAT__",
+      banner: "__BANNER__",
+      env: "__ENV__",
+      ps: "__PS__",
+      top: "__TOP__",
+      alias: "__ALIAS__",
+      crythane: "__CRYTHANE__",
+    };
+
+    hiddenInput.addEventListener("keydown", (e) => {
+      if (e.key.length === 1 && buffer.length < 80) {
+        buffer = buffer.slice(0, cursorPos) + e.key + buffer.slice(cursorPos);
+        cursorPos++;
+        if (!awaitingPassword) renderInput();
+      }
+
+      if (e.key === "Backspace") {
+        if (cursorPos > 0) {
+          buffer = buffer.slice(0, cursorPos-1) + buffer.slice(cursorPos);
+          cursorPos--;
+          if (!awaitingPassword) renderInput();
+        }
+      }
+
+      if (e.key === "ArrowLeft"){
+        if (cursorPos > 0) cursorPos--;
+        renderInput();
+        return;
+      }
+
+      if (e.key === "ArrowRight"){
+        if (cursorPos < buffer.length) cursorPos++;
+        renderInput();
+        return;
+      }
+
+      // ↑ 历史回溯
+      if (e.key === "ArrowUp"){
+        if (history.length > 0){
+          if (historyIndex === -1) historyIndex = history.length - 1;
+          else if (historyIndex > 0) historyIndex--;
+          buffer = history[historyIndex];
+          cursorPos = buffer.length;
+          renderInput();
+        }
+        return;
+      }
+
+      // ↓ 历史前进
+      if (e.key === "ArrowDown"){
+        if (historyIndex !== -1){
+          if (historyIndex < history.length - 1) historyIndex++;
+          else {
+            historyIndex = -1;
+            buffer = "";
+            cursorPos = 0;
+            renderInput();
+            return;
+          }
+          buffer = history[historyIndex];
+          cursorPos = buffer.length;
+          renderInput();
+        }
+        return;
+      }
+
+      // Ctrl+A 行首
+      if (e.ctrlKey && e.key === "a"){
+        cursorPos = 0;
+        renderInput();
+        return;
+      }
+
+      // Ctrl+E 行尾
+      if (e.ctrlKey && e.key === "e"){
+        cursorPos = buffer.length;
+        renderInput();
+        return;
+      }
+
+      // Ctrl+L 清屏
+      if (e.ctrlKey && e.key === "l"){
+        terminal.innerHTML = "";
+        return;
+      }
+
+      // Ctrl+W 删除一个单词
+      if (e.ctrlKey && e.key === "w"){
+        const left = buffer.slice(0, cursorPos);
+        const trimmed = left.replace(/\s+$/,"");
+        const cut = trimmed.replace(/\S+$/,"");
+        const removeCount = left.length - cut.length;
+        buffer = buffer.slice(0, cursorPos-removeCount) + buffer.slice(cursorPos);
+        cursorPos -= removeCount;
+        renderInput();
+        return;
+      }
+
+      // Tab 多匹配显示候选列表
+      if (e.key === "Tab"){
+        e.preventDefault();
+        const matches = Object.keys(commands).filter(c => c.startsWith(buffer));
+        if (matches.length === 1){
+          buffer = matches[0];
+          cursorPos = buffer.length;
+          renderInput();
+        } else if (matches.length > 1){
+          printLine(matches.join("   "));
+        }
+        return;
+      }
+
+      if (e.key === "Enter") {
+        const cmd = buffer.trim();
+
+        if (awaitingPassword) {
+
+          if (cmd === "sunland") {
+            isRoot = true;
+            document.body.classList.add("root-mode");
+            currentUser = "root";
+            currentPath = "/root";   // 自动切换到 root 目录
+            printLine("root 权限已授予。");
+          } else {
+            printLine("密码错误。");
+          }
+
+          awaitingPassword = false;
+          updatePrompt();
+          buffer = "";
+          inputEl.textContent = "";
+          hiddenInput.value = "";
+          cursorPos = 0;
+          return;
+        }
+
+        history.push(cmd);
+        historyIndex = -1;
+        const symbol = isRoot ? "#" : "$";
+        const promptText = currentUser + "@hidden-layer:" + currentPath + symbol + " " + cmd;
+        printLine(promptText);
+
+        let response = commands[cmd];
+
+        if (typeof response === "function"){
+          response = response();
+        }
+
+        if (response === "__SU__"){
+          awaitingPassword = true;
+          document.getElementById("promptText").textContent = "Password: ";
+          buffer = "";
+          inputEl.textContent = "";
+          hiddenInput.value = "";
+          cursorPos = 0;
+          return;
+        }
+
+        if (response === "__CD__"){
+          const parts = cmd.split(" ");
+
+          // cd 无参数时：普通用户回到 ~，root 回到 /root
+          if (!parts[1]){
+            currentPath = isRoot ? "/root" : "~";
+          }
+          else if (parts[1] === "/root" && isRoot){
+            currentPath = "/root";
+          }
+          else if (parts[1] === "~"){
+            currentPath = "~";
+          }
+          else {
+            printLine("bash: cd: " + parts[1] + ": No such file or directory");
+            buffer="";
+            inputEl.textContent="";
+            hiddenInput.value="";
+            cursorPos = 0;
+            return;
+          }
+
+          updatePrompt();
+          buffer="";
+          inputEl.textContent="";
+          hiddenInput.value="";
+          cursorPos = 0;
+          return;
+        }
+
+        if (response === "__HISTORY__"){
+          history.forEach((h,i)=>{
+            printLine((i+1) + "  " + h);
+          });
+          buffer="";
+          inputEl.textContent="";
+          hiddenInput.value="";
+          cursorPos = 0;
+          return;
+        }
+
+        if (response === "__ECHO__"){
+          const text = cmd.slice(5);
+          printLine(text);
+          buffer="";
+          inputEl.textContent="";
+          hiddenInput.value="";
+          cursorPos=0;
+          return;
+        }
+
+        if (response === "__DATE__"){
+          printLine(new Date().toString());
+          buffer="";
+          inputEl.textContent="";
+          hiddenInput.value="";
+          cursorPos=0;
+          return;
+        }
+
+        if (response === "__UNAME__"){
+          printLine("HiddenLayerOS 1.0.3 x86_64 GNU/Linux");
+          buffer="";
+          inputEl.textContent="";
+          hiddenInput.value="";
+          cursorPos=0;
+          return;
+        }
+
+        if (response === "__CAT__"){
+          const parts = cmd.split(" ");
+          if(parts[1] === "deep.key" && isRoot && currentPath === "/root"){
+            printLine("[ACCESS KEY]");
+            printLine("dimension=deep");
+            printLine("protocol=霜蓝-core");
+          }else{
+            printLine("cat: " + (parts[1]||"") + ": No such file");
+          }
+          buffer="";
+          inputEl.textContent="";
+          hiddenInput.value="";
+          cursorPos=0;
+          return;
+        }
+
+        if (response === "__REBOOT__"){
+          printLine("Broadcast message from root@hidden-layer");
+          printLine("System reboot initiated...");
+          setTimeout(()=>{
+            terminal.innerHTML="";
+            printLine("System restarted.");
+            updatePrompt();
+          },1500);
+          buffer="";
+          inputEl.textContent="";
+          hiddenInput.value="";
+          cursorPos=0;
+          return;
+        }
+
+        if (response === "__BANNER__"){
+          printLine("██╗  ██╗██╗██████╗ ██████╗ ███████╗███╗   ██╗");
+          printLine("██║  ██║██║██╔══██╗██╔══██╗██╔════╝████╗  ██║");
+          printLine("███████║██║██████╔╝██████╔╝█████╗  ██╔██╗ ██║");
+          printLine("██╔══██║██║██╔═══╝ ██╔═══╝ ██╔══╝  ██║╚██╗██║");
+          printLine("██║  ██║██║██║     ██║     ███████╗██║ ╚████║");
+          printLine("╚═╝  ╚═╝╚═╝╚═╝     ╚═╝     ╚══════╝╚═╝  ╚═══╝");
+          buffer="";
+          inputEl.textContent="";
+          hiddenInput.value="";
+          cursorPos=0;
+          return;
+        }
+
+        if (response === "__ENV__"){
+          printLine("USER=" + currentUser);
+          printLine("PATH=/usr/local/bin:/usr/bin:/bin");
+          printLine("SHELL=/bin/bash");
+          buffer="";
+          inputEl.textContent="";
+          hiddenInput.value="";
+          cursorPos=0;
+          return;
+        }
+
+        if (response === "__PS__"){
+          printLine("PID   TTY   TIME     CMD");
+          printLine("1337  pts/0 00:00:00 hidden-layer");
+          printLine("2048  pts/0 00:00:01 core-service");
+          buffer="";
+          inputEl.textContent="";
+          hiddenInput.value="";
+          cursorPos=0;
+          return;
+        }
+
+        if (response === "__TOP__"){
+          printLine("top - HiddenLayerOS monitoring");
+          printLine("CPU: 3%  MEM: 128MB / 512MB");
+          printLine("Processes: 2 running");
+          buffer="";
+          inputEl.textContent="";
+          hiddenInput.value="";
+          cursorPos=0;
+          return;
+        }
+
+        if (response === "__ALIAS__"){
+          printLine("alias ll='ls'");
+          printLine("alias la='ls -a'");
+          buffer="";
+          inputEl.textContent="";
+          hiddenInput.value="";
+          cursorPos=0;
+          return;
+        }
+
+        if (response === "__SECRET__"){
+          if (!isRoot || currentPath !== "/root"){
+            response = "权限不足：必须在 /root 且拥有 root 权限。";
+          } else {
+            printLine("root 权限验证通过 · 正在进入 deep layer...");
+
+            const blackout = document.getElementById("blackout");
+            const flash = document.getElementById("accessFlash");
+
+            // 禁用输入
+            hiddenInput.disabled = true;
+
+            // 终端渐暗
+            document.body.classList.add("entering-deep");
+
+            // 显示 ACCESS GRANTED
+            setTimeout(()=>{
+              flash.classList.add("active");
+            },300);
+
+            // 黑幕渐变
+            setTimeout(()=>{
+              blackout.classList.add("active");
+            },600);
+
+            setTimeout(()=>{
+              window.location.href = "deep.html";
+            },1800);
+
+            buffer="";
+            inputEl.textContent="";
+            hiddenInput.value="";
+            cursorPos = 0;
+            return;
+          }
+        }
+
+        if (response === "__CRYTHANE__"){
+          printLine("正在建立安全连接...");
+          setTimeout(()=>{
+            window.location.href = "https://crythane.pages.dev/";
+          }, 800);
+          buffer="";
+          inputEl.textContent="";
+          hiddenInput.value="";
+          cursorPos = 0;
+          return;
+        }
+
+        if (response === "__UPTIME__"){
+          const seconds = Math.floor((Date.now() - startTime)/1000);
+          response = "运行时间：" + seconds + " 秒";
+        }
+
+        if (response === "__CLEAR__"){
+  const currentLine = document.getElementById("currentLine");
+  terminal.innerHTML = "";
+  terminal.appendChild(currentLine);
+} else if (response) {
+          printLine(response);
+        } else {
+          printLine("bash: " + cmd + ": command not found");
+        }
+
+        if (cmd === "exit"){
+          setTimeout(()=>{
+            window.location.href = "index.html";
+          },1200);
+        }
+
+        buffer = "";
+        inputEl.textContent = "";
+        hiddenInput.value = "";
+        cursorPos = 0;
+      }
+    });
+
+
+    function printLine(text){
+  const p = document.createElement("p");
+  p.textContent = text;
+
+  const isNearBottom =
+    terminal.scrollHeight - terminal.scrollTop - terminal.clientHeight < 40;
+
+  const currentLine = document.getElementById("currentLine");
+  terminal.insertBefore(p, currentLine);
+
+  if (isNearBottom) {
+    terminal.scrollTo({
+      top: terminal.scrollHeight,
+      behavior: "smooth"
+    });
+  }
+}
+
+    updatePrompt();
+    printLine("Welcome to HiddenLayerOS 1.0");
+    printLine("Type 'help' to see available commands.");
+
+  });
+</script>
+
+</body>
+</html>

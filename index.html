@@ -100,6 +100,92 @@
       100% { box-shadow: 0 0 12px rgba(113, 248, 252, 0.35); }
     }
 
+    /* ===== Easter Egg 溶解动画 ===== */
+    @keyframes dissolveOut {
+      0% {
+        opacity: 1;
+        filter: blur(0px) contrast(1) hue-rotate(0deg);
+        transform: scale(1) rotate(0deg);
+      }
+      20% {
+        filter: blur(6px) contrast(1.3) hue-rotate(10deg);
+      }
+      35% {
+        filter: blur(14px) contrast(1.6) hue-rotate(-15deg);
+        transform: scale(1.02) rotate(0.5deg);
+      }
+      55% {
+        opacity: 0.85;
+        filter: blur(26px) contrast(1.9) hue-rotate(25deg);
+        transform: scale(1.05) rotate(-0.8deg);
+      }
+      75% {
+        opacity: 0.55;
+        filter: blur(40px) contrast(2.3) hue-rotate(-40deg);
+        transform: scale(1.1) rotate(1.2deg);
+      }
+      100% {
+        opacity: 0;
+        filter: blur(65px) contrast(3) hue-rotate(90deg);
+        transform: scale(1.25) rotate(-2deg);
+      }
+    }
+
+    @keyframes glitchFlash {
+      0%, 100% { opacity: 0; }
+      10% { opacity: 0.15; }
+      20% { opacity: 0; }
+      30% { opacity: 0.2; }
+      40% { opacity: 0; }
+      55% { opacity: 0.25; }
+      70% { opacity: 0; }
+    }
+
+    body.egg-dissolve {
+      animation: dissolveOut 2.4s cubic-bezier(.4,0,.2,1) forwards;
+      position: relative;
+      overflow: hidden;
+    }
+
+    body.egg-dissolve::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background:
+        repeating-linear-gradient(
+          0deg,
+          rgba(113,248,252,0.08) 0px,
+          rgba(113,248,252,0.08) 2px,
+          transparent 2px,
+          transparent 6px
+        );
+      mix-blend-mode: overlay;
+      animation: glitchFlash 2.4s linear forwards;
+    }
+
+    body.egg-dissolve::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      background: radial-gradient(circle at center,
+        rgba(255,255,255,0.8) 0%,
+        rgba(255,255,255,0.4) 20%,
+        rgba(255,255,255,0.1) 40%,
+        transparent 70%
+      );
+      opacity: 0;
+      animation: whiteFlash 2.4s ease forwards;
+    }
+
+    @keyframes whiteFlash {
+      0% { opacity: 0; }
+      15% { opacity: 0.9; }
+      30% { opacity: 0.2; }
+      100% { opacity: 0; }
+    }
+
     .container {
       margin-top: 2rem;
       padding: 2rem;
@@ -130,6 +216,19 @@
 
     .avatar { width:150px; height:150px; border-radius:50%; object-fit:cover; margin-bottom:0.5rem; box-shadow: 0 0 25px var(--accent); 
     animation: float 5s ease-in-out infinite, avatarGlow 5s ease-in-out infinite;
+    }
+    .avatar.egg-burst {
+      animation:
+        float 5s ease-in-out infinite,
+        avatarGlow 5s ease-in-out infinite,
+        avatarBurst 2.4s ease forwards;
+    }
+
+    @keyframes avatarBurst {
+      0% { filter: brightness(1); }
+      40% { filter: brightness(2.5) saturate(1.6); }
+      70% { filter: brightness(3.2) saturate(2); }
+      100% { filter: brightness(0); opacity: 0; }
     }
     .intro {
       font-size: 1.05rem;
@@ -722,6 +821,36 @@
     setTimeout(typeNext, 300);
   }
 
+  /* ===== Easter Egg：连续点击头像7次进入 egg.html ===== */
+  document.addEventListener("DOMContentLoaded", () => {
+    const avatar = document.querySelector(".avatar");
+    if (!avatar) return;
+
+    let clickCount = 0;
+    let clickTimer = null;
+
+    avatar.addEventListener("click", () => {
+      clickCount++;
+
+      if (clickTimer) clearTimeout(clickTimer);
+      clickTimer = setTimeout(() => {
+        clickCount = 0;
+      }, 1500);
+
+      if (clickCount >= 7) {
+        clickCount = 0;
+
+        // 触发溶解动画
+        document.body.classList.add("egg-dissolve");
+        avatar.classList.add("egg-burst");
+
+        // 动画结束后跳转
+        setTimeout(() => {
+          location.href = "egg.html";
+        }, 2400);
+      }
+    });
+  });
   document.addEventListener("app-ready", () => {
     // 浏览器语言检测
     const browserLang = navigator.language.split('-')[0]; // 'zh-CN' → 'zh', 'ja-JP' → 'ja'

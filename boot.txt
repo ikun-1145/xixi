@@ -1,0 +1,663 @@
+
+
+[    0.000000] Linux version 6.8.0-31-generic (buildd@ubuntu)
+[    0.102341] BIOS-provided physical RAM map:
+[    0.182211] e820: [mem 0x0000000000000000-0x000000000009ffff] usable
+[    0.262111] e820: [mem 0x0000000000100000-0x000000003fffffff] usable
+[    0.442113] NX (Execute Disable) protection: active
+[    0.602113] SMBIOS 3.3.0 present.
+[    0.812211] DMI: Hidden Layer Virtual Machine
+[    1.002211] ACPI: Core revision 20230628
+[    1.202211] PCI: Using configuration type 1
+[    1.402211] Initializing cgroup subsys cpuset
+[    1.602211] Initializing cgroup subsys cpu
+[    1.802211] Initializing cgroup subsys memory
+[    2.002211] Initializing cgroup subsys devices
+[    2.202211] CPU0: Intel(R) Xeon(R) Hidden Layer @ 3.40GHz
+[    2.302211] CPU1: Intel(R) Xeon(R) Hidden Layer @ 3.40GHz
+[    2.402211] CPU2: Intel(R) Xeon(R) Hidden Layer @ 3.40GHz
+[    2.502211] CPU3: Intel(R) Xeon(R) Hidden Layer @ 3.40GHz
+[    2.602211] Detected 4 CPUs
+[    2.702211] Memory: 16384MB available
+
+# ===== Massive Kernel Initialization =====
+
+# --- Kernel Core Bringup Phase ---
+
+[    3.000001] kernel: Initializing scheduler core 0
+[    3.000002] kernel: Initializing scheduler core 1
+[    3.000003] kernel: Initializing scheduler core 2
+[    3.000004] kernel: Initializing scheduler core 3
+
+# --- PCI Enumeration ---
+
+[    3.100001] pci 0000:00:00.0: Host bridge
+[    3.100002] pci 0000:00:01.0: VGA compatible controller
+[    3.100003] pci 0000:00:02.0: Ethernet controller
+[    3.100004] pci 0000:00:03.0: SATA controller
+
+# --- USB Devices ---
+
+[    3.200001] usb 1-1: new high-speed USB device number 2
+[    3.200002] usb 1-2: new high-speed USB device number 3
+[    3.200003] usb 2-1: new SuperSpeed USB device number 4
+
+# --- Network Interfaces ---
+
+[    3.300001] e1000e 0000:00:02.0: eth0 NIC Link is Up 1000 Mbps
+[    3.300002] IPv6: ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+
+# --- EXTREME KERNEL SPAM ---
+
+[    3.400001] kernel: Initializing virtual subsystem 0001
+[    3.400002] kernel: Initializing virtual subsystem 0002
+[    3.400003] kernel: Initializing virtual subsystem 0003
+[    3.400004] kernel: Initializing virtual subsystem 0004
+[    3.400005] kernel: Initializing virtual subsystem 0005
+[    3.400006] kernel: Initializing virtual subsystem 0006
+[    3.400007] kernel: Initializing virtual subsystem 0007
+[    3.400008] kernel: Initializing virtual subsystem 0008
+[    3.400009] kernel: Initializing virtual subsystem 0009
+[    3.400010] kernel: Initializing virtual subsystem 0010
+[    3.400011] kernel: Initializing virtual subsystem 0011
+[    3.400012] kernel: Initializing virtual subsystem 0012
+[    3.400013] kernel: Initializing virtual subsystem 0013
+[    3.400014] kernel: Initializing virtual subsystem 0014
+[    3.400015] kernel: Initializing virtual subsystem 0015
+[    3.400016] kernel: Initializing virtual subsystem 0016
+[    3.400017] kernel: Initializing virtual subsystem 0017
+[    3.400018] kernel: Initializing virtual subsystem 0018
+[    3.400019] kernel: Initializing virtual subsystem 0019
+[    3.400020] kernel: Initializing virtual subsystem 0020
+
+# --- Cloud Init Ultra Spam ---
+
+[    4.000001] cloud-init[123]: Running init-local
+[    4.000002] cloud-init[123]: Configuring datasource
+[    4.000003] cloud-init[123]: Generating SSH host keys
+[    4.000004] cloud-init[123]: Applying network configuration
+[    4.000005] cloud-init[123]: Running module growpart
+[    4.000006] cloud-init[123]: Running module resizefs
+[    4.000007] cloud-init[123]: Running module set_hostname
+[    4.000008] cloud-init[123]: Running module users-groups
+[    4.000009] cloud-init[123]: Running module ssh
+[    4.000010] cloud-init[123]: Running module final-message
+
+# --- Massive Module Flood ---
+
+kernel: Loaded module id=30001
+kernel: Loaded module id=30002
+kernel: Loaded module id=30003
+kernel: Loaded module id=30004
+kernel: Loaded module id=30005
+kernel: Loaded module id=30006
+kernel: Loaded module id=30007
+kernel: Loaded module id=30008
+kernel: Loaded module id=30009
+kernel: Loaded module id=30010
+kernel: Loaded module id=30011
+kernel: Loaded module id=30012
+kernel: Loaded module id=30013
+kernel: Loaded module id=30014
+kernel: Loaded module id=30015
+kernel: Loaded module id=30016
+kernel: Loaded module id=30017
+kernel: Loaded module id=30018
+kernel: Loaded module id=30019
+kernel: Loaded module id=30020
+kernel: Loaded module id=30021
+kernel: Loaded module id=30022
+kernel: Loaded module id=30023
+kernel: Loaded module id=30024
+kernel: Loaded module id=30025
+kernel: Loaded module id=30026
+kernel: Loaded module id=30027
+kernel: Loaded module id=30028
+kernel: Loaded module id=30029
+kernel: Loaded module id=30030
+kernel: Loaded module id=30031
+kernel: Loaded module id=30032
+kernel: Loaded module id=30033
+kernel: Loaded module id=30034
+kernel: Loaded module id=30035
+kernel: Loaded module id=30036
+kernel: Loaded module id=30037
+kernel: Loaded module id=30038
+kernel: Loaded module id=30039
+kernel: Loaded module id=30040
+
+
+# --- EXTENDED KERNEL FLOOD BLOCK 2 ---
+
+[    5.000001] kernel: Deep initialization sequence 0041
+[    5.000002] kernel: Deep initialization sequence 0042
+[    5.000003] kernel: Deep initialization sequence 0043
+[    5.000004] kernel: Deep initialization sequence 0044
+[    5.000005] kernel: Deep initialization sequence 0045
+[    5.000006] kernel: Deep initialization sequence 0046
+[    5.000007] kernel: Deep initialization sequence 0047
+[    5.000008] kernel: Deep initialization sequence 0048
+[    5.000009] kernel: Deep initialization sequence 0049
+[    5.000010] kernel: Deep initialization sequence 0050
+[    5.000011] kernel: Deep initialization sequence 0051
+[    5.000012] kernel: Deep initialization sequence 0052
+[    5.000013] kernel: Deep initialization sequence 0053
+[    5.000014] kernel: Deep initialization sequence 0054
+[    5.000015] kernel: Deep initialization sequence 0055
+[    5.000016] kernel: Deep initialization sequence 0056
+[    5.000017] kernel: Deep initialization sequence 0057
+[    5.000018] kernel: Deep initialization sequence 0058
+[    5.000019] kernel: Deep initialization sequence 0059
+[    5.000020] kernel: Deep initialization sequence 0060
+[    5.000021] kernel: Deep initialization sequence 0061
+[    5.000022] kernel: Deep initialization sequence 0062
+[    5.000023] kernel: Deep initialization sequence 0063
+[    5.000024] kernel: Deep initialization sequence 0064
+[    5.000025] kernel: Deep initialization sequence 0065
+[    5.000026] kernel: Deep initialization sequence 0066
+[    5.000027] kernel: Deep initialization sequence 0067
+[    5.000028] kernel: Deep initialization sequence 0068
+[    5.000029] kernel: Deep initialization sequence 0069
+[    5.000030] kernel: Deep initialization sequence 0070
+[    5.000031] kernel: Deep initialization sequence 0071
+[    5.000032] kernel: Deep initialization sequence 0072
+[    5.000033] kernel: Deep initialization sequence 0073
+[    5.000034] kernel: Deep initialization sequence 0074
+[    5.000035] kernel: Deep initialization sequence 0075
+[    5.000036] kernel: Deep initialization sequence 0076
+[    5.000037] kernel: Deep initialization sequence 0077
+[    5.000038] kernel: Deep initialization sequence 0078
+[    5.000039] kernel: Deep initialization sequence 0079
+[    5.000040] kernel: Deep initialization sequence 0080
+[    5.000041] kernel: Deep initialization sequence 0081
+[    5.000042] kernel: Deep initialization sequence 0082
+[    5.000043] kernel: Deep initialization sequence 0083
+[    5.000044] kernel: Deep initialization sequence 0084
+[    5.000045] kernel: Deep initialization sequence 0085
+[    5.000046] kernel: Deep initialization sequence 0086
+[    5.000047] kernel: Deep initialization sequence 0087
+[    5.000048] kernel: Deep initialization sequence 0088
+[    5.000049] kernel: Deep initialization sequence 0089
+[    5.000050] kernel: Deep initialization sequence 0090
+[    5.000051] kernel: Deep initialization sequence 0091
+[    5.000052] kernel: Deep initialization sequence 0092
+[    5.000053] kernel: Deep initialization sequence 0093
+[    5.000054] kernel: Deep initialization sequence 0094
+[    5.000055] kernel: Deep initialization sequence 0095
+[    5.000056] kernel: Deep initialization sequence 0096
+[    5.000057] kernel: Deep initialization sequence 0097
+[    5.000058] kernel: Deep initialization sequence 0098
+[    5.000059] kernel: Deep initialization sequence 0099
+[    5.000060] kernel: Deep initialization sequence 0100
+[    5.000061] kernel: Deep initialization sequence 0101
+[    5.000062] kernel: Deep initialization sequence 0102
+[    5.000063] kernel: Deep initialization sequence 0103
+[    5.000064] kernel: Deep initialization sequence 0104
+[    5.000065] kernel: Deep initialization sequence 0105
+[    5.000066] kernel: Deep initialization sequence 0106
+[    5.000067] kernel: Deep initialization sequence 0107
+[    5.000068] kernel: Deep initialization sequence 0108
+[    5.000069] kernel: Deep initialization sequence 0109
+[    5.000070] kernel: Deep initialization sequence 0110
+[    5.000071] kernel: Deep initialization sequence 0111
+[    5.000072] kernel: Deep initialization sequence 0112
+[    5.000073] kernel: Deep initialization sequence 0113
+[    5.000074] kernel: Deep initialization sequence 0114
+[    5.000075] kernel: Deep initialization sequence 0115
+[    5.000076] kernel: Deep initialization sequence 0116
+[    5.000077] kernel: Deep initialization sequence 0117
+[    5.000078] kernel: Deep initialization sequence 0118
+[    5.000079] kernel: Deep initialization sequence 0119
+[    5.000080] kernel: Deep initialization sequence 0120
+[    5.000081] kernel: Deep initialization sequence 0121
+[    5.000082] kernel: Deep initialization sequence 0122
+[    5.000083] kernel: Deep initialization sequence 0123
+[    5.000084] kernel: Deep initialization sequence 0124
+[    5.000085] kernel: Deep initialization sequence 0125
+[    5.000086] kernel: Deep initialization sequence 0126
+[    5.000087] kernel: Deep initialization sequence 0127
+[    5.000088] kernel: Deep initialization sequence 0128
+[    5.000089] kernel: Deep initialization sequence 0129
+[    5.000090] kernel: Deep initialization sequence 0130
+[    5.000091] kernel: Deep initialization sequence 0131
+[    5.000092] kernel: Deep initialization sequence 0132
+[    5.000093] kernel: Deep initialization sequence 0133
+[    5.000094] kernel: Deep initialization sequence 0134
+[    5.000095] kernel: Deep initialization sequence 0135
+[    5.000096] kernel: Deep initialization sequence 0136
+[    5.000097] kernel: Deep initialization sequence 0137
+[    5.000098] kernel: Deep initialization sequence 0138
+[    5.000099] kernel: Deep initialization sequence 0139
+[    5.000100] kernel: Deep initialization sequence 0140
+
+
+# --- EXTENDED KERNEL FLOOD BLOCK 3 ---
+
+[    6.000001] kernel: Deep initialization sequence 0141
+[    6.000002] kernel: Deep initialization sequence 0142
+[    6.000003] kernel: Deep initialization sequence 0143
+[    6.000004] kernel: Deep initialization sequence 0144
+[    6.000005] kernel: Deep initialization sequence 0145
+[    6.000006] kernel: Deep initialization sequence 0146
+[    6.000007] kernel: Deep initialization sequence 0147
+[    6.000008] kernel: Deep initialization sequence 0148
+[    6.000009] kernel: Deep initialization sequence 0149
+[    6.000010] kernel: Deep initialization sequence 0150
+[    6.000011] kernel: Deep initialization sequence 0151
+[    6.000012] kernel: Deep initialization sequence 0152
+[    6.000013] kernel: Deep initialization sequence 0153
+[    6.000014] kernel: Deep initialization sequence 0154
+[    6.000015] kernel: Deep initialization sequence 0155
+[    6.000016] kernel: Deep initialization sequence 0156
+[    6.000017] kernel: Deep initialization sequence 0157
+[    6.000018] kernel: Deep initialization sequence 0158
+[    6.000019] kernel: Deep initialization sequence 0159
+[    6.000020] kernel: Deep initialization sequence 0160
+[    6.000021] kernel: Deep initialization sequence 0161
+[    6.000022] kernel: Deep initialization sequence 0162
+[    6.000023] kernel: Deep initialization sequence 0163
+[    6.000024] kernel: Deep initialization sequence 0164
+[    6.000025] kernel: Deep initialization sequence 0165
+[    6.000026] kernel: Deep initialization sequence 0166
+[    6.000027] kernel: Deep initialization sequence 0167
+[    6.000028] kernel: Deep initialization sequence 0168
+[    6.000029] kernel: Deep initialization sequence 0169
+[    6.000030] kernel: Deep initialization sequence 0170
+[    6.000031] kernel: Deep initialization sequence 0171
+[    6.000032] kernel: Deep initialization sequence 0172
+[    6.000033] kernel: Deep initialization sequence 0173
+[    6.000034] kernel: Deep initialization sequence 0174
+[    6.000035] kernel: Deep initialization sequence 0175
+[    6.000036] kernel: Deep initialization sequence 0176
+[    6.000037] kernel: Deep initialization sequence 0177
+[    6.000038] kernel: Deep initialization sequence 0178
+[    6.000039] kernel: Deep initialization sequence 0179
+[    6.000040] kernel: Deep initialization sequence 0180
+[    6.000041] kernel: Deep initialization sequence 0181
+[    6.000042] kernel: Deep initialization sequence 0182
+[    6.000043] kernel: Deep initialization sequence 0183
+[    6.000044] kernel: Deep initialization sequence 0184
+[    6.000045] kernel: Deep initialization sequence 0185
+[    6.000046] kernel: Deep initialization sequence 0186
+[    6.000047] kernel: Deep initialization sequence 0187
+[    6.000048] kernel: Deep initialization sequence 0188
+[    6.000049] kernel: Deep initialization sequence 0189
+[    6.000050] kernel: Deep initialization sequence 0190
+[    6.000051] kernel: Deep initialization sequence 0191
+[    6.000052] kernel: Deep initialization sequence 0192
+[    6.000053] kernel: Deep initialization sequence 0193
+[    6.000054] kernel: Deep initialization sequence 0194
+[    6.000055] kernel: Deep initialization sequence 0195
+[    6.000056] kernel: Deep initialization sequence 0196
+[    6.000057] kernel: Deep initialization sequence 0197
+[    6.000058] kernel: Deep initialization sequence 0198
+[    6.000059] kernel: Deep initialization sequence 0199
+[    6.000060] kernel: Deep initialization sequence 0200
+[    6.000061] kernel: Deep initialization sequence 0201
+[    6.000062] kernel: Deep initialization sequence 0202
+[    6.000063] kernel: Deep initialization sequence 0203
+[    6.000064] kernel: Deep initialization sequence 0204
+[    6.000065] kernel: Deep initialization sequence 0205
+[    6.000066] kernel: Deep initialization sequence 0206
+[    6.000067] kernel: Deep initialization sequence 0207
+[    6.000068] kernel: Deep initialization sequence 0208
+[    6.000069] kernel: Deep initialization sequence 0209
+[    6.000070] kernel: Deep initialization sequence 0210
+[    6.000071] kernel: Deep initialization sequence 0211
+[    6.000072] kernel: Deep initialization sequence 0212
+[    6.000073] kernel: Deep initialization sequence 0213
+[    6.000074] kernel: Deep initialization sequence 0214
+[    6.000075] kernel: Deep initialization sequence 0215
+[    6.000076] kernel: Deep initialization sequence 0216
+[    6.000077] kernel: Deep initialization sequence 0217
+[    6.000078] kernel: Deep initialization sequence 0218
+[    6.000079] kernel: Deep initialization sequence 0219
+[    6.000080] kernel: Deep initialization sequence 0220
+[    6.000081] kernel: Deep initialization sequence 0221
+[    6.000082] kernel: Deep initialization sequence 0222
+[    6.000083] kernel: Deep initialization sequence 0223
+[    6.000084] kernel: Deep initialization sequence 0224
+[    6.000085] kernel: Deep initialization sequence 0225
+[    6.000086] kernel: Deep initialization sequence 0226
+[    6.000087] kernel: Deep initialization sequence 0227
+[    6.000088] kernel: Deep initialization sequence 0228
+[    6.000089] kernel: Deep initialization sequence 0229
+[    6.000090] kernel: Deep initialization sequence 0230
+[    6.000091] kernel: Deep initialization sequence 0231
+[    6.000092] kernel: Deep initialization sequence 0232
+[    6.000093] kernel: Deep initialization sequence 0233
+[    6.000094] kernel: Deep initialization sequence 0234
+[    6.000095] kernel: Deep initialization sequence 0235
+[    6.000096] kernel: Deep initialization sequence 0236
+[    6.000097] kernel: Deep initialization sequence 0237
+[    6.000098] kernel: Deep initialization sequence 0238
+[    6.000099] kernel: Deep initialization sequence 0239
+[    6.000100] kernel: Deep initialization sequence 0240
+
+
+# --- EXTENDED KERNEL FLOOD BLOCK 4 ---
+
+[    7.000001] kernel: Deep initialization sequence 0241
+[    7.000002] kernel: Deep initialization sequence 0242
+[    7.000003] kernel: Deep initialization sequence 0243
+[    7.000004] kernel: Deep initialization sequence 0244
+[    7.000005] kernel: Deep initialization sequence 0245
+[    7.000006] kernel: Deep initialization sequence 0246
+[    7.000007] kernel: Deep initialization sequence 0247
+[    7.000008] kernel: Deep initialization sequence 0248
+[    7.000009] kernel: Deep initialization sequence 0249
+[    7.000010] kernel: Deep initialization sequence 0250
+[    7.000011] kernel: Deep initialization sequence 0251
+[    7.000012] kernel: Deep initialization sequence 0252
+[    7.000013] kernel: Deep initialization sequence 0253
+[    7.000014] kernel: Deep initialization sequence 0254
+[    7.000015] kernel: Deep initialization sequence 0255
+[    7.000016] kernel: Deep initialization sequence 0256
+[    7.000017] kernel: Deep initialization sequence 0257
+[    7.000018] kernel: Deep initialization sequence 0258
+[    7.000019] kernel: Deep initialization sequence 0259
+[    7.000020] kernel: Deep initialization sequence 0260
+[    7.000021] kernel: Deep initialization sequence 0261
+[    7.000022] kernel: Deep initialization sequence 0262
+[    7.000023] kernel: Deep initialization sequence 0263
+[    7.000024] kernel: Deep initialization sequence 0264
+[    7.000025] kernel: Deep initialization sequence 0265
+[    7.000026] kernel: Deep initialization sequence 0266
+[    7.000027] kernel: Deep initialization sequence 0267
+[    7.000028] kernel: Deep initialization sequence 0268
+[    7.000029] kernel: Deep initialization sequence 0269
+[    7.000030] kernel: Deep initialization sequence 0270
+[    7.000031] kernel: Deep initialization sequence 0271
+[    7.000032] kernel: Deep initialization sequence 0272
+[    7.000033] kernel: Deep initialization sequence 0273
+[    7.000034] kernel: Deep initialization sequence 0274
+[    7.000035] kernel: Deep initialization sequence 0275
+[    7.000036] kernel: Deep initialization sequence 0276
+[    7.000037] kernel: Deep initialization sequence 0277
+[    7.000038] kernel: Deep initialization sequence 0278
+[    7.000039] kernel: Deep initialization sequence 0279
+[    7.000040] kernel: Deep initialization sequence 0280
+[    7.000041] kernel: Deep initialization sequence 0281
+[    7.000042] kernel: Deep initialization sequence 0282
+[    7.000043] kernel: Deep initialization sequence 0283
+[    7.000044] kernel: Deep initialization sequence 0284
+[    7.000045] kernel: Deep initialization sequence 0285
+[    7.000046] kernel: Deep initialization sequence 0286
+[    7.000047] kernel: Deep initialization sequence 0287
+[    7.000048] kernel: Deep initialization sequence 0288
+[    7.000049] kernel: Deep initialization sequence 0289
+[    7.000050] kernel: Deep initialization sequence 0290
+[    7.000051] kernel: Deep initialization sequence 0291
+[    7.000052] kernel: Deep initialization sequence 0292
+[    7.000053] kernel: Deep initialization sequence 0293
+[    7.000054] kernel: Deep initialization sequence 0294
+[    7.000055] kernel: Deep initialization sequence 0295
+[    7.000056] kernel: Deep initialization sequence 0296
+[    7.000057] kernel: Deep initialization sequence 0297
+[    7.000058] kernel: Deep initialization sequence 0298
+[    7.000059] kernel: Deep initialization sequence 0299
+[    7.000060] kernel: Deep initialization sequence 0300
+[    7.000061] kernel: Deep initialization sequence 0301
+[    7.000062] kernel: Deep initialization sequence 0302
+[    7.000063] kernel: Deep initialization sequence 0303
+[    7.000064] kernel: Deep initialization sequence 0304
+[    7.000065] kernel: Deep initialization sequence 0305
+[    7.000066] kernel: Deep initialization sequence 0306
+[    7.000067] kernel: Deep initialization sequence 0307
+[    7.000068] kernel: Deep initialization sequence 0308
+[    7.000069] kernel: Deep initialization sequence 0309
+[    7.000070] kernel: Deep initialization sequence 0310
+[    7.000071] kernel: Deep initialization sequence 0311
+[    7.000072] kernel: Deep initialization sequence 0312
+[    7.000073] kernel: Deep initialization sequence 0313
+[    7.000074] kernel: Deep initialization sequence 0314
+[    7.000075] kernel: Deep initialization sequence 0315
+[    7.000076] kernel: Deep initialization sequence 0316
+[    7.000077] kernel: Deep initialization sequence 0317
+[    7.000078] kernel: Deep initialization sequence 0318
+[    7.000079] kernel: Deep initialization sequence 0319
+[    7.000080] kernel: Deep initialization sequence 0320
+[    7.000081] kernel: Deep initialization sequence 0321
+[    7.000082] kernel: Deep initialization sequence 0322
+[    7.000083] kernel: Deep initialization sequence 0323
+[    7.000084] kernel: Deep initialization sequence 0324
+[    7.000085] kernel: Deep initialization sequence 0325
+[    7.000086] kernel: Deep initialization sequence 0326
+[    7.000087] kernel: Deep initialization sequence 0327
+[    7.000088] kernel: Deep initialization sequence 0328
+[    7.000089] kernel: Deep initialization sequence 0329
+[    7.000090] kernel: Deep initialization sequence 0330
+[    7.000091] kernel: Deep initialization sequence 0331
+[    7.000092] kernel: Deep initialization sequence 0332
+[    7.000093] kernel: Deep initialization sequence 0333
+[    7.000094] kernel: Deep initialization sequence 0334
+[    7.000095] kernel: Deep initialization sequence 0335
+[    7.000096] kernel: Deep initialization sequence 0336
+[    7.000097] kernel: Deep initialization sequence 0337
+[    7.000098] kernel: Deep initialization sequence 0338
+[    7.000099] kernel: Deep initialization sequence 0339
+[    7.000100] kernel: Deep initialization sequence 0340
+
+
+# --- EXTENDED MIXED CHAOTIC BLOCK 2 ---
+
+[    8.201331] systemd[1]: Starting Accounts Service...
+[    8.204551] dbus-daemon[455]: Successfully activated service 'org.freedesktop.Accounts'
+[    8.208991] systemd[1]: Started Accounts Service.
+
+[    8.310221] systemd[1]: Starting Modem Manager...
+[    8.312991] ModemManager[901]: <info>  ModemManager (version 1.20.4) starting
+[    8.318221] systemd[1]: Started Modem Manager.
+
+[    8.401112] systemd[1]: Starting CUPS Scheduler...
+[    8.404551] cupsd[1002]: Scheduler started
+[    8.408991] systemd[1]: Started CUPS Scheduler.
+
+[    8.501991] systemd[1]: Starting Authorization Manager...
+[    8.504221] polkitd[1101]: started daemon version 123
+[    8.508771] systemd[1]: Started Authorization Manager.
+
+[    8.612331] systemd[1]: Starting System Logging Service...
+[    8.615551] rsyslogd[1202]: imuxsock: Acquired UNIX socket '/run/systemd/journal/syslog'
+[    8.619881] rsyslogd[1202]: rsyslogd's groupid changed to 102
+[    8.624221] systemd[1]: Started System Logging Service.
+
+[    8.701991] systemd[1]: Starting User Login Management...
+[    8.704551] systemd-logind[1301]: Watching system buttons on /dev/input/event0 (Power Button)
+[    8.708991] systemd[1]: Started User Login Management.
+
+[    8.801112] systemd[1]: Starting Daily man-db regeneration...
+[    8.804551] systemd[1]: Started Daily man-db regeneration.
+
+[    8.901991] kernel: IPv6: ADDRCONF(NETDEV_UP): eth0: link is not ready
+[    8.904551] kernel: IPv6: ADDRCONF(NETDEV_CHANGE): eth0: link becomes ready
+
+[    9.001221] systemd[1]: Reloading.
+[    9.004551] systemd[1]: Reloading finished in 12 ms.
+
+[    9.101331] systemd[1]: Starting Cleanup of Temporary Directories...
+[    9.104551] systemd[1]: Started Cleanup of Temporary Directories.
+
+[    9.201221] kernel: audit: type=1130 audit(1710000001.001:42): pid=1 uid=0 auid=4294967295 ses=4294967295 msg='unit=docker.service comm="systemd" exe="/usr/lib/systemd/systemd" hostname=? addr=? terminal=? res=success'
+
+[    9.301112] snapd[601]: daemon.go:379: adjusting startup timeout
+[    9.304551] snapd[601]: overlord.go:504: state ensure error: persistent network error
+[    9.308991] snapd[601]: daemon.go:247: continuing startup
+
+[    9.401991] systemd[1]: Starting Network Time Synchronization...
+[    9.404551] systemd[1]: Started Network Time Synchronization.
+
+[    9.501221] kernel: random: crng reseeded
+[    9.504551] kernel: random: crng reseeded again
+
+[    9.601991] systemd[1]: Reached target Graphical Interface.
+
+# --- SNAPD STATE SPAM BLOCK ---
+
+[    9.650001] snapd[601]: stateengine.go:149: state ensure pass 1
+[    9.650112] snapd[601]: stateengine.go:149: state ensure pass 2
+[    9.650223] snapd[601]: stateengine.go:149: state ensure pass 3
+[    9.650334] snapd[601]: stateengine.go:149: state ensure pass 4
+[    9.650445] snapd[601]: stateengine.go:149: state ensure pass 5
+[    9.650556] snapd[601]: stateengine.go:149: state ensure pass 6
+[    9.650667] snapd[601]: state ensure: checking assertions
+[    9.650778] snapd[601]: state ensure: validating signatures
+[    9.650889] snapd[601]: state ensure: refreshing snap "core22"
+[    9.651000] snapd[601]: state ensure: refreshing snap "snapd"
+[    9.651111] snapd[601]: state ensure: refreshing snap "lxd"
+[    9.651222] snapd[601]: state ensure: evaluating auto-refresh
+[    9.651333] snapd[601]: state ensure: no changes required
+[    9.651444] snapd[601]: overlord.go:504: state ensure error: temporary network timeout
+[    9.651555] snapd[601]: overlord.go:506: retrying state ensure
+[    9.651666] snapd[601]: stateengine.go:149: state ensure pass 7
+[    9.651777] snapd[601]: stateengine.go:149: state ensure pass 8
+[    9.651888] snapd[601]: stateengine.go:149: state ensure pass 9
+[    9.651999] snapd[601]: stateengine.go:149: state ensure pass 10
+[    9.652110] snapd[601]: storehelpers.go:102: contacting store
+[    9.652221] snapd[601]: storehelpers.go:110: store returned 304
+[    9.652332] snapd[601]: state ensure: checking snaps integrity
+[    9.652443] snapd[601]: state ensure: reloading snap state
+[    9.652554] snapd[601]: state ensure: snap "core22" unchanged
+[    9.652665] snapd[601]: state ensure: snap "snapd" unchanged
+[    9.652776] snapd[601]: state ensure: snap "lxd" unchanged
+[    9.652887] snapd[601]: stateengine.go:149: state ensure pass 11
+[    9.652998] snapd[601]: stateengine.go:149: state ensure pass 12
+[    9.653109] snapd[601]: stateengine.go:149: state ensure pass 13
+[    9.653220] snapd[601]: stateengine.go:149: state ensure pass 14
+[    9.653331] snapd[601]: stateengine.go:149: state ensure pass 15
+[    9.653442] snapd[601]: stateengine.go:149: state ensure pass 16
+[    9.653553] snapd[601]: stateengine.go:149: state ensure pass 17
+[    9.653664] snapd[601]: stateengine.go:149: state ensure pass 18
+[    9.653775] snapd[601]: stateengine.go:149: state ensure pass 19
+[    9.653886] snapd[601]: stateengine.go:149: state ensure pass 20
+[    9.653997] snapd[601]: daemon.go:379: adjusting startup timeout
+[    9.654108] snapd[601]: overlord.go:504: state ensure error: transient store failure
+[    9.654219] snapd[601]: overlord.go:506: retrying state ensure
+[    9.654330] snapd[601]: stateengine.go:149: state ensure pass 21
+[    9.654441] snapd[601]: stateengine.go:149: state ensure pass 22
+[    9.654552] snapd[601]: stateengine.go:149: state ensure pass 23
+[    9.654663] snapd[601]: stateengine.go:149: state ensure pass 24
+[    9.654774] snapd[601]: stateengine.go:149: state ensure pass 25
+[    9.654885] snapd[601]: stateengine.go:149: state ensure pass 26
+[    9.654996] snapd[601]: stateengine.go:149: state ensure pass 27
+[    9.655107] snapd[601]: stateengine.go:149: state ensure pass 28
+[    9.655218] snapd[601]: stateengine.go:149: state ensure pass 29
+[    9.655329] snapd[601]: stateengine.go:149: state ensure pass 30
+
+
+# --- SNAP AUTO-REFRESH DEPENDENCY RESOLUTION ---
+
+[    9.700001] snapd[601]: auto-refresh: scheduling refresh of "core22"
+[    9.700112] snapd[601]: auto-refresh: scheduling refresh of "snapd"
+[    9.700223] snapd[601]: auto-refresh: scheduling refresh of "lxd"
+[    9.700334] snapd[601]: auto-refresh: resolving dependencies for "core22"
+[    9.700445] snapd[601]: auto-refresh: checking base snap compatibility
+[    9.700556] snapd[601]: auto-refresh: evaluating revision constraints
+[    9.700667] snapd[601]: auto-refresh: validating channel stable
+[    9.700778] snapd[601]: auto-refresh: dependency "core18" satisfied
+[    9.700889] snapd[601]: auto-refresh: dependency "core20" satisfied
+[    9.701000] snapd[601]: auto-refresh: dependency "snapd" satisfied
+[    9.701111] snapd[601]: auto-refresh: calculating download size
+[    9.701222] snapd[601]: auto-refresh: total size 0 B (no update required)
+[    9.701333] snapd[601]: auto-refresh: resolving mount namespace
+[    9.701444] snapd[601]: auto-refresh: rebuilding security profiles
+[    9.701555] snapd[601]: apparmor: reloading profile snap.core22.core22
+[    9.701666] snapd[601]: apparmor: reloading profile snap.snapd.snapd
+[    9.701777] snapd[601]: apparmor: reloading profile snap.lxd.lxd
+[    9.701888] snapd[601]: auto-refresh: checking confinement mode
+[    9.701999] snapd[601]: auto-refresh: strict confinement enforced
+[    9.702110] snapd[601]: auto-refresh: verifying signature chain
+[    9.702221] snapd[601]: auto-refresh: signature verified
+[    9.702332] snapd[601]: auto-refresh: checking assertions database
+[    9.702443] snapd[601]: auto-refresh: assertions up to date
+[    9.702554] snapd[601]: auto-refresh: preparing transaction 001
+[    9.702665] snapd[601]: auto-refresh: transaction 001 commit start
+[    9.702776] snapd[601]: auto-refresh: transaction 001 commit done
+[    9.702887] snapd[601]: auto-refresh: preparing transaction 002
+[    9.702998] snapd[601]: auto-refresh: transaction 002 commit start
+[    9.703109] snapd[601]: auto-refresh: transaction 002 commit done
+[    9.703220] snapd[601]: auto-refresh: preparing transaction 003
+[    9.703331] snapd[601]: auto-refresh: transaction 003 commit start
+[    9.703442] snapd[601]: auto-refresh: transaction 003 commit done
+[    9.703553] snapd[601]: auto-refresh: cleaning old revisions
+[    9.703664] snapd[601]: auto-refresh: no revisions to remove
+[    9.703775] snapd[601]: auto-refresh: rebuilding mount namespace for core22
+[    9.703886] snapd[601]: auto-refresh: rebuilding mount namespace for snapd
+[    9.703997] snapd[601]: auto-refresh: rebuilding mount namespace for lxd
+[    9.704108] snapd[601]: auto-refresh: re-evaluating service dependencies
+[    9.704219] snapd[601]: auto-refresh: service snapd.service unaffected
+[    9.704330] snapd[601]: auto-refresh: service lxd.service unaffected
+[    9.704441] snapd[601]: auto-refresh: updating state database
+[    9.704552] snapd[601]: auto-refresh: state database synced
+[    9.704663] snapd[601]: auto-refresh: running health check pass 1
+[    9.704774] snapd[601]: auto-refresh: running health check pass 2
+[    9.704885] snapd[601]: auto-refresh: running health check pass 3
+[    9.704996] snapd[601]: auto-refresh: running health check pass 4
+[    9.705107] snapd[601]: auto-refresh: running health check pass 5
+[    9.705218] snapd[601]: auto-refresh: finalizing auto-refresh cycle
+[    9.705329] snapd[601]: auto-refresh: cycle complete
+[    9.705440] snapd[601]: auto-refresh: checking for pending tasks
+[    9.705551] snapd[601]: auto-refresh: no pending tasks
+[    9.705662] snapd[601]: auto-refresh: refreshing system keyring
+[    9.705773] snapd[601]: auto-refresh: keyring refresh complete
+[    9.705884] snapd[601]: auto-refresh: reconciling security policy
+[    9.705995] snapd[601]: auto-refresh: policy unchanged
+[    9.706106] snapd[601]: auto-refresh: checking snap hooks
+[    9.706217] snapd[601]: auto-refresh: no hooks to run
+[    9.706328] snapd[601]: auto-refresh: ensuring daemon state consistency
+[    9.706439] snapd[601]: auto-refresh: daemon state consistent
+[    9.706550] snapd[601]: auto-refresh: scheduling next refresh window
+[    9.706661] snapd[601]: auto-refresh: next window in 24h
+
+
+
+# --- CRYPTSETUP SLOW DISK UNLOCK ---
+
+[    9.780001] systemd[1]: Starting Cryptography Setup for luks-9f1a2b3c-4d5e-6789-aaaa-bbbbbccccddd...
+[    9.782442] kernel: device-mapper: crypt: set up dm-0
+[    9.785889] kernel: device-mapper: reload ioctl on luks-9f1a2b3c-4d5e-6789-aaaa-bbbbbccccddd  failed: Device or resource busy
+[    9.786221] systemd-cryptsetup[1450]: Set cipher aes-xts-plain64, key size 512 bits
+[    9.786554] systemd-cryptsetup[1450]: Activating with PBKDF2
+[    9.790001] systemd-cryptsetup[1450]: Waiting for device /dev/sda3...
+[    9.820442] systemd-cryptsetup[1450]: Device /dev/sda3 appeared
+[    9.850889] systemd-cryptsetup[1450]: Checking passphrase...
+[    9.900221] systemd-cryptsetup[1450]: Passphrase correct
+[    9.950554] systemd-cryptsetup[1450]: Unlocking device luks-9f1a2b3c-4d5e-6789-aaaa-bbbbbccccddd
+[   10.200001] systemd-cryptsetup[1450]: Deriving key material (this may take a while)...
+[   10.800442] systemd-cryptsetup[1450]: Deriving key material (this may take a while)...
+[   11.400889] systemd-cryptsetup[1450]: Deriving key material (this may take a while)...
+[   12.000221] systemd-cryptsetup[1450]: Deriving key material (this may take a while)...
+[   12.600554] systemd-cryptsetup[1450]: Key slot 0 unlocked
+[   12.800001] kernel: device-mapper: crypt: dm-0: set up successfully
+[   13.000442] systemd[1]: Started Cryptography Setup for luks-9f1a2b3c-4d5e-6789-aaaa-bbbbbccccddd.
+
+[   13.100889] systemd[1]: Mounting /dev/mapper/luks-9f1a2b3c-4d5e-6789-aaaa-bbbbbccccddd on /data...
+[   13.200221] kernel: EXT4-fs (dm-0): mounted filesystem with ordered data mode. Opts: (null)
+[   13.300554] systemd[1]: Mounted /data.
+
+# --- SYSTEMD FAILURE + AUTO RECOVERY ---
+
+[    9.850001] systemd[1]: Starting Docker Application Container Engine...
+[    9.850442] dockerd[1501]: failed to start daemon: Error initializing network controller
+[    9.850889] systemd[1]: docker.service: Main process exited, code=exited, status=1/FAILURE
+[    9.851221] systemd[1]: docker.service: Failed with result 'exit-code'.
+[    9.851554] systemd[1]: Failed to start Docker Application Container Engine.
+
+[    9.852001] systemd[1]: docker.service: Scheduled restart job, restart counter is at 1.
+[    9.852442] systemd[1]: Stopped Docker Application Container Engine.
+[    9.853001] systemd[1]: Starting Docker Application Container Engine...
+[    9.853442] dockerd[1520]: time="2026-01-01T00:00:00Z" level=info msg="Starting up"
+[    9.853889] dockerd[1520]: time="2026-01-01T00:00:00Z" level=info msg="Loading containers: done."
+[    9.854221] dockerd[1520]: time="2026-01-01T00:00:00Z" level=info msg="Docker daemon" commit=deadbeef graphdriver=overlay2 version=27.0.0
+[    9.854554] systemd[1]: Started Docker Application Container Engine.
+
+[    9.860001] systemd[1]: docker.service: Consumed 1.234s CPU time.
+
+# --- Final Multi-User Target ---
+
+[    9.999999] systemd[1]: Reached target Multi-User System.
+[   10.000000] systemd[1]: Startup finished in 9.999s.
+
+Ubuntu 24.04 LTS hidden-layer tty1
+
+hidden-layer login:
