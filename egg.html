@@ -355,28 +355,14 @@ body.entering-deep #console{
 
 <script>
   window.addEventListener("load", () => {
-    // ===== 强化防直链访问 =====
+    // ===== 降低防直链访问校验强度，仅判断 eggAccess 标记 =====
     const eggAccess = sessionStorage.getItem("eggAccess");
-    const eggTime = sessionStorage.getItem("eggTime");
-    const eggToken = sessionStorage.getItem("eggToken");
-
-    const now = Date.now();
-    const timeValid = eggTime && (now - parseInt(eggTime) < 5000);
-    const fromIndex =
-      document.referrer.includes("index.html") ||
-      document.referrer === "" ||
-      document.referrer.startsWith(location.origin);
-    const tokenValid = eggToken && eggToken.length === 16;
-
-    if (!eggAccess || !timeValid || !fromIndex || !tokenValid) {
+    if (!eggAccess) {
       window.location.href = "index.html";
       return;
     }
-
-    // 用完即销毁，防止刷新绕过
+    // 用完即销毁
     sessionStorage.removeItem("eggAccess");
-    sessionStorage.removeItem("eggTime");
-    sessionStorage.removeItem("eggToken");
     setTimeout(() => {
       document.body.classList.add("dark-mode");
     }, 300);
