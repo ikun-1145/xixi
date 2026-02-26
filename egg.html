@@ -362,7 +362,10 @@ body.entering-deep #console{
 
     const now = Date.now();
     const timeValid = eggTime && (now - parseInt(eggTime) < 5000);
-    const fromIndex = document.referrer.includes("index.html");
+    const fromIndex =
+      document.referrer.includes("index.html") ||
+      document.referrer === "" ||
+      document.referrer.startsWith(location.origin);
     const tokenValid = eggToken && eggToken.length === 16;
 
     if (!eggAccess || !timeValid || !fromIndex || !tokenValid) {
