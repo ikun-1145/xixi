@@ -320,7 +320,9 @@ body.entering-deep #console{
   opacity:1;
 }
 
-</style>
+  </style>
+  <!-- ===== 新终端内核 ===== -->
+  <script src="p/js/terminal-core.js"></script>
 </head>
 
 <body>
@@ -354,7 +356,8 @@ body.entering-deep #console{
       <span id="consoleInput"></span>
     </div>
   </div>
-  <input id="hiddenInput" type="text" autocomplete="off" />
+  <input id="hiddenInput" type="text" autocomplete="off"
+         style="position:fixed;bottom:0;left:0;opacity:0;height:1px;width:1px;" />
 </div>
   </div>
 
@@ -363,1160 +366,146 @@ body.entering-deep #console{
 
 <script>
 window.addEventListener("load", () => {
-
-  /* ===== 背景模式控制 ===== */
+  // ===== 背景模式控制 =====
   const prefersDark = window.matchMedia("(prefers-color-scheme: dark)").matches;
-
   if (prefersDark) {
     document.body.classList.add("instant-dark");
   } else {
-    // 延迟一点触发动画，确保初始白色可见
     setTimeout(() => {
       document.body.classList.add("dark-mode");
     }, 100);
   }
-
-  /* ===== 基础校验 ===== */
+  // ===== 基础校验 =====
   if (!sessionStorage.getItem("eggAccess")) {
     window.location.href = "index.html";
     return;
   }
   sessionStorage.removeItem("eggAccess");
 
-  /* ===== DOM ===== */
-  const terminal = document.getElementById("terminal");
-  const inputEl = document.getElementById("consoleInput");
-  const hiddenInput = document.getElementById("hiddenInput");
-  const promptText = document.getElementById("promptText");
-
-  /* ===== 系统状态 ===== */
-  let state = {
+  // ===== 新终端引擎初始化 =====
+  const term = createTerminal({
     user: "sunland",
     isRoot: false,
-    path: "~",
-    awaitingPassword: false,
-    buffer: "",
-    cursor: 0,
-    history: [],
-    historyIndex: -1,
-    sudoUntil: 0,
-    sudoPending: null,
-    activeTopLines: [],
-    running: false,
-    sudoTemp: false,
-    panic: false,
-    lastExitCode: 0,
-  };
-
-  // ========== alias 系统 ==========
-  state.aliases = {};
-
-  // ========== 环境变量系统 ==========
-  state.env = {
-    USER: state.user,
-    HOME: state.isRoot ? "/root" : "~",
-    SHELL: "/bin/bash",
-    HOSTNAME: "hidden-layer",
-    "?": "0"
-  };
-
-  const bootTime = Date.now();
-
-  /* ===== 虚拟目录结构 ===== */
-  const fs = {
-    "/": ["root","proc","etc","home"],
-    "~": ["core.log","memory.dat","dimension.cfg"],
-    "/root": ["deep.key","shadow.cfg","system.bin"],
-    "/proc": ["cpuinfo","meminfo","uptime"],
-    "/etc": ["passwd","motd"],
-    "/home": ["sunland"]
-  };
-
-  /* ===== 可写文件系统 ===== */
-  const writableFiles = {};
-
-  /* ===== 虚拟文件系统 ===== */
-  const fileContents = {
-    "core.log": "System core initialized successfully.",
-    "memory.dat": "Memory sector stable.",
-    "dimension.cfg": "Layer access: restricted.",
-    "deep.key": "ACCESS TOKEN: 0x71F8FC",
-    "shadow.cfg": "Shadow process active.",
-    "system.bin": "Binary blob (encrypted).",
-    "cpuinfo": "processor\t: 0\nmodel name\t: HiddenLayer Virtual CPU\ncpu MHz\t: 3499.998\ncache size\t: 16384 KB",
-    "meminfo": "MemTotal: 16384000 kB\nMemFree: 8240000 kB\nBuffers: 512000 kB\nCached: 2048000 kB",
-    "uptime": function(){
-      const seconds = Math.floor((Date.now()-bootTime)/1000);
-      return seconds + " " + (seconds*0.8).toFixed(2);
-    },
-    "passwd": "root:x:0:0:root:/root:/bin/bash\nsunland:x:1000:1000:User:/home/sunland:/bin/bash",
-    "motd": "Welcome to HiddenLayerOS\nUnauthorized access is monitored."
-  };
-
-  /* ===== 进程表 ===== */
-  let processes = [];
-
-  function spawn(name, intervalId){
-    processes.push({name, intervalId});
-  }
-
-  function killAll(){
-    processes.forEach(p=>clearInterval(p.intervalId));
-    processes = [];
-  }
-
-  /* ===== 渲染 ===== */
-  function updatePrompt(){
-    let displayPath = state.path;
-    if(displayPath !== "/" && displayPath.startsWith("//")){
-      displayPath = displayPath.replace(/^\/+/, '/');
-    }
-    promptText.textContent =
-      state.user + "@hidden-layer:" + displayPath + (state.isRoot?"#":"$") + " ";
-  }
-
-  function renderInput(){
-    const before = state.buffer.slice(0,state.cursor);
-    const after = state.buffer.slice(state.cursor);
-    if(after.length>0){
-      inputEl.innerHTML = before +
-        '<span class="cursor-char">'+after[0]+'</span>'+after.slice(1);
-    } else {
-      inputEl.innerHTML = before + '<span class="cursor-block"> </span>';
-    }
-  }
-
-  function printLine(text){
-    const p=document.createElement("p");
-    p.textContent=text;
-    const cl=document.getElementById("currentLine");
-    terminal.insertBefore(p,cl);
-    terminal.scrollTop=terminal.scrollHeight;
-  }
-
-  /* ===== 命令处理器 ===== */
-  const handlers = {
-
-    help(){
-      printLine("help / ls / cd / cat / whoami / pwd / echo / uname / history / !! / !n / !prefix / alias / export / uptime / sleep / su / sudo / ping / ps / jobs / top / dmesg / matrix / panic / reboot / clear / exit / mkdir / touch / true / false");
-    },
-    dmesg(){
-      printLine("[    0.000000] Booting HiddenLayerOS 5.15.0-virtual");
-      printLine("[    0.231042] Initializing memory subsystems");
-      printLine("[    0.532194] Virtual CPU detected");
-      printLine("[    1.021441] Mounting virtual filesystems");
-      printLine("[    1.552812] Network stack initialized");
-      printLine("[    2.004219] Hidden layer active");
-    },
-
-    ls(){
-      const files = fs[state.path] || [];
-      printLine(files.join("  "));
-    },
-
-    cat(args){
-      const file = args[0];
-      if(!file){
-        printLine("usage: cat <file>");
-        return;
-      }
-      if(writableFiles[file]){
-        writableFiles[file].split("\n").forEach(line=>printLine(line));
-        state.lastExitCode = 0;
-        state.env["?"] = "0";
-        return;
-      }
-      if(fileContents[file]){
-        const content = typeof fileContents[file] === "function"
-          ? fileContents[file]()
-          : fileContents[file];
-        content.toString().split("\n").forEach(line=>printLine(line));
-      }else{
-        printLine("cat: " + file + ": No such file");
-      }
-    },
-
-    cd(args){
-      let target = args[0];
-
-      // 默认回到 HOME
-      if(!target){
-        state.path = state.isRoot ? "/root" : "~";
-        state.lastExitCode = 0;
-        state.env["?"] = "0";
-        return;
-      }
-
-      // cd -
-      if(target === "-"){
-        if(state.prevPath){
-          const temp = state.path;
-          state.path = state.prevPath;
-          state.prevPath = temp;
-        }
-        state.lastExitCode = 0;
-        state.env["?"] = "0";
-        return;
-      }
-
-      // 处理 ~
-      if(target === "~"){
-        target = state.isRoot ? "/root" : "~";
-      }
-
-      // 绝对路径
-      let newPath;
-      if(target.startsWith("/")){
-        newPath = target;
-      }else{
-        // 相对路径
-        const base = state.path === "~"
-          ? (state.isRoot ? "/root" : "~")
-          : state.path;
-        newPath = base + "/" + target;
-      }
-
-      // 规范化路径（处理 // . ..）
-      const parts = newPath.split("/").filter(Boolean);
-      const stack = [];
-
-      parts.forEach(part=>{
-        if(part === ".") return;
-        if(part === ".."){
-          if(stack.length > 0){
-            stack.pop();
-          }
-        }else{
-          stack.push(part);
-        }
-      });
-
-      newPath = "/" + stack.join("/");
-
-      // 特殊处理用户家目录
-      if(!state.isRoot && newPath === "/home/sunland"){
-        newPath = "~";
-      }
-      // 如果回到根目录
-      if(newPath === ""){
-        newPath = "/";
-      }
-
-      // 权限检查
-      if(newPath === "/root" && !state.isRoot){
-        printLine("Permission denied");
-        state.lastExitCode = 1;
-        state.env["?"] = "1";
-        return;
-      }
-
-      if(fs[newPath] || newPath === "~" || newPath === "/"){
-        state.prevPath = state.path;
-        state.path = newPath;
-        state.lastExitCode = 0;
-        state.env["?"] = "0";
-      }else{
-        printLine("No such directory");
-        state.lastExitCode = 1;
-        state.env["?"] = "1";
-      }
-    },
-
-    mkdir(args){
-      const dir = args[0];
-      if(!dir){
-        printLine("usage: mkdir <directory>");
-        state.lastExitCode = 1;
-        state.env["?"] = "1";
-        return;
-      }
-      if(fs[dir]){
-        printLine("File exists");
-        state.lastExitCode = 1;
-        state.env["?"] = "1";
-        return;
-      }
-      fs[dir] = [];
-      state.lastExitCode = 0;
-      state.env["?"] = "0";
-    },
-
-    touch(args){
-      const file = args[0];
-      if(!file){
-        printLine("usage: touch <file>");
-        state.lastExitCode = 1;
-        state.env["?"] = "1";
-        return;
-      }
-      writableFiles[file] = writableFiles[file] || "";
-      state.lastExitCode = 0;
-      state.env["?"] = "0";
-    },
-
-    whoami(){ printLine(state.user); },
-    pwd(){ printLine(state.path); },
-
-    // ========== echo 命令 ==========
-    echo(args){
-      if(args.length === 0){
-        printLine("");
-        state.lastExitCode = 0;
-        state.env["?"] = "0";
-        return;
-      }
-
-      // 重定向支持
-      const redirectIndex = args.findIndex(a => a === ">" || a === ">>");
-
-      let outputArgs = args;
-      let redirectType = null;
-      let redirectTarget = null;
-
-      if(redirectIndex !== -1){
-        redirectType = args[redirectIndex];
-        redirectTarget = args[redirectIndex + 1];
-        outputArgs = args.slice(0, redirectIndex);
-      }
-
-      const text = outputArgs.join(" ");
-      const output = text.replace(/\$(\w+|\?)/g, (_,name)=>{
-        if(name === "?") return state.lastExitCode.toString();
-        return state.env[name] ?? "";
-      });
-
-      if(redirectType && redirectTarget){
-        if(redirectType === ">"){
-          writableFiles[redirectTarget] = output;
-        }else{
-          writableFiles[redirectTarget] =
-            (writableFiles[redirectTarget] || "") + "\n" + output;
-        }
-        state.lastExitCode = 0;
-        state.env["?"] = "0";
-        return;
-      }
-
-      printLine(output);
-      state.lastExitCode = 0;
-      state.env["?"] = "0";
-    },
-    true(){
-      state.lastExitCode = 0;
-      state.env["?"] = "0";
-    },
-
-    false(){
-      state.lastExitCode = 1;
-      state.env["?"] = "1";
-    },
-
-    // ========== uname 命令 ==========
-    uname(){
-      printLine("HiddenLayerOS 5.15.0-virtual x86_64 GNU/Linux");
-    },
-    // ========== matrix 模式 ==========
-    matrix(){
-      document.body.classList.toggle("matrix-mode");
-      printLine("Matrix mode toggled.");
-    },
-
-    history(){
-      state.history.forEach((c,i)=>printLine((i+1)+"  "+c));
-    },
-
-    alias(args){
-      if(args.length===0){
-        Object.keys(state.aliases).forEach(k=>{
-          printLine("alias " + k + "='" + state.aliases[k] + "'");
-        });
-        return;
-      }
-
-      const raw = args.join(" ");
-      const match = raw.match(/^(\w+)=(.+)$/);
-      if(match){
-        const name = match[1];
-        const value = match[2].replace(/^['"]|['"]$/g,"");
-        state.aliases[name] = value;
-      }else{
-        printLine("usage: alias name='command'");
-      }
-    },
-
-    export(args){
-      if(args.length===0){
-        Object.keys(state.env).forEach(k=>{
-          printLine("declare -x " + k + "=" + state.env[k]);
-        });
-        return;
-      }
-
-      const raw = args.join(" ");
-      const match = raw.match(/^(\w+)=(.+)$/);
-      if(match){
-        state.env[match[1]] = match[2];
-      }else{
-        printLine("usage: export VAR=value");
-      }
-    },
-
-    uptime(){
-      const seconds = Math.floor((Date.now() - bootTime)/1000);
-      printLine("up " + seconds + " seconds");
-    },
-
-    sleep(args){
-      const sec = parseInt(args[0]);
-      if(isNaN(sec)){
-        printLine("usage: sleep <seconds>");
-        return;
-      }
-
-      state.running = true;
-      hiddenInput.disabled = true;
-
-      const id = setTimeout(()=>{
-        printLine("(sleep finished)");
-        processes = processes.filter(p=>p.intervalId!==id);
-        state.running = false;
-        hiddenInput.disabled = false;
-        updatePrompt();
-        renderInput();
-        hiddenInput.focus();
-      }, sec*1000);
-
-      spawn("sleep "+sec, id);
-    },
-
-    su(){
-      state.awaitingPassword=true;
-      promptText.textContent="Password: ";
-    },
-
-    sudo(args){
-  const now = Date.now();
-
-  if(now < state.sudoUntil){
-    state.sudoTemp = true;
-    execute(args);
-    return;
-  }
-
-  state.awaitingPassword = true;
-  state.sudoPending = args;
-  promptText.textContent = "[sudo] password: ";
-},
-
-    ping(){
-      let count=0;
-
-      state.running = true;
-      hiddenInput.disabled = true;
-
-      const id=setInterval(()=>{
-        count++;
-        printLine(
-          "64 bytes from core: icmp_seq=" + count +
-          " ttl=64 time=" + (0.3 + Math.random()*0.7).toFixed(3) + " ms"
-        );
-
-        if(count >= 8){
-          clearInterval(id);
-          processes = processes.filter(p=>p.intervalId!==id);
-          printLine("--- core ping statistics ---");
-          printLine("8 packets transmitted, 8 received, 0% packet loss");
-
-          state.running = false;
-          hiddenInput.disabled = false;
-          updatePrompt();
-          renderInput();
-          hiddenInput.focus();
-        }
-
-      }, 600);
-
-      spawn("ping", id);
-    },
-
-    ps(){
-      printLine("PID   CMD");
-      processes.forEach((p,i)=>{
-        printLine((1000+i) + "   " + p.name);
-      });
-    },
-
-    jobs(){
-      processes.forEach((p,i)=>{
-        printLine("["+(i+1)+"]   " + p.name);
-      });
-    },
-
-    top(){
-      state.running = true;
-      hiddenInput.disabled = true;
-
-      let tick = 0;
-      state.activeTopLines = [];
-const topLines = state.activeTopLines;
-
-      const id = setInterval(()=>{
-        tick++;
-
-        const cpuUser = (Math.random()*20).toFixed(1);
-        const cpuSys = (Math.random()*10).toFixed(1);
-        const cpuIdle = (100 - cpuUser - cpuSys).toFixed(1);
-        const memUsed = (4000 + Math.random()*4000).toFixed(0);
-        const memFree = (16000 - memUsed).toFixed(0);
-
-        const lines = [
-          "top - HiddenLayerOS  up " + Math.floor((Date.now()-bootTime)/1000) + "s",
-          "Tasks: " + (processes.length+1) + " total, 1 running, " + processes.length + " sleeping",
-          "%Cpu(s): " + cpuUser + " us, " + cpuSys + " sy, 0.0 ni, " + cpuIdle + " id",
-          "MiB Mem : 16000 total, " + memUsed + " used, " + memFree + " free",
-          "------------------------------------------------------------",
-          " PID   USER     CPU%   MEM%   COMMAND"
-        ];
-
-        processes.forEach((p,i)=>{
-          lines.push(
-            (1000+i) + "   " + state.user.padEnd(8) + " " +
-            (Math.random()*10).toFixed(1).padStart(5) + " " +
-            (Math.random()*5).toFixed(1).padStart(5) + "   " +
-            p.name
-          );
-        });
-
-        // 清除旧 top 内容
-        topLines.forEach(l=>l.remove());
-        topLines.length = 0;
-
-        lines.forEach(text=>{
-          const p=document.createElement("p");
-          p.textContent=text;
-          terminal.insertBefore(p,document.getElementById("currentLine"));
-          topLines.push(p);
-        });
-
-        terminal.scrollTop=terminal.scrollHeight;
-
-        
-
-      }, 900);
-
-      spawn("top", id);
-    },
-
-    panic(){
-      state.panic = true;
-      state.running = true;
-
-      killAll();
-
-      // 清空终端
-      terminal.innerHTML = "";
-
-      // 黑底白字
-      document.body.style.background = "#000";
-      document.body.style.color = "#fff";
-
-      printLine("Kernel panic - not syncing: Fatal exception");
-      printLine("CPU: 0 PID: 1 Comm: init Not tainted 5.15.0");
-      printLine("Call Trace:");
-      printLine("  dump_stack+0x6d/0x8b");
-      printLine("  panic+0x101/0x2e3");
-      printLine("System halted.");
-
-      hiddenInput.disabled = true;
-    },
-    random(){
-  state.running = true;
-  hiddenInput.disabled = true;
-
-  let count = 0;
-
-  const id = setInterval(()=>{
-    const str = Math.random().toString(36).slice(2);
-    printLine(str);
-
-    count++;
-    if(count > 25){
-      clearInterval(id);
-      processes = processes.filter(p=>p.intervalId!==id);
-      state.running = false;
-      hiddenInput.disabled = false;
-      updatePrompt();
-      renderInput();
-      hiddenInput.focus();
-    }
-  },100);
-
-  spawn("random", id);
-},
-
-    reboot(){
-  killAll();
-
-  state.activeTopLines.forEach(l=>l.remove());
-  state.activeTopLines = [];
-  state.running = false;
-
-  printLine("Broadcast message from root@hidden-layer");
-      printLine("System reboot initiated...");
-
-      hiddenInput.disabled=true;
-
-      setTimeout(()=>{
-        terminal.innerHTML="";
-
-        // 重置系统状态
-        state.user="sunland";
-        state.isRoot=false;
-        state.path="~";
-        state.awaitingPassword=false;
-        state.buffer="";
-        state.cursor=0;
-        state.panic=false;
-        state.sudoTemp=false;
-        state.sudoPending=null;
-        state.sudoUntil=0;
-
-        printLine("System ready.");
-
-        const cl=document.getElementById("currentLine");
-        terminal.appendChild(cl);
-
-        updatePrompt();
-        renderInput();
-
-        hiddenInput.disabled=false;
-        hiddenInput.focus();
-
-      },1500);
-    },
-
-    clear(){
-      const cl=document.getElementById("currentLine");
-      terminal.innerHTML="";
-      terminal.appendChild(cl);
-    },
-
-    exit(){ window.location.href="index.html"; },
-
-    crythane(){
-      printLine("Opening external layer...");
-      document.getElementById("accessFlash").classList.add("active");
-      setTimeout(()=>{
-        document.getElementById("blackout").classList.add("active");
-      },400);
-      setTimeout(()=>{
-        window.location.href="https://crythane.pages.dev/";
-      },1200);
-    },
-
-    dimension(){
-      printLine("Dimension scan initiated...");
-      document.body.style.filter="hue-rotate(90deg) contrast(1.2)";
-      setTimeout(()=>{
-        document.body.style.filter="";
-        printLine("Layer anomaly detected.");
-      },1000);
-    },
-
-    quantum(){
-      printLine("Quantum channel opening...");
-      document.body.style.transform = "scale(1.02) rotate(0.5deg)";
-      document.body.style.transition = "transform 0.6s ease";
-      setTimeout(()=>{
-        document.body.style.transform = "";
-        printLine("Entanglement established.");
-      },800);
-    },
-
-    "unlock-layer"(){
-      if(!state.isRoot){
-        printLine("Permission denied.");
-        return;
-      }
-      printLine("Unlocking hidden layer...");
-      setTimeout(()=>{
-        printLine("Layer breach successful.");
-        printLine("You are not supposed to be here.");
-      },800);
-    },
-
-    secret(){
-      if(!state.isRoot || state.path !== "/root"){
-        printLine("Access denied.");
-        return;
-      }
-      printLine("Access token validated.");
-      document.body.classList.add("entering-deep");
-      document.getElementById("accessFlash").classList.add("active");
-      setTimeout(()=>{
-        document.getElementById("blackout").classList.add("active");
-      },600);
-      setTimeout(()=>{
-        window.location.href="deep.html";
-      },1600);
-    },
-
-    "reveal-core"(){
-      if(!state.isRoot){
-        printLine("Permission denied.");
-        return;
-      }
-      printLine("Core visibility granted.");
-      printLine("/core/kernel.map");
-      printLine("/core/entropy.pool");
-      printLine("/core/observer.log");
-    },
-  };
-
-  function execute(parts){
-
-    if(parts.join(" ") === "sudo rm -rf /"){
-      printLine("rm: cannot remove '/': Operation not permitted");
-      printLine("System integrity compromised...");
-      handlers.panic();
-      return;
-    }
-
-    // 逻辑运算符支持
-    if(parts.includes("&&")){
-      const idx = parts.indexOf("&&");
-      const left = parts.slice(0, idx);
-      const right = parts.slice(idx + 1);
-      execute(left);
-      if(state.lastExitCode === 0){
-        execute(right);
-      }
-      return;
-    }
-
-    if(parts.includes("||")){
-      const idx = parts.indexOf("||");
-      const left = parts.slice(0, idx);
-      const right = parts.slice(idx + 1);
-      execute(left);
-      if(state.lastExitCode !== 0){
-        execute(right);
-      }
-      return;
-    }
-
-    // ===== 简易 if 语法 =====
-if(parts[0] === "if"){
-  const thenIndex = parts.indexOf("then");
-  const fiIndex = parts.indexOf("fi");
-
-  if(thenIndex !== -1 && fiIndex !== -1){
-    const condition = parts.slice(1, thenIndex);
-    const body = parts.slice(thenIndex + 1, fiIndex);
-
-    execute(condition);
-
-    if(state.lastExitCode === 0){
-      execute(body);
-    }
-    return;
-  }
-}
-
-    // 管道支持
-    if(parts.includes("|")){
-      const pipeIndex = parts.indexOf("|");
-      const left = parts.slice(0, pipeIndex);
-      const right = parts.slice(pipeIndex + 1);
-
-      let captured = [];
+    startPath: "~"
+  });
+  const { registerCommand, printLine, state, handlers, resolvePath, fs, updatePrompt, renderInput, execute } = term;
+
+  /* ===== echo 命令（支持简单 $(cmd)）===== */
+  handlers.echo = function(args){
+    let text = args.join(" ");
+
+    // 简单 $(...) 解析（不支持嵌套）
+    const subMatch = text.match(/\$\(([^)]+)\)/);
+    if(subMatch){
+      const subCmd = subMatch[1].trim().split(" ");
       const originalPrint = printLine;
+      let captured = "";
 
-      printLine = (text)=>{
-        captured.push(text);
-      };
-
-      execute(left);
-
+      // 临时劫持输出
+      printLine = function(t){ captured += t; };
+      execute(subCmd);
       printLine = originalPrint;
 
-      if(handlers[right[0]]){
-        handlers[right[0]](captured);
-        state.lastExitCode = 0;
-        state.env["?"] = "0";
-      }else{
-        printLine("command not found");
-        state.lastExitCode = 127;
-        state.env["?"] = "127";
-      }
-
-      return;
+      text = text.replace(subMatch[0], captured);
     }
 
-    // alias 解析
-    if(state.aliases[parts[0]]){
-      const expanded = state.aliases[parts[0]].split(" ");
-      parts = [...expanded, ...parts.slice(1)];
-    }
-    // ===== 子命令替换 $(...) 支持嵌套 =====
-function resolveSubcommands(token){
-  const pattern = /\$\(([^()]+)\)/;
+    printLine(text);
+  };
 
-  while(pattern.test(token)){
-    token = token.replace(pattern,(match,inner)=>{
-      let captured=[];
-      const originalPrint=printLine;
+  /* ===== ps 命令（假进程表）===== */
+  handlers.ps = function(){
+    printLine("  PID TTY          TIME CMD");
+    printLine("    1 tty1     00:00:00 systemd");
+    printLine("   42 tty1     00:00:00 snapd");
+    printLine("  101 tty1     00:00:00 bash");
+    printLine("  202 tty1     00:00:00 hidden-layer");
+  };
 
-      printLine=(text)=>{captured.push(text)};
-      execute(inner.split(" "));
-      printLine=originalPrint;
+  /* ===== top 命令（实时刷新，可 Ctrl+C 退出）===== */
+  handlers.top = function(){
+    if(state.running) return;
+    state.running = true;
 
-      return captured.join(" ");
-    });
-  }
-  return token;
-}
-
-parts = parts.map(token=>resolveSubcommands(token));
-
-    let background = false;
-
-    if(parts[parts.length-1] === "&"){
-      background = true;
-      parts = parts.slice(0,-1);
-    }
-
-    const cmd = parts[0];
-    const args = parts.slice(1);
-
-    if(!cmd) return;
-    // sudo 临时提权
-const originalIsRoot = state.isRoot;
-const originalUser = state.user;
-
-if(state.sudoTemp){
-  state.isRoot = true;
-  state.user = "root";
-}
-
-    if(handlers[cmd]){
-
-  if(background){
-    printLine("[" + (processes.length+1) + "] " + cmd + " running in background");
-
-    const prevRunning = state.running;
-    const prevDisabled = hiddenInput.disabled;
-
-    handlers[cmd](args);
-
-    state.running = false;
-    hiddenInput.disabled = false;
-    updatePrompt();
-    renderInput();
-
-    state.running = prevRunning;
-    hiddenInput.disabled = prevDisabled;
-
-  }else{
-    handlers[cmd](args);
-  }
-
-  // ===== 恢复 sudo 临时提权 =====
-  if(state.sudoTemp){
-    state.isRoot = originalIsRoot;
-    state.user = originalUser;
-    state.sudoTemp = false;
-  }
-
-}else{
-  printLine("command not found");
-  state.lastExitCode = 127;
-  state.env["?"] = "127";
-}
-
-}
-
-  /* ===== 键盘 ===== */
-  hiddenInput.focus();
-  document.addEventListener("touchstart",()=>hiddenInput.focus(),{once:true});
-
-
-  hiddenInput.addEventListener("keydown",e=>{
-    if(state.panic){
-      return;
-    }
-
-    e.preventDefault();
-    if(e.ctrlKey && e.key==="a"){
-      e.preventDefault();
-      state.cursor=0;
-      renderInput();
-      return;
-    }
-
-    if(e.ctrlKey && e.key==="e"){
-      e.preventDefault();
-      state.cursor=state.buffer.length;
-      renderInput();
-      return;
-    }
-
-    if(e.ctrlKey && e.key==="l"){
-      e.preventDefault();
+    function renderTop(){
+      if(!state.running) return;
       handlers.clear();
-      return;
+      printLine("top - hidden-layer simulation");
+      printLine("Tasks: 4 total, 1 running");
+      printLine("CPU: " + Math.floor(Math.random()*40+10) + "%");
+      printLine("MEM: " + Math.floor(Math.random()*60+20) + "%");
+      printLine("");
+      printLine("  PID  COMMAND");
+      printLine("    1  systemd");
+      printLine("   42  snapd");
+      printLine("  101  bash");
+      printLine("  202  hidden-layer");
+      setTimeout(renderTop,1000);
     }
 
-    if(e.ctrlKey && e.key==="c"){
-      e.preventDefault();
-      printLine("^C");
-      killAll();
-      if(state.activeTopLines && state.activeTopLines.length){
-  state.activeTopLines.forEach(l=>l.remove());
-  state.activeTopLines = [];
-}
-      state.awaitingPassword=false;
-      state.buffer="";
-      state.cursor=0;
-      state.running = false;
-      hiddenInput.disabled = false;
-      hiddenInput.focus();
-      updatePrompt();
-      renderInput();
+    renderTop();
+  };
+
+  registerCommand("secret", ()=>{
+    if(!state.isRoot || state.path !== "/root"){
+      printLine("Access denied.");
       return;
     }
-    if(e.key.length === 1 && !e.ctrlKey && !e.metaKey){
-      e.preventDefault();
-      state.buffer =
-        state.buffer.slice(0, state.cursor) +
-        e.key +
-        state.buffer.slice(state.cursor);
+    printLine("Access token validated.");
+    document.getElementById("accessFlash").classList.add("active");
+    setTimeout(()=>{
+      document.getElementById("blackout").classList.add("active");
+    },600);
+    setTimeout(()=>{
+      window.location.href="deep.html";
+    },1600);
+  });
 
-      state.cursor++;
-      renderInput();
-      return;
-    }
-
-    if(e.key==="Backspace" && state.cursor>0){
-      e.preventDefault();
-      state.buffer=state.buffer.slice(0,state.cursor-1)+state.buffer.slice(state.cursor);
-      state.cursor--;
-      renderInput();
-      return;
-    }
-
-    if(e.key==="ArrowLeft" && state.cursor>0){
-      e.preventDefault();
-      state.cursor--;
-      renderInput();
-      return;
-    }
-
-    if(e.key==="ArrowRight" && state.cursor < state.buffer.length){
-      e.preventDefault();
-      state.cursor++;
-      renderInput();
-      return;
-    }
-
-    if(e.key==="Home"){
-      e.preventDefault();
-      state.cursor = 0;
-      renderInput();
-      return;
-    }
-
-    if(e.key==="End"){
-      e.preventDefault();
-      state.cursor = state.buffer.length;
-      renderInput();
-      return;
-    }
-
-    if(e.key==="ArrowUp"){
-      e.preventDefault();
-      if(state.history.length>0){
-        if(state.historyIndex===-1){
-          state.historyIndex=state.history.length-1;
-        }else if(state.historyIndex>0){
-          state.historyIndex--;
-        }
-        state.buffer=state.history[state.historyIndex];
-        state.cursor=state.buffer.length;
-        renderInput();
-      }
-      return;
-    }
-
-    if(e.key==="ArrowDown"){
-      e.preventDefault();
-      if(state.historyIndex!==-1){
-        if(state.historyIndex<state.history.length-1){
-          state.historyIndex++;
-          state.buffer=state.history[state.historyIndex];
-        }else{
-          state.historyIndex=-1;
-          state.buffer="";
-        }
-        state.cursor=state.buffer.length;
-        renderInput();
-      }
-      return;
-    }
-
-    if(e.key === "Tab"){
-      e.preventDefault();
-      const keys = Object.keys(handlers);
-      const matches = keys.filter(k=>k.startsWith(state.buffer));
-
-      if(matches.length === 1){
-        state.buffer = matches[0];
-        state.cursor = state.buffer.length;
-        renderInput();
-      }else if(matches.length > 1){
-        printLine(matches.join("   "));
-      }
-      return;
-    }
-
-    if(e.key==="Enter"){
-      e.preventDefault();
-      const cmd=state.buffer.trim();
-
-      if(state.awaitingPassword){
-        const password = cmd.trim();
-
-        if(password === "sunland"){
-
-          // sudo 临时提权
-          if(state.sudoPending){
-            state.sudoUntil = Date.now() + 15000;
-
-            const pending = state.sudoPending;
-            state.sudoPending = null;
-
-            state.awaitingPassword = false;
-            state.sudoTemp = true;
-
-            state.buffer = "";
-            state.cursor = 0;
-            updatePrompt();
-            renderInput();
-
-            execute(pending);
-            return;
-          }
-
-          // su 永久 root
-          state.user = "root";
-          state.isRoot = true;
-          state.path = "/root";
-          state.env.USER = "root";
-          state.env.HOME = "/root";
-          printLine("root granted");
-
-        }else{
-          printLine("wrong password");
-        }
-
-        state.awaitingPassword = false;
-        state.buffer = "";
-        state.cursor = 0;
-        updatePrompt();
-        renderInput();
-        return;
-      }
-
-      if(cmd === "!!" && state.history.length > 0){
-        const last = state.history[state.history.length-1];
-
-        // 清空当前输入行（去掉 !!）
-        state.buffer = "";
-        state.cursor = 0;
-        updatePrompt();
-        renderInput();
-
-        // 打印真实执行的命令
-        printLine(promptText.textContent + last);
-        execute(last.split(" "));
-
-        hiddenInput.focus();
-        return;
-      }
-
-      // !n 形式，例如 !3
-      if(/^!\d+$/.test(cmd)){
-        const index = parseInt(cmd.slice(1)) - 1;
-        if(state.history[index]){
-          const target = state.history[index];
-          state.buffer = "";
-          state.cursor = 0;
-          updatePrompt();
-          renderInput();
-          printLine(promptText.textContent + target);
-          execute(target.split(" "));
-        }else{
-          printLine("event not found");
-        }
-        hiddenInput.focus();
-        return;
-      }
-
-      // !prefix 形式，例如 !echo
-      if(/^![^!\d]/.test(cmd)){
-        const prefix = cmd.slice(1);
-        const target = [...state.history]
-          .reverse()
-          .find(h => h.startsWith(prefix));
-
-        if(target){
-          state.buffer = "";
-          state.cursor = 0;
-          updatePrompt();
-          renderInput();
-          printLine(promptText.textContent + target);
-          execute(target.split(" "));
-        }else{
-          printLine("event not found");
-        }
-        hiddenInput.focus();
-        return;
-      }
-
-      if(cmd!==""){
-        state.history.push(cmd);
-        state.historyIndex=-1;
-        printLine(promptText.textContent+cmd);
-        execute(cmd.split(" "));
-      }
-
-      state.buffer="";
-      state.cursor=0;
-
-      // 如果进入密码模式，不要覆盖 Password: 提示
-      if(state.awaitingPassword){
-        renderInput();
-        return;
-      }
-
-      // 只有非运行状态才恢复 prompt
-      if(!state.running){
-        updatePrompt();
-        renderInput();
-      }
-
-      return;
-    }
+  registerCommand("crythane", ()=>{
+    printLine("Opening external layer...");
+    document.getElementById("accessFlash").classList.add("active");
+    setTimeout(()=>{
+      document.getElementById("blackout").classList.add("active");
+    },400);
+    setTimeout(()=>{
+      window.location.href="https://crythane.pages.dev/";
+    },1200);
   });
 
 
-  printLine("Welcome to HiddenLayerOS 5.15.0-virtual (GNU/Linux x86_64)");
-printLine("");
-printLine("Last login: " + new Date().toLocaleString() + " from 127.0.0.1");
-printLine("");
-  updatePrompt();
-  renderInput();
+  // ===== 稳定聚焦锁定（防止移动端失焦） =====
+  const hiddenInputEl = document.getElementById("hiddenInput");
 
+  function lockFocus(){
+    if(document.activeElement !== hiddenInputEl){
+      hiddenInputEl.focus();
+    }
+  }
+
+  // 初始化聚焦
+  lockFocus();
+
+  // 点击任意位置都重新聚焦
+  document.addEventListener("click", lockFocus);
+
+  // 触屏设备支持
+  document.addEventListener("touchstart", ()=>{
+    hiddenInputEl.focus();
+  }, { passive:true });
+
+  // 页面重新可见时聚焦
+  document.addEventListener("visibilitychange", ()=>{
+    if(!document.hidden){
+      lockFocus();
+    }
+  });
+
+  // 定期校正焦点（防止动画抢焦点）
+  setInterval(lockFocus, 1500);
+
+  // 修改 handlers.help 输出
+  handlers.help = function(){
+    printLine("Built-in commands: help ls cd pwd whoami history clear cat sudo alias echo ps top sleep jobs fg kill export exit");
+  };
 });
 </script>
 

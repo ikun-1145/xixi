@@ -1,58 +1,79 @@
 <!DOCTYPE html>
-<html lang="zh-Hans">
+<html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>hidden-layer</title>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HiddenLayer Deep</title>
+<style>
+body{
+  margin:0;
+  background:linear-gradient(to bottom,#000,#111);
+  color:#cfcfcf;
+  font-family:"Ubuntu Mono","Courier New",monospace;
+  font-size:14px;
+  overflow:hidden;
+  -webkit-user-select:text;
+  user-select:text;
+}
+#boot{
+  padding:20px;
+  height:100vh;
+  overflow-y:auto;
+  white-space:pre-wrap;
+}
+.blink{
+  display:inline-block;
+  width:8px;
+  background:#cfcfcf;
+  margin-left:2px;
+  animation:blink 1s steps(1) infinite;
+}
+@keyframes blink{50%{opacity:0;}}
+.prompt{color:#4fc3f7;}
+.input{color:#ffffff;}
+.fail{color:#f44747;}
+.warn{color:#ff8800;}
+.kernel{color:#9cdcfe;}
+.systemd{color:#c586c0;}
+.snap{color:#dcdcaa;}
+  .ok{color:#6a9955;}
 
-  <style>
-    body {
-      margin: 0;
-      background: #000;
-      color: #cfcfcf;
-      font-family: "Ubuntu Mono", "Courier New", monospace;
-      font-size: 14px;
-      overflow: hidden;
-    }
+  .cursor-char{
+    background:#ffffff;
+    color:#000;
+    animation:cursorBlink 1s steps(1) infinite;
+  }
 
-    #boot {
-      padding: 20px;
-      height: 100vh;
-      overflow-y: auto;
-      white-space: pre-wrap;
-    }
+  .cursor-block{
+    display:inline-block;
+    width:0.6ch;
+    height:1.2em;
+    background:#ffffff;
+    animation:cursorBlink 1s steps(1) infinite;
+  }
 
-    .blink {
-      display: inline-block;
-      width: 8px;
-      background: #cfcfcf;
-      margin-left: 2px;
-      animation: blink 1s steps(1) infinite;
-    }
+  @keyframes cursorBlink{
+    0%{opacity:1;}
+    50%{opacity:0;}
+    100%{opacity:1;}
+  }
+</style>
+<script src="p/js/terminal-core.js"></script>
+<script>
+  // 在 p/js/terminal-core.js 中增强终端核心，恢复更多“类 Linux”基础功能。
+  // 需要在该文件中找到 handlers.cd 定义之后插入以下新增命令：
+  // 并修改 execute 函数和 handlers.help
 
-    @keyframes blink {
-      50% { opacity: 0; }
-    }
+  // 由于无法直接修改外部文件，这里假设 terminal-core.js 暴露了 createTerminal 函数，
+  // 我们在 startShell 中调用 createTerminal 后，增强 handlers 和 execute。
 
-    .info { color: #4fc3f7; }
-    .kernel { color: #9cdcfe; }
-    .systemd { color: #c586c0; }
-    .snap { color: #dcdcaa; }
-    .ok { color: #6a9955; }
-    .fail { color: #f44747; }
-    .warn { color: #ff8800; }
-    .prompt { color: #4fc3f7; }
-    .input { color: #ffffff; }
-  </style>
+  // 这里重写 startShell 函数以增强终端功能
+</script>
 </head>
 <body>
-
 <div id="boot"></div>
-<input id="mobileInput" type="text" style="position:absolute;opacity:0;height:0;pointer-events:none;">
-
 <script>
 const boot = document.getElementById("boot");
-const mobileInput = document.getElementById("mobileInput");
 
 let lines = [];
 let index = 0;
@@ -60,17 +81,13 @@ let baseSpeed = 1;
 let slowSpeed = 60;
 let pauseSpeed = 800;
 
+/* ================= BOOT ================= */
 fetch("boot.txt")
   .then(res => res.text())
   .then(text => {
     lines = text.split("\n");
     printNext();
-    // 自动聚焦隐藏输入框（移动端）
-    function focusMobile(){
-      mobileInput.focus();
-    }
-    document.addEventListener("touchstart", focusMobile, { once:true });
-    boot.addEventListener("click", focusMobile);
+
   });
 
 function printNext() {
@@ -101,50 +118,50 @@ function printNext() {
   index++;
 
   let delay = baseSpeed;
-
-  if (/FAILED|Failure|exit-code/i.test(line)) {
-    delay = pauseSpeed;
-  }
-
-  if (/cryptsetup|Deriving key material/i.test(line)) {
-    delay = slowSpeed;
-  }
+  if (/FAILED|Failure|exit-code/i.test(line)) delay = pauseSpeed;
+  if (/cryptsetup|Deriving key material/i.test(line)) delay = slowSpeed;
 
   setTimeout(printNext, delay);
 }
 
-function showLogin() {
-  boot.innerHTML += "\nUbuntu 24.04 LTS hidden-layer tty1\n\n";
-  boot.scrollTop = boot.scrollHeight;
-
-  startLogin();
-}
-
+/* ================= LOGIN ================= */
 let loginStage = "username";
 let currentInput = "";
 let loggedUser = "";
+let loginShown = false;
 
-function startLogin() {
-  boot.innerHTML += `<span class="prompt">hidden-layer login:</span> `;
+function showLogin() {
+  if (loginShown) return;
+  loginShown = true;
+
+  boot.innerHTML += "\nUbuntu 24.04 LTS hidden-layer tty1\n\n";
+  boot.innerHTML += "hidden-layer login: ";
+  boot.scrollTop = boot.scrollHeight;
+  loginStage = "username";
   addInputListener();
 }
 
-function addInputListener() {
-  const cursor = document.createElement("span");
-  cursor.className = "blink";
-  boot.appendChild(cursor);
 
-  document.addEventListener("keydown", handleInput);
+function createCursor(){
+  const span = document.createElement("span");
+  span.className = "blink";
+  span.textContent = " ";
+  return span;
 }
 
-function handleInput(e) {
-  mobileInput.focus();
+function addInputListener() {
+  const cursor = createCursor();
+  boot.appendChild(cursor);
+  document.addEventListener("keydown", handleLogin);
+}
+
+function handleLogin(e) {
   const cursor = document.querySelector(".blink");
 
   if (e.key === "Backspace") {
     if (currentInput.length > 0) {
       currentInput = currentInput.slice(0, -1);
-      cursor.previousSibling.remove();
+      cursor.previousSibling?.remove();
     }
     return;
   }
@@ -152,7 +169,29 @@ function handleInput(e) {
   if (e.key === "Enter") {
     cursor.remove();
     boot.innerHTML += "\n";
-    processInput();
+
+    if (loginStage === "username") {
+      loggedUser = currentInput;
+      currentInput = "";
+      loginStage = "password";
+      boot.innerHTML += "Password: ";
+      addInputListener();
+      return;
+    }
+
+    if (loginStage === "password") {
+      document.removeEventListener("keydown", handleLogin);
+
+      if (loggedUser === "root" && currentInput === "sunland") {
+        boot.innerHTML += "Login successful\n\n";
+        startShell();
+      } else {
+        boot.innerHTML += "Login incorrect\n\n";
+        loginShown = false;
+        showLogin();
+      }
+      currentInput = "";
+    }
     return;
   }
 
@@ -167,100 +206,408 @@ function handleInput(e) {
   boot.scrollTop = boot.scrollHeight;
 }
 
-function processInput() {
-  if (loginStage === "username") {
-    loggedUser = currentInput;
-    currentInput = "";
-    loginStage = "password";
-    boot.innerHTML += `<span class="prompt">Password:</span> `;
-    addInputListener();
-    return;
-  }
-
-  if (loginStage === "password") {
-    document.removeEventListener("keydown", handleInput);
-
-    if (loggedUser === "root" && currentInput === "sunland") {
-      boot.innerHTML += "Login successful\n";
-      startShell();
-    } else {
-      boot.innerHTML += "Login incorrect\n\n";
-      loginStage = "username";
-      currentInput = "";
-      startLogin();
-    }
-
-    currentInput = "";
-  }
-}
-
 function startShell() {
-  loginStage = "shell";
-  boot.innerHTML += `<span class="prompt">root@hidden-layer:~#</span> `;
-  addShellListener();
+  boot.innerHTML += "\nEntering root shell...\n\n";
+  // 移除登录阶段的键盘监听，避免冲突
+  document.removeEventListener("keydown", handleLogin);
+
+  // 清空 boot 区域并创建终端结构
+  boot.innerHTML = `
+    <div id="terminal" style="height:100vh;overflow-y:auto;padding:20px;
+         font-family:'Ubuntu Mono','Courier New',monospace;">
+      <div id="currentLine">
+        <span class="prompt" id="promptText"></span>
+        <span id="consoleInput"></span>
+      </div>
+    </div>
+    <input id="hiddenInput"
+           type="text"
+           autocomplete="off"
+           autocapitalize="off"
+           autocorrect="off"
+           spellcheck="false"
+           tabindex="0"
+           style="position:fixed;left:-1000px;top:0;width:1px;height:1px;opacity:0;z-index:1;">
+  `;
+
+  // 等 DOM 更新后再初始化终端
+  setTimeout(() => {
+
+    // 强制聚焦 hiddenInput
+    document.getElementById("hiddenInput").focus();
+    // 触屏设备支持
+    document.addEventListener("touchstart", ()=>{
+      document.getElementById("hiddenInput").focus();
+    }, { passive:true });
+
+    // 防止焦点被浏览器回收
+    document.getElementById("hiddenInput").addEventListener("blur", ()=>{
+      setTimeout(()=>document.getElementById("hiddenInput").focus(), 50);
+    });
+
+    const term = createTerminal({
+      user: "root",
+      isRoot: true,
+      startPath: "/root"
+    });
+    // 再次强制聚焦，确保终端接管输入
+    document.getElementById("hiddenInput").focus();
+
+  const { registerCommand, printLine, state, handlers, resolvePath, fs, updatePrompt, renderInput, execute } = term;
+  /* ============================= */
+/* ===== 拟真增强模块开始 ===== */
+/* ============================= */
+
+/* 扩展目录 */
+if(!fs["/proc"]){
+  fs["/"].push("proc","dev","tmp");
+  fs["/proc"] = [];
+  fs["/dev"] = ["null"];
+  fs["/tmp"] = [];
 }
 
-function addShellListener() {
-  const cursor = document.createElement("span");
-  cursor.className = "blink";
-  boot.appendChild(cursor);
-  document.addEventListener("keydown", handleShell);
-}
+/* true / false */
+registerCommand("true", ()=>{ state.lastExitCode = 0; });
+registerCommand("false", ()=>{ state.lastExitCode = 1; });
 
-function handleShell(e) {
-  mobileInput.focus();
-  const cursor = document.querySelector(".blink");
+/* mkdir */
+registerCommand("mkdir", (args)=>{
+  const name = args[0];
+  if(!name){
+    printLine("mkdir: missing operand");
+    state.lastExitCode = 1;
+    return;
+  }
 
-  if (e.key === "Backspace") {
-    if (currentInput.length > 0) {
-      currentInput = currentInput.slice(0, -1);
-      cursor.previousSibling.remove();
+  const newPath = resolvePath(name);
+
+  if(fs[newPath]){
+    printLine("mkdir: File exists");
+    state.lastExitCode = 1;
+    return;
+  }
+
+  fs[newPath] = [];
+
+  if(!fs[state.path]) fs[state.path] = [];
+  fs[state.path].push(name);
+
+  state.lastExitCode = 0;
+});
+
+/* touch */
+registerCommand("touch", (args)=>{
+  const name = args[0];
+  if(!name){
+    printLine("touch: missing file operand");
+    state.lastExitCode = 1;
+    return;
+  }
+
+  if(!fs[state.path]) fs[state.path] = [];
+  if(!fs[state.path].includes(name)){
+    fs[state.path].push(name);
+  }
+
+  state.lastExitCode = 0;
+});
+
+/* /proc 动态 ls */
+const originalLs = handlers.ls;
+handlers.ls = function(args){
+  if(state.path === "/proc"){
+    printLine("cpuinfo  meminfo  uptime");
+    return;
+  }
+  originalLs(args);
+};
+
+/* 支持 $RANDOM */
+const originalExecute = execute;
+term.execute = function(parts){
+  parts = parts.map(p=>{
+    if(p === "$RANDOM") return String(Math.floor(Math.random()*32768));
+    return p;
+  });
+  originalExecute(parts);
+};
+
+/* ============================= */
+/* ===== 拟真增强模块结束 ===== */
+/* ============================= */
+  // 在 state 对象中增加 env
+  // 找到 let state = { 后面插入：
+  // env: {}
+  if(!state.env) state.env = {};
+  // 插入 jobs 和 jobId
+  if(state.jobs === undefined) state.jobs = [];
+  if(state.jobId === undefined) state.jobId = 0;
+
+  /* ===== export 命令 ===== */
+  handlers.export = function(args){
+    const raw = args.join(" ");
+    if(!raw.includes("=")){
+      printLine("export: usage export VAR=value");
+      state.lastExitCode = 1;
+      return;
     }
-    return;
+    const [k,v] = raw.split("=");
+    state.env[k.trim()] = v.trim();
+    state.lastExitCode = 0;
+  };
+
+  /* ===== exit 命令 ===== */
+  handlers.exit = function(){
+    printLine("logout");
+    state.lastExitCode = 0;
+  };
+
+  /* ===== cat 命令 ===== */
+  handlers.cat = function(args){
+    if(args[0] === "/etc/passwd"){
+      printLine("root:x:0:0:root:/root:/bin/bash");
+      printLine("sunland:x:1000:1000::/home/sunland:/bin/bash");
+      return;
+    }
+
+    if(args[0] === "/etc/hostname"){
+      printLine("hidden-layer");
+      return;
+    }
+
+    const file = args[0];
+    const dir = state.path;
+    if(!file){ printLine("cat: missing file operand"); return; }
+    if(dir === "/root" && !state.isRoot){
+      printLine("Permission denied");
+      return;
+    }
+    const files = fs[dir] || [];
+    if(files.includes(file)){
+      printLine("[content of " + file + "]");
+    }else{
+      printLine("cat: " + file + ": No such file");
+    }
+  };
+
+  /* ===== sudo 命令（临时提权）===== */
+  handlers.sudo = function(args){
+    if(state.isRoot){
+      execute(args);
+      return;
+    }
+    if(args[0] === "su"){
+      handlers.su();
+      return;
+    }
+    printLine("sudo: permission denied (simulation)");
+  };
+
+  /* ===== alias 命令 ===== */
+  state.aliases = {};
+  handlers.alias = function(args){
+    const raw = args.join(" ");
+    if(!raw.includes("=")){
+      printLine("alias: usage alias name='command'");
+      return;
+    }
+    const [name,cmd] = raw.split("=");
+    state.aliases[name.trim()] = cmd.replace(/'/g,"").trim();
+  };
+
+  /* ===== echo 命令（支持简单 $(cmd)）===== */
+  handlers.echo = function(args){
+    let text = args.join(" ");
+
+    // 简单 $(...) 解析（不支持嵌套）
+    const subMatch = text.match(/\$\(([^)]+)\)/);
+    if(subMatch){
+      const subCmd = subMatch[1].trim().split(" ");
+      const originalPrint = printLine;
+      let captured = "";
+
+      // 临时劫持输出
+      printLine = function(t){ captured += t; };
+      execute(subCmd);
+      printLine = originalPrint;
+
+      text = text.replace(subMatch[0], captured);
+    }
+
+    printLine(text);
+  };
+
+  /* ===== ps 命令（假进程表）===== */
+  handlers.ps = function(){
+    printLine("  PID TTY          TIME CMD");
+    printLine("    1 tty1     00:00:00 systemd");
+    printLine("   42 tty1     00:00:00 snapd");
+    printLine("  101 tty1     00:00:00 bash");
+    printLine("  202 tty1     00:00:00 hidden-layer");
+  };
+
+  /* ===== top 命令（实时刷新，可 Ctrl+C 退出）===== */
+  handlers.top = function(){
+    if(state.running) return;
+    state.running = true;
+
+    function renderTop(){
+      if(!state.running) return;
+      handlers.clear();
+      printLine("top - hidden-layer simulation");
+      printLine("Tasks: 4 total, 1 running");
+      printLine("CPU: " + Math.floor(Math.random()*40+10) + "%");
+      printLine("MEM: " + Math.floor(Math.random()*60+20) + "%");
+      printLine("");
+      printLine("  PID  COMMAND");
+      printLine("    1  systemd");
+      printLine("   42  snapd");
+      printLine("  101  bash");
+      printLine("  202  hidden-layer");
+      setTimeout(renderTop,1000);
+    }
+
+    renderTop();
+  };
+
+  /* ===== sleep 命令 ===== */
+  handlers.sleep = function(args){
+    const sec = parseInt(args[0] || "1",10);
+    if(isNaN(sec)){ printLine("sleep: invalid time"); return; }
+    state.running = true;
+    setTimeout(()=>{
+      state.running = false;
+      state.lastExitCode = 0;
+      updatePrompt();
+      renderInput();
+    }, sec*1000);
+  };
+
+  /* ===== jobs 命令 ===== */
+  handlers.jobs = function(){
+    state.jobs.forEach(j=>{
+      printLine("["+j.id+"] " + j.cmd);
+    });
+  };
+
+  handlers.fg = function(args){
+    const id = parseInt(args[0], 10);
+    const job = state.jobs.find(j => j.id === id);
+    if(!job){
+      printLine("fg: job not found");
+      state.lastExitCode = 1;
+      return;
+    }
+    state.running = true;
+    execute(job.cmd.split(" "));
+    state.jobs = state.jobs.filter(j => j.id !== id);
+    state.lastExitCode = 0;
+  };
+
+  handlers.kill = function(args){
+    const id = parseInt(args[0], 10);
+    const job = state.jobs.find(j => j.id === id);
+    if(!job){
+      printLine("kill: job not found");
+      state.lastExitCode = 1;
+      return;
+    }
+    state.jobs = state.jobs.filter(j => j.id !== id);
+    printLine("["+id+"] terminated");
+    state.lastExitCode = 0;
+  };
+
+  /* ===== hostname 命令 ===== */
+  handlers.hostname = function(){
+    printLine("hidden-layer");
+  };
+
+  /* ===== who 命令 ===== */
+  handlers.who = function(){
+    printLine(state.user + " tty1 2026-02-27 08:00");
+  };
+
+  /* ===== date 命令 ===== */
+  handlers.date = function(){
+    printLine(new Date().toString());
+  };
+
+  /* ===== id 命令 ===== */
+  handlers.id = function(){
+    if(state.isRoot){
+      printLine("uid=0(root) gid=0(root) groups=0(root)");
+    } else {
+      printLine("uid=1000("+state.user+") gid=1000("+state.user+") groups=1000("+state.user+")");
+    }
+  };
+
+  // 替换 handlers.ls
+  handlers.ls = function(args){
+    const dir = state.path;
+    const files = fs[dir] || [];
+
+    if(args[0] === "-l"){
+      files.forEach(f=>{
+        const perm = state.isRoot ? "-rw-r--r--" : "-rw-r--r--";
+        printLine(perm + " 1 " + state.user + " " + state.user + " 1024 Jan 01 00:00 " + f);
+      });
+      return;
+    }
+
+    printLine(files.join("  "));
+  };
+
+
+  // 替换 handlers.help
+  handlers.help = function(){
+    printLine("Built-in commands: help ls cd pwd whoami history clear cat sudo alias echo ps top sleep jobs fg kill export exit uname uptime hostname who date id");
+  };
+
+  registerCommand("reboot", ()=>{
+    printLine("Rebooting system...");
+    setTimeout(()=>location.reload(),1000);
+  });
+
+  registerCommand("clear", ()=>{
+    document.getElementById("terminal").innerHTML =
+      `<div id="currentLine">
+        <span class="prompt" id="promptText"></span>
+        <span id="consoleInput"></span>
+      </div>`;
+  });
+
+  registerCommand("uname", ()=>{
+    printLine("Linux hidden-layer 6.8.0-virtual x86_64 GNU/Linux");
+  });
+
+  printLine("Welcome to Ubuntu 24.04 LTS (GNU/Linux 6.8.0-virtual)");
+  printLine("Type 'help' to explore.");
+
+  function forceFocus(){
+    const hiddenInput = document.getElementById("hiddenInput");
+    if(!hiddenInput) return;
+    if(document.activeElement !== hiddenInput){
+      hiddenInput.focus();
+    }
   }
 
-  if (e.key === "Enter") {
-    cursor.remove();
-    boot.innerHTML += "\n";
-    executeCommand(currentInput);
-    currentInput = "";
-    return;
-  }
+  // 延迟绑定，确保 hiddenInput 已创建
+  setTimeout(()=>{
+    forceFocus();
 
-  if (e.key.length === 1) {
-    currentInput += e.key;
-    const span = document.createElement("span");
-    span.className = "input";
-    span.textContent = e.key;
-    cursor.before(span);
-  }
+    document.addEventListener("click", forceFocus);
 
-  boot.scrollTop = boot.scrollHeight;
+    document.addEventListener("visibilitychange", ()=>{
+      if(!document.hidden){
+        forceFocus();
+      }
+    });
+
+    setInterval(forceFocus, 1500);
+  }, 0);
+
+  }, 0);
 }
-
-function executeCommand(cmd) {
-  if (cmd === "exit") {
-    boot.innerHTML += "logout\n";
-    loginStage = "username";
-    startLogin();
-    return;
-  }
-
-  if (cmd === "whoami") {
-    boot.innerHTML += "root\n";
-  } else if (cmd === "ls") {
-    boot.innerHTML += "boot.txt  deep.html  secrets\n";
-  } else if (cmd === "uname -a") {
-    boot.innerHTML += "Linux hidden-layer 6.8.0-xx-generic x86_64 GNU/Linux\n";
-  } else {
-    boot.innerHTML += `bash: ${cmd}: command not found\n`;
-  }
-
-  boot.innerHTML += `<span class="prompt">root@hidden-layer:~#</span> `;
-  addShellListener();
-}
-
 </script>
-
 </body>
 </html>
