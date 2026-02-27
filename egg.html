@@ -400,7 +400,10 @@ window.addEventListener("load", () => {
     history: [],
     historyIndex: -1,
     sudoUntil: 0,
+    sudoPending: null,
+    activeTopLines: [],
     running: false,
+    sudoTemp: false,
     panic: false,
     lastExitCode: 0,
   };
@@ -580,7 +583,9 @@ window.addEventListener("load", () => {
       parts.forEach(part=>{
         if(part === ".") return;
         if(part === ".."){
-          stack.pop();
+          if(stack.length > 0){
+            stack.pop();
+          }
         }else{
           stack.push(part);
         }
@@ -790,15 +795,18 @@ window.addEventListener("load", () => {
     },
 
     sudo(args){
-      const now=Date.now();
-      if(now < state.sudoUntil){
-        execute(args);
-        return;
-      }
-      state.awaitingPassword=true;
-      promptText.textContent="[sudo] password: ";
-      state.sudoUntil=now+5000;
-    },
+  const now = Date.now();
+
+  if(now < state.sudoUntil){
+    state.sudoTemp = true;
+    execute(args);
+    return;
+  }
+
+  state.awaitingPassword = true;
+  state.sudoPending = args;
+  promptText.textContent = "[sudo] password: ";
+},
 
     ping(){
       let count=0;
@@ -849,7 +857,8 @@ window.addEventListener("load", () => {
       hiddenInput.disabled = true;
 
       let tick = 0;
-      const topLines = [];
+      state.activeTopLines = [];
+const topLines = state.activeTopLines;
 
       const id = setInterval(()=>{
         tick++;
@@ -891,15 +900,7 @@ window.addEventListener("load", () => {
 
         terminal.scrollTop=terminal.scrollHeight;
 
-        if(tick >= 30){
-          clearInterval(id);
-          processes = processes.filter(p=>p.intervalId!==id);
-          state.running = false;
-          hiddenInput.disabled = false;
-          updatePrompt();
-          renderInput();
-          hiddenInput.focus();
-        }
+        
 
       }, 900);
 
@@ -928,10 +929,39 @@ window.addEventListener("load", () => {
 
       hiddenInput.disabled = true;
     },
+    random(){
+  state.running = true;
+  hiddenInput.disabled = true;
+
+  let count = 0;
+
+  const id = setInterval(()=>{
+    const str = Math.random().toString(36).slice(2);
+    printLine(str);
+
+    count++;
+    if(count > 25){
+      clearInterval(id);
+      processes = processes.filter(p=>p.intervalId!==id);
+      state.running = false;
+      hiddenInput.disabled = false;
+      updatePrompt();
+      renderInput();
+      hiddenInput.focus();
+    }
+  },100);
+
+  spawn("random", id);
+},
 
     reboot(){
-      killAll();
-      printLine("Broadcast message from root@hidden-layer");
+  killAll();
+
+  state.activeTopLines.forEach(l=>l.remove());
+  state.activeTopLines = [];
+  state.running = false;
+
+  printLine("Broadcast message from root@hidden-layer");
       printLine("System reboot initiated...");
 
       hiddenInput.disabled=true;
@@ -947,6 +977,9 @@ window.addEventListener("load", () => {
         state.buffer="";
         state.cursor=0;
         state.panic=false;
+        state.sudoTemp=false;
+        state.sudoPending=null;
+        state.sudoUntil=0;
 
         printLine("System ready.");
 
@@ -990,6 +1023,16 @@ window.addEventListener("load", () => {
       },1000);
     },
 
+    quantum(){
+      printLine("Quantum channel opening...");
+      document.body.style.transform = "scale(1.02) rotate(0.5deg)";
+      document.body.style.transition = "transform 0.6s ease";
+      setTimeout(()=>{
+        document.body.style.transform = "";
+        printLine("Entanglement established.");
+      },800);
+    },
+
     "unlock-layer"(){
       if(!state.isRoot){
         printLine("Permission denied.");
@@ -1017,6 +1060,17 @@ window.addEventListener("load", () => {
         window.location.href="deep.html";
       },1600);
     },
+
+    "reveal-core"(){
+      if(!state.isRoot){
+        printLine("Permission denied.");
+        return;
+      }
+      printLine("Core visibility granted.");
+      printLine("/core/kernel.map");
+      printLine("/core/entropy.pool");
+      printLine("/core/observer.log");
+    },
   };
 
   function execute(parts){
@@ -1027,6 +1081,47 @@ window.addEventListener("load", () => {
       handlers.panic();
       return;
     }
+
+    // 逻辑运算符支持
+    if(parts.includes("&&")){
+      const idx = parts.indexOf("&&");
+      const left = parts.slice(0, idx);
+      const right = parts.slice(idx + 1);
+      execute(left);
+      if(state.lastExitCode === 0){
+        execute(right);
+      }
+      return;
+    }
+
+    if(parts.includes("||")){
+      const idx = parts.indexOf("||");
+      const left = parts.slice(0, idx);
+      const right = parts.slice(idx + 1);
+      execute(left);
+      if(state.lastExitCode !== 0){
+        execute(right);
+      }
+      return;
+    }
+
+    // ===== 简易 if 语法 =====
+if(parts[0] === "if"){
+  const thenIndex = parts.indexOf("then");
+  const fiIndex = parts.indexOf("fi");
+
+  if(thenIndex !== -1 && fiIndex !== -1){
+    const condition = parts.slice(1, thenIndex);
+    const body = parts.slice(thenIndex + 1, fiIndex);
+
+    execute(condition);
+
+    if(state.lastExitCode === 0){
+      execute(body);
+    }
+    return;
+  }
+}
 
     // 管道支持
     if(parts.includes("|")){
@@ -1063,6 +1158,26 @@ window.addEventListener("load", () => {
       const expanded = state.aliases[parts[0]].split(" ");
       parts = [...expanded, ...parts.slice(1)];
     }
+    // ===== 子命令替换 $(...) 支持嵌套 =====
+function resolveSubcommands(token){
+  const pattern = /\$\(([^()]+)\)/;
+
+  while(pattern.test(token)){
+    token = token.replace(pattern,(match,inner)=>{
+      let captured=[];
+      const originalPrint=printLine;
+
+      printLine=(text)=>{captured.push(text)};
+      execute(inner.split(" "));
+      printLine=originalPrint;
+
+      return captured.join(" ");
+    });
+  }
+  return token;
+}
+
+parts = parts.map(token=>resolveSubcommands(token));
 
     let background = false;
 
@@ -1074,28 +1189,52 @@ window.addEventListener("load", () => {
     const cmd = parts[0];
     const args = parts.slice(1);
 
+    if(!cmd) return;
+    // sudo 临时提权
+const originalIsRoot = state.isRoot;
+const originalUser = state.user;
+
+if(state.sudoTemp){
+  state.isRoot = true;
+  state.user = "root";
+}
+
     if(handlers[cmd]){
 
-      if(background){
-        printLine("[" + (processes.length+1) + "] " + cmd + " running in background");
-        handlers[cmd](args);
+  if(background){
+    printLine("[" + (processes.length+1) + "] " + cmd + " running in background");
 
-        // 后台不占用 shell
-        state.running = false;
-        hiddenInput.disabled = false;
-        updatePrompt();
-        renderInput();
+    const prevRunning = state.running;
+    const prevDisabled = hiddenInput.disabled;
 
-      }else{
-        handlers[cmd](args);
-      }
+    handlers[cmd](args);
 
-    }else{
-      printLine("command not found");
-      state.lastExitCode = 127;
-      state.env["?"] = "127";
-    }
+    state.running = false;
+    hiddenInput.disabled = false;
+    updatePrompt();
+    renderInput();
+
+    state.running = prevRunning;
+    hiddenInput.disabled = prevDisabled;
+
+  }else{
+    handlers[cmd](args);
   }
+
+  // ===== 恢复 sudo 临时提权 =====
+  if(state.sudoTemp){
+    state.isRoot = originalIsRoot;
+    state.user = originalUser;
+    state.sudoTemp = false;
+  }
+
+}else{
+  printLine("command not found");
+  state.lastExitCode = 127;
+  state.env["?"] = "127";
+}
+
+}
 
   /* ===== 键盘 ===== */
   hiddenInput.focus();
@@ -1132,9 +1271,16 @@ window.addEventListener("load", () => {
       e.preventDefault();
       printLine("^C");
       killAll();
+      if(state.activeTopLines && state.activeTopLines.length){
+  state.activeTopLines.forEach(l=>l.remove());
+  state.activeTopLines = [];
+}
       state.awaitingPassword=false;
       state.buffer="";
       state.cursor=0;
+      state.running = false;
+      hiddenInput.disabled = false;
+      hiddenInput.focus();
       updatePrompt();
       renderInput();
       return;
@@ -1239,19 +1385,43 @@ window.addEventListener("load", () => {
 
       if(state.awaitingPassword){
         const password = cmd.trim();
+
         if(password === "sunland"){
-  state.user="root";
-  state.isRoot=true;
-  state.path="/root";
-  state.env.USER="root";
-  state.env.HOME="/root";
-  printLine("root granted");
- }else{
+
+          // sudo 临时提权
+          if(state.sudoPending){
+            state.sudoUntil = Date.now() + 15000;
+
+            const pending = state.sudoPending;
+            state.sudoPending = null;
+
+            state.awaitingPassword = false;
+            state.sudoTemp = true;
+
+            state.buffer = "";
+            state.cursor = 0;
+            updatePrompt();
+            renderInput();
+
+            execute(pending);
+            return;
+          }
+
+          // su 永久 root
+          state.user = "root";
+          state.isRoot = true;
+          state.path = "/root";
+          state.env.USER = "root";
+          state.env.HOME = "/root";
+          printLine("root granted");
+
+        }else{
           printLine("wrong password");
         }
-        state.awaitingPassword=false;
-        state.buffer="";
-        state.cursor=0;
+
+        state.awaitingPassword = false;
+        state.buffer = "";
+        state.cursor = 0;
         updatePrompt();
         renderInput();
         return;
@@ -1340,7 +1510,10 @@ window.addEventListener("load", () => {
   });
 
 
-  printLine("Last login: "+new Date().toLocaleString());
+  printLine("Welcome to HiddenLayerOS 5.15.0-virtual (GNU/Linux x86_64)");
+printLine("");
+printLine("Last login: " + new Date().toLocaleString() + " from 127.0.0.1");
+printLine("");
   updatePrompt();
   renderInput();
 
