@@ -7,6 +7,16 @@ function createTerminal(options={}){
   const hiddenInput = document.getElementById(options.hiddenInputId || "hiddenInput");
   const promptText = document.getElementById(options.promptId || "promptText");
 
+  if(!terminal || !inputEl || !hiddenInput || !promptText){
+    console.error("Terminal init failed:", {
+      terminal,
+      inputEl,
+      hiddenInput,
+      promptText
+    });
+    return;
+  }
+
   let state = {
     user: options.user || "sunland",
     isRoot: options.isRoot || false,
@@ -294,15 +304,29 @@ if(args[0] === "/proc/meminfo"){
     printLine("  202 tty1     00:00:00 hidden-layer");
   };
 
-  /* ===== top 命令（实时刷新，可 Ctrl+C 退出）===== */
+  /* ===== top 命令（实时刷新，可 Ctrl+C 退出，保留历史）===== */
   handlers.top = function(){
     if(state.running) return;
     state.running = true;
 
+    // Save existing screen content except current input line
+    const savedLines = [];
+    const children = Array.from(terminal.children);
+    children.forEach(el=>{
+      if(el.id !== "currentLine"){
+        savedLines.push(el.cloneNode(true));
+      }
+    });
+
     function renderTop(){
       if(!state.running) return;
-      handlers.clear();
+
+      const cl = document.getElementById("currentLine");
+      terminal.innerHTML = "";
+      terminal.appendChild(cl);
+
       printLine("top - hidden-layer simulation");
+      printLine("Press Ctrl+C to quit");
       printLine("Tasks: 4 total, 1 running");
       printLine("CPU: " + Math.floor(Math.random()*40+10) + "%");
       printLine("MEM: " + Math.floor(Math.random()*60+20) + "%");
@@ -312,8 +336,29 @@ if(args[0] === "/proc/meminfo"){
       printLine("   42  snapd");
       printLine("  101  bash");
       printLine("  202  hidden-layer");
+
       setTimeout(renderTop,1000);
     }
+
+    // Override Ctrl+C behavior temporarily
+    const topListener = function(e){
+      if(e.ctrlKey && e.key === "c"){
+        e.preventDefault();
+        state.running = false;
+        document.removeEventListener("keydown", topListener);
+
+        // Restore previous screen
+        terminal.innerHTML = "";
+        savedLines.forEach(node=>terminal.appendChild(node));
+        terminal.appendChild(document.getElementById("currentLine"));
+
+        printLine("^C");
+        updatePrompt();
+        renderInput();
+      }
+    };
+
+    document.addEventListener("keydown", topListener);
 
     renderTop();
   };
@@ -557,7 +602,13 @@ handlers.systemctl = function(args){
     }
   }
 
-  hiddenInput.addEventListener("keydown",e=>{
+  // Bind keyboard events directly to document instead of hiddenInput
+  document.addEventListener("keydown", function(e){
+    // Ensure input never loses focus
+    if(document.activeElement !== hiddenInput){
+      hiddenInput.focus();
+    }
+
     if(e.ctrlKey && e.key === "c"){
       if(state.running){
         state.running = false;
@@ -568,12 +619,11 @@ handlers.systemctl = function(args){
       return;
     }
 
-    e.preventDefault();
-
     if(e.key.length===1 && !e.ctrlKey && !e.metaKey){
-      state.buffer=
-        state.buffer.slice(0,state.cursor)+
-        e.key+
+      if(state.running) return;
+      state.buffer =
+        state.buffer.slice(0,state.cursor) +
+        e.key +
         state.buffer.slice(state.cursor);
       state.cursor++;
       renderInput();
@@ -581,8 +631,8 @@ handlers.systemctl = function(args){
     }
 
     if(e.key==="Backspace" && state.cursor>0){
-      state.buffer=
-        state.buffer.slice(0,state.cursor-1)+
+      state.buffer =
+        state.buffer.slice(0,state.cursor-1) +
         state.buffer.slice(state.cursor);
       state.cursor--;
       renderInput();
@@ -602,6 +652,7 @@ handlers.systemctl = function(args){
     }
 
     if(e.key==="Enter"){
+      if(state.running) return;
       if(state.awaitingPassword){
         const pwd = state.buffer.trim();
         state.awaitingPassword = false;
@@ -633,8 +684,6 @@ handlers.systemctl = function(args){
       state.buffer = "";
       state.cursor = 0;
 
-      // 如果刚刚执行的是 su，并且 execute 内部已设置 awaitingPassword，
-      // 则不要立即刷新 prompt（避免 Password 下方出现新 prompt）
       if(!state.awaitingPassword){
         updatePrompt();
         renderInput();
@@ -642,11 +691,15 @@ handlers.systemctl = function(args){
 
       return;
     }
+
   });
 
+  // Ensure hiddenInput is focused so cursor renders correctly
+  if(hiddenInput){
+    hiddenInput.focus();
+  }
   updatePrompt();
   renderInput();
-  hiddenInput.focus();
 
   /* ============================= */
 /* ===== 拟真增强 Phase 2 ===== */
@@ -858,6 +911,304 @@ handlers.touch = function(args){
     owner: state.user,
     mode: "644"
   };
+  state.lastExitCode = 0;
+};
+
+/* ===== man 命令 ===== */
+handlers.man = function(args){
+  const topic = args[0];
+  if(!topic){
+    printLine("What manual page do you want?");
+    state.lastExitCode = 1;
+    return;
+  }
+
+  const pages = {
+    ls: [
+      "LS(1)                User Commands               LS(1)",
+      "",
+      "NAME",
+      "       ls - list directory contents",
+      "",
+      "SYNOPSIS",
+      "       ls [OPTION]... [FILE]...",
+      "",
+      "DESCRIPTION",
+      "       List information about the FILEs."
+    ],
+    top: [
+      "TOP(1)               User Commands              TOP(1)",
+      "",
+      "NAME",
+      "       top - display Linux processes",
+      "",
+      "DESCRIPTION",
+      "       The top program provides a dynamic real-time view",
+      "       of a running system."
+    ],
+    chmod: [
+      "CHMOD(1)             User Commands            CHMOD(1)",
+      "",
+      "NAME",
+      "       chmod - change file mode bits",
+      "",
+      "DESCRIPTION",
+      "       This manual page documents the chmod command."
+    ]
+  };
+
+  if(!pages[topic]){
+    printLine("No manual entry for " + topic);
+    state.lastExitCode = 1;
+    return;
+  }
+
+  pages[topic].forEach(line=>printLine(line));
+  state.lastExitCode = 0;
+};
+
+/* ===== free 命令 ===== */
+handlers.free = function(args){
+  const total = 8192;
+  const used = Math.floor(Math.random()*4000 + 2000);
+  const freeMem = total - used;
+
+  if(args[0] === "-h"){
+    printLine("              total        used        free");
+    printLine("Mem:          " + total + "M      " + used + "M      " + freeMem + "M");
+  }else{
+    printLine("              total        used        free");
+    printLine("Mem:        8192000     " + (used*1000) + "     " + (freeMem*1000));
+  }
+
+  state.lastExitCode = 0;
+};
+
+/* ===== df 命令 ===== */
+handlers.df = function(args){
+  if(args[0] === "-h"){
+    printLine("Filesystem      Size  Used Avail Use%");
+    printLine("/dev/sda1        40G   18G   20G  48%");
+  }else{
+    printLine("Filesystem     1K-blocks     Used Available Use%");
+    printLine("/dev/sda1       41943040  18874368  20971520  48%");
+  }
+  state.lastExitCode = 0;
+};
+
+/* ===== watch 命令 ===== */
+handlers.watch = function(args){
+  if(state.running) return;
+  if(!args[0]){
+    printLine("watch: missing command");
+    state.lastExitCode = 1;
+    return;
+  }
+
+  state.running = true;
+
+  function loop(){
+    if(!state.running) return;
+
+    const cl = document.getElementById("currentLine");
+    terminal.innerHTML = "";
+    terminal.appendChild(cl);
+
+    printLine("Every 1.0s: " + args.join(" "));
+    printLine("");
+
+    execute(args);
+
+    setTimeout(loop,1000);
+  }
+
+  loop();
+};
+
+/* ===== motd (Message of the Day) ===== */
+handlers.motd = function(){
+  printLine("Welcome to Ubuntu 24.04 LTS (GNU/Linux 6.8.0-virtual)");
+  printLine("");
+  printLine(" System load:  " + (Math.random()*2).toFixed(2));
+  printLine(" Memory usage: " + Math.floor(Math.random()*60+20) + "%");
+  printLine(" Users logged in: 1");
+  printLine(" IP address: 192.168.1." + Math.floor(Math.random()*200+2));
+  state.lastExitCode = 0;
+};
+
+/* ===== htop (增强版 top) ===== */
+handlers.htop = function(){
+  if(state.running) return;
+  state.running = true;
+
+  function render(){
+    if(!state.running) return;
+
+    const cl = document.getElementById("currentLine");
+    terminal.innerHTML = "";
+    terminal.appendChild(cl);
+
+    printLine("htop - interactive process viewer");
+    printLine("CPU[||||||||      ] " + Math.floor(Math.random()*80+10) + "%");
+    printLine("MEM[|||||         ] " + Math.floor(Math.random()*60+20) + "%");
+    printLine("");
+    printLine(" PID  USER      COMMAND");
+    printLine("  1   root      systemd");
+    printLine(" 42   root      snapd");
+    printLine("101   " + state.user + "      bash");
+    printLine("202   " + state.user + "      hidden-layer");
+
+    setTimeout(render, 1200);
+  }
+
+  render();
+};
+
+/* ===== nano (简单文本编辑器模拟) ===== */
+handlers.nano = function(args){
+  const file = args[0] || "untitled.txt";
+
+  const cl = document.getElementById("currentLine");
+  terminal.innerHTML = "";
+  terminal.appendChild(cl);
+
+  printLine("GNU nano 7.0                    " + file);
+  printLine("");
+  printLine("This is a simulated nano editor.");
+  printLine("Press Ctrl+X to exit.");
+  printLine("");
+
+  state.running = true;
+
+  function exitNano(){
+    state.running = false;
+    printLine("");
+    printLine("File saved.");
+    updatePrompt();
+    renderInput();
+  }
+
+  const nanoListener = function(e){
+    if(e.ctrlKey && e.key.toLowerCase() === "x"){
+      document.removeEventListener("keydown", nanoListener);
+      exitNano();
+    }
+  };
+
+  document.addEventListener("keydown", nanoListener);
+};
+
+/* ===== neofetch ===== */
+handlers.neofetch = function(){
+  printLine("            .-/+oossssoo+/-."); 
+  printLine("        `:+ssssssssssssssssss+:`");
+  printLine("      -+ssssssssssssssssssyyssss+-");
+  printLine("    .ossssssssssssssssssdMMMNysssso.");
+  printLine("   /ssssssssssshdmmNNmmyNMMMMhssssss/");
+  printLine("  +ssssssssshmydMMMMMMMNddddyssssssss+");
+  printLine(" /sssssssshNMMMyhhyyyyhmNMMMNhssssssss/");
+  printLine(".ssssssssdMMMNhsssssssssshNMMMdssssssss.");
+  printLine("");
+  printLine("OS: Ubuntu 24.04 LTS x86_64");
+  printLine("Host: hidden-layer");
+  printLine("Kernel: 6.8.0-virtual");
+  printLine("Shell: bash");
+  printLine("Uptime: " + Math.floor((Date.now()-state.bootTime)/60000) + " mins");
+  state.lastExitCode = 0;
+};
+
+/* ===== fortune ===== */
+handlers.fortune = function(){
+  const quotes = [
+    "The quieter you become, the more you can hear.",
+    "There is no cloud, only someone else's computer.",
+    "In theory, theory and practice are the same.",
+    "Hidden layers reveal deeper truths."
+  ];
+  printLine(quotes[Math.floor(Math.random()*quotes.length)]);
+  state.lastExitCode = 0;
+};
+
+/* ===== ip addr ===== */
+handlers.ip = function(args){
+  if(args[0] === "addr"){
+    printLine("1: lo: <LOOPBACK,UP> mtu 65536");
+    printLine("    inet 127.0.0.1/8 scope host lo");
+    printLine("2: eth0: <BROADCAST,MULTICAST,UP> mtu 1500");
+    printLine("    inet 192.168.1." + Math.floor(Math.random()*200+2) + "/24 brd 192.168.1.255 scope global eth0");
+    state.lastExitCode = 0;
+    return;
+  }
+  printLine("ip: unsupported option");
+  state.lastExitCode = 1;
+};
+
+/* ===== ifconfig ===== */
+handlers.ifconfig = function(){
+  printLine("eth0: flags=4163<UP,BROADCAST,RUNNING,MULTICAST>  mtu 1500");
+  printLine("        inet 192.168.1." + Math.floor(Math.random()*200+2));
+  printLine("        netmask 255.255.255.0  broadcast 192.168.1.255");
+  printLine("lo: flags=73<UP,LOOPBACK,RUNNING>  mtu 65536");
+  printLine("        inet 127.0.0.1  netmask 255.0.0.0");
+  state.lastExitCode = 0;
+};
+
+/* ===== ping (更真实延迟版) ===== */
+handlers.ping = function(args){
+  if(state.running) return;
+  const host = args[0] || "127.0.0.1";
+  state.running = true;
+  let count = 0;
+
+  printLine("PING " + host + " (" + host + ") 56(84) bytes of data.");
+
+  function loop(){
+    if(!state.running) return;
+    count++;
+    printLine("64 bytes from " + host + ": icmp_seq=" + count + " ttl=64 time=" + (Math.random()*20+1).toFixed(2) + " ms");
+    setTimeout(loop, 800);
+  }
+
+  loop();
+};
+
+/* ===== dmesg ===== */
+handlers.dmesg = function(){
+  printLine("[    0.000000] Linux version 6.8.0-virtual (hidden@layer)");
+  printLine("[    0.100000] CPU: 4 cores detected");
+  printLine("[    1.200000] systemd[1]: Started Hidden Layer Service");
+  printLine("[    2.300000] snapd: auto-refresh complete");
+  state.lastExitCode = 0;
+};
+
+/* ===== logger (写入伪日志) ===== */
+handlers.logger = function(args){
+  const msg = args.join(" ");
+  printLine("Logged: " + msg);
+  state.lastExitCode = 0;
+};
+
+/* ===== service 模拟 ===== */
+handlers.service = function(args){
+  const name = args[0];
+  const action = args[1];
+
+  if(!name || !action){
+    printLine("service: usage service NAME start|stop|status");
+    state.lastExitCode = 1;
+    return;
+  }
+
+  if(action === "status"){
+    printLine(name + " service - active (running)");
+  }else if(action === "stop"){
+    printLine(name + " service stopped");
+  }else if(action === "start"){
+    printLine(name + " service started");
+  }else{
+    printLine("service: unsupported action");
+  }
+
   state.lastExitCode = 0;
 };
 

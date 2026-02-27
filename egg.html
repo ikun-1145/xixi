@@ -220,10 +220,13 @@ h1{
 
 /* 新增隐藏输入框样式 */
 #hiddenInput{
-  position:absolute;
+  position:fixed;
+  bottom:0;
+  left:0;
+  width:1px;
+  height:1px;
   opacity:0;
-  pointer-events:none;
-  height:0;
+  z-index:1;
 }
 
 @media (max-width:768px){
@@ -428,8 +431,15 @@ window.addEventListener("load", () => {
 
     function renderTop(){
       if(!state.running) return;
-      handlers.clear();
+
+      // 整屏刷新（模拟真实 top）
+      const cl = document.getElementById("currentLine");
+      const terminalEl = document.getElementById("terminal");
+      terminalEl.innerHTML = "";
+      terminalEl.appendChild(cl);
+
       printLine("top - hidden-layer simulation");
+      printLine("Press Ctrl+C to quit");
       printLine("Tasks: 4 total, 1 running");
       printLine("CPU: " + Math.floor(Math.random()*40+10) + "%");
       printLine("MEM: " + Math.floor(Math.random()*60+20) + "%");
@@ -439,6 +449,7 @@ window.addEventListener("load", () => {
       printLine("   42  snapd");
       printLine("  101  bash");
       printLine("  202  hidden-layer");
+
       setTimeout(renderTop,1000);
     }
 
