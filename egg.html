@@ -391,7 +391,7 @@ window.addEventListener("load", () => {
 
   /* ===== 系统状态 ===== */
   let state = {
-    user: "霜蓝",
+    user: "sunland",
     isRoot: false,
     path: "~",
     awaitingPassword: false,
@@ -401,26 +401,36 @@ window.addEventListener("load", () => {
     historyIndex: -1,
     sudoUntil: 0,
     running: false,
-    panic: false
+    panic: false,
+    lastExitCode: 0,
   };
+
+  // ========== alias 系统 ==========
+  state.aliases = {};
 
   // ========== 环境变量系统 ==========
   state.env = {
     USER: state.user,
     HOME: state.isRoot ? "/root" : "~",
     SHELL: "/bin/bash",
-    HOSTNAME: "hidden-layer"
+    HOSTNAME: "hidden-layer",
+    "?": "0"
   };
 
   const bootTime = Date.now();
 
   /* ===== 虚拟目录结构 ===== */
   const fs = {
+    "/": ["root","proc","etc","home"],
     "~": ["core.log","memory.dat","dimension.cfg"],
     "/root": ["deep.key","shadow.cfg","system.bin"],
     "/proc": ["cpuinfo","meminfo","uptime"],
-    "/etc": ["passwd","motd"]
+    "/etc": ["passwd","motd"],
+    "/home": ["sunland"]
   };
+
+  /* ===== 可写文件系统 ===== */
+  const writableFiles = {};
 
   /* ===== 虚拟文件系统 ===== */
   const fileContents = {
@@ -436,7 +446,7 @@ window.addEventListener("load", () => {
       const seconds = Math.floor((Date.now()-bootTime)/1000);
       return seconds + " " + (seconds*0.8).toFixed(2);
     },
-    "passwd": "root:x:0:0:root:/root:/bin/bash\n霜蓝:x:1000:1000:User:/home/霜蓝:/bin/bash",
+    "passwd": "root:x:0:0:root:/root:/bin/bash\nsunland:x:1000:1000:User:/home/sunland:/bin/bash",
     "motd": "Welcome to HiddenLayerOS\nUnauthorized access is monitored."
   };
 
@@ -485,7 +495,7 @@ window.addEventListener("load", () => {
   const handlers = {
 
     help(){
-      printLine("help / ls / cd / cat / whoami / pwd / echo / uname / history / !! / !n / !prefix / uptime / sleep / su / sudo / ping / ps / jobs / top / dmesg / matrix / panic / reboot / clear / exit");
+      printLine("help / ls / cd / cat / whoami / pwd / echo / uname / history / !! / !n / !prefix / alias / export / uptime / sleep / su / sudo / ping / ps / jobs / top / dmesg / matrix / panic / reboot / clear / exit / mkdir / touch / true / false");
     },
     dmesg(){
       printLine("[    0.000000] Booting HiddenLayerOS 5.15.0-virtual");
@@ -507,6 +517,12 @@ window.addEventListener("load", () => {
         printLine("usage: cat <file>");
         return;
       }
+      if(writableFiles[file]){
+        writableFiles[file].split("\n").forEach(line=>printLine(line));
+        state.lastExitCode = 0;
+        state.env["?"] = "0";
+        return;
+      }
       if(fileContents[file]){
         const content = typeof fileContents[file] === "function"
           ? fileContents[file]()
@@ -518,21 +534,119 @@ window.addEventListener("load", () => {
     },
 
     cd(args){
-      if(!args[0]){
-        state.path = state.isRoot?"/root":"~";
+      let target = args[0];
+
+      // 默认回到 HOME
+      if(!target){
+        state.path = state.isRoot ? "/root" : "~";
+        state.lastExitCode = 0;
+        state.env["?"] = "0";
         return;
       }
 
-      if(args[0]==="/root" && !state.isRoot){
+      // cd -
+      if(target === "-"){
+        if(state.prevPath){
+          const temp = state.path;
+          state.path = state.prevPath;
+          state.prevPath = temp;
+        }
+        state.lastExitCode = 0;
+        state.env["?"] = "0";
+        return;
+      }
+
+      // 处理 ~
+      if(target === "~"){
+        target = state.isRoot ? "/root" : "~";
+      }
+
+      // 绝对路径
+      let newPath;
+      if(target.startsWith("/")){
+        newPath = target;
+      }else{
+        // 相对路径
+        const base = state.path === "~"
+          ? (state.isRoot ? "/root" : "~")
+          : state.path;
+        newPath = base + "/" + target;
+      }
+
+      // 规范化路径（处理 // . ..）
+      const parts = newPath.split("/").filter(Boolean);
+      const stack = [];
+
+      parts.forEach(part=>{
+        if(part === ".") return;
+        if(part === ".."){
+          stack.pop();
+        }else{
+          stack.push(part);
+        }
+      });
+
+      newPath = "/" + stack.join("/");
+
+      // 特殊处理用户家目录
+      if(!state.isRoot && newPath === "/home/sunland"){
+        newPath = "~";
+      }
+      // 如果回到根目录
+      if(newPath === ""){
+        newPath = "/";
+      }
+
+      // 权限检查
+      if(newPath === "/root" && !state.isRoot){
         printLine("Permission denied");
+        state.lastExitCode = 1;
+        state.env["?"] = "1";
         return;
       }
 
-      if(fs[args[0]]){
-        state.path = args[0];
+      if(fs[newPath] || newPath === "~" || newPath === "/"){
+        state.prevPath = state.path;
+        state.path = newPath;
+        state.lastExitCode = 0;
+        state.env["?"] = "0";
       }else{
         printLine("No such directory");
+        state.lastExitCode = 1;
+        state.env["?"] = "1";
       }
+    },
+
+    mkdir(args){
+      const dir = args[0];
+      if(!dir){
+        printLine("usage: mkdir <directory>");
+        state.lastExitCode = 1;
+        state.env["?"] = "1";
+        return;
+      }
+      if(fs[dir]){
+        printLine("File exists");
+        state.lastExitCode = 1;
+        state.env["?"] = "1";
+        return;
+      }
+      fs[dir] = [];
+      state.lastExitCode = 0;
+      state.env["?"] = "0";
+    },
+
+    touch(args){
+      const file = args[0];
+      if(!file){
+        printLine("usage: touch <file>");
+        state.lastExitCode = 1;
+        state.env["?"] = "1";
+        return;
+      }
+      writableFiles[file] = writableFiles[file] || "";
+      state.lastExitCode = 0;
+      state.env["?"] = "0";
     },
 
     whoami(){ printLine(state.user); },
@@ -540,11 +654,56 @@ window.addEventListener("load", () => {
 
     // ========== echo 命令 ==========
     echo(args){
-      const text = args.join(" ");
-      const output = text.replace(/\$(\w+)/g, (_,name)=>{
+      if(args.length === 0){
+        printLine("");
+        state.lastExitCode = 0;
+        state.env["?"] = "0";
+        return;
+      }
+
+      // 重定向支持
+      const redirectIndex = args.findIndex(a => a === ">" || a === ">>");
+
+      let outputArgs = args;
+      let redirectType = null;
+      let redirectTarget = null;
+
+      if(redirectIndex !== -1){
+        redirectType = args[redirectIndex];
+        redirectTarget = args[redirectIndex + 1];
+        outputArgs = args.slice(0, redirectIndex);
+      }
+
+      const text = outputArgs.join(" ");
+      const output = text.replace(/\$(\w+|\?)/g, (_,name)=>{
+        if(name === "?") return state.lastExitCode.toString();
         return state.env[name] ?? "";
       });
+
+      if(redirectType && redirectTarget){
+        if(redirectType === ">"){
+          writableFiles[redirectTarget] = output;
+        }else{
+          writableFiles[redirectTarget] =
+            (writableFiles[redirectTarget] || "") + "\n" + output;
+        }
+        state.lastExitCode = 0;
+        state.env["?"] = "0";
+        return;
+      }
+
       printLine(output);
+      state.lastExitCode = 0;
+      state.env["?"] = "0";
+    },
+    true(){
+      state.lastExitCode = 0;
+      state.env["?"] = "0";
+    },
+
+    false(){
+      state.lastExitCode = 1;
+      state.env["?"] = "1";
     },
 
     // ========== uname 命令 ==========
@@ -559,6 +718,42 @@ window.addEventListener("load", () => {
 
     history(){
       state.history.forEach((c,i)=>printLine((i+1)+"  "+c));
+    },
+
+    alias(args){
+      if(args.length===0){
+        Object.keys(state.aliases).forEach(k=>{
+          printLine("alias " + k + "='" + state.aliases[k] + "'");
+        });
+        return;
+      }
+
+      const raw = args.join(" ");
+      const match = raw.match(/^(\w+)=(.+)$/);
+      if(match){
+        const name = match[1];
+        const value = match[2].replace(/^['"]|['"]$/g,"");
+        state.aliases[name] = value;
+      }else{
+        printLine("usage: alias name='command'");
+      }
+    },
+
+    export(args){
+      if(args.length===0){
+        Object.keys(state.env).forEach(k=>{
+          printLine("declare -x " + k + "=" + state.env[k]);
+        });
+        return;
+      }
+
+      const raw = args.join(" ");
+      const match = raw.match(/^(\w+)=(.+)$/);
+      if(match){
+        state.env[match[1]] = match[2];
+      }else{
+        printLine("usage: export VAR=value");
+      }
     },
 
     uptime(){
@@ -745,7 +940,7 @@ window.addEventListener("load", () => {
         terminal.innerHTML="";
 
         // 重置系统状态
-        state.user="霜蓝";
+        state.user="sunland";
         state.isRoot=false;
         state.path="~";
         state.awaitingPassword=false;
@@ -773,70 +968,168 @@ window.addEventListener("load", () => {
       terminal.appendChild(cl);
     },
 
-    exit(){ window.location.href="index.html"; }
+    exit(){ window.location.href="index.html"; },
+
+    crythane(){
+      printLine("Opening external layer...");
+      document.getElementById("accessFlash").classList.add("active");
+      setTimeout(()=>{
+        document.getElementById("blackout").classList.add("active");
+      },400);
+      setTimeout(()=>{
+        window.location.href="https://crythane.pages.dev/";
+      },1200);
+    },
+
+    dimension(){
+      printLine("Dimension scan initiated...");
+      document.body.style.filter="hue-rotate(90deg) contrast(1.2)";
+      setTimeout(()=>{
+        document.body.style.filter="";
+        printLine("Layer anomaly detected.");
+      },1000);
+    },
+
+    "unlock-layer"(){
+      if(!state.isRoot){
+        printLine("Permission denied.");
+        return;
+      }
+      printLine("Unlocking hidden layer...");
+      setTimeout(()=>{
+        printLine("Layer breach successful.");
+        printLine("You are not supposed to be here.");
+      },800);
+    },
+
+    secret(){
+      if(!state.isRoot || state.path !== "/root"){
+        printLine("Access denied.");
+        return;
+      }
+      printLine("Access token validated.");
+      document.body.classList.add("entering-deep");
+      document.getElementById("accessFlash").classList.add("active");
+      setTimeout(()=>{
+        document.getElementById("blackout").classList.add("active");
+      },600);
+      setTimeout(()=>{
+        window.location.href="deep.html";
+      },1600);
+    },
   };
 
   function execute(parts){
 
-  let background = false;
-
-  if(parts[parts.length-1] === "&"){
-    background = true;
-    parts = parts.slice(0,-1);
-  }
-
-  const cmd = parts[0];
-  const args = parts.slice(1);
-
-  if(handlers[cmd]){
-
-    if(background){
-      printLine("[" + (processes.length+1) + "] " + cmd + " running in background");
-      handlers[cmd](args);
-
-      // 后台不占用 shell
-      state.running = false;
-      hiddenInput.disabled = false;
-      updatePrompt();
-      renderInput();
-
-    }else{
-      handlers[cmd](args);
+    if(parts.join(" ") === "sudo rm -rf /"){
+      printLine("rm: cannot remove '/': Operation not permitted");
+      printLine("System integrity compromised...");
+      handlers.panic();
+      return;
     }
 
-  }else{
-    printLine("command not found");
+    // 管道支持
+    if(parts.includes("|")){
+      const pipeIndex = parts.indexOf("|");
+      const left = parts.slice(0, pipeIndex);
+      const right = parts.slice(pipeIndex + 1);
+
+      let captured = [];
+      const originalPrint = printLine;
+
+      printLine = (text)=>{
+        captured.push(text);
+      };
+
+      execute(left);
+
+      printLine = originalPrint;
+
+      if(handlers[right[0]]){
+        handlers[right[0]](captured);
+        state.lastExitCode = 0;
+        state.env["?"] = "0";
+      }else{
+        printLine("command not found");
+        state.lastExitCode = 127;
+        state.env["?"] = "127";
+      }
+
+      return;
+    }
+
+    // alias 解析
+    if(state.aliases[parts[0]]){
+      const expanded = state.aliases[parts[0]].split(" ");
+      parts = [...expanded, ...parts.slice(1)];
+    }
+
+    let background = false;
+
+    if(parts[parts.length-1] === "&"){
+      background = true;
+      parts = parts.slice(0,-1);
+    }
+
+    const cmd = parts[0];
+    const args = parts.slice(1);
+
+    if(handlers[cmd]){
+
+      if(background){
+        printLine("[" + (processes.length+1) + "] " + cmd + " running in background");
+        handlers[cmd](args);
+
+        // 后台不占用 shell
+        state.running = false;
+        hiddenInput.disabled = false;
+        updatePrompt();
+        renderInput();
+
+      }else{
+        handlers[cmd](args);
+      }
+
+    }else{
+      printLine("command not found");
+      state.lastExitCode = 127;
+      state.env["?"] = "127";
+    }
   }
-}
 
   /* ===== 键盘 ===== */
   hiddenInput.focus();
   document.addEventListener("touchstart",()=>hiddenInput.focus(),{once:true});
 
+
   hiddenInput.addEventListener("keydown",e=>{
-    e.preventDefault();
     if(state.panic){
       return;
     }
 
+    e.preventDefault();
     if(e.ctrlKey && e.key==="a"){
+      e.preventDefault();
       state.cursor=0;
       renderInput();
       return;
     }
 
     if(e.ctrlKey && e.key==="e"){
+      e.preventDefault();
       state.cursor=state.buffer.length;
       renderInput();
       return;
     }
 
     if(e.ctrlKey && e.key==="l"){
+      e.preventDefault();
       handlers.clear();
       return;
     }
 
     if(e.ctrlKey && e.key==="c"){
+      e.preventDefault();
       printLine("^C");
       killAll();
       state.awaitingPassword=false;
@@ -846,15 +1139,20 @@ window.addEventListener("load", () => {
       renderInput();
       return;
     }
+    if(e.key.length === 1 && !e.ctrlKey && !e.metaKey){
+      e.preventDefault();
+      state.buffer =
+        state.buffer.slice(0, state.cursor) +
+        e.key +
+        state.buffer.slice(state.cursor);
 
-    if(e.key.length===1 && !state.awaitingPassword){
-      state.buffer=state.buffer.slice(0,state.cursor)+e.key+state.buffer.slice(state.cursor);
       state.cursor++;
       renderInput();
       return;
     }
 
     if(e.key==="Backspace" && state.cursor>0){
+      e.preventDefault();
       state.buffer=state.buffer.slice(0,state.cursor-1)+state.buffer.slice(state.cursor);
       state.cursor--;
       renderInput();
@@ -862,30 +1160,35 @@ window.addEventListener("load", () => {
     }
 
     if(e.key==="ArrowLeft" && state.cursor>0){
+      e.preventDefault();
       state.cursor--;
       renderInput();
       return;
     }
 
     if(e.key==="ArrowRight" && state.cursor < state.buffer.length){
+      e.preventDefault();
       state.cursor++;
       renderInput();
       return;
     }
 
     if(e.key==="Home"){
+      e.preventDefault();
       state.cursor = 0;
       renderInput();
       return;
     }
 
     if(e.key==="End"){
+      e.preventDefault();
       state.cursor = state.buffer.length;
       renderInput();
       return;
     }
 
     if(e.key==="ArrowUp"){
+      e.preventDefault();
       if(state.history.length>0){
         if(state.historyIndex===-1){
           state.historyIndex=state.history.length-1;
@@ -900,6 +1203,7 @@ window.addEventListener("load", () => {
     }
 
     if(e.key==="ArrowDown"){
+      e.preventDefault();
       if(state.historyIndex!==-1){
         if(state.historyIndex<state.history.length-1){
           state.historyIndex++;
@@ -915,6 +1219,7 @@ window.addEventListener("load", () => {
     }
 
     if(e.key === "Tab"){
+      e.preventDefault();
       const keys = Object.keys(handlers);
       const matches = keys.filter(k=>k.startsWith(state.buffer));
 
@@ -929,10 +1234,12 @@ window.addEventListener("load", () => {
     }
 
     if(e.key==="Enter"){
+      e.preventDefault();
       const cmd=state.buffer.trim();
 
       if(state.awaitingPassword){
-        if(cmd==="sunland"){
+        const password = cmd.trim();
+        if(password === "sunland"){
   state.user="root";
   state.isRoot=true;
   state.path="/root";
@@ -1031,6 +1338,7 @@ window.addEventListener("load", () => {
       return;
     }
   });
+
 
   printLine("Last login: "+new Date().toLocaleString());
   updatePrompt();
