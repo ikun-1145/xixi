@@ -450,7 +450,7 @@ body.night .oauth-btn {
       to { fill: var(--accent); }
     }
 
-    .modal {
+.modal {
   display: none;
   position: fixed;
   inset: 0;
@@ -458,15 +458,14 @@ body.night .oauth-btn {
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   opacity: 0;
-  transition: .3s ease;
+  transition: opacity .3s ease;
   z-index: 1000;
-
-  display: flex;
   align-items: center;
   justify-content: center;
 }
 
 .modal.active {
+  display: flex;
   opacity: 1;
 }
     .modal-content {
