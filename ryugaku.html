@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Project 2028 · 留学规划</title>
+
+<style>
+:root {
+  --bg-main: #0f141a;
+  --card-bg: rgba(22,24,35,0.85);
+  --text-main: #e8ffff;
+  --accent: #3EEDE7;
+  --border: rgba(255,255,255,0.08);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
+  background:var(--bg-main);
+  color:var(--text-main);
+  line-height:1.8;
+}
+
+.hero {
+  height:70vh;
+  background:
+    linear-gradient(to bottom, rgba(0,0,0,0.5), rgba(0,0,0,0.85)),
+    url("p/fujisan.png") center/cover no-repeat;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
+  text-align:center;
+  position:relative;
+}
+
+.hero::after {
+  content:"";
+  position:absolute;
+  bottom:-1px;
+  left:0;
+  right:0;
+  height:140px;
+  background: linear-gradient(to bottom, rgba(15,20,26,0) 0%, #0f141a 100%);
+  pointer-events:none;
+}
+
+.hero h1 {
+  font-size:3rem;
+  letter-spacing:2px;
+}
+
+
+.hero p {
+  margin-top:12px;
+  opacity:0.8;
+}
+
+.hero-slogan {
+  margin-top:18px;
+  font-size:1rem;
+  opacity:0.65;
+  letter-spacing:1px;
+}
+
+.hero-identity {
+  margin-top:8px;
+  font-size:0.85rem;
+  opacity:0.5;
+  letter-spacing:1px;
+}
+
+.jp-quote {
+  text-align:center;
+  margin-top:-40px;
+  margin-bottom:60px;
+  opacity:0.75;
+}
+
+.jp-text {
+  font-size:1.2rem;
+  letter-spacing:3px;
+}
+
+.jp-translation {
+  margin-top:6px;
+  font-size:0.85rem;
+  opacity:0.6;
+}
+
+.section-label {
+  font-size:0.75rem;
+  letter-spacing:2px;
+  opacity:0.4;
+  margin-bottom:12px;
+}
+
+section {
+  max-width:900px;
+  margin:100px auto;
+  padding:0 20px;
+}
+
+h2 {
+  margin-bottom:50px;
+  border-left:4px solid var(--accent);
+  padding-left:12px;
+}
+
+.timeline {
+  position:relative;
+  padding-left:40px;
+}
+
+.timeline::before {
+  content:"";
+  position:absolute;
+  left:12px;
+  top:0;
+  bottom:0;
+  width:2px;
+  background:var(--accent);
+  background: linear-gradient(
+  to bottom,
+  transparent 0%,
+  var(--accent) 10%,
+  var(--accent) 90%,
+  transparent 100%
+);
+opacity:0.25;
+}
+
+.timeline-item {
+  position:relative;
+  margin-bottom:90px;
+  opacity:0;
+  transform: translateY(30px);
+  transition: opacity .8s ease, transform .8s ease;
+}
+
+.timeline-item.visible {
+  opacity:1;
+  transform: translateY(0);
+}
+
+.timeline-item::before {
+  content:"";
+  position:absolute;
+  /* 竖线在 left:12px，圆点半径7px，timeline padding-left:40px
+     计算：13px(竖线中心) - 7px(半径) - 40px(内容偏移) ≈ -34px */
+  left:-34px;
+  /* 使用相对字体基线计算更稳定的垂直居中 */
+  top:calc(1em - 7px);
+  width:14px;
+  height:14px;
+  border-radius:50%;
+  background:var(--accent);
+  box-shadow:0 0 10px var(--accent);
+}
+
+.timeline-item.key::before {
+  width:18px;
+  height:18px;
+  left:-36px;
+  top:calc(1em - 9px);
+  box-shadow:0 0 14px var(--accent);
+}
+
+.card {
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(255,255,255,0.06);
+  padding: 24px 26px;
+  border-radius: 10px;
+  transition: border-color .25s ease, background .25s ease;
+}
+
+
+.card:hover {
+  border-color: rgba(62,237,231,0.6);
+  background: rgba(255,255,255,0.035);
+}
+
+
+.card h3 { margin-bottom:10px; }
+
+.note {
+  margin-top:8px;
+  font-size:0.9rem;
+  opacity:0.55;
+}
+
+.completed .card {
+  border-color: rgba(62,237,231,0.25);
+  background: rgba(62,237,231,0.04);
+}
+
+.completed .timeline-item::before {
+  box-shadow:0 0 6px var(--accent);
+  opacity:0.7;
+}
+
+.status-done {
+  margin-top:10px;
+  font-size:0.8rem;
+  letter-spacing:1px;
+  opacity:0.6;
+  color:var(--accent);
+}
+
+  .footer-note {
+    text-align:center;
+    padding:80px 20px;
+    opacity:0.6;
+  }
+
+  .back-link {
+    display:inline-block;
+    margin-top:12px;
+    font-size:0.85rem;
+    color:var(--text-main);
+    opacity:0.5;
+    text-decoration:none;
+    transition:opacity .2s ease;
+  }
+
+  .back-link:hover {
+    opacity:0.8;
+  }
+
+  .timeline-intro {
+    max-width:640px;
+    margin-bottom:60px;
+    opacity:0.7;
+    line-height:1.9;
+  }
+
+  .timeline-intro p {
+    margin-bottom:10px;
+  }
+
+  @media (max-width:768px) {
+    .hero h1 {
+      font-size:2.2rem;
+    }
+
+    .timeline {
+      padding-left:28px;
+    }
+
+    .timeline::before {
+      left:8px;
+    }
+  }
+</style>
+</head>
+
+<body>
+
+
+<div class="hero">
+  <h1>PROJECT 2028</h1>
+  <p id="heroSub">2028年4月 本科入学 · 多轮迭代规划</p>
+  <p class="hero-identity">个人留学战略记录</p>
+  <p class="hero-slogan">不是赌一次机会，而是构建胜率。</p>
+</div>
+
+<div class="jp-quote">
+  <p class="jp-text">石の上にも三年</p>
+  <p class="jp-translation">坚持三年，寒石亦暖。</p>
+</div>
+
+<section>
+  <div class="timeline-intro">
+    <p>这不是一份冲刺计划，而是一套能力构建实验。</p>
+    <p>每一次考试，都是一次系统验证。</p>
+    <p>目标不是押注一次成功，而是不断提高成功概率。</p>
+  </div>
+  <div class="section-label">STUDY ROADMAP</div>
+  <h2 id="timelineTitle">阶段时间轴</h2>
+  <div class="timeline">
+
+    <div class="timeline-item completed">
+      <div class="card">
+        <h3>2025.7</h3>
+        <p id="phase1Text">日语学习启动 · N5 完成</p>
+        <p class="status-done">✓ 已完成</p>
+      </div>
+    </div>
+
+    <div class="timeline-item completed">
+      <div class="card">
+        <h3>2026.1</h3>
+        <p id="phase2Text">第二次学考完成</p>
+        <p class="status-done">✓ 已完成</p>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="card">
+        <h3>2026.7–8</h3>
+        <p id="phase3Text">托福强化训练 · 能力扩展</p>
+      </div>
+    </div>
+
+    <div class="timeline-item key">
+      <div class="card">
+        <h3>2026.11</h3>
+        <p id="phase4Text">第一次 EJU（试水）</p>
+        <p class="note">第一次真实检验当前能力结构。</p>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="card">
+        <h3>2027.1</h3>
+        <p id="phase5Text">赴日语校 · 第三次学考</p>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="card">
+        <h3>2027.6</h3>
+        <p id="phase6Text">第二次 EJU · 高中毕业</p>
+      </div>
+    </div>
+
+    <div class="timeline-item key">
+      <div class="card">
+        <h3>2027.11</h3>
+        <p id="phase7Text">第三次 EJU · 冲高分</p>
+        <p class="note">决定申请区间与最终策略走向。</p>
+      </div>
+    </div>
+
+    <div class="timeline-item">
+      <div class="card">
+        <h3>2028.2</h3>
+        <p id="phase8Text">校内考</p>
+      </div>
+    </div>
+
+    <div class="timeline-item key">
+      <div class="card">
+        <h3>2028.4</h3>
+        <p id="phase9Text">目标录取 🎯</p>
+        <p class="note">阶段性目标达成。</p>
+      </div>
+    </div>
+
+  </div>
+</section>
+
+<div class="footer-note">
+  <span id="footerText">这不是誓言，而是当前最优假设。</span><br>
+  Copyright © 2024-2026 霜蓝
+<br><a href="index.html" class="back-link">← 返回首页</a>
+</div>
+
+<script>
+const i18n = {
+  zh:{
+    heroSub:"2028年4月 本科入学 · 多轮迭代规划",
+    timelineTitle:"阶段时间轴",
+    phase1:"日语学习启动 · N5 完成",
+    phase2:"第二次学考完成",
+    phase3:"托福强化训练 · 能力扩展",
+    phase4:"第一次 EJU（试水）",
+    phase5:"赴日语校 · 第三次学考",
+    phase6:"第二次 EJU · 高中毕业",
+    phase7:"第三次 EJU · 冲高分",
+    phase8:"校内考",
+    phase9:"目标录取 🎯",
+    footer:"这不是誓言，而是当前最优假设。"
+  },
+  en:{
+    heroSub:"April 2028 Admission · Iterative Strategy",
+    timelineTitle:"Timeline",
+    phase1:"Japanese study begins · N5 completed",
+    phase2:"Second academic exam completed",
+    phase3:"TOEFL intensive training · Skill expansion",
+    phase4:"First EJU attempt (trial)",
+    phase5:"Move to Japan · Third academic exam",
+    phase6:"Second EJU · High school graduation",
+    phase7:"Third EJU · Score improvement",
+    phase8:"University internal exam",
+    phase9:"Target admission 🎯",
+    footer:"Not a promise. A working hypothesis."
+  },
+  ja:{
+    heroSub:"2028年4月 入学 · 多段階戦略",
+    timelineTitle:"タイムライン",
+    phase1:"日本語学習開始 · N5修了",
+    phase2:"学考2回目完了",
+    phase3:"TOEFL強化訓練 · 能力拡張",
+    phase4:"第1回EJU（試験的受験）",
+    phase5:"日本語学校入学 · 学考3回目",
+    phase6:"第2回EJU · 高校卒業",
+    phase7:"第3回EJU · 得点向上",
+    phase8:"校内試験",
+    phase9:"目標合格 🎯",
+    footer:"誓いではなく、現在の最適仮説。"
+  }
+};
+
+function applyLang(lang){
+  const t=i18n[lang] || i18n.en;
+
+  document.getElementById("heroSub").textContent=t.heroSub;
+  document.getElementById("timelineTitle").textContent=t.timelineTitle;
+
+  document.getElementById("phase1Text").textContent=t.phase1;
+  document.getElementById("phase2Text").textContent=t.phase2;
+  document.getElementById("phase3Text").textContent=t.phase3;
+  document.getElementById("phase4Text").textContent=t.phase4;
+  document.getElementById("phase5Text").textContent=t.phase5;
+  document.getElementById("phase6Text").textContent=t.phase6;
+  document.getElementById("phase7Text").textContent=t.phase7;
+  document.getElementById("phase8Text").textContent=t.phase8;
+  document.getElementById("phase9Text").textContent=t.phase9;
+
+  document.getElementById("footerText").textContent=t.footer;
+}
+
+(function(){
+  const rawLang = navigator.language || navigator.userLanguage || "en";
+  const browserLang = rawLang.toLowerCase();
+
+  let autoLang = "en";
+  if (browserLang.startsWith("zh")) autoLang = "zh";
+  else if (browserLang.startsWith("ja")) autoLang = "ja";
+  else if (browserLang.startsWith("en")) autoLang = "en";
+
+  const saved = localStorage.getItem("lang");
+  const finalLang = saved || autoLang;
+
+  applyLang(finalLang);
+
+  // 监听其他页面语言切换
+  window.addEventListener("storage", (e) => {
+    if (e.key === "lang" && e.newValue) {
+      applyLang(e.newValue);
+    }
+  });
+})();
+const observer = new IntersectionObserver((entries)=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      entry.target.classList.add("visible");
+    }
+  });
+},{ threshold:0.15 });
+
+document.querySelectorAll(".timeline-item").forEach(el=>{
+  observer.observe(el);
+});
+</script>
+
+</body>
+</html>

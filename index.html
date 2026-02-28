@@ -287,7 +287,25 @@
       gap: 1rem; margin-top: 1.5rem;
     }
 
-    .buttons a, .donate-button {
+    .donate-section {
+      margin-top: 1.8rem;
+      padding-top: 1.6rem;
+      border-top: 1px solid rgba(255,255,255,0.08);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.8rem;
+    }
+
+    body.night .donate-section {
+      border-top: 1px solid rgba(255,255,255,0.06);
+    }
+
+    .donate-section .donate-button {
+      min-width: 180px;
+    }
+
+    .buttons a {
       animation: breatheGlow 3s ease-in-out infinite;
       display:inline-block; padding:0.8rem 1.5rem;
       background: var(--accent); border-radius:30px;
@@ -295,7 +313,30 @@
       transition: transform .3s, box-shadow .3s, filter .3s; text-align:center;
     }
 
-    .buttons a:hover, .donate-button:hover { transform:translateY(-3px); box-shadow: 0 12px 28px rgba(80, 160, 255, 0.35); filter: brightness(1.08); }
+    .buttons a:hover { transform:translateY(-3px); box-shadow: 0 12px 28px rgba(80, 160, 255, 0.35); filter: brightness(1.08); }
+
+.donate-outline {
+  display:inline-block;
+  padding:0.75rem 1.6rem;
+  border-radius:30px;
+  background: transparent;
+  border: 1.5px solid var(--accent);
+  color: var(--text-main);
+  font-weight: 600;
+  font-size: 1rem;
+  transition: transform .25s ease, background .25s ease, color .25s ease;
+}
+
+.donate-outline:hover {
+  background: var(--accent);
+  color: #000;
+  transform: translateY(-2px);
+}
+    .donate-caption {
+      font-size: 0.85rem;
+      opacity: 0.55;
+      letter-spacing: 1px;
+    }
 
     footer { margin:2rem 0 1rem; font-size:.9rem; text-align:center; }
 
@@ -526,7 +567,12 @@
       <a href="comment.html"><span id="btnComment"></span></a>
       <a href="fans.html"><span id="btnFans"></span></a>
       <a href="game.html"><span id="btnGame"></span></a>
-      <button id="donateBtn" class="donate-button" disabled style="opacity:.6; cursor:not-allowed;">
+      <a href="ryugaku.html"><span id="btnPlan"></span></a>
+    </div>
+
+    <div class="donate-section">
+      <div class="donate-caption">如果你愿意支持我的创作</div>
+      <button id="donateBtn" class="donate-button donate-outline" disabled style="opacity:.6; cursor:not-allowed;">
         <span id="btnDonate"></span>
       </button>
     </div>
@@ -763,6 +809,7 @@
       comment: "评论留言",
       fans: "实时粉丝数",
       game: "小游戏",
+      plan: "留学规划",
       donate: "捐赠支持",
       loading: "加载中...",
       firstVisitTip: "首次加载可能较慢，请耐心等待",
@@ -777,6 +824,7 @@
       comment: "Comments",
       fans: "Fans",
       game: "Mini Game",
+      plan: "Study Plan",
       donate: "Support Me",
       loading: "Loading...",
       firstVisitTip: "First load may take a little longer. Please wait patiently.",
@@ -791,6 +839,7 @@
       comment: "コメント",
       fans: "フォロワー数",
       game: "ミニゲーム",
+      plan: "留学計画",
       donate: "支援する",
       loading: "読み込み中...",
       firstVisitTip: "初回読み込みには時間がかかる場合があります。しばらくお待ちください。",
@@ -818,6 +867,7 @@
     document.getElementById("btnComment").textContent = t.comment;
     document.getElementById("btnFans").textContent = t.fans;
     document.getElementById("btnGame").textContent = t.game;
+    document.getElementById("btnPlan").textContent = t.plan;
     document.getElementById("btnDonate").textContent = t.donate;
 
     /* ===== 打字动画（防并发修复版）===== */
