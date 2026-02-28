@@ -326,6 +326,35 @@
   font-size: 1rem;
   transition: transform .25s ease, background .25s ease, color .25s ease;
 }
+.oauth-btn {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+
+  padding: 0.75rem 1rem;
+  border-radius: 14px;
+
+  background: rgba(255,255,255,0.9);
+  color: #000;
+
+  font-weight: 600;
+  font-size: 0.95rem;
+  border: none;
+
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.oauth-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 12px 25px rgba(0,0,0,0.25);
+}
+
+body.night .oauth-btn {
+  background: rgba(255,255,255,0.08);
+  color: var(--text-main);
+}
 
 .donate-outline:hover {
   background: var(--accent);
@@ -421,16 +450,55 @@
       to { fill: var(--accent); }
     }
 
-    .modal { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); opacity:0; transition:.4s; z-index: 1000; }
-    .modal.active { display:block; opacity:1; }
+    .modal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  opacity: 0;
+  transition: .3s ease;
+  z-index: 1000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal.active {
+  opacity: 1;
+}
     .modal-content {
-      background: var(--card-bg); 
-      backdrop-filter:blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      margin:15% auto; padding:2rem; width:90%; max-width:400px;
-      border-radius:12px; box-shadow:0 5px 20px rgba(0,0,0,0.2); animation:modalPop .5s ease;
-      text-align:center;
-    }
+  background: linear-gradient(
+    145deg,
+    rgba(255,255,255,0.85),
+    rgba(255,255,255,0.65)
+  );
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+
+  padding: 2rem 1.6rem;
+  width: 92%;
+  max-width: 420px;
+
+  border-radius: 20px;
+
+  box-shadow:
+    0 30px 60px rgba(0,0,0,0.35),
+    inset 0 1px 0 rgba(255,255,255,0.6);
+
+  animation: modalPop .35s cubic-bezier(.4,0,.2,1);
+  text-align: center;
+}
+body.night .modal-content {
+  background: linear-gradient(
+    145deg,
+    rgba(22,24,35,0.95),
+    rgba(22,24,35,0.85)
+  );
+  box-shadow: 0 30px 60px rgba(0,0,0,0.6);
+}
     /* 兼容性兜底：不支持 backdrop-filter 的浏览器使用更实的背景 */
     @supports not ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
       .container {
@@ -583,13 +651,12 @@
       <span class="close" aria-label="关闭对话框">×</span>
 
       <h2 id="modalTitle" style="margin-bottom:1rem; font-size: 1.3rem;">请先登录后继续</h2>
-
-      <button id="githubLoginBtn" class="donate-button oauth-btn" style="width:100%; margin-bottom:0.6rem; display:flex; align-items:center; justify-content:center; gap:10px;">
+<button id="githubLoginBtn" class="oauth-btn" style="margin-bottom:0.6rem;">
         <img src="p/github.svg" alt="" style="width:22px; height:22px;" aria-hidden="true">
         使用 GitHub 登录
       </button>
 
-      <button id="googleLoginBtn" class="donate-button oauth-btn" style="width:100%; display:flex; align-items:center; justify-content:center; gap:10px;">
+      <button id="googleLoginBtn" class="oauth-btn">
         <img src="p/IMG_3879.png" alt="" style="width:22px; height:22px;" aria-hidden="true">
         使用 Google 登录
       </button>
