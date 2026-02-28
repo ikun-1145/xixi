@@ -21,6 +21,15 @@ body {
   background:var(--bg-main);
   color:var(--text-main);
   line-height:1.8;
+
+  opacity:0;
+  transform: translateY(16px);
+  transition: opacity .8s ease, transform .8s ease;
+}
+
+body.page-ready {
+  opacity:1;
+  transform: translateY(0);
 }
 
 .hero {
@@ -454,6 +463,13 @@ const observer = new IntersectionObserver((entries)=>{
 
 document.querySelectorAll(".timeline-item").forEach(el=>{
   observer.observe(el);
+});
+
+// 页面入场动画
+window.addEventListener("load", () => {
+  requestAnimationFrame(() => {
+    document.body.classList.add("page-ready");
+  });
 });
 </script>
 

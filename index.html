@@ -450,24 +450,31 @@ body.night .oauth-btn {
       to { fill: var(--accent); }
     }
 
-.modal {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.55);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  opacity: 0;
-  transition: opacity .3s ease;
-  z-index: 1000;
-  align-items: center;
-  justify-content: center;
-}
+  .modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0);
+    backdrop-filter: blur(0px);
+    -webkit-backdrop-filter: blur(0px);
+    opacity: 0;
+    transition:
+      opacity .3s ease,
+      background .3s ease,
+      backdrop-filter .3s ease,
+      -webkit-backdrop-filter .3s ease;
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+  }
 
-.modal.active {
-  display: flex;
-  opacity: 1;
-}
+  .modal.active {
+    display: flex;
+    opacity: 1;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+  }
     .modal-content {
   background: linear-gradient(
     145deg,
@@ -513,8 +520,36 @@ body.night .modal-content {
         background: rgba(22,24,35,0.95);
       }
     }
-    @keyframes modalPop { from{opacity:0;transform:scale(.8);} to{opacity:1;transform:scale(1);} }
+    @keyframes modalPop {
+  0% {
+    opacity: 0;
+    transform: translateY(16px) scale(0.92);
+  }
+  60% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.02);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+    @keyframes modalPopOut {
+      0% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(12px) scale(0.95);
+      }
+    }
     .close { float:right; font-size:1.5rem; cursor:pointer; line-height: 1; }
+
+    .modal.closing .modal-content {
+      animation: modalPopOut .25s ease forwards;
+    }
 
     /* ===== 干净玻璃语言切换 ===== */
     .lang-switcher {
@@ -733,8 +768,14 @@ body.night .modal-content {
       });
     });
 
-    function closeModal(){ 
-      document.getElementById("loginModal").classList.remove("active"); 
+    function closeModal(){
+      const modal = document.getElementById("loginModal");
+      modal.classList.add("closing");
+
+      setTimeout(() => {
+        modal.classList.remove("active");
+        modal.classList.remove("closing");
+      }, 240);
     }
 
     // ESC 键关闭模态框
@@ -754,6 +795,9 @@ body.night .modal-content {
       updateDonateButtonBySession(sessionCache);
 
       if (sessionCache) {
+        // 标记为站内跳转，返回首页时不重播 Splash
+        sessionStorage.setItem("skipSplash", "1");
+
         document.body.style.opacity = '0';
         setTimeout(() => location.href = "donate.html", 600);
       } else {

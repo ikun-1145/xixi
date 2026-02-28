@@ -6,11 +6,20 @@
   <title id="pageTitle">捐赠支持 - 霜蓝</title>
   <style>
     body {
-  opacity: 0;
-}
+      opacity: 0;
+      transition: opacity 0.6s ease;
+    }
 
-    html {
-      background: #b9dde5;
+    html, body {
+      margin: 0;
+      padding: 0;
+      min-height: 100vh;
+    }
+
+    body {
+      font-family: "Helvetica Neue", sans-serif;
+      background: var(--bg-main-night);
+      color: var(--text-night);
     }
 
 :root {
@@ -26,13 +35,6 @@
   --text-night: #E8FFFF;
   --accent-night: #3EEDE7;
 }
-    body {
-      font-family: "Helvetica Neue", sans-serif;
-      margin: 0;
-      padding: 0;
-      background: var(--bg-main-night);
-      color: var(--text-night);
-    }
 
     body.day {
       background: var(--bg-main-day);
@@ -42,12 +44,24 @@
     .container {
       position: relative;
       max-width: 800px;
-      margin: 80px auto;
-      padding: 30px;
+      margin: 120px auto;
+      padding: 40px 34px;
       background-color: var(--card-bg-night);
-      border-radius: 15px;
-      box-shadow: 0 0 24px rgba(62, 237, 231, 0.35);
-      animation: fadeInUp 1s ease-out;
+      border-radius: 18px;
+      box-shadow:
+        0 30px 80px rgba(0,0,0,0.45),
+        0 0 40px rgba(62, 237, 231, 0.18);
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      animation: fadeInUp 0.8s ease-out;
+      transition: box-shadow .35s ease, transform .35s ease;
+    }
+
+    .container:hover {
+      transform: translateY(-4px);
+      box-shadow:
+        0 40px 100px rgba(0,0,0,0.55),
+        0 0 60px rgba(62, 237, 231, 0.28);
     }
     body.day .container {
       background-color: rgba(225, 242, 247, 0.92);
@@ -86,27 +100,24 @@ body.day .thanks-item {
     }
 
     .tier-btn {
-      background: rgba(62,237,231,0.15);
-      border: 1px solid rgba(62,237,231,0.6);
+      background: rgba(62,237,231,0.06);
+      border: 1px solid rgba(62,237,231,0.25);
       color: var(--primary);
-      padding: 10px 16px;
-      border-radius: 20px;
+      padding: 10px 22px;
+      border-radius: 999px;
       cursor: pointer;
-      transition: .25s;
+      transition: all .25s ease;
       font-size: 14px;
-    }
-
-    .tier-btn:hover {
-      background: rgba(62,237,231,0.35);
-      transform: translateY(-2px);
+      opacity: 0.7;
     }
 
     .tier-btn.active {
-      background: var(--primary);
-      color: var(--bg-deep);
-      box-shadow:
-        0 0 0 2px rgba(62,237,231,0.6),
-        0 10px 30px rgba(62,237,231,0.45);
+      background: linear-gradient(135deg, var(--primary), #9ffcff);
+      border-color: var(--primary);
+      color: #000;
+      opacity: 1;
+      box-shadow: 0 8px 24px rgba(62,237,231,0.45);
+      transform: translateY(-2px);
     }
 
     #thanksToast {
@@ -131,11 +142,11 @@ body.day .thanks-item {
     }
 
     .qrcode-section {
-      display: grid;
-      grid-template-columns: 1fr auto 1fr;
-      align-items: center;
-      gap: 30px;
-      margin: 40px 0;
+      display: flex;
+      justify-content: center;
+      gap: 40px;
+      margin: 24px 0 40px;
+      flex-wrap: wrap;
     }
 
     .amount-center {
@@ -145,12 +156,13 @@ body.day .thanks-item {
 
     .amount-center span {
       display: inline-block;
-      font-size: 24px;
-      font-weight: 800;
-      color: var(--bg-deep);
-      padding: 8px 22px;
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--primary);
+      padding: 8px 24px;
       border-radius: 999px;
-      background: linear-gradient(135deg, #3EEDE7, #7CFFF9);
+      border: 1px solid rgba(62,237,231,0.45);
+      background: rgba(62,237,231,0.08);
       letter-spacing: 1px;
     }
 
@@ -265,10 +277,13 @@ body.day .footer {
       }
     }
     .thanks-list {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
       margin-top: 10px;
+      max-width: 520px;
+      margin-left: auto;
+      margin-right: auto;
     }
 
     .thanks-item {
@@ -620,14 +635,14 @@ body.day .thanks-form textarea::placeholder {
       position:absolute;
       top:20px;
       right:20px;
-      background: rgba(113,248,252,0.9);
-      border: none;
-      padding: 8px 14px;
-      border-radius: 20px;
-      font-size: 14px;
+      background: transparent;
+      border: 1px solid rgba(62,237,231,0.4);
+      padding: 6px 14px;
+      border-radius: 999px;
+      font-size: 13px;
       cursor: pointer;
-      color: black;
-      transition: 0.3s;
+      color: var(--primary);
+      transition: all .25s ease;
       z-index: 10;
     "> </button>
     <p id="supportDesc" style="text-align:center;"></p>
@@ -640,6 +655,10 @@ body.day .thanks-form textarea::placeholder {
 
     <p id="tierHintText" style="text-align:center; margin-top:12px; color:#ccc; font-size:14px;"></p>
     
+    <div class="amount-center" style="margin-top:30px;">
+      <span id="amountText"></span>
+    </div>
+
     <div class="qrcode-section">
       <div class="qrcode">
         <img
@@ -651,9 +670,7 @@ body.day .thanks-form textarea::placeholder {
         />
         <p id="wxPayText"></p>
       </div>
-      <div class="amount-center">
-        <span id="amountText"></span>
-      </div>
+
       <div class="qrcode">
         <img
           id="zfbQr"
@@ -666,7 +683,7 @@ body.day .thanks-form textarea::placeholder {
       </div>
     </div>
 
-    <h2 style="text-align:center; color:#71f8fc; margin-top:40px;"><span id="thanksBoardTitle"></span></h2>
+    <h2 style="text-align:center; color:#71f8fc; margin-top:60px;"><span id="thanksBoardTitle"></span></h2>
     <p style="text-align:center; color:#ccc; font-size:14px; margin-bottom:14px;">
       <span id="thanksBoardDesc"></span>
     </p>
@@ -694,7 +711,6 @@ body.day .thanks-form textarea::placeholder {
         <textarea id="thanksMsg" rows="3" placeholder=""></textarea>
       </div>
       <button id="submitThanks"><span id="submitThanksText"></span></button>
-      <p id="thanksTip"><span id="thanksTipText"></span></p>
     </div>
 
     <div class="btn-group">
@@ -806,13 +822,11 @@ body.day .thanks-form textarea::placeholder {
       document.getElementById("thanksFormTitle").textContent = t.formTitle;
 
       document.getElementById("submitThanksText").textContent = t.submit;
-      document.getElementById("thanksTipText").textContent = t.tip;
-
       document.getElementById("backBtn").textContent = t.back;
       document.getElementById("logoutBtn").textContent = t.logout;
 
       const msgInput = document.getElementById("thanksMsg");
-      if (msgInput) msgInput.placeholder = t.msgPh;
+      if (msgInput) msgInput.placeholder = t.msgPh + " · " + t.tip;
 
       const greet = document.getElementById("userGreeting");
       if (greet) greet.textContent = t.greeting(nameForGreeting);
@@ -821,7 +835,9 @@ body.day .thanks-form textarea::placeholder {
 
 window.addEventListener('load', () => {
   // ✅ Reveal page ONLY after loading finishes
-  document.body.style.opacity = '1';
+  requestAnimationFrame(() => {
+    document.body.style.opacity = '1';
+  });
 
   document.body.classList.add('fade-in');
   const loader = document.getElementById('loading');
@@ -851,6 +867,9 @@ window.addEventListener('load', () => {
       const backBtn = document.getElementById("backBtn");
       if (backBtn) {
         backBtn.addEventListener("click", () => {
+          // 标记为站内跳转，返回首页不重播 Splash
+          sessionStorage.setItem("skipSplash", "1");
+
           document.body.classList.add("fade-out");
           setTimeout(() => window.location.href = "index.html", 600);
         });
@@ -1063,6 +1082,8 @@ window.addEventListener('load', () => {
       isSigningOut = true;
       sessionStorage.removeItem('justLoggedIn');
       sessionStorage.setItem("forceLoggedOut", "1");
+      // 退出后也视为站内跳转
+      sessionStorage.setItem("skipSplash", "1");
       document.body.classList.add("fade-out");
       setTimeout(() => window.location.href = "/", 600);
     }
