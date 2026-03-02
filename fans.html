@@ -3,96 +3,180 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script>
+    (function() {
+      const hour = new Date().getHours();
+      if (hour >= 18 || hour < 6) {
+        document.documentElement.classList.add('night');
+      }
+    })();
+  </script>
+  <link rel="preload" as="image" href="p/fans.png">
   <title id="pageTitle">实时粉丝数 - 霜蓝</title>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
     :root {
       /* 日间主题 */
-      --bg-main: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center / cover no-repeat;
+      --bg-main: none;
       --card-bg: rgba(255,255,255,0.5);
       --text-main: #1A1A1A;
       --accent: #71f8fc;
     }
 
     /* 夜间主题（donate 同款） */
-    body.night {
+    html.night body {
+      background-color: #0f1822; /* 夜间基础色，防止首帧闪亮 */
       --bg-main: #161823;
       --card-bg: rgba(22,24,35,0.9);
       --text-main: #E8FFFF;
       --accent: #3EEDE7;
+      background:
+        linear-gradient(
+          to bottom,
+          rgba(10,15,25,0.65),
+          rgba(10,15,25,0.85)
+        ),
+        url('p/fans.png') center / cover no-repeat;
     }
 
-    /* preload 阶段隐藏页面 */
-    body.preload {
-      opacity: 0;
-    }
 
     body {
       font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
                    "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
                    "Noto Sans CJK SC", "Source Han Sans SC",
                    Arial, sans-serif;
-      background: var(--bg-main);
+      background: #f0f6f8 url('p/fans.png') center / cover no-repeat fixed;
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-height: 100vh;
+      min-height: 100%;
       color: var(--text-main);
       opacity: 1;
     }
 
+
     .container {
-      margin-top: 2rem;
-      padding: 2rem;
-      width: 90%;
-      max-width: 720px;
-      background: var(--card-bg);
-      backdrop-filter: blur(10px);
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+      margin-top: 60px;
+      padding: 0;
+      width: 100%;
+      max-width: none;
+      background: none;
+      backdrop-filter: none;
+      border-radius: 0;
+      box-shadow: none;
       text-align: center;
-      animation: fadeInUp 1s ease-out;
     }
 
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
+    @keyframes settleScale {
+      0% { transform: scale(1); }
+      50% { transform: scale(1.015); }
+      100% { transform: scale(1); }
     }
+
+    @keyframes glowPulse {
+      0% {
+        text-shadow: 0 8px 30px rgba(0,0,0,0.15);
+      }
+      50% {
+        text-shadow: 0 8px 40px rgba(113,248,252,0.25);
+      }
+      100% {
+        text-shadow: 0 8px 30px rgba(0,0,0,0.15);
+      }
+    }
+
+
+    .subline {
+      font-size: 0.8rem;
+      opacity: 0.4;
+      margin-top: -0.8rem;
+      margin-bottom: 1.2rem;
+      letter-spacing: 0.08em;
+    }
+
+
+    .philosophy {
+      font-size: 0.75rem;
+      opacity: 0.35;
+      margin-top: 1.2rem;
+      letter-spacing: 0.05em;
+    }
+
+    html.night .digit {
+      box-shadow: 0 0 18px rgba(62,237,231,0.6);
+    }
+
 
     h1 {
       font-size: 2rem;
       margin-bottom: 1.5rem;
+      font-weight: 500;
+      letter-spacing: 0.12em;
+      opacity: 0.75;
     }
 
     .fan-count {
-      display: flex;
-      justify-content: center;
-      font-size: 3rem;
-      font-weight: bold;
-      margin-bottom: 1rem;
+      display: block;
+      text-align: center;
+      font-size: 10rem;
+      font-weight: 900;
+      margin-bottom: 3rem;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      background: linear-gradient(
+        180deg,
+        #ffffff 0%,
+        #aefcff 25%,
+        var(--accent) 60%,
+        #4de3e8 100%
+      );
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      text-shadow:
+        0 12px 40px rgba(113,248,252,0.28),
+        0 4px 18px rgba(0,0,0,0.25);
     }
+
+    .fan-count.glow {
+      animation: glowPulse 6s ease-in-out infinite;
+    }
+
+
+
 
     .digit {
       display: inline-block;
-      width: 2rem;
-      height: 3rem;
-      line-height: 3rem;
-      margin: 0 0.1rem;
-      background: linear-gradient(to bottom, var(--accent), #a0fff8);
-      color: #000;
-      border-radius: 8px;
-      box-shadow: 0 3px 10px rgba(0,0,0,0.15);
-      overflow: hidden;
+      margin: 0 0.2rem;
+      background: linear-gradient(
+        180deg,
+        #ffffff,
+        rgba(255,255,255,0.85)
+      );
+      -webkit-background-clip: text;
+      background-clip: text;
+      color: transparent;
+      border-radius: 0;
+      box-shadow: none;
+      overflow: visible;
       position: relative;
-      transform-style: preserve-3d;
-      animation: popIn 0.5s ease forwards;
+      transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
+      opacity: 1;
+      transform: none;
+      font-size: inherit;
+      text-shadow:
+        0 8px 30px rgba(0,0,0,0.15);
+      filter: none;
     }
 
-    @keyframes popIn {
-      from { transform: scale(0.8); opacity: 0; }
-      to { transform: scale(1); opacity: 1; }
+    html.night .digit {
+      text-shadow:
+        0 0 18px rgba(113,248,252,0.35),
+        0 8px 30px rgba(0,0,0,0.25);
     }
+
 
     .update-time {
       font-size: 0.95rem;
@@ -127,78 +211,20 @@
       color: #000;
     }
 
-    /* 加载动画层 */
-    #loading {
-      position: fixed;
-      inset: 0;
-      z-index: 9999;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      transition: opacity 0.6s ease;
-      background: radial-gradient(
-        circle at center,
-        rgba(113,248,252,0.18),
-        #ffffff 65%
-      );
-    }
 
-    body.night #loading {
-      background: radial-gradient(
-        circle at center,
-        rgba(62,237,231,0.14),
-        rgba(22,24,35,0.96) 65%
-      );
-    }
 
-    .loader {
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      border: 6px solid rgba(0,0,0,0.08);
-      border-top-color: var(--accent);
-      animation: spin 1s linear infinite;
-      box-shadow: 0 0 20px rgba(113,248,252,0.45);
-    }
 
-    body.night .loader {
-      border: 6px solid rgba(255,255,255,0.14);
-      box-shadow: 0 0 24px rgba(62,237,231,0.55);
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    body.fade-in {
-      animation: fadeBody 0.8s ease;
-    }
-
-    @keyframes fadeBody {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    body.fade-out {
-      animation: fadeOut 0.6s ease forwards;
-    }
-
-    @keyframes fadeOut {
-      to { opacity: 0; }
-    }
   </style>
 </head>
 <body>
-  <!-- 加载动画层 -->
-  <div id="loading">
-    <div class="loader"></div>
-  </div>
 
   <div class="container">
     <h1 id="titleText"></h1>
+    <div class="subline">GLOBAL AUDIENCE</div>
     <div class="fan-count" id="fanCount"></div>
     <p class="update-time" id="updateTime"></p>
     <p class="thanks" id="thanksText"></p>
+    <div class="philosophy">每一个数字背后，都是一个真实的人。</div>
     <a href="index.html" class="back" id="backBtn"></a>
   </div>
 
@@ -206,16 +232,8 @@
 
   <!-- 动效脚本 -->
   <script>
-    document.body.classList.add('preload');
+    
 
-    function applyAutoTheme() {
-      const hour = new Date().getHours();
-      const isNight = hour >= 18 || hour < 6;
-      document.body.classList.toggle('night', isNight);
-    }
-
-    applyAutoTheme();
-    setInterval(applyAutoTheme, 10 * 60 * 1000);
 
     /* --------- i18n --------- */
     const i18n = {
@@ -245,55 +263,46 @@
     const currentLang = localStorage.getItem("lang") || "zh";
     const t = i18n[currentLang] || i18n.zh;
 
-    document.title = t.pageTitle;
     document.getElementById("titleText").textContent = t.title;
     document.getElementById("thanksText").textContent = t.thanks;
     document.getElementById("backBtn").textContent = t.back;
 
-    // === ✅ 只改这两行 ===
-    const fanCount = 24559;
-    const updateTime = "2026年2月18日 11:50";
-
-    // 加载数字
-    const fanCountContainer = document.getElementById('fanCount');
-    String(fanCount).split('').forEach((digit, i) => {
-      const span = document.createElement('span');
-      span.className = 'digit';
-      span.style.animationDelay = `${i * 0.1}s`;
-      span.textContent = digit;
-      fanCountContainer.appendChild(span);
-    });
+    const fanCount = 25334;
+    const updateTime = "2026年3月1日 10:00";
 
     // 更新时间
     document.getElementById('updateTime').textContent = `${t.updatePrefix}${updateTime}`;
 
-    // 页面进入动画
-    window.addEventListener('load', () => {
-      // 页面解封
-      document.body.classList.remove('preload');
-      document.body.classList.add('fade-in');
+const fanCountContainer = document.getElementById('fanCount');
+const end = fanCount;
 
-      const loader = document.getElementById('loading');
-      if (loader) {
-        loader.style.opacity = '0';
-        setTimeout(() => loader.remove(), 600);
+// 数字滚动动画（双 RAF 启动版）
+fanCountContainer.textContent = '0';
+
+const duration = 1200;
+
+requestAnimationFrame(() => {
+  requestAnimationFrame(() => {
+    const startTime = performance.now();
+
+    function animateCount(now) {
+      const progress = Math.min((now - startTime) / duration, 1);
+      const eased = 1 - Math.pow(1 - progress, 3);
+      const current = Math.floor(eased * end);
+
+      if (progress < 1) {
+        fanCountContainer.textContent = current.toString();
+        requestAnimationFrame(animateCount);
+      } else {
+        fanCountContainer.textContent = end.toLocaleString();
+        fanCountContainer.classList.add('glow');
       }
-    });
+    }
 
-    // 页面跳转动画
-    document.addEventListener("DOMContentLoaded", () => {
-      const links = document.querySelectorAll("a[href]");
-      links.forEach(link => {
-        const href = link.getAttribute("href");
-        if (!href.startsWith("#") && !href.startsWith("javascript")) {
-          link.addEventListener("click", (e) => {
-            e.preventDefault();
-            document.body.classList.add("fade-out");
-            setTimeout(() => window.location.href = href, 600);
-          });
-        }
-      });
-    });
+    requestAnimationFrame(animateCount);
+  });
+});
+
   </script>
 </body>
 </html>

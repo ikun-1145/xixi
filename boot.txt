@@ -660,4 +660,3 @@ kernel: Loaded module id=30040
 
 Ubuntu 24.04 LTS hidden-layer tty1
 
-hidden-layer login:
