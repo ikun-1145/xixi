@@ -50,8 +50,11 @@
       display: flex;
       flex-direction: column;
       align-items: center;
-      min-height: 100%;
+      height: 100vh;
       color: var(--text-main);
+      overflow: hidden;
+      perspective: 1200px;
+      transition: filter 0.6s ease;
       opacity: 1;
     }
 
@@ -67,6 +70,7 @@
       box-shadow: none;
       text-align: center;
       padding: 0 5vw;
+      transform-style: preserve-3d;
     }
 
     @keyframes settleScale {
@@ -77,16 +81,40 @@
 
     @keyframes glowPulse {
       0% {
-        text-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        text-shadow:
+          0 25px 60px rgba(0,0,0,0.35),
+          0 8px 18px rgba(0,0,0,0.25);
       }
       50% {
-        text-shadow: 0 8px 40px rgba(113,248,252,0.25);
+        text-shadow:
+          0 28px 70px rgba(0,0,0,0.4),
+          0 10px 22px rgba(0,0,0,0.3);
       }
       100% {
-        text-shadow: 0 8px 30px rgba(0,0,0,0.15);
+        text-shadow:
+          0 25px 60px rgba(0,0,0,0.35),
+          0 8px 18px rgba(0,0,0,0.25);
       }
     }
 
+    @keyframes monumentReveal {
+      0% {
+        opacity: 0;
+        transform: translateY(40px) scale(0.92);
+        filter: blur(8px);
+      }
+      100% {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+        filter: blur(0);
+      }
+    }
+
+    @keyframes flashPeak {
+      0% { filter: brightness(1); }
+      40% { filter: brightness(1.35); }
+      100% { filter: brightness(1); }
+    }
 
     html.night .digit {
       box-shadow: 0 0 18px rgba(62,237,231,0.6);
@@ -104,63 +132,38 @@
     .fan-count {
       display: block;
       text-align: center;
-      font-size: clamp(3.5rem, 14vw, 10rem);
+      font-size: clamp(4rem, 16vw, 12rem);
       font-weight: 900;
+      font-feature-settings: "tnum" 1;
+      letter-spacing: 0.05em;
+      transform: translateY(0) scale(1);
+      filter: blur(0px);
+      transform-origin: center bottom;
+      transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
+      animation: monumentReveal 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
       margin-bottom: 1.8rem;
       line-height: 1;
       word-break: break-all;
       font-variant-numeric: tabular-nums;
-      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-      background: linear-gradient(
-        180deg,
-        #ffffff 0%,
-        #aefcff 25%,
-        var(--accent) 60%,
-        #4de3e8 100%
-      );
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif;
+      color: #f8f6f2;
       text-shadow:
-        0 12px 40px rgba(113,248,252,0.28),
-        0 4px 18px rgba(0,0,0,0.25);
-    }
-
-    .fan-count.glow {
-      animation: glowPulse 6s ease-in-out infinite;
-    }
-
-
-
-
-    .digit {
-      display: inline-block;
-      margin: 0 0.2rem;
-      background: linear-gradient(
-        180deg,
-        #ffffff,
-        rgba(255,255,255,0.85)
-      );
-      -webkit-background-clip: text;
-      background-clip: text;
-      color: transparent;
-      border-radius: 0;
-      box-shadow: none;
-      overflow: visible;
+        0 28px 55px rgba(0,0,0,0.38),
+        0 8px 18px rgba(0,0,0,0.28);
       position: relative;
-      transition: opacity 0.5s ease, transform 0.6s cubic-bezier(0.22, 1, 0.36, 1);
-      opacity: 1;
-      transform: none;
-      font-size: inherit;
-      text-shadow:
-        0 8px 30px rgba(0,0,0,0.15);
-      filter: none;
+      isolation: isolate;
     }
 
-    html.night .digit {
+    .fan-count.settle {
+      transform: scale(1.06);
+    }
+
+
+    html.night .fan-count {
+      color: #cfffff;
       text-shadow:
-        0 0 18px rgba(113,248,252,0.35),
-        0 8px 30px rgba(0,0,0,0.25);
+        0 0 25px rgba(62,237,231,0.45),
+        0 35px 90px rgba(0,0,0,0.7);
     }
 
 
@@ -194,7 +197,11 @@
     }
 
     footer {
-      margin: 2rem 0 1rem;
+      position: fixed;
+      bottom: 1rem;
+      left: 0;
+      width: 100%;
+      text-align: center;
       font-size: 0.9rem;
       color: #000;
     }
@@ -280,7 +287,7 @@ const end = fanCount;
 // 数字滚动动画（双 RAF 启动版）
 fanCountContainer.textContent = '0';
 
-const duration = 1200;
+const duration = 1600;
 
 requestAnimationFrame(() => {
   requestAnimationFrame(() => {
@@ -295,8 +302,11 @@ requestAnimationFrame(() => {
         fanCountContainer.textContent = current.toLocaleString();
         requestAnimationFrame(animateCount);
       } else {
-        fanCountContainer.textContent = end.toLocaleString();
-        fanCountContainer.classList.add('glow');
+        fanCountContainer.classList.add('settle');
+
+        setTimeout(() => {
+          fanCountContainer.classList.remove('settle');
+        }, 600);
       }
     }
 
