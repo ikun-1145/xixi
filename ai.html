@@ -130,13 +130,25 @@ body > * {
   width: 100%;
   display: flex;
   flex-direction: column;
-  align-items: center;
+  align-items: stretch;
   gap: 8px;
 
   height: calc(100dvh - 48px - 80px); /* header + input */
   overscroll-behavior: contain;
   scroll-behavior: smooth;
   background: transparent;
+}
+.chat-inner {
+  width: 100%;
+  max-width: 760px;
+  padding: 0 16px;
+  margin: 0 auto;
+
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 12px;
+  align-items: stretch;
 }
 html, body {
   overscroll-behavior: none;
@@ -145,8 +157,7 @@ html, body {
 .message {
   display: flex;
   width: 100%;
-  max-width: 800px;
-  margin: 2px 0;
+  align-items: flex-start;
 }
 
 .message.user {
@@ -176,16 +187,21 @@ html, body {
   transition: transform .2s ease, box-shadow .2s ease;
   animation: fadeInBubble 0.25s ease;
   letter-spacing: 0.2px;
+  margin: 0;
+}
+
+.message.user .bubble {
+  margin-left: auto;
+}
+
+.message.ai .bubble {
+  margin-right: auto;
 }
 
 
 .user .bubble {
   background: linear-gradient(135deg,#38bdf8,#22d3ee);
   color: #002b36;
-  margin-left: auto;
-
-  box-shadow:
-    0 10px 25px rgba(34,211,238,0.35);
 }
 
 /* ===== 输入框 ===== */
@@ -556,7 +572,13 @@ body.thinking-mode button {
   overflow-y: auto;
 
   transition: transform .25s ease; /* ⭐动画 */
+  will-change: transform;
   box-shadow: 4px 0 20px rgba(0,0,0,0.08);
+  transform: translateX(0);
+}
+
+body.sidebar-collapsed #sidebar {
+  transform: translateX(-100%);
 }
 #newChatBtn {
   width: 100%;
@@ -582,6 +604,11 @@ body.thinking-mode button {
 @media (max-width: 768px) {
   #sidebar {
     transform: translateX(-100%);
+    position: fixed;
+    top: 48px;
+    left: 0;
+    bottom: 0;
+    z-index: 40;
   }
 
   #menuToggle {
@@ -598,20 +625,16 @@ body.thinking-mode button {
     margin-left: 0 !important;
     transition: padding-left .25s ease;
   }
-}
-body.sidebar-collapsed #sidebar {
-  transform: translateX(-100%);
+
+  body:not(.sidebar-collapsed) #sidebar {
+    transform: translateX(0);
+  }
 }
 
-body.sidebar-collapsed .chat-container,
-body.sidebar-collapsed .input-area {
-  margin-left: 0 !important;
-}
-
-/* ===== 侧边栏展开时的 margin 逻辑 ===== */
+/* ===== Overlay sidebar: content never shifted ===== */
 body:not(.sidebar-collapsed) .chat-container,
 body:not(.sidebar-collapsed) .input-area {
-  margin-left: 220px;
+  margin-left: 0;
 }
 </style>
 
@@ -634,7 +657,9 @@ body:not(.sidebar-collapsed) .input-area {
   我们先从哪里开始呢？
 </div>
 
-<div id="chat" class="chat-container"></div>
+<div id="chat" class="chat-container">
+  <div id="chatInner" class="chat-inner"></div>
+</div>
 
 <div class="input-area">
   <div class="input-box">
@@ -645,6 +670,7 @@ body:not(.sidebar-collapsed) .input-area {
 
 <script type="module">
 const chat = document.getElementById("chat");
+const chatInner = document.getElementById("chatInner");
 function isNearBottom() {
   return chat.scrollHeight - chat.scrollTop - chat.clientHeight < 80;
 }
@@ -921,12 +947,12 @@ function createNewChat() {
   currentId = id;
   history = [...newChat.history];
 
-  chat.innerHTML = "";
-const welcome = document.getElementById("welcome");
-if (welcome) {
-  document.body.appendChild(welcome);
-  welcome.classList.remove("hidden");
-}
+  chatInner.innerHTML = "";
+const newWelcome = document.createElement("div");
+newWelcome.id = "welcome";
+newWelcome.className = "welcome";
+newWelcome.innerText = "我们先从哪里开始呢？";
+document.body.appendChild(newWelcome);
   saveConversations();
   renderChatList();
   
@@ -982,7 +1008,9 @@ function loadChat(id) {
 
   currentId = id;
   history = JSON.parse(JSON.stringify(c.history));
-  chat.innerHTML = "";
+  chatInner.innerHTML = "";
+  const welcome = document.getElementById("welcome");
+  if (welcome) welcome.remove();
 
   history.slice(1).forEach(m => {
     addMessage(m.content, m.role === "user" ? "user" : "ai");
@@ -1014,11 +1042,17 @@ function addMessage(text, type) {
     bubble.innerText = text;
   }
 
+  const welcome = document.getElementById("welcome");
+  if (welcome) welcome.remove();
+  // 有消息就隐藏欢迎文字
+  const w = document.getElementById("welcome");
+  if (w) w.remove();
   div.appendChild(bubble);
-  chat.appendChild(div);
+  chatInner.appendChild(div);
+
   if (isNearBottom()) {
-  chat.scrollTop = chat.scrollHeight;
-}
+    chat.scrollTop = chat.scrollHeight;
+  }
 }
 
 // AI标题生成助手
@@ -1123,9 +1157,10 @@ async function send() {
 document.body.classList.add("thinking-mode");
 input.readOnly = true;
   const welcome = document.getElementById("welcome");
-  requestAnimationFrame(() => {
-    welcome.classList.add("hidden");
-  });
+if (welcome) {
+  welcome.classList.add("hidden");
+  setTimeout(() => welcome.remove(), 300);
+}
 
   // ✅ 动画结束后彻底移除（防止占位）
   setTimeout(() => {
@@ -1437,14 +1472,20 @@ const sidebar = document.getElementById("sidebar");
 const toggle = document.getElementById("menuToggle");
 const overlay = document.getElementById("sidebarOverlay");
 
+// 默认移动端收起
+if (window.innerWidth <= 768) {
+  document.body.classList.add("sidebar-collapsed");
+}
+
 if (toggle) {
   toggle.onclick = () => {
-    const collapsed = document.body.classList.toggle("sidebar-collapsed");
+    const isCollapsed = document.body.classList.contains("sidebar-collapsed");
 
-    // 只在“展开侧边栏”时显示遮罩（移动端逻辑）
-    if (!collapsed && window.innerWidth <= 768) {
-      overlay.classList.add("active");
+    if (isCollapsed) {
+      document.body.classList.remove("sidebar-collapsed");
+      if (window.innerWidth <= 768) overlay.classList.add("active");
     } else {
+      document.body.classList.add("sidebar-collapsed");
       overlay.classList.remove("active");
     }
   };
