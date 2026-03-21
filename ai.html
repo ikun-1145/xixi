@@ -625,17 +625,24 @@ async function send() {
   // 正在流式 → 点击变取消
   if (isStreaming && controller) {
     controller.abort();
-
-    // 立即更新 UI
     isStreaming = false;
     sendingLock = false;
-    controller = null;
     sendBtn.innerText = "↑";
+
+    // 强制停止 reader（关键）
+    try {
+      if (window.currentReader) {
+        window.currentReader.cancel();
+        window.currentReader = null;
+      }
+    } catch {}
 
     // 当前气泡补一个“已停止”提示
     const lastBubble = chat.lastChild?.querySelector(".bubble");
     if (lastBubble) {
-      lastBubble.innerHTML = lastBubble.innerHTML.replace('<span class="cursor"></span>', '') + '<br><small style="color:#999;">已停止</small>';
+      lastBubble.innerHTML =
+        lastBubble.innerHTML.replace('<span class="cursor"></span>', '') +
+        '<br><small style="color:#999;">已停止</small>';
     }
 
     return;
@@ -684,6 +691,7 @@ async function send() {
     });
 
     const reader = res.body.getReader();
+    window.currentReader = reader;
     const decoder = new TextDecoder("utf-8");
 
     bubble.style.animation = "fadeOutThinking 0.2s ease";
@@ -692,8 +700,8 @@ async function send() {
     }, 120);
 
     while (true) {
-      const { done, value } = await reader.read();
       if (!isStreaming) break;
+      const { done, value } = await reader.read();
       if (done) break;
 
       const chunk = decoder.decode(value, { stream: true });
@@ -805,6 +813,7 @@ async function send() {
     sendingLock = false;
     isStreaming = false;
     controller = null;
+    window.currentReader = null;
     sendBtn.innerText = "↑";
     // 确保最终不残留光标
     if (bubble && fullText) {
@@ -829,8 +838,8 @@ async function send() {
     }
     // 防止按钮状态异常
     if (!isStreaming) {
-  sendBtn.innerText = "↑";
-}
+      sendBtn.innerText = "↑";
+    }
   }
 }
 
