@@ -713,7 +713,7 @@ async function send() {
   bubble.style.animation = "fadeInBubble 0.2s ease";
   bubble.innerHTML =
     marked.parse(fullText) +
-    `<div class="regen"><button class="regen-btn">↻ 重新生成</button></div>`;
+    `<div class="regen"><button class="regen-btn">↻</button></div>`;
 
   const regenBtn = bubble.querySelector(".regen-btn");
   regenBtn.onclick = () => {
@@ -760,7 +760,7 @@ async function send() {
     bubble.style.opacity = "1";
     bubble.innerHTML =
   marked.parse(fullText) +
-  `<div class="regen"><button class="regen-btn">↻ 重新生成</button></div>`;
+  `<div class="regen"><button class="regen-btn">↻</button></div>`;
 
     const regenBtn = bubble.querySelector(".regen-btn");
     regenBtn.onclick = () => {
@@ -810,7 +810,7 @@ async function send() {
     if (bubble && fullText) {
       bubble.innerHTML =
         marked.parse(fullText) +
-        `<div class="regen"><button class="regen-btn">↻ 重新生成</button></div>`;
+        `<div class="regen"><button class="regen-btn">↻</button></div>`;
 
       const regenBtn = bubble.querySelector(".regen-btn");
       regenBtn.onclick = () => {
