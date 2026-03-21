@@ -391,21 +391,25 @@ button:hover {
 }
 .regen {
   margin-top: 6px;
+  display: flex;
+  justify-content: flex-start;
 }
 
 .regen-btn {
   border: none;
   background: transparent;
-  color: #666;
+  color: #999;
   font-size: 12px;
   cursor: pointer;
-  padding: 2px 6px;
-  border-radius: 6px;
-  transition: background .2s ease;
+  padding: 2px 4px;
+  border-radius: 4px;
+  opacity: 0.7;
+  transition: all .2s ease;
 }
 
 .regen-btn:hover {
-  background: rgba(0,0,0,0.05);
+  opacity: 1;
+  background: rgba(0,0,0,0.04);
 }
 </style>
 
@@ -713,6 +717,15 @@ async function send() {
 
   const regenBtn = bubble.querySelector(".regen-btn");
   regenBtn.onclick = () => {
+    // 删除当前 AI 气泡
+    const msgDiv = bubble.closest(".message");
+    if (msgDiv) msgDiv.remove();
+
+    // 删除 history 中最后一个 assistant 记录
+    if (history.length && history[history.length - 1].role === "assistant") {
+      history.pop();
+    }
+
     input.value = lastUserMessage;
     send();
   };
@@ -749,11 +762,20 @@ async function send() {
   marked.parse(fullText) +
   `<div class="regen"><button class="regen-btn">↻ 重新生成</button></div>`;
 
-const regenBtn = bubble.querySelector(".regen-btn");
-regenBtn.onclick = () => {
-  input.value = lastUserMessage;
-  send();
-};
+    const regenBtn = bubble.querySelector(".regen-btn");
+    regenBtn.onclick = () => {
+      // 删除当前 AI 气泡
+      const msgDiv = bubble.closest(".message");
+      if (msgDiv) msgDiv.remove();
+
+      // 删除 history 中最后一个 assistant 记录
+      if (history.length && history[history.length - 1].role === "assistant") {
+        history.pop();
+      }
+
+      input.value = lastUserMessage;
+      send();
+    };
     history.push({ role: "assistant", content: fullText });
 
     if (history.length > 20) {
@@ -786,16 +808,25 @@ regenBtn.onclick = () => {
     sendBtn.innerText = "↑";
     // 确保最终不残留光标
     if (bubble && fullText) {
-  bubble.innerHTML =
-    marked.parse(fullText) +
-    `<div class="regen"><button class="regen-btn">↻ 重新生成</button></div>`;
+      bubble.innerHTML =
+        marked.parse(fullText) +
+        `<div class="regen"><button class="regen-btn">↻ 重新生成</button></div>`;
 
-  const regenBtn = bubble.querySelector(".regen-btn");
-  regenBtn.onclick = () => {
-    input.value = lastUserMessage;
-    send();
-  };
-}
+      const regenBtn = bubble.querySelector(".regen-btn");
+      regenBtn.onclick = () => {
+        // 删除当前 AI 气泡
+        const msgDiv = bubble.closest(".message");
+        if (msgDiv) msgDiv.remove();
+
+        // 删除 history 中最后一个 assistant 记录
+        if (history.length && history[history.length - 1].role === "assistant") {
+          history.pop();
+        }
+
+        input.value = lastUserMessage;
+        send();
+      };
+    }
     // 防止按钮状态异常
     if (!isStreaming) {
   sendBtn.innerText = "↑";
