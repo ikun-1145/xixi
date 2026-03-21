@@ -630,7 +630,36 @@ body.night .modal-content {
         grid-template-columns: 1fr;
       }
     }
-  </style>
+/* ===== AI 悬浮按钮 ===== */
+.ai-float-btn {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 26px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 10px 25px rgba(0,0,0,0.25);
+  z-index: 999;
+  transition: transform .2s ease, box-shadow .2s ease;
+}
+
+.ai-float-btn:hover {
+  transform: translateY(-4px) scale(1.05);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.35);
+}
+
+body.night .ai-float-btn {
+  color: #000;
+}
+</style>
 </head>
 
 <body>
@@ -748,9 +777,18 @@ body.night .modal-content {
       try {
         await syncSession();
         updateDonateButtonBySession(sessionCache);
-        // 如果是刚完成 OAuth 登录，自动进入捐赠页面
-        if (sessionCache && sessionStorage.getItem("justLoggedIn") === "1") {
-          sessionStorage.removeItem("justLoggedIn");
+        // 登录后跳转逻辑
+        const from = sessionStorage.getItem("loginFrom");
+        const returnTo = sessionStorage.getItem("returnTo");
+
+        if (sessionCache && returnTo === "ai") {
+          sessionStorage.removeItem("returnTo");
+          location.href = "ai.html";
+        }
+
+        if (sessionCache && from === "index") {
+          sessionStorage.removeItem("loginFrom");
+
           setTimeout(() => {
             document.body.style.opacity = '0';
             setTimeout(() => location.href = "donate.html", 600);
@@ -806,7 +844,7 @@ body.night .modal-content {
     };
 
     document.getElementById("githubLoginBtn").onclick = async () => {
-      sessionStorage.setItem("justLoggedIn", "1");
+      sessionStorage.setItem("loginFrom", "index");
       await supabase.auth.signInWithOAuth({
         provider:'github',
         options:{ redirectTo: location.origin + '/oauth-callback.html' }
@@ -814,7 +852,7 @@ body.night .modal-content {
     };
 
     document.getElementById("googleLoginBtn").onclick = async () => {
-      sessionStorage.setItem("justLoggedIn", "1");
+      sessionStorage.setItem("loginFrom", "index");
       await supabase.auth.signInWithOAuth({
         provider:'google',
         options:{ redirectTo: location.origin + '/oauth-callback.html' }
@@ -1084,5 +1122,9 @@ body.night .modal-content {
   });
 
   </script>
+</div>
 </body>
+<div class="ai-float-btn" onclick="location.href='ai.html'">
+  🤖
+</div>
 </html>
