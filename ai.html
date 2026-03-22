@@ -11,9 +11,90 @@
 <script src="https://cdn.jsdelivr.net/npm/highlight.js/highlight.min.js"></script>
 
 <style>
+.copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+
+  padding: 3px 10px;
+  font-size: 12px;
+  border-radius: 6px;
+  border: none;
+  cursor: pointer;
+
+  /* 覆盖你原来的圆形按钮样式 */
+  width: auto;
+  height: auto;
+  background: rgba(0,0,0,0.06);
+  color: #555;
+  box-shadow: none;
+
+  opacity: 0;
+  transition: opacity .2s ease;
+}
+.lang-tag {
+  position: absolute;
+  top: 8px;
+  left: 12px;
+
+  font-size: 11px;
+  color: #999;
+  font-family: monospace;
+  text-transform: lowercase;
+  pointer-events: none;
+  user-select: none;
+}
+
+pre:hover .copy-btn {
+  opacity: 1;
+}
 :root {
   --accent: #22d3ee;
   --radius: 16px;
+}
+
+body.night {
+  --accent: #3EEDE7;
+}
+
+body.night {
+  background: #161823;
+}
+
+body.night::before {
+  background:
+    linear-gradient(135deg,#161823,#0f172a,#020617),
+    radial-gradient(circle at 20% 30%, rgba(62,237,231,0.12) 0, transparent 60%),
+    radial-gradient(circle at 80% 70%, rgba(62,237,231,0.08) 0, transparent 60%);
+}
+
+body.night .header {
+  background: rgba(22,24,35,0.9);
+  color: #e5e7eb;
+}
+
+body.night .bubble {
+  background: rgba(22,24,35,0.9);
+  color: #e5e7eb;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+
+body.night .message.user .bubble {
+  background: linear-gradient(135deg,#22d3ee,#06b6d4);
+  color: #001f24;
+}
+
+body.night .input-box {
+  background: rgba(22,24,35,0.85);
+}
+
+body.night textarea {
+  color: #e5e7eb;
+}
+
+body.night #sidebar {
+  background: rgba(22,24,35,0.9);
+  border-right: 1px solid rgba(255,255,255,0.06);
 }
 
 body {
@@ -693,6 +774,15 @@ body:not(.sidebar-collapsed) .input-area {
 </div>
 
 <script type="module">
+function applyAutoTheme() {
+  const hour = new Date().getHours();
+  const isNight = hour >= 18 || hour < 6;
+  document.body.classList.toggle('night', isNight);
+}
+
+applyAutoTheme();
+setInterval(applyAutoTheme, 10 * 60 * 1000);
+
 const chat = document.getElementById("chat");
 const chatInner = document.getElementById("chatInner");
 function isNearBottom() {
@@ -1416,10 +1506,9 @@ if (welcome) {
     isStreaming = false;
   }, 20000);
   try {
-    // 获取 Supabase token
+    // ⭐ 获取 Supabase token
     const { data: { session: currentSession } } = await supabase.auth.getSession();
     const token = currentSession?.access_token;
-
     const res = await fetch("https://ai.liuxizekali.workers.dev", {
       method: "POST",
       headers: {
@@ -1562,7 +1651,35 @@ generateTitleFromAI(userMsg, aiMsg).then(title => {
   history = [systemMsg, ...rest];
 }
 
-    document.querySelectorAll("pre code").forEach(el => hljs.highlightElement(el));
+    document.querySelectorAll("pre code").forEach(el => {
+  hljs.highlightElement(el);
+
+  if (el.parentElement.querySelector(".copy-btn")) return;
+
+  // ===== 语言标签 =====
+  const lang = el.className.match(/language-(\w+)/)?.[1];
+  if (lang) {
+    const langTag = document.createElement("span");
+    langTag.className = "lang-tag";
+    langTag.innerText = lang;
+    el.parentElement.appendChild(langTag);
+  }
+
+  // ===== 复制按钮 =====
+  const btn = document.createElement("button");
+  btn.className = "copy-btn";
+  btn.innerText = "复制";
+
+  btn.onclick = () => {
+    navigator.clipboard.writeText(el.innerText).then(() => {
+      btn.innerText = "已复制 ✓";
+      setTimeout(() => btn.innerText = "复制", 1500);
+    });
+  };
+
+  el.parentElement.style.position = "relative";
+  el.parentElement.appendChild(btn);
+});
     clearTimeout(timeoutId);
 
   } catch (err) {
