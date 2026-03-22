@@ -890,6 +890,24 @@ function showLoginPrompt() {
     <img src="p/IMG_3879.png" style="width:22px;height:22px;">
     使用 Google 登录
   </button>
+
+  <!-- 隐藏入口 -->
+  <div id="adminDot" style="
+    width:6px;height:6px;border-radius:50%;
+    background:rgba(0,0,0,0.08);
+    margin:16px auto 0;
+    cursor:pointer;
+  "></div>
+  <div id="adminBox" style="display:none;margin-top:10px;">
+    <input id="adminInput" type="password" placeholder="••••••••" style="
+      width:100%;box-sizing:border-box;
+      padding:0.6rem 1rem;border-radius:10px;
+      border:1px solid rgba(0,0,0,0.1);
+      font-size:14px;outline:none;
+      background:rgba(255,255,255,0.8);
+    ">
+    <p id="adminMsg" style="font-size:12px;color:#ef4444;min-height:16px;margin:4px 0 0;"></p>
+  </div>
 </div>
   `;
 
@@ -927,6 +945,51 @@ function showLoginPrompt() {
       options: { redirectTo: location.origin + '/oauth-callback.html' }
     });
   };
+
+  // ===== 管理员入口 =====
+  let adminClickCount = 0;
+  let adminTimer = null;
+
+  modal.querySelector("#adminDot").onclick = () => {
+    adminClickCount++;
+    clearTimeout(adminTimer);
+    adminTimer = setTimeout(() => adminClickCount = 0, 2000);
+
+    if (adminClickCount >= 7) {
+      adminClickCount = 0;
+      modal.querySelector("#adminBox").style.display = "block";
+      modal.querySelector("#adminInput").focus();
+    }
+  };
+
+  modal.querySelector("#adminInput").addEventListener("keydown", (e) => {
+    if (e.key !== "Enter") return;
+    const val = modal.querySelector("#adminInput").value;
+    const msg = modal.querySelector("#adminMsg");
+
+    if (val === "Xixi20090520") {
+      session = { user: { id: "admin", email: "admin" }, _isAdmin: true };
+      isActivated = true;
+      sessionReady = true;
+
+      const hintEl = document.getElementById("usageHint");
+      if (hintEl) hintEl.innerText = "管理员 ∞";
+
+      const box = document.getElementById("userBox");
+      if (box) {
+        box.innerHTML = `<div style="
+        font-size:12px;color:#22d3ee;
+        padding:4px 8px;border-radius:8px;
+        background:rgba(34,211,238,0.1);
+      ">管理员</div>`;
+      }
+
+      closeModal();
+    } else {
+      msg.innerText = "密码错误";
+      modal.querySelector("#adminInput").value = "";
+    }
+  });
 }
 
 function showLimitModal() {
@@ -1407,25 +1470,31 @@ async function send() {
   // ===== 每日限额检查 =====
   const today = new Date().toISOString().slice(0, 10);
 
-  const { data: usage, error: usageErr } = await supabase
-    .from("usage")
-    .select("count")
-    .eq("user_id", session.user.id)
-    .eq("date", today)
-    .maybeSingle();
+  if (session?.user?.id === "admin") {
+    // 管理员跳过
+  } else {
+    const { data: usage, error: usageErr } = await supabase
+      .from("usage")
+      .select("count")
+      .eq("user_id", session.user.id)
+      .eq("date", today)
+      .maybeSingle();
 
-  const currentCount = usage?.count || 0;
+    const currentCount = usage?.count || 0;
 
-  if (currentCount >= 20 && !isActivated) {
-  showLimitModal();
-  sendingLock = false;
-  return;
-}
+    if (currentCount >= 20 && !isActivated) {
+      showLimitModal();
+      sendingLock = false;
+      return;
+    }
 
-  // 更新剩余次数提示
-  const remaining = 20 - currentCount;
-  const hintEl = document.getElementById("usageHint");
-  if (hintEl) hintEl.innerText = `今日剩余 ${remaining} 次`;
+    // 更新剩余次数提示
+    const remaining = 20 - currentCount;
+    const hintEl = document.getElementById("usageHint");
+    if (hintEl && !isActivated) {
+      hintEl.innerText = `今日剩余 ${remaining} 次`;
+    }
+  }
 
   const text = input.value.trim();
 
@@ -1594,15 +1663,19 @@ if (welcome) {
     history.push({ role: "assistant", content: fullText });
 
     // ===== 递增计数 =====
-    await supabase
-      .from("usage")
-      .upsert(
-        { user_id: session.user.id, date: today, count: currentCount + 1 },
-        { onConflict: "user_id,date" }
-      );
-    // ⭐ 更新剩余显示
-    const hintEl = document.getElementById("usageHint");
-    if (hintEl) hintEl.innerText = `今日剩余 ${20 - (currentCount + 1)} 次`;
+    if (session?.user?.id === "admin") {
+      // 管理员跳过
+    } else {
+      await supabase
+        .from("usage")
+        .upsert(
+          { user_id: session.user.id, date: today, count: currentCount + 1 },
+          { onConflict: "user_id,date" }
+        );
+      // ⭐ 更新剩余显示
+      const hint = document.getElementById("usageHint");
+      if (hint && !isActivated) hint.innerText = `今日剩余 ${20 - (currentCount + 1)} 次`;
+    }
   if (currentId) {
     const c = conversations.find(x => x.id === currentId);
     if (c) {
@@ -1856,6 +1929,45 @@ window.addEventListener("resize", () => {
     overlay.classList.remove("active");
   }
 });
+// ===== Scroll to Bottom Button =====
+const scrollBtn = document.getElementById("scrollBottomBtn");
+
+// 监听滚动，离底部超过 150px 才显示
+chat.addEventListener("scroll", () => {
+  const distFromBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight;
+  if (distFromBottom > 150) {
+    scrollBtn.style.opacity = "1";
+    scrollBtn.style.pointerEvents = "auto";
+  } else {
+    scrollBtn.style.opacity = "0";
+    scrollBtn.style.pointerEvents = "none";
+  }
+});
+
+// 点击滚到底部
+scrollBtn.onclick = () => {
+  chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+};
 </script>
+
+<button id="scrollBottomBtn" style="
+  position: fixed;
+  bottom: 90px;
+  right: 20px;
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(0,0,0,0.08);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  color: #555;
+  font-size: 16px;
+  cursor: pointer;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity .25s ease, transform .25s ease;
+  z-index: 40;
+">↓</button>
 
  </body>
