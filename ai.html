@@ -1747,7 +1747,8 @@ async function send() {
 
   addMessage('<span class="thinking"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>', "ai");
 
-  const bubble = chat.lastChild.querySelector(".bubble");
+  const lastMsg = chatInner.lastElementChild;
+  const bubble = lastMsg ? lastMsg.querySelector(".bubble") : null;
 
   // 状态切换
   controller = new AbortController();
@@ -1784,7 +1785,9 @@ async function send() {
       const errText = await res.text();
       console.error("API错误:", res.status, errText);
 
-      bubble.innerHTML = `<small style="color:#ef4444;">请求失败 (${res.status})</small>`;
+      if (bubble) {
+        bubble.innerHTML = `<small style="color:#ef4444;">请求失败 (${res.status})</small>`;
+      }
       throw new Error(errText || "API响应异常");
     }
 
@@ -1800,11 +1803,13 @@ async function send() {
 
     fullText = content;
 
-    bubble.style.animation = "fadeInBubble 0.2s ease";
-    bubble.style.opacity = "1";
-    bubble.innerHTML =
-      marked.parse(fullText) +
-      `<div class="regen"><button class="regen-btn">↻</button></div>`;
+    if (bubble) {
+      bubble.style.animation = "fadeInBubble 0.2s ease";
+      bubble.style.opacity = "1";
+      bubble.innerHTML =
+        marked.parse(fullText) +
+        `<div class="regen"><button class="regen-btn">↻</button></div>`;
+    }
     history.push({ role: "assistant", content: fullText });
 
     // ===== 递增计数 =====
@@ -1894,17 +1899,21 @@ async function send() {
       console.warn("stream end (ignored):", err);
     } else {
       if (err.name === "AbortError") {
-        bubble.innerHTML =
-          bubble.innerHTML.replace('<span class="cursor"></span>', '') +
-          '<br><small style="color:#999;">已停止</small>';
+        if (bubble) {
+          bubble.innerHTML =
+            bubble.innerHTML.replace('<span class="cursor"></span>', '') +
+            '<br><small style="color:#999;">已停止</small>';
+        }
       } else {
         console.error(err);
-        bubble.innerHTML =
-          '<small style="color:#999;">请求异常，请稍后重试</small>';
+        if (bubble) {
+          bubble.innerHTML =
+            '<small style="color:#999;">请求异常，请稍后重试</small>';
+        }
       }
     }
-  }
-  finally {
+}
+finally {
     clearTimeout(timeoutId);
     sendingLock = false;
     document.body.classList.remove("thinking-mode");
@@ -1930,7 +1939,7 @@ async function send() {
         }
       };
     }
-  }
+}
 }
 
 input.addEventListener("keydown", e => {
