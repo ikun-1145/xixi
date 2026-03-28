@@ -524,7 +524,21 @@ button:hover {
       opacity: 0.3;
     }
   }
+
 /* ===== AI 输出渐显（逐字柔化） ===== */
+.typing {
+  display: inline;
+}
+
+.typing span {
+  opacity: 0;
+  animation: fadeChar 0.25s forwards;
+}
+
+@keyframes fadeChar {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
 
 
 /* ===== 打字光标 ===== */
@@ -1802,9 +1816,49 @@ async function send() {
     if (bubble) {
       bubble.style.animation = "fadeInBubble 0.2s ease";
       bubble.style.opacity = "1";
-      bubble.innerHTML =
-        marked.parse(fullText) +
-        `<div class="regen"><button class="regen-btn">↻</button></div>`;
+      const html = marked.parse(fullText);
+
+      // 简单逐字渐显（只处理纯文本节点）
+      const temp = document.createElement("div");
+      temp.innerHTML = html;
+
+      function wrapText(node) {
+        if (node.nodeType === 3) {
+          const frag = document.createDocumentFragment();
+          [...node.textContent].forEach((ch, i) => {
+            const span = document.createElement("span");
+            span.textContent = ch;
+            span.style.animationDelay = i * 0.015 + "s";
+            frag.appendChild(span);
+          });
+          return frag;
+        }
+
+        if (node.nodeType === 1) {
+          const clone = node.cloneNode(false);
+          node.childNodes.forEach(child => {
+            clone.appendChild(wrapText(child));
+          });
+          return clone;
+        }
+
+        return node;
+      }
+
+      const animated = document.createElement("div");
+      animated.className = "typing";
+
+      temp.childNodes.forEach(n => {
+        animated.appendChild(wrapText(n));
+      });
+
+      bubble.innerHTML = "";
+      bubble.appendChild(animated);
+
+      const regenWrap = document.createElement("div");
+      regenWrap.className = "regen";
+      regenWrap.innerHTML = `<button class="regen-btn">↻</button>`;
+      bubble.appendChild(regenWrap);
     }
     history.push({ role: "assistant", content: fullText });
 
@@ -1919,9 +1973,50 @@ finally {
     controller = null;
     // 确保最终不残留光标
     if (bubble && fullText) {
-      bubble.innerHTML =
-        marked.parse(fullText) +
-        `<div class="regen"><button class="regen-btn">↻</button></div>`;
+      const html = marked.parse(fullText);
+
+      // 简单逐字渐显（只处理纯文本节点）
+      const temp = document.createElement("div");
+      temp.innerHTML = html;
+
+      function wrapText(node) {
+        if (node.nodeType === 3) {
+          const frag = document.createDocumentFragment();
+          [...node.textContent].forEach((ch, i) => {
+            const span = document.createElement("span");
+            span.textContent = ch;
+            span.style.animationDelay = i * 0.015 + "s";
+            frag.appendChild(span);
+          });
+          return frag;
+        }
+
+        if (node.nodeType === 1) {
+          const clone = node.cloneNode(false);
+          node.childNodes.forEach(child => {
+            clone.appendChild(wrapText(child));
+          });
+          return clone;
+        }
+
+        return node;
+      }
+
+      const animated = document.createElement("div");
+      animated.className = "typing";
+
+      temp.childNodes.forEach(n => {
+        animated.appendChild(wrapText(n));
+      });
+
+      bubble.innerHTML = "";
+      bubble.appendChild(animated);
+
+      const regenWrap = document.createElement("div");
+      regenWrap.className = "regen";
+      regenWrap.innerHTML = `<button class="regen-btn">↻</button>`;
+      bubble.appendChild(regenWrap);
+
       const regenBtn = bubble.querySelector(".regen-btn");
       regenBtn.onclick = () => {
         const msgDiv = bubble.closest(".message");
