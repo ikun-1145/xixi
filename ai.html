@@ -261,49 +261,48 @@ html, body {
   display: inline-block;
   max-width: 65%;
 
-  padding: 5px 9px;
-  border-radius: 10px;
-  line-height: 1.25;
+  padding: 10px 14px;
+  border-radius: 14px;
+  line-height: 1.5;
 
-  background: rgba(255,255,255,0.82);
-  backdrop-filter: blur(6px);
-  -webkit-backdrop-filter: blur(6px);
+  background: rgba(255,255,255,0.88);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 
-  border: none;
+  border: 1px solid rgba(255,255,255,0.4);
 
-  box-shadow: 0 1px 4px rgba(0,0,0,0.04);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.08);
   color: #1f2937;
 
   white-space: pre-wrap;
   word-break: break-word;
 
   min-width: 0;
-  font-size: 13px;
-  will-change: transform, opacity;
+  font-size: 14px;
+
+  animation: fadeInBubble 0.25s ease;
+  display: inline-flex;
+  flex-direction: column;
+  gap: 4px;
 }
 
 .message.ai .bubble {
-  background: rgba(255,255,255,0.78);
-  color: #1f2937;
-  max-width: 58%;
-  padding: 5px 9px;
-  opacity: 0.9;
-  box-shadow: none;
+  background: rgba(255,255,255,0.85);
+  border: 1px solid rgba(255,255,255,0.5);
+  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
 }
 
 .message.user .bubble {
-  background: linear-gradient(135deg,#38bdf8,#22d3ee);
+  background: linear-gradient(135deg,#22d3ee,#67e8f9);
   color: #00323a;
-  box-shadow: 0 2px 6px rgba(34,211,238,0.18);
-  max-width: 58%;
-  padding: 5px 9px;
+  box-shadow: 0 6px 18px rgba(34,211,238,0.25);
 }
 
 .bubble p,
 .bubble ul,
 .bubble ol,
 .bubble pre {
-  display: block;
+  margin: 0;
   max-width: 100%;
 }
 
@@ -312,10 +311,6 @@ html, body {
 }
 
 
-.user .bubble {
-  background: linear-gradient(135deg,#38bdf8,#22d3ee);
-  color: #002b36;
-}
 
 /* ===== 输入框 ===== */
 .input-area {
