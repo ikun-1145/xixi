@@ -1781,10 +1781,21 @@ async function send() {
     });
 
     if (!res.ok) {
-      throw new Error("API响应异常");
+      const errText = await res.text();
+      console.error("API错误:", res.status, errText);
+
+      bubble.innerHTML = `<small style="color:#ef4444;">请求失败 (${res.status})</small>`;
+      throw new Error(errText || "API响应异常");
     }
 
-    const data = await res.json();
+    let data;
+    try {
+      data = await res.json();
+    } catch (e) {
+      const text = await res.text();
+      console.error("JSON解析失败:", text);
+      throw new Error("返回格式错误");
+    }
     const content = data.choices?.[0]?.message?.content || "";
 
     fullText = content;
