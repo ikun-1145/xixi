@@ -2,20 +2,23 @@ name: Supabase Keep Alive
 
 on:
   schedule:
-    - cron: "0 3 * * *"   # UTC 03:00 = 北京 11:00
+    - cron: '0 */6 * * *'   # 每6小时
   workflow_dispatch:
 
 jobs:
-  ping:
+  keepalive:
     runs-on: ubuntu-latest
     steps:
-      - name: Ping Supabase (Keep Alive)
+      - name: Keep Supabase Alive
         run: |
           echo "Pinging Supabase..."
-          curl -f -i \
-            -H "apikey: $SUPABASE_ANON_KEY" \
-            -H "Authorization: Bearer $SUPABASE_ANON_KEY" \
-            "$SUPABASE_URL/rest/v1/thanks?select=id&limit=1"
+
+          for i in 1 2 3; do
+            curl -X GET "${SUPABASE_URL}/rest/v1/thanks?select=id" \
+            -H "apikey: ${SUPABASE_ANON_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_ANON_KEY}" \
+            && break || sleep 10
+          done
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
