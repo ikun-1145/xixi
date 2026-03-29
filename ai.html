@@ -55,7 +55,7 @@ pre:hover .copy-btn {
 
 body.night {
   --accent: #3EEDE7;
-  background: #0b1220;
+  background: linear-gradient(135deg,#020617,#0b1220,#020617);
 }
 
 body.night::before {
@@ -118,7 +118,7 @@ body {
                "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC",
                Arial, sans-serif;
 
-  background: transparent;
+  background: linear-gradient(135deg,#eef2ff,#e0f2fe,#f0fdfa);
 
   min-height: 100vh;
   display: flex;
@@ -129,6 +129,7 @@ body {
   overflow: hidden;
   background-size: 200% 200%;
   background-position: 0% 50%;
+  transition: background 0.6s ease;
   overflow: hidden;
   height: 100dvh;
   /* background-color: #eef2ff; */ /* removed per instruction */
@@ -142,7 +143,12 @@ body::before {
   inset: 0;
   pointer-events: none;
   z-index: 0;
+  opacity: 0;
+  transition: opacity .3s ease;
+}
 
+body.night::before {
+  opacity: 0.6;
   background:
     linear-gradient(135deg,#0b1220,#0f172a,#020617),
     radial-gradient(circle at 20% 30%, rgba(62,237,231,0.12) 0, transparent 60%),
@@ -151,9 +157,7 @@ body::before {
 
   background-size: 200% 200%, 120% 120%, 120% 120%, 120% 120%;
   animation: floatBg 12s ease-in-out infinite alternate, floatParticles 18s ease-in-out infinite alternate;
-
   filter: blur(6px);
-  opacity: 0.6;
 }
 
 body > * {
@@ -169,15 +173,19 @@ body > * {
   padding-right: 16px;
   font-size: 15px;
   font-weight: 600;
-  color: #555;
+  color: #1f2937;
   letter-spacing: 0.2px;
+  z-index: 200;
   position: sticky;
   top: 0;
-  z-index: 50;
   backdrop-filter: blur(10px);
-  background: rgba(255,255,255,0.85); /* solid bg to prevent bleed-through */
+  background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.7));
+  display: flex;
+  justify-content: flex-start;
+  gap: 6px;
   padding-top: env(safe-area-inset-top);
   position: relative;
+  flex-shrink: 0;
 }
 /* ===== Sidebar Overlay ===== */
 #sidebarOverlay {
@@ -188,7 +196,7 @@ body > * {
   opacity: 0;
   pointer-events: none;
   transition: opacity .25s ease;
-  z-index: 90;
+  z-index: 140;
 }
 
 #sidebarOverlay.active {
@@ -227,6 +235,7 @@ body > * {
   overscroll-behavior: contain;
   scroll-behavior: smooth;
   background: transparent;
+  background: radial-gradient(circle at 50% 20%, rgba(34,211,238,0.08), transparent 60%);
 }
 .chat-inner {
   width: 100%;
@@ -265,7 +274,7 @@ html, body {
   border-radius: 14px;
   line-height: 1.5;
 
-  background: rgba(255,255,255,0.88);
+  background: linear-gradient(145deg, rgba(255,255,255,0.95), rgba(255,255,255,0.75));
   backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
 
@@ -287,7 +296,7 @@ html, body {
 }
 
 .message.ai .bubble {
-  background: rgba(255,255,255,0.85);
+  background: linear-gradient(145deg,#ffffff,#f1f5f9);
   border: 1px solid rgba(255,255,255,0.5);
   box-shadow: 0 4px 16px rgba(0,0,0,0.06);
   color: #1f2937;
@@ -334,7 +343,7 @@ width: 100%;
   display: flex;
   align-items: center;
 
-  background: rgba(255,255,255,0.75);
+  background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(255,255,255,0.6));
   backdrop-filter: blur(12px);
 
   border-radius: 999px;
@@ -626,13 +635,6 @@ body {
   min-height: 100dvh;
 }
 
-body::after {
-  content: "";
-  position: fixed;
-  inset: 0;
-  background: linear-gradient(135deg,#020617,#0b1220,#0f172a);
-  z-index: -1;
-}
 body.thinking-mode .input-box {
   opacity: 0.7;
   transform: scale(0.98);
@@ -682,12 +684,12 @@ body.thinking-mode button {
   bottom: 0;
   width: 220px;
   padding: 60px 12px 12px;
-  z-index: 100;
-padding-top: 70px;
+  z-index: 150;
+  padding-top: 70px;
 
   background: rgba(255,255,255,0.7);
-backdrop-filter: blur(12px);
-border-right: 1px solid rgba(255,255,255,0.4);
+  backdrop-filter: blur(12px);
+  border-right: 1px solid rgba(255,255,255,0.4);
 
   overflow-y: auto;
 
@@ -768,6 +770,12 @@ body.night #newChatBtn {
 
 /* 桌面端：聊天区和输入框为侧边栏留出空间 */
 @media (min-width: 769px) {
+  .header {
+    margin-left: 220px;
+    width: calc(100% - 220px);
+    transition: margin-left .25s ease, width .25s ease;
+  }
+
   .chat-container {
     margin-left: 220px;
     width: calc(100% - 220px);
@@ -781,7 +789,8 @@ body.night #newChatBtn {
   }
 
   body.sidebar-collapsed .chat-container,
-  body.sidebar-collapsed .input-area {
+  body.sidebar-collapsed .input-area,
+  body.sidebar-collapsed .header {
     margin-left: 0;
     width: 100%;
   }
@@ -847,8 +856,8 @@ body.night #uploadPreview {
 
 <div class="header">
   <span id="menuToggle" style="margin-right:10px;cursor:pointer;position:relative;z-index:60;">☰</span>
-  <span>霜蓝 AI</span>
-  <span id="usageHint" style="font-size:12px;color:#999;margin-left:8px;"></span>
+  <span style="font-weight:600;color:inherit;white-space:nowrap;">霜蓝 AI</span>
+  <span id="usageHint" style="font-size:12px;color:#6b7280;margin-left:6px;"></span>
   <div id="userBox"></div>
 </div>
 
