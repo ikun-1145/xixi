@@ -1100,11 +1100,12 @@ async function checkLogin() {
       document.body.style.overflow = "";
     }
   } catch (e) {
-    console.warn("登录检测失败");
-    sessionReady = true;
-    session = null;
-    showLoginPrompt();
-  }
+  console.warn("登录检测失败", e);
+  sessionReady = true;
+  session = null;
+  // ⭐ 不要在这里 showLoginPrompt()，让用户主动触发
+}
+
 }
 function renderUser() {
   const box = document.getElementById("userBox");
@@ -1438,8 +1439,13 @@ checkLogin();
 supabase.auth.onAuthStateChange(async (_event, newSession) => {
   if (session?.user?.id === "admin") return; // ⭐ 核心保护
   session = newSession;
+  sessionReady = true;
   renderUser();
   await checkActivation();
+  if (newSession) {
+    document.getElementById("loginModal")?.remove();
+    document.body.style.overflow = "";
+  }
 });
 
 let controller = null;
