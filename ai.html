@@ -689,26 +689,21 @@ body.thinking-mode button {
   left: 0;
   top: 0;
   bottom: 0;
+
   width: 220px;
-  padding: 60px 12px 12px;
-  z-index: 200;
-  padding-top: 70px;
+  height: 100dvh;
 
-  background: rgba(255,255,255,0.7);
-  backdrop-filter: blur(12px);
-  border-right: 1px solid rgba(255,255,255,0.4);
+  transform: translateX(-100%); /* 默认隐藏 */
+  transition: transform .25s ease;
 
-  overflow-y: auto;
+  z-index: 300;
+}
 
-  transition: transform .25s ease; /* ⭐动画 */
-  will-change: transform;
-  box-shadow: 4px 0 20px rgba(0,0,0,0.08);
+/* 打开 */
+#sidebar.open {
   transform: translateX(0);
 }
 
-body.sidebar-collapsed #sidebar {
-  transform: translateX(-100%);
-}
 #newChatBtn {
   width: 100%;
   padding: 8px;
@@ -2163,21 +2158,16 @@ if (window.innerWidth <= 768) {
 
 if (toggle) {
   toggle.onclick = () => {
-    if (window.innerWidth <= 768) {
-      // 移动端用 open class
-      const isOpen = sidebar.classList.contains("open");
-      if (isOpen) {
-        sidebar.classList.remove("open");
-        overlay.classList.remove("active");
-      } else {
-        sidebar.classList.add("open");
-        overlay.classList.add("active");
-      }
-    } else {
-      // 桌面端用 sidebar-collapsed class
-      document.body.classList.toggle("sidebar-collapsed");
-    }
-  };
+  const isOpen = sidebar.classList.contains("open");
+
+  if (isOpen) {
+    sidebar.classList.remove("open");
+    overlay.classList.remove("active");
+  } else {
+    sidebar.classList.add("open");
+    overlay.classList.add("active");
+  }
+};
 }
 
 overlay.onclick = () => {
