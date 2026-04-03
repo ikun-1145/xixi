@@ -376,11 +376,19 @@ textarea {
   border: none;
   outline: none;
   resize: none;
-  font-size: 14px;
+  font-size: 16px;
+  transform: scale(0.875);   /* 16 → 看起来像 14 */
+  transform-origin: left center;
   background: transparent;
   max-height: 120px;
   overflow-y: auto;
   padding: 6px 8px;
+}
+html {
+  touch-action: manipulation;
+}
+input, textarea {
+  -webkit-text-size-adjust: 100%;
 }
 /* ===== 按钮 ===== */
 button {
