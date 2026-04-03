@@ -216,18 +216,31 @@ body > * {
 
 /* ===== 欢迎文字 ===== */
 .welcome {
-  font-size: 16px;
-  color: #6b7280;
-  opacity: 0.7;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+
+  font-size: 18px;
+  color: #9ca3af;
+  font-weight: 500;
+  letter-spacing: 0.5px;
+  pointer-events: none;
+  user-select: none;
+
+  transition: opacity .3s ease;
+  opacity: 1;
+  z-index: 1;
 }
 
 .welcome.hidden {
   opacity: 0;
-  transform: translate(-50%, -40%);
 }
+
 
 /* ===== 聊天区 ===== */
 .chat-container {
+  position: relative;
   flex: 1;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
@@ -908,9 +921,7 @@ body.night #uploadPreview {
   <div id="userBox"></div>
 </div>
 
-<div id="welcome" class="welcome">
-  我们先从哪里开始呢？
-</div>
+<div id="welcome" class="welcome">想聊点什么？</div>
 
 <div id="chat" class="chat-container">
   <div id="chatInner" class="chat-inner"></div>
