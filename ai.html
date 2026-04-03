@@ -1077,9 +1077,13 @@ async function checkLogin() {
     renderUser();
     await checkActivation();
     if (session && !window.__cloudSynced) {
-      window.__cloudSynced = true;
-      syncFromCloud();
-    }
+  window.__cloudSynced = true;
+  syncFromCloud();
+}
+
+if (!session) {
+  window.__cloudSynced = false; // ⭐ 关键补丁
+}
     // 如果已登录，关闭弹窗
     if (session) {
       document.getElementById("loginModal")?.remove();
@@ -1712,16 +1716,14 @@ async function generateTitleFromAI(userMsg, aiMsg) {
 }
 
 async function send() {
-  if (!sessionReady) {
-    showLoginPrompt();
-    return; // 等待登录状态加载完成
-  }
+  const { data: { session: currentSession } } = await supabase.auth.getSession();
 
-  if (!session || !session.user) {
-    showLoginPrompt();
-    input.blur();
-    return;
-  }
+if (!currentSession?.user) {
+  showLoginPrompt();
+  return;
+}
+
+session = currentSession; // 同步到全局
 
   if (sendingLock) return; // 防重复触发
   sendingLock = true; // ⭐ 提前加锁
