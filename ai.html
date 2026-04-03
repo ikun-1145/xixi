@@ -197,7 +197,7 @@ body > * {
   opacity: 0;
   pointer-events: none;
   transition: opacity .25s ease;
-  z-index: 300; /* 比sidebar低 */
+  z-index: 350; /* 比sidebar低 */
 }
 #sidebar {
   will-change: transform;
@@ -750,7 +750,7 @@ body.night #newChatBtn {
     width: 220px;
     height: 100dvh;
 
-    z-index: 200; /* 提高，避免被压 */
+    z-index: 400; /* 提高，避免被压 */
   }
 
   #sidebar.open {
