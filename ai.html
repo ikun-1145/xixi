@@ -124,13 +124,9 @@ body {
                Arial, sans-serif;
 
   background: linear-gradient(135deg,#eef2ff,#e0f2fe,#f0fdfa);
-  height: 100dvh;
-  display: flex;
-  flex-direction: column;
 
   animation: floatBg 12s ease-in-out infinite alternate;
   position: relative;
-  overflow: hidden;
   background-size: 200% 200%;
   background-position: 0% 50%;
   transition: background 0.6s ease;
@@ -249,6 +245,7 @@ body > * {
   flex-direction: column;
   align-items: stretch;
   gap: 8px;
+  padding-bottom: 90px;
   min-height: 0;         /* ⭐ 关键，防止撑破容器 */
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -268,14 +265,19 @@ body > * {
   gap: 12px;
 }
 html, body {
-  height: 100dvh;
+  height: 100%;
   overflow: hidden;
-  overscroll-behavior: none;
-  width: 100%;
-  max-width: 100%;
-  overflow-x: hidden;
-  overscroll-behavior-x: none;
+  margin: 0;
 }
+
+#app {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  position: relative;
+}
+
 
  .message {
   display: flex;
@@ -349,14 +351,11 @@ html, body {
 
 /* ===== 输入框 ===== */
 .input-area {
-  flex-shrink: 0;        /* ⭐ 不压缩 */
+  flex-shrink: 0; 
+  position: sticky;
+  bottom: 0;
   display: flex;
   justify-content: center;
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
-  box-sizing: border-box;
-  display: flex;
-  justify-content: center;
-
   padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
   box-sizing: border-box;
 }
@@ -670,14 +669,7 @@ button:hover {
 button:active {
   transform: scale(0.92);
 }
-html {
-  height: 100dvh;
-  overflow: hidden;
-}
 
-body {
-  height: 100dvh;
-}
 
 body.thinking-mode .input-box {
   opacity: 0.7;
@@ -859,6 +851,15 @@ body.night #newChatBtn {
 
   transition: transform .2s ease;
 }
+#app {
+  height: 100dvh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  background: linear-gradient(135deg,#eef2ff,#e0f2fe,#f0fdfa);
+  background-size: 200% 200%;
+  animation: floatBg 12s ease-in-out infinite alternate;
+}
 
 #uploadPreview > div:hover {
   transform: scale(1.08);
@@ -897,6 +898,7 @@ body.night #uploadPreview {
 </head>
 
 <body>
+<div id="app">
 <div id="sidebar">
   <button id="newChatBtn">+ 新对话</button>
   <div id="chatList"></div>
@@ -2271,7 +2273,7 @@ if (scrollBtn) {
   transition: opacity .25s ease, transform .25s ease;
   z-index: 40;
 ">↓</button>
-
+  </div>
  </body>
 
 
