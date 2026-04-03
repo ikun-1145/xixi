@@ -665,21 +665,17 @@ button:hover {
 .message.ai:hover .regen {
   opacity: 1;
 }
-@supports (-webkit-touch-callout: none) {
-  body {
-    height: -webkit-fill-available;
-  }
-}
+
 button:active {
   transform: scale(0.92);
 }
 html {
-  height: 100%;
+  height: 100dvh;
   overflow: hidden;
 }
 
 body {
-  min-height: 100dvh;
+  height: 100dvh;
 }
 
 body.thinking-mode .input-box {
