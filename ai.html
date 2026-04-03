@@ -12,6 +12,11 @@
 <script src="https://cdn.jsdelivr.net/npm/highlight.js/highlight.min.js"></script>
 
 <style>
+.chat-container {
+  overscroll-behavior: contain;  /* 你已经有了 */
+  touch-action: pan-y;           /* ⭐ 只允许纵向手势 */
+}
+
 .copy-btn {
   position: absolute;
   top: 8px;
