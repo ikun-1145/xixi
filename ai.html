@@ -136,7 +136,6 @@ body {
   background-position: 0% 50%;
   transition: background 0.6s ease;
   overflow-x: hidden;
-  min-height: 100dvh;
   /* background-color: #eef2ff; */ /* removed per instruction */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -251,8 +250,8 @@ body > * {
   flex-direction: column;
   align-items: stretch;
   gap: 8px;
-
-  height: calc(100dvh - 48px - 80px); /* header + input */
+  min-height: 0;         /* ⭐ 关键，防止撑破容器 */
+  overflow-y: auto;
   overscroll-behavior: contain;
   scroll-behavior: smooth;
   background: transparent;
@@ -270,6 +269,8 @@ body > * {
   gap: 12px;
 }
 html, body {
+  height: 100dvh;
+  overflow: hidden;
   overscroll-behavior: none;
   width: 100%;
   max-width: 100%;
@@ -349,10 +350,11 @@ html, body {
 
 /* ===== 输入框 ===== */
 .input-area {
-  position: fixed;
-bottom: 0;
-left: 0;
-width: 100%;
+  flex-shrink: 0;        /* ⭐ 不压缩 */
+  display: flex;
+  justify-content: center;
+  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  box-sizing: border-box;
   display: flex;
   justify-content: center;
 
@@ -827,7 +829,10 @@ body.night #newChatBtn {
 @media (min-width: 769px) {
   .header {
     margin-left: 220px;
-    width: calc(100% - 220px);
+    .input-area {
+    margin-left: 220px;
+    /* width 不用设，flex 会自动撑满剩余 */
+  }
     transition: margin-left .25s ease, width .25s ease;
   }
 
