@@ -124,8 +124,7 @@ body {
                Arial, sans-serif;
 
   background: linear-gradient(135deg,#eef2ff,#e0f2fe,#f0fdfa);
-
-  min-height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
 
@@ -829,10 +828,13 @@ body.night #newChatBtn {
 @media (min-width: 769px) {
   .header {
     margin-left: 220px;
-    .input-area {
-    margin-left: 220px;
-    /* width 不用设，flex 会自动撑满剩余 */
+    width: calc(100% - 220px);
+    transition: margin-left .25s ease, width .25s ease;
   }
+
+  .input-area {          /* ← 提到外面来 */
+    margin-left: 220px;
+    width: calc(100% - 220px);
     transition: margin-left .25s ease, width .25s ease;
   }
 
@@ -840,19 +842,6 @@ body.night #newChatBtn {
     margin-left: 220px;
     width: calc(100% - 220px);
     transition: margin-left .25s ease, width .25s ease;
-  }
-
-  .input-area {
-    margin-left: 220px;
-    width: calc(100% - 220px);
-    transition: margin-left .25s ease, width .25s ease;
-  }
-
-  body.sidebar-collapsed .chat-container,
-  body.sidebar-collapsed .input-area,
-  body.sidebar-collapsed .header {
-    margin-left: 0;
-    width: 100%;
   }
 }
 #uploadPreview > div {
