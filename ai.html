@@ -159,10 +159,6 @@ body.night::before {
   filter: blur(6px);
 }
 
-body > * {
-  position: relative;
-  z-index: 1;
-}
 
 /* ===== 顶部 ===== */
 .header {
@@ -842,16 +838,11 @@ body.night #newChatBtn {
   transition: transform .2s ease;
 }
 #app {
-  position: fixed;
-  inset: 0;
+  position: relative;   /* ❗从 fixed 改成 relative */
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
-  background: linear-gradient(135deg,#eef2ff,#e0f2fe,#f0fdfa);
-  background-size: 200% 200%;
-  animation: floatBg 12s ease-in-out infinite alternate;
 }
-
 
 #uploadPreview > div:hover {
   transform: scale(1.08);
