@@ -130,8 +130,9 @@ body {
   background-size: 200% 200%;
   background-position: 0% 50%;
   transition: background 0.6s ease;
-  overflow: hidden;
-  height: 100dvh;
+  overflow-x: hidden;
+  overflow-y: auto;
+  min-height: 100dvh;
   /* background-color: #eef2ff; */ /* removed per instruction */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
@@ -196,9 +197,12 @@ body > * {
   opacity: 0;
   pointer-events: none;
   transition: opacity .25s ease;
-  z-index: 140;
+  z-index: 180; /* 比sidebar低 */
 }
-
+#sidebar {
+  will-change: transform;
+  contain: layout; /* ⭐ 防止影响主布局 */
+}
 #sidebarOverlay.active {
   opacity: 1;
   pointer-events: auto;
@@ -250,6 +254,9 @@ body > * {
 }
 html, body {
   overscroll-behavior: none;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
  .message {
@@ -740,11 +747,21 @@ body.night #newChatBtn {
   #sidebar {
     transform: translateX(-100%);
     position: fixed;
-    top: 48px;
+
+    top: 0;   /* ❗不要48 */
     left: 0;
     bottom: 0;
-    z-index: 50;
+
+    width: 220px;
+    height: 100dvh;
+
+    z-index: 200; /* 提高，避免被压 */
   }
+
+  #sidebar.open {
+    transform: translateX(0);
+  }
+}
 
   #sidebar.open {
     transform: translateX(0);
