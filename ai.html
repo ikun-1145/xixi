@@ -1574,6 +1574,7 @@ function renderChatList() {
     item.onclick = () => {
       const overlayEl = document.getElementById("sidebarOverlay");
       if (overlayEl) overlayEl.classList.remove("active");
+      document.getElementById("sidebar")?.classList.remove("open");
       loadChat(c.id);
     };
     item.oncontextmenu = (e) => {
@@ -1602,7 +1603,7 @@ function loadChat(id) {
   // 关闭遮罩（防止挡点击）
   const overlayEl = document.getElementById("sidebarOverlay");
   overlayEl?.classList.remove("active");
-
+  document.getElementById("sidebar")?.classList.remove("open");
   const c = conversations.find(x => x.id === id);
   if (!c) return;
 
