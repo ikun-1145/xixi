@@ -494,6 +494,27 @@ button:hover {
   }
 }
 
+@media (max-width: 768px) {
+  .bubble {
+    max-width: 78%;   /* 桌面是65%，移动端适当放宽但不要撑满 */
+    font-size: 14px;
+    padding: 9px 13px;
+  }
+
+  /* 用户气泡不被截断 */
+  .message.user {
+    padding-right: 12px;  /* ⭐ 右侧留出间距 */
+  }
+
+  .message.ai {
+    padding-left: 12px;
+  }
+
+  .chat-inner {
+    padding: 0 12px;  /* 左右内边距稍微收紧 */
+  }
+}
+
 @keyframes floatBg {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }
