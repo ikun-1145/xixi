@@ -269,13 +269,6 @@ html, body {
   margin: 0;
 }
 
-#app {
-  position: fixed;
-  inset: 0;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-}
 
 
  .message {
@@ -849,7 +842,8 @@ body.night #newChatBtn {
   transition: transform .2s ease;
 }
 #app {
-  height: 100dvh;
+  position: fixed;
+  inset: 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
@@ -857,6 +851,7 @@ body.night #newChatBtn {
   background-size: 200% 200%;
   animation: floatBg 12s ease-in-out infinite alternate;
 }
+
 
 #uploadPreview > div:hover {
   transform: scale(1.08);
