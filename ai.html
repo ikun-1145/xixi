@@ -184,6 +184,7 @@ body.night::before {
 }
 /* ===== Sidebar Overlay ===== */
 #sidebarOverlay {
+  pointer-events: none;
   display: none;   /* ❗关键 */
   position: fixed;
   inset: 0;
@@ -192,13 +193,14 @@ body.night::before {
   opacity: 0;
   pointer-events: none;
   transition: opacity .25s ease;
-  z-index: 350; /* 比sidebar低 */
+  z-index: 150; /* 低于 header，避免遮挡菜单按钮 */
 }
 #sidebar {
   will-change: transform;
   contain: layout; /* ⭐ 防止影响主布局 */
 }
 #sidebarOverlay.active {
+  pointer-events: auto;
   display: block;
   opacity: 1;
   pointer-events: auto;
@@ -250,6 +252,7 @@ body.night::before {
   scroll-behavior: smooth;
   background: transparent;
   background: radial-gradient(circle at 50% 20%, rgba(34,211,238,0.08), transparent 60%);
+  padding-bottom: 140px;  /* 给底部输入框让空间，防止遮挡 */
 }
 .chat-inner {
   width: 100%;
@@ -265,6 +268,7 @@ body.night::before {
 html, body {
   height: 100%;
   margin: 0;
+  overflow: hidden;
 }
 
 
@@ -341,13 +345,18 @@ html, body {
 
 /* ===== 输入框 ===== */
 .input-area {
-  flex-shrink: 0; 
+  position: fixed;   /* 固定到底部，避免被遮挡 */
+  bottom: 0;
+  left: 0;
+  right: 0;
+
   display: flex;
   justify-content: center;
   padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
   box-sizing: border-box;
-  position: relative;   /* ⭐ 新增 */
-  z-index: 999;
+
+  z-index: 2000;   /* 提高层级，确保可点击 */
+  pointer-events: auto;
 }
 
 
@@ -367,6 +376,8 @@ html, body {
   box-shadow: 0 8px 24px rgba(0,0,0,0.12);
   padding: 6px 10px;
   gap: 6px;
+  position: relative;
+  z-index: 2100;
 }
 
 .input-box:focus-within {
@@ -381,8 +392,6 @@ textarea {
   outline: none;
   resize: none;
   font-size: 16px;
-  transform: scale(0.875);   /* 16 → 看起来像 14 */
-  transform-origin: left center;
   background: transparent;
   max-height: 120px;
   overflow-y: auto;
@@ -406,6 +415,8 @@ button {
   box-shadow: 0 4px 12px rgba(34,211,238,0.25);
   transition: transform .2s ease, box-shadow .2s ease;
   flex-shrink: 0;
+  position: relative;
+  z-index: 2100;
 }
 
 button:hover {
@@ -423,7 +434,7 @@ button:hover {
   background: rgba(0,0,0,0);
   opacity: 0;
   transition: .3s;
-  z-index: 1000;
+  z-index: 3000;
 }
 
 .modal.active {
@@ -790,8 +801,6 @@ body.night #newChatBtn {
   #sidebar.open {
     transform: translateX(0);
   }
-}
-
   #sidebar.open {
     transform: translateX(0);
   }
@@ -816,22 +825,38 @@ body.night #newChatBtn {
 
 /* 桌面端：聊天区和输入框为侧边栏留出空间 */
 @media (min-width: 769px) {
-  .header {
-    margin-left: 220px;
-    width: calc(100% - 220px);
-    transition: margin-left .25s ease, width .25s ease;
+  #sidebar {
+    transform: translateX(0);   /* 默认显示 */
   }
 
-  .input-area {          /* ← 提到外面来 */
+  #sidebar.collapsed {
+    transform: translateX(-100%);
+  }
+
+  #sidebarOverlay {
+    display: none !important;     /* 桌面端禁用遮罩 */
+  }
+
+  .header {
     margin-left: 220px;
-    width: calc(100% - 220px);
-    transition: margin-left .25s ease, width .25s ease;
+    transition: margin-left .25s ease;
+  }
+
+  .input-area {
+    margin-left: 220px;
+    transition: margin-left .25s ease;
   }
 
   .chat-container {
     margin-left: 220px;
-    width: calc(100% - 220px);
-    transition: margin-left .25s ease, width .25s ease;
+    transition: margin-left .25s ease;
+  }
+
+  /* 当 sidebar 收起时，让内容恢复全宽 */
+  #sidebar.collapsed ~ .header,
+  #sidebar.collapsed ~ .chat-container,
+  #sidebar.collapsed ~ .input-area {
+    margin-left: 0;
   }
 }
 #uploadPreview > div {
@@ -851,9 +876,10 @@ body.night #newChatBtn {
 }
 #app {
   position: relative;   /* ❗从 fixed 改成 relative */
-  min-height: 100dvh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
+  overflow: hidden;
 }
 
 #uploadPreview > div:hover {
@@ -1070,32 +1096,32 @@ async function checkActivation() {
 let sessionReady = false; // ✅ 是否已完成登录检查
 
 async function checkLogin() {
+  console.log("开始检查登录");
+
   try {
-    const { data } = await supabase.auth.getSession();
+    const result = await supabase.auth.getSession();
+
+    console.log("原始返回:", result);   // ⭐ 新增
+
+    const { data, error } = result;
+
+    if (error) {
+      console.error("getSession error:", error);
+    }
+
     session = data.session;
+
+    console.log("获取到 session:", session);
+
     sessionReady = true;
     renderUser();
     await checkActivation();
-    if (session && !window.__cloudSynced) {
-  window.__cloudSynced = true;
-  syncFromCloud();
-}
 
-if (!session) {
-  window.__cloudSynced = false; // ⭐ 关键补丁
-}
-    // 如果已登录，关闭弹窗
-    if (session) {
-      document.getElementById("loginModal")?.remove();
-      document.body.style.overflow = "";
-    }
   } catch (e) {
-  console.warn("登录检测失败", e);
-  sessionReady = true;
-  session = null;
-  // ⭐ 不要在这里 showLoginPrompt()，让用户主动触发
-}
-
+    console.error("登录检测异常:", e);
+    sessionReady = true;
+    session = null;
+  }
 }
 function renderUser() {
   const box = document.getElementById("userBox");
@@ -1443,7 +1469,10 @@ let sendingLock = false;
 let isStreaming = false;
 const sendBtn = document.getElementById("sendBtn");
 sendBtn.innerText = "↑";
-sendBtn.onclick = send;
+sendBtn.onclick = (e) => {
+  console.log("sendBtn clicked");
+  send();
+};
 let lastUserMessage = null;
 
 let history = [
@@ -1716,14 +1745,17 @@ async function generateTitleFromAI(userMsg, aiMsg) {
 }
 
 async function send() {
-  const { data: { session: currentSession } } = await supabase.auth.getSession();
-
-if (!currentSession?.user) {
-  showLoginPrompt();
-  return;
-}
-
-session = currentSession; // 同步到全局
+  if (!sessionReady) {
+    console.warn("session 尚未初始化完成");
+    return;
+  }
+  if (!session || !session.user) {
+    console.warn("未登录，强制弹登录");
+    const old = document.getElementById("loginModal");
+    if (old) old.remove();  // ⭐ 防残留
+    showLoginPrompt();
+    return;
+  }
 
   if (sendingLock) return; // 防重复触发
   sendingLock = true; // ⭐ 提前加锁
@@ -1833,9 +1865,9 @@ session = currentSession; // 同步到全局
     isStreaming = false;
   }, 20000);
   try {
+    console.log("准备发送请求", { session, history });
     // ⭐ 获取 Supabase token
-    const { data: { session: currentSession } } = await supabase.auth.getSession();
-    let token = currentSession?.access_token;
+    let token = session?.access_token;
 
     // ⭐ 管理员直通（必须和 Worker 的 ADMIN_TOKEN 一致）
     if (session?.user?.id === "admin") {
@@ -1843,6 +1875,7 @@ session = currentSession; // 同步到全局
     }
 
     // --- Non-streaming fetch ---
+    console.log("开始 fetch");
     const res = await fetch("https://ai.liuxizekali.workers.dev", {
       method: "POST",
       headers: {
@@ -1852,10 +1885,12 @@ session = currentSession; // 同步到全局
       body: JSON.stringify({ messages: history }),
       signal: controller.signal
     });
+    console.log("fetch 已返回", res);
 
     if (!res.ok) {
       const errText = await res.text();
       console.error("API错误:", res.status, errText);
+      alert("请求失败：" + res.status + "\n" + errText);
 
       if (bubble) {
         bubble.innerHTML = `<small style="color:#ef4444;">请求失败 (${res.status})</small>`;
@@ -1872,6 +1907,7 @@ session = currentSession; // 同步到全局
       throw new Error("返回格式错误");
     }
     const content = data.choices?.[0]?.message?.content || "";
+    console.log("AI response:", data);
 
     fullText = content;
 
@@ -2199,16 +2235,21 @@ if (window.innerWidth <= 768) {
 
 if (toggle) {
   toggle.onclick = () => {
-  const isOpen = sidebar.classList.contains("open");
+    if (window.innerWidth > 768) {
+      sidebar.classList.toggle("collapsed");
+      return;
+    }
 
-  if (isOpen) {
-    sidebar.classList.remove("open");
-    overlay.classList.remove("active");
-  } else {
-    sidebar.classList.add("open");
-    overlay.classList.add("active");
-  }
-};
+    const isOpen = sidebar.classList.contains("open");
+
+    if (isOpen) {
+      sidebar.classList.remove("open");
+      overlay.classList.remove("active");
+    } else {
+      sidebar.classList.add("open");
+      overlay.classList.add("active");
+    }
+  };
 }
 
 overlay.onclick = () => {
