@@ -12,8 +12,20 @@
     // 关键：让 Supabase 读取 URL hash 并写入 session
     await supabase.auth.getSession();
 
-    // 清理 URL，并回到主页
-    location.replace('index.html');
+    // 根据来源跳转回对应页面
+    const returnTo =
+      localStorage.getItem('returnTo') ||
+      sessionStorage.getItem('returnTo');
+
+    // 清理标记，避免下次误跳
+    localStorage.removeItem('returnTo');
+    sessionStorage.removeItem('returnTo');
+
+    if (returnTo === 'ai') {
+      location.replace('/ai.html');
+    } else {
+      location.replace('/index.html');
+    }
   </script>
 </body>
 </html>

@@ -291,7 +291,7 @@ html, body {
   display: inline-block;
   max-width: 65%;
 
-  padding: 10px 14px;
+  padding: 8px 12px;
   border-radius: 14px;
   line-height: 1.5;
 
@@ -313,7 +313,7 @@ html, body {
   animation: fadeInBubble 0.25s ease;
   display: inline-flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 2px;
 }
 
 .message.ai .bubble {
@@ -648,15 +648,16 @@ button:hover {
   display: flex;
   justify-content: flex-start;
   align-items: center;
+  margin-top: 2px;
 }
 
 .regen-btn {
   border: none;
   background: transparent;
   color: #999;
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
-  padding: 2px 4px;
+  padding: 1px 3px;
   border-radius: 4px;
   opacity: 0.7;
   transition: all .2s ease;
@@ -1215,8 +1216,8 @@ function showLoginPrompt() {
 
   // 登录逻辑（复用主页）
   modal.querySelector("#githubLoginBtn").onclick = async () => {
-    sessionStorage.setItem("loginFrom", "ai");
-    sessionStorage.setItem("returnTo", "ai");
+    localStorage.setItem("loginFrom", "ai");
+    localStorage.setItem("returnTo", "ai");
     await supabase.auth.signInWithOAuth({
       provider: 'github',
       options: { redirectTo: location.origin + '/oauth-callback.html' }
@@ -1224,8 +1225,8 @@ function showLoginPrompt() {
   };
 
   modal.querySelector("#googleLoginBtn").onclick = async () => {
-    sessionStorage.setItem("loginFrom", "ai");
-    sessionStorage.setItem("returnTo", "ai");
+    localStorage.setItem("loginFrom", "ai");
+    localStorage.setItem("returnTo", "ai");
     await supabase.auth.signInWithOAuth({
       provider: 'google',
       options: { redirectTo: location.origin + '/oauth-callback.html' }
@@ -1449,7 +1450,7 @@ function showActivationModal() {
 }
 
 // 页面加载时检查登录
-checkLogin();
+await checkLogin(); // 确保 session 初始化完成再允许发送
 
 // 监听登录状态变化（防止刷新/登录后不同步）
 supabase.auth.onAuthStateChange(async (_event, newSession) => {
@@ -1468,11 +1469,22 @@ let controller = null;
 let sendingLock = false;
 let isStreaming = false;
 const sendBtn = document.getElementById("sendBtn");
+sendBtn.type = "button"; // 防止被当成提交按钮
 sendBtn.innerText = "↑";
 sendBtn.onclick = (e) => {
+  e.preventDefault();
+  e.stopPropagation();
   console.log("sendBtn clicked");
   send();
 };
+
+// ⭐ 兼容移动端点击（有些设备 click 不触发）
+sendBtn.addEventListener("touchend", (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  console.log("sendBtn touch");
+  send();
+});
 let lastUserMessage = null;
 
 let history = [
@@ -1745,10 +1757,6 @@ async function generateTitleFromAI(userMsg, aiMsg) {
 }
 
 async function send() {
-  if (!sessionReady) {
-    console.warn("session 尚未初始化完成");
-    return;
-  }
   if (!session || !session.user) {
     console.warn("未登录，强制弹登录");
     const old = document.getElementById("loginModal");
