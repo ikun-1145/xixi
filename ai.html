@@ -1735,11 +1735,13 @@ async function generateTitleFromAI(userMsg, aiMsg) {
   try {
     const prompt = `请根据下面的对话生成一个简短标题（不超过12个字，不要标点结尾）：\n用户：${userMsg}\n助手：${aiMsg}`;
 
+    if (!session || !session.access_token) return null;
+
     const res = await fetch("https://ai.liuxizekali.workers.dev", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${session?.access_token || "xixi_9f3k2kfj29dkfj29dk_2026_secure"}`
+        "Authorization": `Bearer ${session.access_token}`
       },
       body: JSON.stringify({
         messages: [
@@ -1877,12 +1879,12 @@ async function send() {
   }, 20000);
   try {
     console.log("准备发送请求", { session, history });
-    // ⭐ 获取 Supabase token
-    let token = session?.access_token;
+    // ⭐ 必须登录才有 token
+    let token = session.access_token;
 
-    // ⭐ 管理员直通（必须和 Worker 的 ADMIN_TOKEN 一致）
-    if (session?.user?.id === "admin") {
-      token = "xixi_9f3k2kfj29dkfj29dk_2026_secure"; // ⚠️ 改成你在 Cloudflare 里设置的 ADMIN_TOKEN
+    // ⭐ 管理员直通
+    if (session.user.id === "admin") {
+      token = "xixi_9f3k2kfj29dkfj29dk_2026_secure";
     }
 
     // --- Non-streaming fetch ---
