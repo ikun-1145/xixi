@@ -406,22 +406,22 @@ input, textarea {
 /* ===== 按钮 ===== */
 button {
   border: none;
-  background: linear-gradient(135deg,#38bdf8,#22d3ee);
+  background: #22d3ee;
   border-radius: 50%;
   width: 36px;
   height: 36px;
   cursor: pointer;
 
-  box-shadow: 0 4px 12px rgba(34,211,238,0.25);
-  transition: transform .2s ease, box-shadow .2s ease;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+  transition: transform .15s ease, box-shadow .15s ease, opacity .15s ease;
   flex-shrink: 0;
   position: relative;
   z-index: 2100;
 }
 
 button:hover {
-  transform: translateY(-1px) scale(1.03);
-  box-shadow: 0 10px 24px rgba(34,211,238,0.4);
+  transform: translateY(-1px);
+  box-shadow: 0 6px 14px rgba(0,0,0,0.18);
 }
 
 /* ===== 登录弹窗（已修复） ===== */
@@ -655,24 +655,24 @@ button:hover {
   border: none;
   background: transparent;
   color: #999;
-  font-size: 11px;
+  font-size: 10px;
   cursor: pointer;
-  padding: 1px 3px;
+  padding: 0;
   border-radius: 4px;
   opacity: 0.7;
-  transition: all .2s ease;
+  transition: opacity .15s ease;
 }
 
 .regen-btn:hover {
   opacity: 1;
-  background: rgba(0,0,0,0.04);
 }
+
 .message.ai .regen {
-  opacity: 0;
+  opacity: 0.6;
   transition: opacity .2s ease;
 }
 
-.message.ai:hover .regen {
+.message.ai .regen:hover {
   opacity: 1;
 }
 
@@ -1783,28 +1783,35 @@ function saveConversations() {
 }
 
 function createNewChat() {
+  // ⭐ 如果最新对话是空的（只有 system），直接跳转，不新建
+  if (conversations.length) {
+    const latest = conversations[0];
+    if (latest && (!latest.history || latest.history.length <= 1)) {
+      loadChat(latest.id);
+      return;
+    }
+  }
   const id = Date.now();
 
   const newChat = {
-  id,
-  title: "新对话",
-  history: [history[0]],
-  updatedAt: Date.now()
-};
+    id,
+    title: "新对话",
+    history: [history[0]],
+    updatedAt: Date.now()
+  };
 
   conversations.unshift(newChat);
   currentId = id;
   history = [...newChat.history];
 
   chatInner.innerHTML = "";
-const newWelcome = document.createElement("div");
-newWelcome.id = "welcome";
-newWelcome.className = "welcome";
-newWelcome.innerText = "我们先从哪里开始呢？";
-document.body.appendChild(newWelcome);
+  const newWelcome = document.createElement("div");
+  newWelcome.id = "welcome";
+  newWelcome.className = "welcome";
+  newWelcome.innerText = "我们先从哪里开始呢？";
+  document.body.appendChild(newWelcome);
   saveConversations();
   renderChatList();
-  
 }
 
 function renderChatList() {
@@ -1815,7 +1822,12 @@ function renderChatList() {
 
   conversations.forEach(c => {
     const item = document.createElement("div");
-    item.innerText = c.title;
+    item.innerHTML = `
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
+        <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.title}</span>
+        <span class="delete-chat" style="color:#ef4444;font-size:12px;cursor:pointer;opacity:0.6;">✕</span>
+      </div>
+    `;
     if (c.id === currentId) {
       item.style.background = "rgba(0,0,0,0.08)";
     }
@@ -1826,6 +1838,28 @@ function renderChatList() {
       document.getElementById("sidebar")?.classList.remove("open");
       loadChat(c.id);
     };
+    // Add delete button click handler (after onclick)
+    const delBtn = item.querySelector(".delete-chat");
+    if (delBtn) {
+      delBtn.onclick = (e) => {
+        e.stopPropagation();
+
+        if (!confirm("删除这个对话？")) return;
+
+        conversations = conversations.filter(x => x.id !== c.id);
+
+        if (currentId === c.id) {
+          if (conversations.length) {
+            loadChat(conversations[0].id);
+          } else {
+            createNewChat();
+          }
+        }
+
+        saveConversations();
+        renderChatList();
+      };
+    }
     item.oncontextmenu = (e) => {
       e.preventDefault();
 
@@ -1917,7 +1951,7 @@ async function generateTitleFromAI(userMsg, aiMsg) {
 
     if (!session || !session.access_token) return null;
 
-    const res = await fetch("/api", {
+    const res = await fetch("https://ai.liuxizekali.workers.dev", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -1932,6 +1966,7 @@ async function generateTitleFromAI(userMsg, aiMsg) {
     });
 
     const data = await res.json();
+    console.log("标题API返回:", data);
     let title = data.choices?.[0]?.message?.content?.trim() || "";
 
     if (title.length > 12) title = title.slice(0, 12) + "…";
@@ -2217,30 +2252,64 @@ isStreaming = true;
       if (c) {
         c.history = [...history];
         c.updatedAt = Date.now();
-        // ⭐最新对话置顶
+        // ⭐ 排序：当前对话优先，但保留“空新对话”在最前
+        const emptyChat = conversations.find(c => !c.history || c.history.length <= 1);
+
         conversations.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+
+        if (emptyChat && emptyChat.id !== currentId) {
+          // 把空对话固定在第一个
+          conversations = conversations.filter(c => c.id !== emptyChat.id);
+          conversations.unshift(emptyChat);
+        }
         // ⭐ AI生成标题（仅第一次AI回复时）
-        if (history.length >= 3 && !c._autoTitle) {
+        if (history.length === 3 && !c._autoTitle) {
           const userMsg = history.find(m => m.role === "user")?.content || "";
           const aiMsg = fullText || "";
-          // 先用一个临时标题占位（避免空白）
-          c.title = (userMsg.slice(0, 12) + (userMsg.length > 12 ? "…" : "")).replace(/\n/g, " ");
-          c._autoTitle = false; // ⭐标记自动标题
+          c._autoTitle = true; // ✅ 允许AI改标题
           renderChatList();
           saveConversations();
           // 异步用AI生成更好的标题
           generateTitleFromAI(userMsg, aiMsg).then(title => {
-            if (!title) return;
+            if (!title) {
+              const fallback = userMsg.slice(0, 12).replace(/\n/g, " ");
+              const chat = conversations.find(x => x.id === currentId);
+              if (chat && chat._autoTitle) {
+                chat.title = fallback || "新对话";
+                chat._autoTitle = false;
+                renderChatList();
+                saveConversations();
+              }
+              return;
+            }
             const chat = conversations.find(x => x.id === currentId);
             if (!chat) return;
             // ⭐只有自动标题才允许被AI覆盖
             if (chat._autoTitle) {
-              chat.title = title;
-              chat._autoTitle = false;
+              chat.title = "";
+              let i = 0;
+              const finalTitle = title;
+
+              const revealTimer = setInterval(() => {
+                if (i >= finalTitle.length) {
+                  clearInterval(revealTimer);
+                  return;
+                }
+
+                chat.title = finalTitle.slice(0, i + 1);
+                renderChatList();
+
+                i++;
+
+                if (i >= finalTitle.length) {
+                  clearInterval(revealTimer);
+                  chat._autoTitle = false;
+                }
+              }, 40);
               chat.updatedAt = Date.now(); // ⭐补上
               conversations.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
               saveConversations();
-              renderChatList();
+              // renderChatList(); // Already called in animation
             }
           });
         }
@@ -2461,19 +2530,37 @@ function toggleUserMenu(e) {
 
   // 退出
   menu.querySelector("#logoutItem").onclick = async () => {
-  menu.remove(); // ⭐ 先关闭菜单，避免挡住弹窗
-  try {
-    await supabase.auth.signOut();
-  } catch(e) {
-    console.warn("退出失败:", e);
-  }
-  // 无论成功失败都重置状态
-  session = null;
-  isActivated = false;
-  document.getElementById("usageHint").innerText = "";
-  renderUser();
-  showLoginPrompt();
-};
+    menu.remove();
+
+    try {
+      await supabase.auth.signOut();
+    } catch(e) {
+      console.warn("退出失败:", e);
+    }
+
+    // ⭐ 清空本地聊天记录
+    conversations = [];
+    localStorage.removeItem("conversations");
+    currentId = null;
+
+    // 清空界面
+    chatInner.innerHTML = "";
+    const welcome = document.createElement("div");
+    welcome.id = "welcome";
+    welcome.className = "welcome";
+    welcome.innerText = "想聊点什么？";
+    document.body.appendChild(welcome);
+
+    renderChatList();
+
+    // 重置状态
+    session = null;
+    isActivated = false;
+    document.getElementById("usageHint").innerText = "";
+
+    renderUser();
+    showLoginPrompt();
+  };
 
   // 点击外部关闭
   setTimeout(() => {
