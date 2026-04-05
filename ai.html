@@ -1633,6 +1633,7 @@ function showPayModal() {
   }
   content.querySelector(".close").onclick = closeModal;
   modal.onclick = e => { if (e.target === modal) closeModal(); };
+  startActivationPolling();
 }
 
 // 页面加载时检查登录
@@ -1993,15 +1994,12 @@ function loadChat(id) {
 setTimeout(() => {
   chatInner.innerHTML = "";
 
-
-  chatInner.style.opacity = "1";
-}, 120);
-  const welcome = document.getElementById("welcome");
-  if (welcome) welcome.remove();
-
   history.slice(1).forEach(m => {
     addMessage(m.content, m.role === "user" ? "user" : "ai");
   });
+
+  chatInner.style.opacity = "1";
+}, 120);
 
   // ⭐ 重新渲染侧边栏（更新选中高亮）
   renderChatList();
@@ -2093,8 +2091,6 @@ async function send() {
     return;
   }
 
-  if (sendingLock) return;
-  sendingLock = true;
 
   // ===== 每日限额检查 =====
   const today = new Date().toISOString().slice(0, 10);
@@ -2158,6 +2154,10 @@ async function send() {
     sendingLock = false;
     return;
   }
+
+  // ===== 真正开始发送时再加锁（避免提前锁死）
+  if (sendingLock) return;
+  sendingLock = true;
 
   document.body.classList.add("thinking-mode");
   input.readOnly = true;
@@ -2379,24 +2379,25 @@ isStreaming = true;
           generateTitleFromAI(userMsg, aiMsg).then(title => {
             if (!title) {
               const fallback = userMsg.slice(0, 12).replace(/\n/g, " ");
-              const chat = conversations.find(x => x.id === currentId);
-              if (chat && chat._autoTitle) {
-                chat.title = fallback || "新对话";
-                chat._autoTitle = false;
-                renderChatList();
-                saveConversations();
-              }
+              const currentChat = conversations.find(x => x.id === currentId);
+              if (currentChat && currentChat._autoTitle) {
+  currentChat.title = fallback || "新对话";
+  currentChat._autoTitle = false;
+  renderChatList();
+  saveConversations();
+}
               return;
             }
-            const chat = conversations.find(x => x.id === currentId);
-            if (!chat) return;
-            // ⭐只有自动标题才允许被AI覆盖
-            if (chat._autoTitle) {
-              chat.title = "";
+            const currentChat = conversations.find(x => x.id === currentId);
+            if (!currentChat) return;
+
+// ⭐只有自动标题才允许被AI覆盖
+if (currentChat._autoTitle) {
+              currentChat.title = "";
               let i = 0;
               const finalTitle = title;
 
-              chat.title = finalTitle;
+              currentChat.title = finalTitle;
 renderChatList();
 
 setTimeout(() => {
@@ -2416,8 +2417,8 @@ setTimeout(() => {
   });
 }, 0);
 
-chat._autoTitle = false;
-              chat.updatedAt = Date.now(); // ⭐补上
+currentChat._autoTitle = false;
+currentChat.updatedAt = Date.now();
               conversations.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
               saveConversations();
               // renderChatList(); // Already called in animation
@@ -2486,12 +2487,16 @@ chat._autoTitle = false;
 
 // ⭐ 移动端自动重试一次（关键！）
 if (window._isMobile) {
-  console.warn("移动端自动重试一次...");
-  sendingLock = false;
-  setTimeout(() => send(), 500);
-  return;
+  if (!window._retryOnce) {
+    window._retryOnce = true;
+    console.warn("移动端自动重试一次...");
+    sendingLock = false;
+    setTimeout(() => send(), 500);
+    return;
+  } else {
+    window._retryOnce = false;
+  }
 }
-
 if (bubble) {
   bubble.innerHTML =
     '<small style="color:#999;">请求异常，请稍后重试</small>';
@@ -2505,7 +2510,7 @@ finally {
     sendingLock = false;
     document.body.classList.remove("thinking-mode");
     input.readOnly = false;
-    input.focus();
+    if (!window._isMobile) input.focus();
     input.style.height = "auto";
     isStreaming = false;
     controller = null;
@@ -2554,24 +2559,23 @@ finally {
         bubble.innerText = fullText || "返回为空，请重试";
       }
 
-      const regenWrap = document.createElement("div");
-      regenWrap.className = "regen";
-      regenWrap.innerHTML = `<button class="regen-btn">↻</button>`;
-      bubble.appendChild(regenWrap);
 
       const regenBtn = bubble.querySelector(".regen-btn");
-      regenBtn.onclick = () => {
-        const msgDiv = bubble.closest(".message");
-        if (msgDiv) msgDiv.remove();
-        if (history.length && history[history.length - 1].role === "assistant") {
-          history.pop();
-        }
-        if (!sendingLock) {
-          input.value = lastUserMessage;
-          send();
-        }
-      };
+if (regenBtn) {
+  regenBtn.onclick = () => {
+    const msgDiv = bubble.closest(".message");
+    if (msgDiv) msgDiv.remove();
+
+    if (history.length && history[history.length - 1].role === "assistant") {
+      history.pop();
     }
+
+    if (!sendingLock) {
+      input.value = lastUserMessage;
+      send();
+    }
+  };
+}
 }
 }
 
@@ -2583,7 +2587,7 @@ input.addEventListener("keydown", e => {
 });
 
 window.addEventListener("load", () => {
-  input.focus();
+  if (!window._isMobile) input.focus();
 });
 // 用户信息下拉菜单
 function toggleUserMenu(e) {
@@ -2758,18 +2762,7 @@ setInterval(() => {
   }
 }, 15000);
 // ===== Unified visibilitychange listener =====
-document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden") {
-    if (!window._isMobile && isStreaming && controller) {
-      controller.abort();
-      isStreaming = false;
-    }
-  }
-
-  if (document.visibilityState === "visible") {
-    syncFromCloud();
-  }
-});
+}
 </script>
 
 <button id="scrollBottomBtn" style="
@@ -2793,7 +2786,3 @@ document.addEventListener("visibilitychange", () => {
 ">↓</button>
   </div>
  </body>
-
-
-
-
