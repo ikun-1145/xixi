@@ -1737,7 +1737,10 @@ async function generateTitleFromAI(userMsg, aiMsg) {
 
     const res = await fetch("https://ai.liuxizekali.workers.dev", {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${session?.access_token || "xixi_9f3k2kfj29dkfj29dk_2026_secure"}`
+      },
       body: JSON.stringify({
         messages: [
           { role: "system", content: "你是一个标题生成器，只返回标题本身。" },
