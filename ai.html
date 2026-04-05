@@ -1641,22 +1641,46 @@ await checkLogin(); // 确保 session 初始化完成再允许发送
 startRealtime();
 // 监听登录状态变化（防止刷新/登录后不同步）
 supabase.auth.onAuthStateChange(async (_event, newSession) => {
+  console.log("Auth变化:", newSession);
+
   if (newSession) {
-  stopRealtime();
-  startRealtime();
-} else {
-  stopRealtime();
-}
-  if (session?.user?.id === "admin") return; // ⭐ 核心保护
+    stopRealtime();
+    startRealtime();
+  } else {
+    stopRealtime();
+  }
+
+  // ⭐ 管理员保护
+  if (session?.user?.id === "admin") return;
+
   session = newSession;
   sessionReady = true;
+
   renderUser();
   await checkActivation();
+
+  // ⭐ 登录成功自动清理弹窗
   if (newSession) {
     document.getElementById("loginModal")?.remove();
     document.body.style.overflow = "";
+
+    // ⭐ 强制同步云端（防止刚登录为空）
+    syncFromCloud();
   }
 });
+
+// ⭐ 页面初始化时也监听一次（防止 OAuth 回来时丢 session）
+setTimeout(async () => {
+  const { data } = await supabase.auth.getSession();
+  if (data?.session) {
+    console.log("初始化补偿 session:", data.session);
+    session = data.session;
+    sessionReady = true;
+    renderUser();
+    await checkActivation();
+    syncFromCloud();
+  }
+}, 300);
 
 let controller = null;
 let sendingLock = false;
