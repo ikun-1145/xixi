@@ -1653,17 +1653,13 @@ sendBtn.innerText = "↑";
 sendBtn.onclick = (e) => {
   e.preventDefault();
   e.stopPropagation();
+
+  // 防止移动端 click + touch 重复触发
+  if (sendingLock) return;
+
   console.log("sendBtn clicked");
   send();
 };
-
-// ⭐ 兼容移动端点击（有些设备 click 不触发）
-sendBtn.addEventListener("touchend", (e) => {
-  e.preventDefault();
-  e.stopPropagation();
-  console.log("sendBtn touch");
-  send();
-});
 let lastUserMessage = null;
 
 let history = [
@@ -1893,7 +1889,12 @@ function addMessage(text, type) {
       bubble.innerHTML = marked.parse(text);
     }
   } else {
-    bubble.innerText = text;
+    // 如果是图片HTML，直接渲染
+    if (typeof text === "string" && text.startsWith("<img")) {
+      bubble.innerHTML = text;
+    } else {
+      bubble.innerText = text;
+    }
   }
 
   const welcome = document.getElementById("welcome");
@@ -1991,8 +1992,11 @@ async function send() {
       await new Promise(resolve => {
         reader.onload = () => {
           if (file.type.startsWith("image/")) {
-            addMessage(`![image](${reader.result})`, "user");
-            history.push({ role: "user", content: `![image](${reader.result})` });
+            // 前端显示图片（用 img 标签）
+            addMessage(`<img src="${reader.result}" style="max-width:100%;border-radius:10px;">`, "user");
+
+            // history 只存描述，避免 base64 爆炸
+            history.push({ role: "user", content: "[用户发送了一张图片]" });
           } else {
             addMessage(`📄 ${file.name}`, "user");
             history.push({ role: "user", content: `[用户上传文件: ${file.name}]` });
@@ -2100,7 +2104,9 @@ async function send() {
         "Authorization": `Bearer ${token}`
       },
       body: JSON.stringify({ messages: history }),
-      signal: controller.signal
+      signal: controller.signal,
+      keepalive: true,
+      mode: "cors"
     });
     console.log("fetch 已返回", res);
 
@@ -2266,17 +2272,14 @@ async function send() {
       console.warn("stream end (ignored):", err);
     } else {
       if (err.name === "AbortError") {
-        // ⭐ 安卓会误触发中断，这里改为静默处理
-        console.warn("请求被中断（可能是安卓兼容问题）");
+        console.warn("请求被中断（移动端兼容）");
 
-        if (bubble && fullText) {
-          // 已经有内容就正常显示，不提示错误
-          return;
-        }
+        // 如果已经有内容，不提示错误
+        if (bubble && fullText) return;
 
         if (bubble) {
           bubble.innerHTML =
-            '<small style="color:#999;">请求中断，请重试</small>';
+            '<small style="color:#999;">网络不稳定，请重试</small>';
         }
       } else {
         console.error(err);
