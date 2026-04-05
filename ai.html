@@ -922,6 +922,38 @@ body.night #uploadPreview {
 #chatList div:hover .delete-chat:hover {
   opacity: 1;
 }
+/* ===== AI 页面进入动画 ===== */
+body.ai-entering #app {
+  animation: aiEnter .6s cubic-bezier(.4,0,.2,1);
+}
+
+body.ai-entering::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(113,248,252,0.35), rgba(0,0,0,0.8));
+  backdrop-filter: blur(10px);
+  animation: aiEnterFade .6s ease forwards;
+  z-index: 999;
+}
+
+@keyframes aiEnter {
+  0% {
+    transform: scale(0.95);
+    opacity: 0;
+    filter: blur(12px);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes aiEnterFade {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
 </style>
 
 </head>
@@ -964,6 +996,11 @@ body.night #uploadPreview {
 
 
 <script type="module">
+/* ===== 页面进入动画触发 ===== */
+document.body.classList.add("ai-entering");
+setTimeout(() => {
+  document.body.classList.remove("ai-entering");
+}, 650);
 function applyAutoTheme() {
   const hour = new Date().getHours();
   const isNight = hour >= 18 || hour < 6;

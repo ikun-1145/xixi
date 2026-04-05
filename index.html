@@ -26,7 +26,36 @@
   <link rel="preload" href="p/bj.png" as="image">
   <meta name="keywords" content="霜蓝,霜蓝CCC,福瑞,furry" />
   <meta name="description" content="霜蓝的个人主页，展示我的作品、联系方式和动态，欢迎访问与交流。">
-  <style>
+<style>
+    /* ===== AI 进入动画 ===== */
+    body.ai-leaving {
+      overflow: hidden;
+    }
+
+    body.ai-leaving .container {
+      animation: aiZoomOut .6s cubic-bezier(.4,0,.2,1) forwards;
+    }
+
+    body.ai-leaving::after {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(circle at center, rgba(113,248,252,0.3), rgba(0,0,0,0.8));
+      backdrop-filter: blur(8px);
+      opacity: 0;
+      animation: aiFade .6s ease forwards;
+      z-index: 999;
+    }
+
+    @keyframes aiZoomOut {
+      0% { transform: scale(1); opacity: 1; filter: blur(0px); }
+      100% { transform: scale(1.1); opacity: 0; filter: blur(12px); }
+    }
+
+    @keyframes aiFade {
+      0% { opacity: 0; }
+      100% { opacity: 1; }
+    }
     :root {
       /* Day theme (default) */
       --bg-main: linear-gradient(135deg, #dcefff, #f8fdff), url('p/bj.png') center / cover no-repeat fixed;
@@ -430,6 +459,18 @@ body.night .oauth-btn {
       align-items: center;
     }
 
+
+    .ai-icon-img {
+      width: 70%;
+      height: 70%;
+      object-fit: contain;
+      transition: transform .3s ease;
+    }
+
+    .ai-entry:hover .ai-icon-img {
+      transform: scale(1.1);
+    }
+
     .splash-svg text {
       font-size: 96px;
       fill: none;
@@ -630,34 +671,84 @@ body.night .modal-content {
         grid-template-columns: 1fr;
       }
     }
-/* ===== AI 悬浮按钮 ===== */
-.ai-float-btn {
+/* ===== AI 入口（升级版）===== */
+/* ===== AI 入口（升级版）===== */
+.ai-entry {
   position: fixed;
   right: 20px;
   bottom: 20px;
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: var(--accent);
+  display: flex;
+  align-items: center;
+  gap: 12px;
+
+  padding: 14px 18px;
+  border-radius: 999px;
+
+  background: linear-gradient(135deg, var(--accent), #9ffcff);
   color: #000;
+
+  font-weight: 600;
+  font-size: 0.95rem;
+
+  box-shadow:
+    0 15px 40px rgba(0,0,0,0.25),
+    0 0 20px rgba(113,248,252,0.35);
+
+  cursor: pointer;
+  z-index: 999;
+
+  transition: transform .25s ease, box-shadow .25s ease;
+}
+
+.ai-entry:hover {
+  transform: translateY(-4px) scale(1.03);
+  box-shadow:
+    0 25px 60px rgba(0,0,0,0.35),
+    0 0 30px rgba(113,248,252,0.6);
+}
+
+.ai-entry-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: rgba(255,255,255,0.8);
+
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 26px;
-  font-weight: bold;
-  cursor: pointer;
-  box-shadow: 0 10px 25px rgba(0,0,0,0.25);
-  z-index: 999;
-  transition: transform .2s ease, box-shadow .2s ease;
+
+  font-size: 20px;
 }
 
-.ai-float-btn:hover {
-  transform: translateY(-4px) scale(1.05);
-  box-shadow: 0 15px 35px rgba(0,0,0,0.35);
+.ai-entry-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.1;
 }
 
-body.night .ai-float-btn {
+.ai-entry-title {
+  font-size: 0.95rem;
+  font-weight: 700;
+}
+
+.ai-entry-desc {
+  font-size: 0.75rem;
+  opacity: 0.7;
+}
+
+body.night .ai-entry {
+  background: linear-gradient(135deg, #3EEDE7, #1fbecf);
   color: #000;
+}
+
+/* ===== AI入口组可拖拽 ===== */
+.ai-entry-group {
+  cursor: grab;
+  user-select: none;
+}
+.ai-entry-group.dragging {
+  cursor: grabbing;
+  transition: none !important;
 }
 </style>
 </head>
@@ -944,7 +1035,20 @@ body.night .ai-float-btn {
     });
 </script>
 
-  <script>
+<script>
+/* ===== AI入口过渡动画跳转 ===== */
+document.addEventListener('DOMContentLoaded', () => {
+  const aiBtn = document.getElementById('aiEntry');
+  if (!aiBtn) return;
+
+  aiBtn.addEventListener('click', () => {
+    document.body.classList.add('ai-leaving');
+
+    setTimeout(() => {
+      location.href = 'ai.html';
+    }, 550);
+  });
+});
   let typingToken = 0;
   const i18n = {
     zh: {
@@ -1122,9 +1226,117 @@ body.night .ai-float-btn {
   });
 
   </script>
-</div>
+
+<script>
+  /* ===== AI入口拖拽 + 吸边 ===== */
+(function(){
+  const el = document.querySelector('.ai-entry-group');
+  if (!el) return;
+
+  let isDown = false;
+  let offsetX = 0;
+  let offsetY = 0;
+
+  el.addEventListener('mousedown', (e) => {
+    isDown = true;
+    el.classList.add('dragging');
+
+    const rect = el.getBoundingClientRect();
+    offsetX = e.clientX - rect.left;
+    offsetY = e.clientY - rect.top;
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDown) return;
+
+    let x = e.clientX - offsetX;
+    let y = e.clientY - offsetY;
+
+    const maxX = window.innerWidth - el.offsetWidth;
+    const maxY = window.innerHeight - el.offsetHeight;
+
+    x = Math.max(0, Math.min(x, maxX));
+    y = Math.max(0, Math.min(y, maxY));
+
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.right = 'auto';
+    el.style.bottom = 'auto';
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (!isDown) return;
+    isDown = false;
+    el.classList.remove('dragging');
+
+    // 吸边
+    const rect = el.getBoundingClientRect();
+    const mid = window.innerWidth / 2;
+
+    if (rect.left + rect.width / 2 < mid) {
+      el.style.left = '10px';
+    } else {
+      el.style.left = (window.innerWidth - rect.width - 10) + 'px';
+    }
+  });
+
+  // 移动端支持
+  el.addEventListener('touchstart', (e) => {
+    const t = e.touches[0];
+    isDown = true;
+    el.classList.add('dragging');
+
+    const rect = el.getBoundingClientRect();
+    offsetX = t.clientX - rect.left;
+    offsetY = t.clientY - rect.top;
+  });
+
+  document.addEventListener('touchmove', (e) => {
+    if (!isDown) return;
+    const t = e.touches[0];
+
+    let x = t.clientX - offsetX;
+    let y = t.clientY - offsetY;
+
+    const maxX = window.innerWidth - el.offsetWidth;
+    const maxY = window.innerHeight - el.offsetHeight;
+
+    x = Math.max(0, Math.min(x, maxX));
+    y = Math.max(0, Math.min(y, maxY));
+
+    el.style.left = x + 'px';
+    el.style.top = y + 'px';
+    el.style.right = 'auto';
+    el.style.bottom = 'auto';
+  });
+
+  document.addEventListener('touchend', () => {
+    if (!isDown) return;
+    isDown = false;
+    el.classList.remove('dragging');
+
+    const rect = el.getBoundingClientRect();
+    const mid = window.innerWidth / 2;
+
+    if (rect.left + rect.width / 2 < mid) {
+      el.style.left = '10px';
+    } else {
+      el.style.left = (window.innerWidth - rect.width - 10) + 'px';
+    }
+  });
+})();
+</script>
+  <div class="ai-entry-group" style="position:fixed;right:20px;bottom:20px;z-index:999;">
+    <div class="ai-entry" id="aiEntry">
+      <div class="ai-entry-icon">
+        <img src="p/ailogo.png" alt="AI" class="ai-icon-img">
+      </div>
+      <div class="ai-entry-text">
+        <div class="ai-entry-title">AI 助手</div>
+        <div class="ai-entry-desc">对话 / 编程 / 创作</div>
+      </div>
+    </div>
+  </div>
+
 </body>
-<div class="ai-float-btn" onclick="location.href='ai.html'">
-  🤖
-</div>
 </html>
