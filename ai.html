@@ -2052,8 +2052,10 @@ async function send() {
   const bubble = lastMsg ? lastMsg.querySelector(".bubble") : null;
 
   // 状态切换
-  controller = new AbortController();
-  isStreaming = true;
+  window._isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+controller = window._isMobile ? null : new AbortController();
+isStreaming = true;
 
   let fullText = "";
   // ⭐ 优化：延长超时 + 软超时提示（避免安卓误杀）
@@ -2067,12 +2069,10 @@ async function send() {
   }, 15000);
 
   // ⭐ 仅桌面端才允许硬中断（移动端禁止，避免误报网络问题）
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
   let hardTimeoutId = null;
-  if (!isMobile) {
+  if (!window._isMobile) {
     hardTimeoutId = setTimeout(() => {
-      if (controller) controller.abort();
+      if (controller) controller && controller.abort && controller.abort();
       isStreaming = false;
     }, 40000);
   }
@@ -2103,16 +2103,14 @@ async function send() {
     // --- Non-streaming fetch ---
     console.log("开始 fetch");
     const res = await fetch("https://ai.liuxizekali.workers.dev", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${token}`
-      },
-      body: JSON.stringify({ messages: history }),
-      signal: controller.signal,
-      keepalive: true,
-      mode: "cors"
-    });
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json",
+    "Authorization": `Bearer ${token}`
+  },
+  body: JSON.stringify({ messages: history }),
+  mode: "cors"
+});
     console.log("fetch 已返回", res);
 
     if (!res.ok) {
@@ -2146,9 +2144,7 @@ async function send() {
       const html = marked.parse(fullText);
 
       // ⭐ 检测移动端（避免动画导致渲染失败）
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-      if (isMobile) {
+      if (window._isMobile) {
         // 移动端直接渲染（稳定优先）
         bubble.innerHTML = html;
       } else {
@@ -2293,10 +2289,8 @@ async function send() {
       if (err.name === "AbortError") {
         console.warn("Abort（忽略移动端）");
 
-        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
         // ⭐ 移动端直接忽略 abort（不显示错误）
-        if (isMobile) {
+        if (window._isMobile) {
           return;
         }
 
@@ -2308,11 +2302,20 @@ async function send() {
             '<small style="color:#999;">请求较慢，请稍后</small>';
         }
       } else {
-        console.error(err);
-        if (bubble) {
-          bubble.innerHTML =
-            '<small style="color:#999;">请求异常，请稍后重试</small>';
-        }
+        console.error("真实错误:", err);
+
+// ⭐ 移动端自动重试一次（关键！）
+if (window._isMobile) {
+  console.warn("移动端自动重试一次...");
+  sendingLock = false;
+  setTimeout(() => send(), 500);
+  return;
+}
+
+if (bubble) {
+  bubble.innerHTML =
+    '<small style="color:#999;">请求异常，请稍后重试</small>';
+}
       }
     }
 }
@@ -2331,9 +2334,7 @@ finally {
       const html = marked.parse(fullText);
 
       // ⭐ 检测移动端（避免动画导致渲染失败）
-      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-      if (isMobile) {
+      if (window._isMobile) {
         bubble.innerHTML = html;
       } else {
         const temp = document.createElement("div");
@@ -2403,10 +2404,8 @@ input.addEventListener("keydown", e => {
 
 // ⭐ 移动端优化：不要在切后台时强制中断（会导致“网络问题”误报）
 document.addEventListener("visibilitychange", () => {
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-  if (!isMobile && document.visibilityState === "hidden" && isStreaming && controller) {
-    controller.abort();
+  if (!window._isMobile && document.visibilityState === "hidden" && isStreaming && controller) {
+    controller && controller.abort && controller.abort();
     isStreaming = false;
     sendBtn.innerText = "↑";
   }
