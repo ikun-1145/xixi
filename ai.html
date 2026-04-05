@@ -1281,6 +1281,23 @@ function showLoginPrompt() {
     使用 Google 登录
   </button>
 
+  <div style="margin-top:10px;">
+    <input id="emailInput" placeholder="输入邮箱" style="
+      width:100%;
+      box-sizing:border-box;
+      padding:0.7rem 1rem;
+      border-radius:12px;
+      border:1px solid rgba(0,0,0,0.12);
+      margin-bottom:8px;
+      font-size:14px;
+      outline:none;
+      background:rgba(255,255,255,0.8);
+    ">
+    <button id="emailLoginBtn" class="oauth-btn">
+      发送登录链接
+    </button>
+  </div>
+
   <!-- 隐藏入口 -->
   <div id="adminDot" style="
     width:6px;height:6px;border-radius:50%;
@@ -1334,6 +1351,42 @@ function showLoginPrompt() {
       provider: 'google',
       options: { redirectTo: location.origin + '/oauth-callback.html' }
     });
+  };
+
+  modal.querySelector("#emailLoginBtn").onclick = async () => {
+    const btn = modal.querySelector("#emailLoginBtn");
+    const email = modal.querySelector("#emailInput").value.trim();
+
+    if (!email) {
+      showToast("请输入邮箱");
+      return;
+    }
+
+    // 防止重复点击
+    btn.disabled = true;
+    btn.innerText = "发送中...";
+
+    try {
+      await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          emailRedirectTo: location.origin + '/oauth-callback.html'
+        }
+      });
+
+      showToast("邮件已发送，请检查收件箱或垃圾邮件");
+
+      // 恢复按钮
+      btn.disabled = false;
+      btn.innerText = "发送登录链接";
+
+    } catch (e) {
+      console.error(e);
+      showToast("发送失败，请稍后再试");
+
+      btn.disabled = false;
+      btn.innerText = "发送登录链接";
+    }
   };
 
   // ===== 管理员入口 =====
