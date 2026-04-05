@@ -2137,44 +2137,58 @@ async function send() {
     if (bubble) {
       bubble.style.animation = "fadeInBubble 0.2s ease";
       bubble.style.opacity = "1";
+
       const html = marked.parse(fullText);
 
-      // 简单逐字渐显（只处理纯文本节点）
-      const temp = document.createElement("div");
-      temp.innerHTML = html;
+      // ⭐ 检测移动端（避免动画导致渲染失败）
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-      function wrapText(node) {
-        if (node.nodeType === 3) {
-          const frag = document.createDocumentFragment();
-          [...node.textContent].forEach((ch, i) => {
-            const span = document.createElement("span");
-            span.textContent = ch;
-            span.style.animationDelay = i * 0.015 + "s";
-            frag.appendChild(span);
-          });
-          return frag;
+      if (isMobile) {
+        // 移动端直接渲染（稳定优先）
+        bubble.innerHTML = html;
+      } else {
+        // 桌面端保留动画
+        const temp = document.createElement("div");
+        temp.innerHTML = html;
+
+        function wrapText(node) {
+          if (node.nodeType === 3) {
+            const frag = document.createDocumentFragment();
+            [...node.textContent].forEach((ch, i) => {
+              const span = document.createElement("span");
+              span.textContent = ch;
+              span.style.animationDelay = i * 0.015 + "s";
+              frag.appendChild(span);
+            });
+            return frag;
+          }
+
+          if (node.nodeType === 1) {
+            const clone = node.cloneNode(false);
+            node.childNodes.forEach(child => {
+              clone.appendChild(wrapText(child));
+            });
+            return clone;
+          }
+
+          return node;
         }
 
-        if (node.nodeType === 1) {
-          const clone = node.cloneNode(false);
-          node.childNodes.forEach(child => {
-            clone.appendChild(wrapText(child));
-          });
-          return clone;
-        }
+        const animated = document.createElement("div");
+        animated.className = "typing";
 
-        return node;
+        temp.childNodes.forEach(n => {
+          animated.appendChild(wrapText(n));
+        });
+
+        bubble.innerHTML = "";
+        bubble.appendChild(animated);
       }
 
-      const animated = document.createElement("div");
-      animated.className = "typing";
-
-      temp.childNodes.forEach(n => {
-        animated.appendChild(wrapText(n));
-      });
-
-      bubble.innerHTML = "";
-      bubble.appendChild(animated);
+      // ⭐ 兜底（防止某些情况内容为空）
+      if (!bubble.innerHTML.trim()) {
+        bubble.innerText = fullText || "返回为空，请重试";
+      }
 
       const regenWrap = document.createElement("div");
       regenWrap.className = "regen";
@@ -2304,42 +2318,48 @@ finally {
     if (bubble && fullText) {
       const html = marked.parse(fullText);
 
-      // 简单逐字渐显（只处理纯文本节点）
-      const temp = document.createElement("div");
-      temp.innerHTML = html;
+      // ⭐ 检测移动端（避免动画导致渲染失败）
+      const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
-      function wrapText(node) {
-        if (node.nodeType === 3) {
-          const frag = document.createDocumentFragment();
-          [...node.textContent].forEach((ch, i) => {
-            const span = document.createElement("span");
-            span.textContent = ch;
-            span.style.animationDelay = i * 0.015 + "s";
-            frag.appendChild(span);
-          });
-          return frag;
+      if (isMobile) {
+        bubble.innerHTML = html;
+      } else {
+        const temp = document.createElement("div");
+        temp.innerHTML = html;
+
+        function wrapText(node) {
+          if (node.nodeType === 3) {
+            const frag = document.createDocumentFragment();
+            [...node.textContent].forEach((ch, i) => {
+              const span = document.createElement("span");
+              span.textContent = ch;
+              span.style.animationDelay = i * 0.015 + "s";
+              frag.appendChild(span);
+            });
+            return frag;
+          }
+          if (node.nodeType === 1) {
+            const clone = node.cloneNode(false);
+            node.childNodes.forEach(child => {
+              clone.appendChild(wrapText(child));
+            });
+            return clone;
+          }
+          return node;
         }
-
-        if (node.nodeType === 1) {
-          const clone = node.cloneNode(false);
-          node.childNodes.forEach(child => {
-            clone.appendChild(wrapText(child));
-          });
-          return clone;
-        }
-
-        return node;
+        const animated = document.createElement("div");
+        animated.className = "typing";
+        temp.childNodes.forEach(n => {
+          animated.appendChild(wrapText(n));
+        });
+        bubble.innerHTML = "";
+        bubble.appendChild(animated);
       }
 
-      const animated = document.createElement("div");
-      animated.className = "typing";
-
-      temp.childNodes.forEach(n => {
-        animated.appendChild(wrapText(n));
-      });
-
-      bubble.innerHTML = "";
-      bubble.appendChild(animated);
+      // ⭐ 兜底（防止某些情况内容为空）
+      if (!bubble.innerHTML.trim()) {
+        bubble.innerText = fullText || "返回为空，请重试";
+      }
 
       const regenWrap = document.createElement("div");
       regenWrap.className = "regen";
@@ -2369,12 +2389,21 @@ input.addEventListener("keydown", e => {
   }
 });
 
-/* 页面切走自动终止 */
+// ⭐ 移动端优化：不要在切后台时强制中断（会导致“网络问题”误报）
 document.addEventListener("visibilitychange", () => {
-  if (document.visibilityState === "hidden" && isStreaming && controller) {
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  if (!isMobile && document.visibilityState === "hidden" && isStreaming && controller) {
     controller.abort();
     isStreaming = false;
     sendBtn.innerText = "↑";
+  }
+});
+
+// ⭐ 额外兜底：避免 fetch 被误判为失败
+window.addEventListener("pageshow", () => {
+  if (controller && isStreaming) {
+    console.log("页面恢复，不中断请求");
   }
 });
 window.addEventListener("load", () => {
