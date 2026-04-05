@@ -1011,7 +1011,66 @@ chat.addEventListener("drop", (e) => {
   const files = Array.from(e.dataTransfer.files);
   files.forEach(handleFile);
 });
+function startActivationPolling() {
+  let count = 0;
 
+  const timer = setInterval(async () => {
+    count++;
+
+    // 最多轮询 60 秒
+    if (count > 20) {
+      clearInterval(timer);
+      showToast("未检测到支付，请确认是否完成支付");
+      return;
+    }
+
+    if (!session?.user) return;
+
+    const { data } = await supabase
+      .from("activation_codes")
+      .select("code")
+      .eq("used_by", session.user.id)
+      .maybeSingle();
+
+    if (data) {
+      isActivated = true;
+
+      const hintEl = document.getElementById("usageHint");
+      if (hintEl) hintEl.innerText = "已激活 ∞";
+
+      showToast("支付成功 🎉");
+
+      // ⭐ 自动关闭支付弹窗
+      const payModal = document.getElementById("payModal");
+      if (payModal) {
+        payModal.classList.remove("active");
+        setTimeout(() => payModal.remove(), 300);
+      }
+
+      clearInterval(timer);
+    }
+  }, 3000);
+}
+
+function showToast(text) {
+  const toast = document.createElement("div");
+  toast.innerText = text;
+  toast.style.cssText = `
+    position:fixed;
+    top:20px;
+    left:50%;
+    transform:translateX(-50%);
+    background:#22d3ee;
+    color:#00323a;
+    padding:8px 14px;
+    border-radius:10px;
+    font-size:13px;
+    box-shadow:0 8px 20px rgba(0,0,0,0.15);
+    z-index:9999;
+  `;
+  document.body.appendChild(toast);
+  setTimeout(() => toast.remove(), 2000);
+}
 // ===== 统一文件处理函数 =====
 function handleFile(file) {
   pendingFiles.push(file);
@@ -1312,11 +1371,11 @@ function showLimitModal() {
       <h2 style="margin-bottom:0.5rem;font-size:1.2rem;">今日次数已用完 😢</h2>
       <p style="color:#666;font-size:13px;margin-bottom:1.2rem;">
         每天限免 20 次，明天自动重置。<br>
-        捐赠后可获得激活码，永久无限使用。
+        支付 10 元可永久解锁无限使用。
       </p>
 
-      <button id="gotoDonateBtn" class="oauth-btn" style="margin-bottom:0.6rem;">
-        前往捐赠页面
+      <button id="payBtn" class="oauth-btn" style="margin-bottom:0.6rem;">
+        支付 10 元（永久）
       </button>
 
       <button id="enterCodeBtn" style="
@@ -1343,8 +1402,8 @@ function showLimitModal() {
   modal.querySelector(".close").onclick = closeModal;
   modal.onclick = e => { if (e.target === modal) closeModal(); };
 
-  modal.querySelector("#gotoDonateBtn").onclick = () => {
-    window.open("donate.html", "_blank");
+  modal.querySelector("#payBtn").onclick = () => {
+    showPayModal();
   };
 
   modal.querySelector("#enterCodeBtn").onclick = () => {
@@ -1378,6 +1437,9 @@ function showActivationModal() {
       <button id="submitCodeBtn" class="oauth-btn">
         激活
       </button>
+      <p style="font-size:12px;color:#666;margin-top:8px;">
+        付款成功后请截图发送邮件至 sunlandccc@outlook.com
+      </p>
     </div>
   `;
 
@@ -1394,9 +1456,39 @@ function showActivationModal() {
   modal.querySelector("#submitCodeBtn").onclick = async () => {
     const code = modal.querySelector("#codeInput").value.trim().toUpperCase();
     const msg = modal.querySelector("#codeMsg");
+    const btn = modal.querySelector("#submitCodeBtn");
+    if (btn.disabled) return; // 防止重复点击
+    btn.disabled = true;
+    btn.innerText = "激活中...";
+
+    // ⭐ 登录校验（防止未登录报错）
+    if (!session || !session.user) {
+      msg.innerText = "请先登录";
+      msg.style.color = "#ef4444";
+      btn.disabled = false;
+      btn.innerText = "激活";
+      return;
+    }
+
+    // ⭐ 检查当前用户是否已经激活过
+    const { data: exist } = await supabase
+      .from("activation_codes")
+      .select("code")
+      .eq("used_by", session.user.id)
+      .maybeSingle();
+
+    if (exist) {
+      msg.innerText = "你已经激活过了";
+      msg.style.color = "#ef4444";
+      btn.disabled = false;
+      btn.innerText = "激活";
+      return;
+    }
 
     if (!code) {
       msg.innerText = "请输入激活码";
+      btn.disabled = false;
+      btn.innerText = "激活";
       return;
     }
 
@@ -1412,6 +1504,8 @@ function showActivationModal() {
     if (!data) {
       msg.innerText = "激活码无效";
       msg.style.color = "#ef4444";
+      btn.disabled = false;
+      btn.innerText = "激活";
       return;
     }
 
@@ -1420,24 +1514,63 @@ function showActivationModal() {
         msg.innerText = "已绑定 ✓";
         msg.style.color = "#22c55e";
         isActivated = true;
+        btn.disabled = false;
+        btn.innerText = "激活";
         setTimeout(closeModal, 1000);
       } else {
         msg.innerText = "已被他人使用";
         msg.style.color = "#ef4444";
+        btn.disabled = false;
+        btn.innerText = "激活";
       }
       return;
     }
 
-    await supabase
+    // ====== 新的 update 代码块（带 error 和唯一约束处理）======
+    const { data: updated, error: updateError } = await supabase
       .from("activation_codes")
       .update({
         used_by: session.user.id,
         used_at: new Date().toISOString()
       })
       .eq("code", code)
-      .is("used_by", null);
+      .is("used_by", null)
+      .select();
+
+    // ⭐ 数据库报错处理（唯一约束等）
+    if (updateError) {
+      if (
+        updateError.message.includes("duplicate key") ||
+        updateError.message.includes("unique")
+      ) {
+        msg.innerText = "你已经激活过了";
+        msg.style.color = "#ef4444";
+        btn.disabled = false;
+        btn.innerText = "激活";
+        return;
+      }
+
+      msg.innerText = "激活失败，请稍后再试";
+      msg.style.color = "#ef4444";
+      console.error(updateError);
+      btn.disabled = false;
+      btn.innerText = "激活";
+      return;
+    }
+
+    // ⭐ 没有更新成功（可能被抢先使用）
+    if (!updated || updated.length === 0) {
+      msg.innerText = "激活失败，可能已被使用";
+      msg.style.color = "#ef4444";
+      btn.disabled = false;
+      btn.innerText = "激活";
+      return;
+    }
 
     isActivated = true;
+
+    // 3) 状态同步
+    await checkActivation();
 
     msg.innerText = "激活成功 🎉";
     msg.style.color = "#22c55e";
@@ -1445,8 +1578,54 @@ function showActivationModal() {
     const hintEl = document.getElementById("usageHint");
     if (hintEl) hintEl.innerText = "已激活 ∞";
 
+    btn.innerText = "已激活 ✓";
     setTimeout(closeModal, 1200);
   };
+}
+
+function showPayModal() {
+  if (document.getElementById("payModal")) return;
+
+  const modal = document.createElement("div");
+  modal.id = "payModal";
+  modal.className = "modal active";
+
+  modal.innerHTML = `
+    <div class="modal-content">
+      <span class="close">×</span>
+      <h2 style="margin-bottom:1rem;">扫码支付 10 元</h2>
+
+      <div style="display:flex;gap:16px;justify-content:center;margin:16px 0;">
+        <div style="text-align:center;">
+          <img src="p/ten_wx.webp" style="width:140px;border-radius:12px;">
+          <div style="font-size:12px;color:#666;margin-top:6px;">微信</div>
+        </div>
+
+        <div style="text-align:center;">
+          <img src="p/ten_zfb.webp" style="width:140px;border-radius:12px;">
+          <div style="font-size:12px;color:#666;margin-top:6px;">支付宝</div>
+        </div>
+      </div>
+
+      <p style="font-size:12px;color:#666;line-height:1.5;">
+        付款后请截图发送至：<br>
+        <b>sunlandccc@outlook.com</b>
+      </p>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  // 改为展示二维码收款
+  const content = modal.querySelector(".modal-content");
+
+  // 重新绑定关闭事件
+  function closeModal() {
+    modal.classList.remove("active");
+    setTimeout(() => modal.remove(), 300);
+  }
+  content.querySelector(".close").onclick = closeModal;
+  modal.onclick = e => { if (e.target === modal) closeModal(); };
 }
 
 // 页面加载时检查登录
@@ -1771,6 +1950,7 @@ async function send() {
   }
 
   if (sendingLock) return; // 防重复触发
+  console.log("发送锁状态:", sendingLock);
   sendingLock = true; // ⭐ 提前加锁
 
   // ===== 每日限额检查 =====
@@ -1872,11 +2052,21 @@ async function send() {
   isStreaming = true;
 
   let fullText = "";
-  // 超时保护（20秒）
+  // ⭐ 优化：延长超时 + 软超时提示（避免安卓误杀）
+  let softTimeoutShown = false;
+
   const timeoutId = setTimeout(() => {
+    if (!softTimeoutShown && bubble && !fullText) {
+      bubble.innerHTML = '<small style="color:#999;">响应较慢，请稍等…</small>';
+      softTimeoutShown = true;
+    }
+  }, 15000);
+
+  // 硬超时（40秒才真正中断）
+  const hardTimeoutId = setTimeout(() => {
     if (controller) controller.abort();
     isStreaming = false;
-  }, 20000);
+  }, 40000);
   try {
     console.log("准备发送请求", { session, history });
     // ⭐ 每次发送时实时获取最新 session（避免 token 失效/为空）
@@ -2068,16 +2258,25 @@ async function send() {
       el.parentElement.appendChild(btn);
     });
     clearTimeout(timeoutId);
+    clearTimeout(hardTimeoutId);
   } catch (err) {
     clearTimeout(timeoutId);
+    clearTimeout(hardTimeoutId);
     if (fullText) {
       console.warn("stream end (ignored):", err);
     } else {
       if (err.name === "AbortError") {
+        // ⭐ 安卓会误触发中断，这里改为静默处理
+        console.warn("请求被中断（可能是安卓兼容问题）");
+
+        if (bubble && fullText) {
+          // 已经有内容就正常显示，不提示错误
+          return;
+        }
+
         if (bubble) {
           bubble.innerHTML =
-            bubble.innerHTML.replace('<span class="cursor"></span>', '') +
-            '<br><small style="color:#999;">已停止</small>';
+            '<small style="color:#999;">请求中断，请重试</small>';
         }
       } else {
         console.error(err);
@@ -2090,10 +2289,12 @@ async function send() {
 }
 finally {
     clearTimeout(timeoutId);
+    clearTimeout(hardTimeoutId);
     sendingLock = false;
     document.body.classList.remove("thinking-mode");
     input.readOnly = false;
     input.focus();
+    input.style.height = "auto";
     isStreaming = false;
     controller = null;
     // 确保最终不残留光标
