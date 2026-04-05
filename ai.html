@@ -1879,11 +1879,25 @@ async function send() {
   }, 20000);
   try {
     console.log("准备发送请求", { session, history });
-    // ⭐ 必须登录才有 token
-    let token = session.access_token;
+    // ⭐ 每次发送时实时获取最新 session（避免 token 失效/为空）
+    const { data: fresh } = await supabase.auth.getSession();
+    const currentSession = fresh?.session;
+
+    console.log("实时 session:", currentSession);
+
+    if (!currentSession) {
+      alert("登录状态失效，请重新登录");
+      showLoginPrompt();
+      sendingLock = false;
+      return;
+    }
+
+    let token = currentSession.access_token;
+
+    console.log("实时 token:", token);
 
     // ⭐ 管理员直通
-    if (session.user.id === "admin") {
+    if (currentSession.user?.id === "admin") {
       token = "xixi_9f3k2kfj29dkfj29dk_2026_secure";
     }
 
