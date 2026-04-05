@@ -184,16 +184,15 @@ body.night::before {
 }
 /* ===== Sidebar Overlay ===== */
 #sidebarOverlay {
-  pointer-events: none;
-  display: none;   /* ❗关键 */
+  display: none;
   position: fixed;
   inset: 0;
   background: rgba(0,0,0,0.3);
   backdrop-filter: blur(2px);
   opacity: 0;
-  pointer-events: none;
   transition: opacity .25s ease;
-  z-index: 150; /* 低于 header，避免遮挡菜单按钮 */
+  z-index: 150;
+  pointer-events: none;
 }
 #sidebar {
   will-change: transform;
@@ -405,6 +404,7 @@ input, textarea {
 }
 /* ===== 按钮 ===== */
 button {
+pointer-events: auto;
   border: none;
   background: #22d3ee;
   border-radius: 50%;
@@ -1638,14 +1638,28 @@ function showPayModal() {
 
 // 页面加载时检查登录
 await checkLogin(); // 确保 session 初始化完成再允许发送
-startRealtime();
+// ⭐ 延迟启动 realtime，避免初始化顺序问题
+setTimeout(() => {
+  try {
+    startRealtime();
+  } catch (e) {
+    console.warn("realtime 延迟启动失败:", e);
+  }
+}, 0);
+renderUser(); // ⭐ 兜底：强制渲染登录按钮
 // 监听登录状态变化（防止刷新/登录后不同步）
 supabase.auth.onAuthStateChange(async (_event, newSession) => {
   console.log("Auth变化:", newSession);
 
   if (newSession) {
     stopRealtime();
-    startRealtime();
+    setTimeout(() => {
+      try {
+        startRealtime();
+      } catch (e) {
+        console.warn("realtime 延迟启动失败:", e);
+      }
+    }, 0);
   } else {
     stopRealtime();
   }
@@ -1685,19 +1699,24 @@ setTimeout(async () => {
 let controller = null;
 let sendingLock = false;
 let isStreaming = false;
+let realtimeSub = null;
 const sendBtn = document.getElementById("sendBtn");
 sendBtn.type = "button"; // 防止被当成提交按钮
 sendBtn.innerText = "↑";
 sendBtn.onclick = (e) => {
   e.preventDefault();
-  e.stopPropagation();
-
-  // 防止移动端 click + touch 重复触发
-  if (sendingLock) return;
 
   console.log("sendBtn clicked");
+
+  if (sendingLock) return;
   send();
 };
+
+// ⭐ 兜底（防止 click 被吞）
+sendBtn.addEventListener("pointerup", () => {
+  console.log("pointerup fallback");
+  if (!sendingLock) send();
+});
 let lastUserMessage = null;
 
 let history = [
@@ -1824,7 +1843,7 @@ async function syncToCloud() {
 }
 let currentId = null;
 // ===== Realtime 同步 =====
-let realtimeSub = null;
+
 
 function startRealtime() {
   if (!session || !session.user) return;
@@ -1920,6 +1939,8 @@ function createNewChat() {
     updatedAt: Date.now()
   };
 
+  // ⭐ 新对话永远置顶（并避免被排序打乱）
+  conversations = conversations.filter(c => c.id !== id);
   conversations.unshift(newChat);
   currentId = id;
   history = [...newChat.history];
@@ -2102,16 +2123,22 @@ async function generateTitleFromAI(userMsg, aiMsg) {
 }
 
 async function send() {
+  if (sendingLock) {
+    console.warn("发送被锁定，跳过");
+    return;
+  }
   
 
   // ===== 状态保护（防锁死）=====
-  if (!sessionReady) return;
+  if (!sessionReady) {
+    console.warn("session 未就绪，尝试补偿加载");
+    await checkLogin();
+  }
 
   if (!session || !session.user) {
     const old = document.getElementById("loginModal");
     if (old) old.remove();
     showLoginPrompt();
-    sendingLock = false;
     return;
   }
 
@@ -2175,12 +2202,10 @@ async function send() {
 
   // 空内容直接退出（但不锁死）
   if (!text) {
-    sendingLock = false;
     return;
   }
 
   // ===== 真正开始发送时再加锁（避免提前锁死）
-  if (sendingLock) return;
   sendingLock = true;
 
   document.body.classList.add("thinking-mode");
@@ -2382,13 +2407,12 @@ isStreaming = true;
       if (c) {
         c.history = [...history];
         c.updatedAt = Date.now();
-        // ⭐ 排序：当前对话优先，但保留“空新对话”在最前
+        // ⭐ 保证“空新对话”始终在最顶部
         const emptyChat = conversations.find(c => !c.history || c.history.length <= 1);
 
         conversations.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 
-        if (emptyChat && emptyChat.id !== currentId) {
-          // 把空对话固定在第一个
+        if (emptyChat) {
           conversations = conversations.filter(c => c.id !== emptyChat.id);
           conversations.unshift(emptyChat);
         }
@@ -2538,69 +2562,29 @@ finally {
     input.style.height = "auto";
     isStreaming = false;
     controller = null;
-    // 确保最终不残留光标
+    window._retryOnce = false;
+
+    // ⭐ 不再重复渲染 bubble，只绑定 regen 按钮事件
     if (bubble && fullText) {
-      const html = marked.parse(fullText);
-
-      // ⭐ 检测移动端（避免动画导致渲染失败）
-      if (window._isMobile) {
-        bubble.innerHTML = html;
-      } else {
-        const temp = document.createElement("div");
-        temp.innerHTML = html;
-
-        function wrapText(node) {
-          if (node.nodeType === 3) {
-            const frag = document.createDocumentFragment();
-            [...node.textContent].forEach((ch, i) => {
-              const span = document.createElement("span");
-              span.textContent = ch;
-              span.style.animationDelay = i * 0.015 + "s";
-              frag.appendChild(span);
-            });
-            return frag;
-          }
-          if (node.nodeType === 1) {
-            const clone = node.cloneNode(false);
-            node.childNodes.forEach(child => {
-              clone.appendChild(wrapText(child));
-            });
-            return clone;
-          }
-          return node;
-        }
-        const animated = document.createElement("div");
-        animated.className = "typing";
-        temp.childNodes.forEach(n => {
-          animated.appendChild(wrapText(n));
-        });
-        bubble.innerHTML = "";
-        bubble.appendChild(animated);
-      }
-
-      // ⭐ 兜底（防止某些情况内容为空）
-      if (!bubble.innerHTML.trim()) {
-        bubble.innerText = fullText || "返回为空，请重试";
-      }
-
-
       const regenBtn = bubble.querySelector(".regen-btn");
-if (regenBtn) {
-  regenBtn.onclick = () => {
-    const msgDiv = bubble.closest(".message");
-    if (msgDiv) msgDiv.remove();
+      if (regenBtn) {
+        regenBtn.onclick = () => {
+          const msgDiv = bubble.closest(".message");
+          if (msgDiv) msgDiv.remove();
 
-    if (history.length && history[history.length - 1].role === "assistant") {
-      history.pop();
-    }
+          if (history.length && history[history.length - 1].role === "assistant") {
+            history.pop();
+          }
 
-    if (!sendingLock) {
-      input.value = lastUserMessage;
-      send();
+          if (!sendingLock) {
+            input.value = lastUserMessage;
+            send();
+          }
+        };
+      }
     }
-  };
 }
-}
+
 }
 
 input.addEventListener("keydown", e => {
@@ -2617,7 +2601,6 @@ window.addEventListener("load", () => {
 function toggleUserMenu(e) {
   e.stopPropagation();
 
-  // 已存在就关闭
   const old = document.getElementById("userMenu");
   if (old) {
     old.remove();
@@ -2636,7 +2619,6 @@ function toggleUserMenu(e) {
   menu.style.boxShadow = "0 10px 30px rgba(0,0,0,0.15)";
   menu.style.padding = "8px";
   menu.style.zIndex = "999";
-  menu.style.animation = "fadeInBubble 0.2s ease";
 
   const user = session?.user;
 
@@ -2652,7 +2634,6 @@ function toggleUserMenu(e) {
 
   document.body.appendChild(menu);
 
-  // 退出
   menu.querySelector("#logoutItem").onclick = async () => {
     stopRealtime();
     menu.remove();
@@ -2663,12 +2644,10 @@ function toggleUserMenu(e) {
       console.warn("退出失败:", e);
     }
 
-    // ⭐ 清空本地聊天记录
     conversations = [];
     localStorage.removeItem("conversations");
     currentId = null;
 
-    // 清空界面
     chatInner.innerHTML = "";
     const welcome = document.createElement("div");
     welcome.id = "welcome";
@@ -2678,7 +2657,6 @@ function toggleUserMenu(e) {
 
     renderChatList();
 
-    // 重置状态
     session = null;
     isActivated = false;
     document.getElementById("usageHint").innerText = "";
@@ -2687,7 +2665,6 @@ function toggleUserMenu(e) {
     showLoginPrompt();
   };
 
-  // 点击外部关闭
   setTimeout(() => {
     document.addEventListener("click", closeMenu);
   }, 0);
@@ -2785,8 +2762,15 @@ setInterval(() => {
     syncFromCloud();
   }
 }, 15000);
-// ===== Unified visibilitychange listener =====
-}
+
+// ⭐ 再兜底一次（防止前面报错导致未执行）
+window.addEventListener("DOMContentLoaded", () => {
+  try {
+    renderUser();
+  } catch (e) {
+    console.warn("renderUser fallback error:", e);
+  }
+});
 </script>
 
 <button id="scrollBottomBtn" style="
