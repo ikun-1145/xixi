@@ -2066,11 +2066,16 @@ async function send() {
     }
   }, 15000);
 
-  // 硬超时（40秒才真正中断）
-  const hardTimeoutId = setTimeout(() => {
-    if (controller) controller.abort();
-    isStreaming = false;
-  }, 40000);
+  // ⭐ 仅桌面端才允许硬中断（移动端禁止，避免误报网络问题）
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+  let hardTimeoutId = null;
+  if (!isMobile) {
+    hardTimeoutId = setTimeout(() => {
+      if (controller) controller.abort();
+      isStreaming = false;
+    }, 40000);
+  }
   try {
     console.log("准备发送请求", { session, history });
     // ⭐ 每次发送时实时获取最新 session（避免 token 失效/为空）
@@ -2286,14 +2291,21 @@ async function send() {
       console.warn("stream end (ignored):", err);
     } else {
       if (err.name === "AbortError") {
-        console.warn("请求被中断（移动端兼容）");
+        console.warn("Abort（忽略移动端）");
 
-        // 如果已经有内容，不提示错误
+        const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+        // ⭐ 移动端直接忽略 abort（不显示错误）
+        if (isMobile) {
+          return;
+        }
+
+        // 有内容就不提示
         if (bubble && fullText) return;
 
         if (bubble) {
           bubble.innerHTML =
-            '<small style="color:#999;">网络不稳定，请重试</small>';
+            '<small style="color:#999;">请求较慢，请稍后</small>';
         }
       } else {
         console.error(err);
