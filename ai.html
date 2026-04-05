@@ -258,7 +258,7 @@ body.night::before {
   width: 100%;
   max-width: 680px;   /* ⭐ 关键：中间列 */
   margin: 0 auto;
-
+  transition: opacity .2s ease;
   padding: 0 16px;
 
   display: flex;
@@ -914,6 +914,13 @@ body.night #uploadPreview {
 
 #uploadPreview::-webkit-scrollbar {
   display: none;
+}
+#chatList div:hover .delete-chat {
+  opacity: 0.7;
+}
+
+#chatList div:hover .delete-chat:hover {
+  opacity: 1;
 }
 </style>
 
@@ -1630,9 +1637,15 @@ function showPayModal() {
 
 // 页面加载时检查登录
 await checkLogin(); // 确保 session 初始化完成再允许发送
-
+startRealtime();
 // 监听登录状态变化（防止刷新/登录后不同步）
 supabase.auth.onAuthStateChange(async (_event, newSession) => {
+  if (newSession) {
+  stopRealtime();
+  startRealtime();
+} else {
+  stopRealtime();
+}
   if (session?.user?.id === "admin") return; // ⭐ 核心保护
   session = newSession;
   sessionReady = true;
@@ -1745,10 +1758,21 @@ conversations.forEach(local => {
 conversations = Array.from(map.values()).sort(
   (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)
 );
+// ⭐ 防止当前会话丢失
+if (currentId) {
+  const stillExists = conversations.find(c => c.id === currentId);
+  if (!stillExists && conversations.length) {
+    currentId = conversations[0].id;
+  }
+}
 
       localStorage.setItem("conversations", JSON.stringify(conversations));
       renderChatList();
-      if (conversations.length) loadChat(conversations[0].id);
+
+      // ⭐ 只在当前没有会话时才自动加载（防止切走当前对话）
+      if (!currentId && conversations.length) {
+        loadChat(conversations[0].id);
+      }
     }
   } catch (e) {
     console.warn("云端拉取失败:", e);
@@ -1759,7 +1783,7 @@ async function syncToCloud() {
   if (!session || !session.user) return;
 
   try {
-    if (!conversations) return;
+    if (!conversations || !conversations.length) return;
 
     await supabase
       .from("conversations")
@@ -1774,12 +1798,83 @@ async function syncToCloud() {
   }
 }
 let currentId = null;
+// ===== Realtime 同步 =====
+let realtimeSub = null;
 
+function startRealtime() {
+  if (!session || !session.user) return;
+  if (realtimeSub) return;
+
+  realtimeSub = supabase
+    .channel('conversations-' + session.user.id)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'conversations',
+        filter: `user_id=eq.${session.user.id}`
+      },
+      (payload) => {
+        console.log("Realtime:", payload);
+
+        const cloudData = payload.new?.data;
+        if (!cloudData) return;
+
+        const map = new Map();
+
+        // 云端优先
+        cloudData.forEach(c => map.set(c.id, c));
+
+        // 本地合并
+        conversations.forEach(local => {
+          const cloud = map.get(local.id);
+
+          if (!cloud) {
+            map.set(local.id, local);
+          } else {
+            const localTime = local.updatedAt || 0;
+            const cloudTime = cloud.updatedAt || 0;
+
+            if (localTime >= cloudTime) {
+              map.set(local.id, local);
+            }
+          }
+        });
+
+        conversations = Array.from(map.values()).sort(
+          (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)
+        );
+
+        localStorage.setItem("conversations", JSON.stringify(conversations));
+        renderChatList();
+
+        // 如果当前对话存在 → 刷新内容
+        if (currentId) {
+          const current = conversations.find(c => c.id === currentId);
+          if (current) {
+            history = JSON.parse(JSON.stringify(current.history));
+          }
+        }
+      }
+    )
+    .subscribe();
+}
+
+function stopRealtime() {
+  if (realtimeSub) {
+    supabase.removeChannel(realtimeSub);
+    realtimeSub = null;
+  }
+}
 function saveConversations() {
   localStorage.setItem("conversations", JSON.stringify(conversations));
 
+  // ⭐ 防抖同步（减少请求）
   clearTimeout(syncTimer);
-  syncTimer = setTimeout(syncToCloud, 800);
+  syncTimer = setTimeout(() => {
+    syncToCloud();
+  }, 600);
 }
 
 function createNewChat() {
@@ -1825,7 +1920,8 @@ function renderChatList() {
     item.innerHTML = `
       <div style="display:flex;justify-content:space-between;align-items:center;gap:6px;">
         <span style="flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${c.title}</span>
-        <span class="delete-chat" style="color:#ef4444;font-size:12px;cursor:pointer;opacity:0.6;">✕</span>
+        <span class="delete-chat" style="color:#ef4444;font-size:12px;cursor:pointer;opacity:0;
+transition:opacity .2s ease;">✕</span>
       </div>
     `;
     if (c.id === currentId) {
@@ -1892,7 +1988,14 @@ function loadChat(id) {
 
   currentId = id;
   history = JSON.parse(JSON.stringify(c.history));
+  chatInner.style.opacity = "0";
+
+setTimeout(() => {
   chatInner.innerHTML = "";
+
+
+  chatInner.style.opacity = "1";
+}, 120);
   const welcome = document.getElementById("welcome");
   if (welcome) welcome.remove();
 
@@ -2290,22 +2393,27 @@ isStreaming = true;
               let i = 0;
               const finalTitle = title;
 
-              const revealTimer = setInterval(() => {
-                if (i >= finalTitle.length) {
-                  clearInterval(revealTimer);
-                  return;
-                }
+              chat.title = finalTitle;
+renderChatList();
 
-                chat.title = finalTitle.slice(0, i + 1);
-                renderChatList();
+setTimeout(() => {
+  const items = document.querySelectorAll("#chatList div span:first-child");
 
-                i++;
+  items.forEach(el => {
+    if (el.innerText === finalTitle) {
+      el.style.opacity = "0";
+      el.style.transform = "translateY(4px)";
+      el.style.transition = "all .25s ease";
 
-                if (i >= finalTitle.length) {
-                  clearInterval(revealTimer);
-                  chat._autoTitle = false;
-                }
-              }, 40);
+      requestAnimationFrame(() => {
+        el.style.opacity = "1";
+        el.style.transform = "translateY(0)";
+      });
+    }
+  });
+}, 0);
+
+chat._autoTitle = false;
               chat.updatedAt = Date.now(); // ⭐补上
               conversations.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
               saveConversations();
@@ -2471,21 +2579,6 @@ input.addEventListener("keydown", e => {
   }
 });
 
-// ⭐ 移动端优化：不要在切后台时强制中断（会导致“网络问题”误报）
-document.addEventListener("visibilitychange", () => {
-  if (!window._isMobile && document.visibilityState === "hidden" && isStreaming && controller) {
-    controller && controller.abort && controller.abort();
-    isStreaming = false;
-    sendBtn.innerText = "↑";
-  }
-});
-
-// ⭐ 额外兜底：避免 fetch 被误判为失败
-window.addEventListener("pageshow", () => {
-  if (controller && isStreaming) {
-    console.log("页面恢复，不中断请求");
-  }
-});
 window.addEventListener("load", () => {
   input.focus();
 });
@@ -2530,6 +2623,7 @@ function toggleUserMenu(e) {
 
   // 退出
   menu.querySelector("#logoutItem").onclick = async () => {
+    stopRealtime();
     menu.remove();
 
     try {
@@ -2648,6 +2742,31 @@ if (scrollBtn) {
     chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
   };
 }
+// ⭐ 页面获得焦点 → 同步（最重要）
+window.addEventListener("focus", () => {
+  syncFromCloud();
+});
+
+
+// ⭐ 定时兜底同步
+setInterval(() => {
+  if (session && session.user) {
+    syncFromCloud();
+  }
+}, 15000);
+// ===== Unified visibilitychange listener =====
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") {
+    if (!window._isMobile && isStreaming && controller) {
+      controller.abort();
+      isStreaming = false;
+    }
+  }
+
+  if (document.visibilityState === "visible") {
+    syncFromCloud();
+  }
+});
 </script>
 
 <button id="scrollBottomBtn" style="
@@ -2671,6 +2790,7 @@ if (scrollBtn) {
 ">↓</button>
   </div>
  </body>
+
 
 
 
