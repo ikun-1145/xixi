@@ -2080,17 +2080,21 @@ async function generateTitleFromAI(userMsg, aiMsg) {
 }
 
 async function send() {
+  
+
+  // ===== 状态保护（防锁死）=====
+  if (!sessionReady) return;
+
   if (!session || !session.user) {
-    console.warn("未登录，强制弹登录");
     const old = document.getElementById("loginModal");
-    if (old) old.remove();  // ⭐ 防残留
+    if (old) old.remove();
     showLoginPrompt();
+    sendingLock = false;
     return;
   }
 
-  if (sendingLock) return; // 防重复触发
-  console.log("发送锁状态:", sendingLock);
-  sendingLock = true; // ⭐ 提前加锁
+  if (sendingLock) return;
+  sendingLock = true;
 
   // ===== 每日限额检查 =====
   const today = new Date().toISOString().slice(0, 10);
@@ -2155,7 +2159,6 @@ async function send() {
     return;
   }
 
-  sendingLock = true;
   document.body.classList.add("thinking-mode");
   input.readOnly = true;
   const welcome = document.getElementById("welcome");
