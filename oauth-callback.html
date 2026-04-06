@@ -12,6 +12,9 @@
     // 关键：让 Supabase 读取 URL hash 并写入 session
     await supabase.auth.getSession();
 
+    // ⭐ 等待 Supabase 完成 session 写入（防止卡在本页）
+    await new Promise(resolve => setTimeout(resolve, 300));
+
     // ⭐ 优先使用 URL 参数（更可靠）
     const params = new URLSearchParams(location.search);
     const redirect = params.get('redirect');
