@@ -1000,6 +1000,15 @@ body.ai-entering::before {
 
   <!-- 右边 -->
   <div style="display:flex;align-items:center;gap:6px;">
+
+  <div id="usageHint" style="
+    font-size:12px;
+    color:#64748b;
+    padding:4px 8px;
+    border-radius:8px;
+    background:rgba(255,255,255,0.5);
+  ">
+  </div>
     <button id="proBtn" style="
       padding:6px 12px;
       border-radius:999px;
@@ -1125,7 +1134,10 @@ function startActivationPolling() {
       .maybeSingle();
 
     if (data) {
-      isActivated = true;
+  isActivated = true;
+
+  // ⭐ 关键：刷新UI（隐藏Pro按钮）
+  await checkActivation();
 
       const hintEl = document.getElementById("usageHint");
       if (hintEl) hintEl.innerText = "已激活 ∞";
@@ -1244,6 +1256,7 @@ async function checkActivation() {
     const hintEl = document.getElementById("usageHint");
     if (hintEl) hintEl.innerText = "已激活 ∞";
   }
+  renderUser(); // ⭐ 自动同步UI状态
 }
 let sessionReady = false; // ✅ 是否已完成登录检查
 
@@ -1268,7 +1281,10 @@ async function checkLogin() {
     sessionReady = true;
     renderUser();
     await checkActivation();
-
+    // ⭐ 延迟一次UI同步（防Supabase延迟）
+setTimeout(() => {
+  renderUser();
+}, 50);
   } catch (e) {
     console.error("登录检测异常:", e);
     sessionReady = true;
@@ -1313,12 +1329,9 @@ function renderUser() {
   // ===== Pro按钮显示控制 =====
   const proBtn = document.getElementById("proBtn");
   if (proBtn) {
-    if (session && session.user && session.user.id !== "admin" && !isActivated) {
-      proBtn.style.display = "inline-block";
-    } else {
-      proBtn.style.display = "none";
-    }
-  }
+  const showPro = session?.user && !isActivated && session.user.id !== "admin";
+  proBtn.style.display = showPro ? "inline-block" : "none";
+}
 }
 function showLoginPrompt() {
   // 如果已经有弹窗就不重复创建
@@ -1741,8 +1754,8 @@ function showActivationModal() {
     }
 
     isActivated = true;
-    // 3) 状态同步
-    await checkActivation();
+// 3) 状态同步
+await checkActivation();
 
     msg.innerText = "激活成功 🎉";
     msg.style.color = "#22c55e";
@@ -1792,7 +1805,7 @@ function showPayModal() {
       </div>
 
       <p style="font-size:12px;color:#666;line-height:1.5;margin-top:8px;">
-        支付后发送截图即可获取激活码<br>
+        支付后发送截图至sunlandccc@outlook.com即可获取激活码<br>
         <b>10元 · 永久有效</b>
       </p>
     </div>
