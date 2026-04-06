@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>设置 - 霜蓝 AI</title>
+
+  <style>
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
+      background: #f7f7f8;
+      color: #1f2937;
+    }
+
+    .header {
+      height: 52px;
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      font-weight: 600;
+      background: rgba(255,255,255,0.9);
+      backdrop-filter: blur(10px);
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+    }
+
+    .container {
+      max-width: 680px;
+      margin: 0 auto;
+      padding: 16px;
+    }
+
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 16px;
+      margin-bottom: 14px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.06);
+    }
+
+    .title {
+      font-size: 13px;
+      color: #6b7280;
+      margin-bottom: 8px;
+    }
+
+    .row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 0;
+      border-bottom: 1px solid rgba(0,0,0,0.05);
+      font-size: 14px;
+    }
+
+    .row:last-child {
+      border-bottom: none;
+    }
+
+    .pro {
+      color: #f59e0b;
+      font-weight: 600;
+    }
+
+    .btn {
+      width: 100%;
+      padding: 12px;
+      border-radius: 12px;
+      border: none;
+      font-size: 14px;
+      cursor: pointer;
+      margin-top: 10px;
+    }
+
+    .btn-pro {
+      background: linear-gradient(135deg,#fbbf24,#f59e0b);
+      color: #000;
+      font-weight: 600;
+    }
+
+    .btn-logout {
+      background: rgba(239,68,68,0.1);
+      color: #ef4444;
+    }
+  </style>
+</head>
+
+<body>
+
+  <div class="header">设置</div>
+
+  <div class="container">
+
+    <!-- 用户信息 -->
+    <div class="card">
+      <div class="title">账号</div>
+
+      <div class="row">
+        <span>邮箱</span>
+        <span id="userEmail">加载中...</span>
+      </div>
+
+      <div class="row">
+        <span>ID</span>
+        <span id="userId">-</span>
+      </div>
+
+      <div class="row">
+        <span>会员</span>
+        <span id="userPro">普通用户</span>
+      </div>
+    </div>
+
+    <!-- 使用情况 -->
+    <div class="card">
+      <div class="title">使用情况</div>
+
+      <div class="row">
+        <span>今日剩余</span>
+        <span id="usage">--</span>
+      </div>
+    </div>
+
+    <!-- Pro -->
+    <div class="card">
+      <div class="title">Pro</div>
+
+      <button class="btn btn-pro" onclick="upgrade()">
+        💎 升级 Pro（永久）
+      </button>
+    </div>
+
+    <!-- 退出 -->
+    <div class="card">
+      <button class="btn btn-logout" onclick="logout()">
+        退出登录
+      </button>
+    </div>
+
+  </div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+<script>
+  window._supabaseClient = window._supabaseClient || window.supabase.createClient(
+    "https://klyrasrqgxijwrxuoevj.supabase.co",
+    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtseXJhc3JxZ3hpandyeHVvZXZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4ODUyMzcsImV4cCI6MjA2ODQ2MTIzN30.qjeTrLp_QquSwvF09HrrQd-stPtgu6H51-Zdb4JUeSM"
+  );
+  var supabase = window._supabaseClient;
+
+  let session = null;
+  let isActivated = false;
+
+  async function init() {
+    // ⭐ 强制拉取用户（确保 session 已恢复）
+    const { data: userData } = await supabase.auth.getUser();
+    if (!userData || !userData.user) {
+      console.log("用户未登录（getUser）");
+    }
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (!session || !session.user) {
+        document.getElementById("userEmail").innerText = "未登录";
+        document.getElementById("userId").innerText = "-";
+        document.getElementById("userPro").innerText = "普通用户";
+        document.getElementById("usage").innerText = "--";
+        return;
+      }
+
+      const user = session.user;
+
+      // ⭐ 先显示基础信息（避免一直 loading）
+      document.getElementById("userEmail").innerText = user.email || "未知";
+      document.getElementById("userId").innerText = user.id || "-";
+
+      // 👉 判断 Pro
+      const { data: actData, error: actError } = await supabase
+        .from("activation_codes")
+        .select("code")
+        .eq("used_by", user.id)
+        .maybeSingle();
+
+      if (actError) {
+        console.error("查询激活状态失败:", actError);
+      }
+
+      isActivated = !!actData;
+
+      if (isActivated) {
+        document.getElementById("userPro").innerHTML = "💎 Pro会员（永久）";
+        document.getElementById("usage").innerText = "无限";
+        return;
+      }
+
+      // 👉 普通用户：查询次数
+      document.getElementById("userPro").innerText = "普通用户";
+
+      // 👉 获取今日使用次数（带兜底）
+      let used = 0;
+
+      try {
+        const { data: count, error: rpcError } = await supabase.rpc("check_limit", {
+          p_user: user.id
+        });
+
+        if (rpcError) throw rpcError;
+
+        used = count || 0;
+      } catch (e) {
+        console.warn("RPC失败，使用本地兜底:", e);
+
+        // 👉 fallback：从 request_logs 自己算
+        const { data: logs } = await supabase
+          .from("request_logs")
+          .select("created_at")
+          .eq("user_id", user.id);
+
+        const today = new Date().toDateString();
+        used = (logs || []).filter(l => new Date(l.created_at).toDateString() === today).length;
+      }
+
+      document.getElementById("usage").innerText = `${Math.max(0, 20 - used)} 次`;
+
+    } catch (err) {
+      console.error("init 崩了:", err);
+    }
+  }
+
+  function upgrade() {
+    // 👉 跳转到AI页面并打开激活弹窗
+    window.location.href = "ai.html#upgrade";
+  }
+
+  async function logout() {
+    await supabase.auth.signOut();
+    location.href = "ai.html";
+  }
+
+  // ⭐ 监听 session 恢复（解决刷新后拿不到登录状态）
+  supabase.auth.onAuthStateChange((_event, newSession) => {
+    if (newSession) {
+      console.log("session 更新");
+      init();
+    }
+  });
+  init();
+</script>
+
+</body>
+</html>

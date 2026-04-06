@@ -12,20 +12,30 @@
     // 关键：让 Supabase 读取 URL hash 并写入 session
     await supabase.auth.getSession();
 
-    // 根据来源跳转回对应页面
-    const returnTo =
-      localStorage.getItem('returnTo') ||
-      sessionStorage.getItem('returnTo');
+    // ⭐ 优先使用 URL 参数（更可靠）
+    const params = new URLSearchParams(location.search);
+    const redirect = params.get('redirect');
 
-    // 清理标记，避免下次误跳
-    localStorage.removeItem('returnTo');
-    sessionStorage.removeItem('returnTo');
-
-    if (returnTo === 'ai') {
+    if (redirect === 'ai') {
       location.replace('/ai.html');
     } else {
-      location.replace('/index.html');
+      // 兼容旧逻辑（fallback）
+      const returnTo =
+        localStorage.getItem('returnTo') ||
+        sessionStorage.getItem('returnTo');
+
+      localStorage.removeItem('returnTo');
+      sessionStorage.removeItem('returnTo');
+
+      if (returnTo === 'ai') {
+        location.replace('/ai.html');
+      } else {
+        location.replace('/index.html');
+      }
     }
+
+    // ⭐ 清理 URL（避免重复触发）
+    history.replaceState(null, '', location.pathname);
   </script>
 </body>
 </html>
