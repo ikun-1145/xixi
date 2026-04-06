@@ -1480,9 +1480,18 @@ function showLoginPrompt() {
       return;
     }
 
+    // ⭐ 冷却检测（60秒）
+    const lastTime = localStorage.getItem("email_last_send");
+    const now = Date.now();
+
+    if (lastTime && now - Number(lastTime) < 60000) {
+      const remain = Math.ceil((60000 - (now - Number(lastTime))) / 1000);
+      showToast(`请等待 ${remain}s 后再试`);
+      return;
+    }
+
     // 防止重复点击
     btn.disabled = true;
-    btn.innerText = "发送中...";
 
     try {
       await supabase.auth.signInWithOtp({
@@ -1494,9 +1503,23 @@ function showLoginPrompt() {
 
       showToast("邮件已发送，请检查收件箱或垃圾邮件");
 
-      // 恢复按钮
-      btn.disabled = false;
-      btn.innerText = "发送登录链接";
+      // ⭐ 记录发送时间
+      localStorage.setItem("email_last_send", now.toString());
+
+      // ⭐ 倒计时 UI
+      let countdown = 60;
+      btn.innerText = `重新发送 (${countdown}s)`;
+
+      const timer = setInterval(() => {
+        countdown--;
+        btn.innerText = `重新发送 (${countdown}s)`;
+
+        if (countdown <= 0) {
+          clearInterval(timer);
+          btn.disabled = false;
+          btn.innerText = "发送登录链接";
+        }
+      }, 1000);
 
     } catch (e) {
       console.error(e);
