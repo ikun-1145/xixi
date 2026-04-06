@@ -63,13 +63,6 @@ body.night {
   background: linear-gradient(135deg,#020617,#0b1220,#020617);
 }
 
-body.night::before {
-  background:
-    radial-gradient(circle at 20% 30%, rgba(62,237,231,0.12) 0, transparent 60%),
-    radial-gradient(circle at 80% 70%, rgba(62,237,231,0.08) 0, transparent 60%);
-  filter: blur(20px);
-  opacity: 0.4;
-}
 
 body.night .header {
   background: rgba(2,6,23,0.6);
@@ -177,11 +170,9 @@ body.night::before {
   top: 0;
   backdrop-filter: blur(10px);
   background: linear-gradient(180deg, rgba(255,255,255,0.95), rgba(255,255,255,0.7));
-  display: flex;
   justify-content: space-between;
   gap: 6px;
   padding-top: env(safe-area-inset-top);
-  position: relative;
   flex-shrink: 0;
 }
 /* ===== Sidebar Overlay ===== */
@@ -204,7 +195,6 @@ body.night::before {
   pointer-events: auto;
   display: block;
   opacity: 1;
-  pointer-events: auto;
 }
 
 /* ===== 欢迎文字 ===== */
@@ -240,13 +230,11 @@ body.night::before {
 
   padding-top: 12px;
   padding-right: 0;
-  padding-bottom: calc(40px + env(safe-area-inset-bottom));
   width: 100%;
   display: flex;
   flex-direction: column;
   align-items: stretch;
   gap: 8px;
-  padding-bottom: 90px;
   min-height: 0;         /* ⭐ 关键，防止撑破容器 */
   overflow-y: auto;
   overscroll-behavior: contain;
@@ -1024,7 +1012,6 @@ body.ai-entering::before {
     ">
       解锁Pro
     </button>
-
     <div id="userBox"></div>
   </div>
 
@@ -1038,6 +1025,29 @@ body.ai-entering::before {
 
 <div class="input-area">
   <div class="input-box">
+    <div id="deepBar" style="
+      position:absolute;
+      top:-36px;
+      left:50%;
+      transform:translateX(-50%);
+      display:flex;
+      gap:6px;
+      align-items:center;
+    ">
+      <button id="deepBtn" style="
+        padding:5px 10px;
+        border-radius:10px;
+        font-size:12px;
+        background: rgba(255,255,255,0.6);
+        color:#475569;
+        border:1px solid rgba(0,0,0,0.05);
+        cursor:pointer;
+        transition:all .2s ease;
+        backdrop-filter: blur(10px);
+      ">
+        🧠 深度思考
+      </button>
+    </div>
 
     <input type="file" id="fileInput" style="display:none;" multiple>
     <button id="uploadBtn" class="icon-btn" title="上传文件">📎</button>
@@ -1134,13 +1144,13 @@ function startActivationPolling() {
       .maybeSingle();
 
     if (data) {
-  isActivated = true;
+      isActivated = true;
 
-  // ⭐ 关键：刷新UI（隐藏Pro按钮）
-  await checkActivation();
+      // ⭐ 关键：刷新UI（隐藏Pro按钮）
+      await checkActivation();
 
-      const hintEl = document.getElementById("usageHint");
-      if (hintEl) hintEl.innerText = "已激活 ∞";
+      // const hintEl = document.getElementById("usageHint");
+      // if (hintEl) hintEl.innerText = "已激活 ∞";
 
       showToast("支付成功 🎉");
 
@@ -1239,6 +1249,7 @@ import { supabase } from './p/js/supabaseClient.js';
 
 let session = null;
 let isActivated = false;
+let deepMode = false; // ⭐ 深度思考
 
 async function checkActivation() {
   if (!session?.user) return;
@@ -1254,8 +1265,39 @@ async function checkActivation() {
   // ⭐ 已激活直接显示∞
   if (isActivated) {
     const hintEl = document.getElementById("usageHint");
-    if (hintEl) hintEl.innerText = "已激活 ∞";
+    if (hintEl) hintEl.innerText = "💎 Pro · 无限使用";
+    return;
   }
+
+  // ⭐ 同步今日剩余次数（页面加载时）
+  try {
+    if (session?.user && session.user.id !== "admin" && !isActivated) {
+      const { data } = await supabase.rpc("check_limit", {
+        p_user: session.user.id
+      });
+
+      const hintEl = document.getElementById("usageHint");
+      if (hintEl) {
+        const today = new Date().toISOString().slice(0,10);
+        const last = localStorage.getItem("usage_date");
+
+        if (last !== today) {
+          try {
+            await supabase.from("usage").update({ count: 0 }).eq("user_id", session.user.id);
+            localStorage.setItem("usage_date", today);
+          } catch (e) {
+            console.warn("重置使用次数失败:", e);
+          }
+        }
+
+        const remain = Math.max(0, 20 - (Number(data) || 0));
+        hintEl.innerText = `今日剩余 ${remain} 次`;
+      }
+    }
+  } catch (e) {
+    console.warn("初始化剩余次数失败:", e);
+  }
+
   renderUser(); // ⭐ 自动同步UI状态
 }
 let sessionReady = false; // ✅ 是否已完成登录检查
@@ -1863,6 +1905,23 @@ supabase.auth.onAuthStateChange(async (_event, newSession) => {
   renderUser();
   await checkActivation();
 
+  // ⭐ 登录后强制刷新次数（防止UI不更新）
+  try {
+    if (newSession?.user && newSession.user.id !== "admin" && !isActivated) {
+      const { data } = await supabase.rpc("check_limit", {
+        p_user: newSession.user.id
+      });
+
+      const hintEl = document.getElementById("usageHint");
+      if (hintEl) {
+        const remain = Math.max(0, 20 - (Number(data) || 0));
+        hintEl.innerText = `今日剩余 ${remain} 次`;
+      }
+    }
+  } catch (e) {
+    console.warn("登录后刷新次数失败:", e);
+  }
+
   // ⭐ 登录成功自动清理弹窗
   if (newSession) {
     document.getElementById("loginModal")?.remove();
@@ -1901,12 +1960,6 @@ sendBtn.onclick = (e) => {
   if (sendingLock) return;
   send();
 };
-
-// ⭐ 兜底（防止 click 被吞）
-sendBtn.addEventListener("pointerup", () => {
-  console.log("pointerup fallback");
-  if (!sendingLock) send();
-});
 let lastUserMessage = null;
 
 let history = [
@@ -2136,11 +2189,6 @@ function createNewChat() {
   history = [...newChat.history];
 
   chatInner.innerHTML = "";
-  const newWelcome = document.createElement("div");
-  newWelcome.id = "welcome";
-  newWelcome.className = "welcome";
-  newWelcome.innerText = "我们先从哪里开始呢？";
-  document.body.appendChild(newWelcome);
   saveConversations();
   renderChatList();
 }
@@ -2269,9 +2317,6 @@ function addMessage(text, type) {
 
   const welcome = document.getElementById("welcome");
   if (welcome) welcome.remove();
-  // 有消息就隐藏欢迎文字
-  const w = document.getElementById("welcome");
-  if (w) w.remove();
   div.appendChild(bubble);
   chatInner.appendChild(div);
 
@@ -2313,11 +2358,10 @@ async function generateTitleFromAI(userMsg, aiMsg) {
 }
 
 async function send() {
-  // ===== 防止疯狂点击发送（前端限流） =====
+  // ===== 轻量防抖（不阻止发送，只提示） =====
   const now = Date.now();
-  if (now - (window._lastSendTime || 0) < 1500) {
-    showToast("别点这么快 😅");
-    return;
+  if (window._lastSendTime && now - window._lastSendTime < 800) {
+    console.warn("发送过快");
   }
   window._lastSendTime = now;
   if (sendingLock) {
@@ -2340,56 +2384,46 @@ async function send() {
   }
 
 
-  // ===== 每日限额检查（Supabase服务端） =====
-  let currentCount = 0;
+  // ===== ⭐ 新版：统一限额 + Pro 判断 =====
+  let usageData = null;
 
-  if (session?.user?.id === "admin") {
-    // 管理员跳过
-  } else {
-    const { data, error } = await supabase.rpc("check_limit", {
-      p_user: session.user.id
-    });
+  if (session?.user?.id !== "admin" && !isActivated) {
+    try {
+      const { data, error } = await supabase.rpc("check_limit", {
+        p_user: session.user.id
+      });
 
-    if (error) {
-      console.error("限额检测失败:", error);
-      showToast("系统异常，请稍后再试");
-      sendingLock = false;
-      return;
+      if (error) {
+        console.warn("限额检测失败:", error);
+      } else {
+        usageData = data;
+        console.log("📊 使用情况:", data);
+      }
+    } catch (e) {
+      console.warn("限额调用失败:", e);
     }
 
-    currentCount = data || 0;
-
-    if (currentCount >= 20 && !isActivated) {
+    if (usageData !== null && usageData >= 20 && session.user.id !== "admin") {
       showLimitModal();
       sendingLock = false;
       return;
     }
 
+    // ⭐ 更新 UI
     const hintEl = document.getElementById("usageHint");
-    if (hintEl && !isActivated) {
-      hintEl.innerText = `今日剩余 ${Math.max(0, 20 - currentCount)} 次`;
+    if (hintEl && usageData !== null) {
+      const remain = Math.max(0, 20 - Number(usageData || 0));
+      hintEl.innerText = `今日剩余 ${remain} 次`;
     }
   }
 
-  // ===== 请求频率限制（Supabase服务端防刷） =====
-  if (session?.user?.id !== "admin") {
-    const { data: ok, error } = await supabase.rpc("check_rate_limit", {
-      p_user: session.user.id
-    });
-
-    if (error) {
-      console.error("频率检测失败:", error);
-      showToast("请求异常，请稍后再试");
-      sendingLock = false;
-      return;
-    }
-
-    if (!ok) {
-      showToast("别点这么快 😅");
-      sendingLock = false;
-      return;
-    }
+  // ===== ⭐ 前端轻量限频（替代服务端） =====
+  if (window._lastRealSend && Date.now() - window._lastRealSend < 800) {
+    showToast("操作太快了，慢一点 😅");
+    sendingLock = false;
+    return;
   }
+  window._lastRealSend = Date.now();
 
   const text = input.value.trim();
 
@@ -2461,6 +2495,10 @@ async function send() {
   const lastMsg = chatInner.lastElementChild;
   const bubble = lastMsg ? lastMsg.querySelector(".bubble") : null;
 
+  // ⭐ 确保思考动画至少显示一段时间（避免瞬间跳结果）
+  const minThinkingTime = 500; // ms
+  const thinkingStart = Date.now();
+
   // 状态切换
   window._isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
 
@@ -2518,7 +2556,10 @@ isStreaming = true;
     "Content-Type": "application/json",
     "Authorization": `Bearer ${token}`
   },
-  body: JSON.stringify({ messages: history }),
+  body: JSON.stringify({
+    messages: history,
+    deep: deepMode
+  }),
   mode: "cors"
 });
     console.log("fetch 已返回", res);
@@ -2542,23 +2583,98 @@ isStreaming = true;
       console.error("JSON解析失败:", text);
       throw new Error("返回格式错误");
     }
-    const content = data.choices?.[0]?.message?.content || "";
+    const msg = data.choices?.[0]?.message || {};
+    const content = msg.content || "";
+    const reasoning = msg.reasoning_content || msg.reasoning || "";
+
     console.log("AI response:", data);
 
+    // ⭐ 等待最短思考时间（保证动画可见）
+    const elapsed = Date.now() - thinkingStart;
+    if (elapsed < minThinkingTime) {
+      await new Promise(r => setTimeout(r, minThinkingTime - elapsed));
+    }
     fullText = content;
 
     if (bubble) {
       bubble.style.animation = "fadeInBubble 0.2s ease";
       bubble.style.opacity = "1";
 
+      // ===== 深度思考展示（带打字动画） =====
+      bubble.innerHTML = "";
+      if (deepMode && reasoning) {
+        const reasoningDiv = document.createElement("div");
+        reasoningDiv.style.cssText = `
+          font-size:12px;
+          color:#888;
+          margin-bottom:8px;
+          border-left:3px solid #22d3ee;
+          padding-left:8px;
+          line-height:1.5;
+        `;
+
+        const title = document.createElement("div");
+        title.innerText = "🧠 思考过程";
+        title.style.marginBottom = "4px";
+
+        const content = document.createElement("div");
+        content.className = "typing";
+
+        reasoningDiv.appendChild(title);
+        reasoningDiv.appendChild(content);
+        bubble.appendChild(reasoningDiv);
+
+        // ⭐ 先逐字显示思考过程
+        const temp = document.createElement("div");
+        temp.innerHTML = marked.parse(reasoning);
+
+        function wrapText(node) {
+          if (node.nodeType === 3) {
+            const frag = document.createDocumentFragment();
+            [...node.textContent].forEach((ch, i) => {
+              const span = document.createElement("span");
+              span.textContent = ch;
+              span.style.animationDelay = i * 0.008 + "s";
+              frag.appendChild(span);
+            });
+            return frag;
+          }
+          if (node.nodeType === 1) {
+            const clone = node.cloneNode(false);
+            node.childNodes.forEach(child => {
+              clone.appendChild(wrapText(child));
+            });
+            return clone;
+          }
+          return node;
+        }
+
+        temp.childNodes.forEach(n => {
+          content.appendChild(wrapText(n));
+        });
+
+        // ⭐ 等思考动画结束再显示答案
+        const delay = Math.min(1200, reasoning.length * 8);
+
+        await new Promise(r => setTimeout(r, delay));
+      }
+
+      // ⭐ 思考结束 → 淡出效果
+      const thinkingEl = bubble.querySelector(".thinking");
+      if (thinkingEl) {
+        thinkingEl.style.animation = "fadeOutThinking .25s forwards";
+        await new Promise(r => setTimeout(r, 200));
+      }
+
       const html = marked.parse(fullText);
 
-      // ⭐ 检测移动端（避免动画导致渲染失败）
+      // ⭐ 移动端直接渲染
       if (window._isMobile) {
-        // 移动端直接渲染（稳定优先）
-        bubble.innerHTML = html;
+        const contentDiv = document.createElement("div");
+        contentDiv.innerHTML = html;
+        bubble.appendChild(contentDiv);
       } else {
-        // 桌面端保留动画
+        // ⭐ 桌面端打字动画
         const temp = document.createElement("div");
         temp.innerHTML = html;
 
@@ -2592,10 +2708,8 @@ isStreaming = true;
           animated.appendChild(wrapText(n));
         });
 
-        bubble.innerHTML = "";
         bubble.appendChild(animated);
       }
-
       // ⭐ 兜底（防止某些情况内容为空）
       if (!bubble.innerHTML.trim()) {
         bubble.innerText = fullText || "返回为空，请重试";
@@ -2608,18 +2722,25 @@ isStreaming = true;
     }
     history.push({ role: "assistant", content: fullText });
 
-    // ===== 成功后再递增（防止失败扣次数） =====
+    // ===== ⭐ 成功后再计数（修复一直20次的问题） =====
     if (session?.user?.id !== "admin" && !isActivated) {
       try {
-        await supabase.rpc("check_and_increment", {
+        await supabase.rpc("increment_usage", {
           p_user: session.user.id
         });
+
+        const hintEl = document.getElementById("usageHint");
+        if (hintEl) {
+          const { data } = await supabase.rpc("check_limit", {
+            p_user: session.user.id
+          });
+          const remain = Math.max(0, 20 - (Number(data) || 0));
+          hintEl.innerText = `今日剩余 ${remain} 次`;
+        }
       } catch (e) {
-        console.warn("计数递增失败:", e);
+        console.warn("计数失败:", e);
       }
     }
-
-    // 已由 Supabase RPC 自动处理计数（无需前端 upsert）
     if (currentId) {
       const c = conversations.find(x => x.id === currentId);
       if (c) {
@@ -2769,8 +2890,8 @@ if (bubble) {
 }
       }
     }
-}
-finally {
+  }
+  finally {
     clearTimeout(timeoutId);
     clearTimeout(hardTimeoutId);
     sendingLock = false;
@@ -2801,7 +2922,7 @@ finally {
         };
       }
     }
-}
+  }
 
 }
 
@@ -2997,7 +3118,21 @@ if (proBtn) {
     showActivationModal();
   };
 }
+const deepBtn = document.getElementById("deepBtn");
 
+if (deepBtn) {
+  deepBtn.onclick = () => {
+    deepMode = !deepMode;
+
+    deepBtn.style.background = deepMode
+      ? "linear-gradient(135deg,#22d3ee,#67e8f9)"
+      : "rgba(255,255,255,0.5)";
+
+    deepBtn.style.color = deepMode ? "#00323a" : "#475569";
+
+    showToast(deepMode ? "深度思考已开启 🧠" : "深度思考已关闭");
+  };
+}
 // ===== 从设置页跳转自动打开升级 =====
 if (window.location.hash === "#upgrade") {
   setTimeout(() => {
@@ -3048,24 +3183,24 @@ function showUserSettings() {
 }
 </script>
 
-<button id="scrollBottomBtn" style="
-  position: fixed;
-  bottom: 90px;
-  right: 20px;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.85);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(0,0,0,0.08);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-  color: #555;
-  font-size: 16px;
-  cursor: pointer;
-  opacity: 0;
-  pointer-events: none;
-  transition: opacity .25s ease, transform .25s ease;
-  z-index: 40;
-">↓</button>
-  </div>
+  <button id="scrollBottomBtn" style="
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    color: #555;
+    font-size: 16px;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s ease, transform .25s ease;
+    z-index: 40;
+  ">↓</button>
+</div>
 </body>
