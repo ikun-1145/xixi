@@ -1063,6 +1063,20 @@ body.ai-entering::before {
 
 
 <script type="module">
+// ⚠️ VDS 登录需要配合 /vds-callback.html 页面处理回调
+// ===== ⭐ 全局API封装（使用本地token）=====
+function apiFetch(url, options = {}) {
+  const token = localStorage.getItem("token");
+
+  return fetch(url, {
+    ...options,
+    headers: {
+      "Content-Type": "application/json",
+      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
+      ...(options.headers || {})
+    }
+  });
+}
 /* ===== 页面进入动画触发 ===== */
 document.body.classList.add("ai-entering");
 setTimeout(() => {
@@ -1271,7 +1285,7 @@ async function checkActivation() {
 
   // ⭐ 同步今日剩余次数（页面加载时）
   try {
-    if (session?.user && session.user.id !== "admin" && !isActivated) {
+    if (session?.user && !isActivated) {
       const { data } = await supabase.rpc("check_limit", {
         p_user: session.user.id
       });
@@ -1303,30 +1317,30 @@ async function checkActivation() {
 let sessionReady = false; // ✅ 是否已完成登录检查
 
 async function checkLogin() {
-  console.log("开始检查登录");
-
   try {
-    const result = await supabase.auth.getSession();
+    const token = localStorage.getItem("token");
+    const userStr = localStorage.getItem("user");
 
-    console.log("原始返回:", result);   // ⭐ 新增
-
-    const { data, error } = result;
-
-    if (error) {
-      console.error("getSession error:", error);
+    if (token && userStr) {
+      const user = JSON.parse(userStr);
+      session = { user };
+    } else {
+      session = null;
     }
 
-    session = data.session;
-
-    console.log("获取到 session:", session);
-
     sessionReady = true;
-    renderUser();
-    await checkActivation();
-    // ⭐ 延迟一次UI同步（防Supabase延迟）
-setTimeout(() => {
-  renderUser();
-}, 50);
+
+if (session?.user) {
+  await syncFromCloud();   // ⭐ 登录才加载
+} else {
+  conversations = [];
+  if (session?.user) {
+  localStorage.removeItem("conversations_" + session.user.id);
+}
+}
+
+renderUser();
+await checkActivation();
   } catch (e) {
     console.error("登录检测异常:", e);
     sessionReady = true;
@@ -1371,7 +1385,7 @@ function renderUser() {
   // ===== Pro按钮显示控制 =====
   const proBtn = document.getElementById("proBtn");
   if (proBtn) {
-  const showPro = session?.user && !isActivated && session.user.id !== "admin";
+  const showPro = session?.user && !isActivated;
   proBtn.style.display = showPro ? "inline-block" : "none";
 }
 }
@@ -1388,51 +1402,9 @@ function showLoginPrompt() {
 <div class="modal-content">
   <span class="close">×</span>
   <h2 style="margin-bottom:1rem; font-size: 1.3rem;">请先登录后继续</h2>
-
-  <button id="githubLoginBtn" class="oauth-btn" style="margin-bottom:0.6rem;">
-    <img src="p/github.svg" style="width:22px;height:22px;">
-    使用 GitHub 登录
+  <button id="vdsLoginBtn" class="oauth-btn" style="margin-bottom:0.6rem;">
+    使用 VDS 登录
   </button>
-
-  <button id="googleLoginBtn" class="oauth-btn">
-    <img src="p/IMG_3879.png" style="width:22px;height:22px;">
-    使用 Google 登录
-  </button>
-
-  <div style="margin-top:10px;">
-    <input id="emailInput" placeholder="输入邮箱" style="
-      width:100%;
-      box-sizing:border-box;
-      padding:0.7rem 1rem;
-      border-radius:12px;
-      border:1px solid rgba(0,0,0,0.12);
-      margin-bottom:8px;
-      font-size:14px;
-      outline:none;
-      background:rgba(255,255,255,0.8);
-    ">
-    <button id="emailLoginBtn" class="oauth-btn">
-      发送登录链接
-    </button>
-  </div>
-
-  <!-- 隐藏入口 -->
-  <div id="adminDot" style="
-    width:6px;height:6px;border-radius:50%;
-    background:rgba(0,0,0,0.08);
-    margin:16px auto 0;
-    cursor:pointer;
-  "></div>
-  <div id="adminBox" style="display:none;margin-top:10px;">
-    <input id="adminInput" type="password" placeholder="••••••••" style="
-      width:100%;box-sizing:border-box;
-      padding:0.6rem 1rem;border-radius:10px;
-      border:1px solid rgba(0,0,0,0.1);
-      font-size:14px;outline:none;
-      background:rgba(255,255,255,0.8);
-    ">
-    <p id="adminMsg" style="font-size:12px;color:#ef4444;min-height:16px;margin:4px 0 0;"></p>
-  </div>
 </div>
   `;
 
@@ -1452,148 +1424,18 @@ function showLoginPrompt() {
     if (e.target === modal) closeModal();
   };
 
-  // 登录逻辑（复用主页）
-  modal.querySelector("#githubLoginBtn").onclick = async () => {
-    localStorage.setItem("loginFrom", "ai");
-    localStorage.setItem("returnTo", "ai");
-    await supabase.auth.signInWithOAuth({
-      provider: 'github',
-      options: { redirectTo: location.origin + '/oauth-callback.html?redirect=ai' }
-    });
-  };
+  modal.querySelector("#vdsLoginBtn").onclick = () => {
+  const redirect = encodeURIComponent("https://sunland.dev/vds-callback.html");
 
-  modal.querySelector("#googleLoginBtn").onclick = async () => {
-    localStorage.setItem("loginFrom", "ai");
-    localStorage.setItem("returnTo", "ai");
-    await supabase.auth.signInWithOAuth({
-      provider: 'google',
-      options: { redirectTo: location.origin + '/oauth-callback.html?redirect=ai' }
-    });
-  };
+  location.href =
+    "https://account.vds.pub/oauth/authorize" +
+    `?client_id=vap_qiya5kcvixu663xq` +
+    `&redirect_uri=${redirect}` +
+    `&response_type=code` +
+    `&scope=openid`;
+};
 
-  modal.querySelector("#emailLoginBtn").onclick = async () => {
-    const btn = modal.querySelector("#emailLoginBtn");
-    const email = modal.querySelector("#emailInput").value.trim();
-
-    if (!email) {
-      showToast("请输入邮箱");
-      return;
-    }
-
-    // ⭐ 冷却检测（60秒）
-    const lastTime = localStorage.getItem("email_last_send");
-    const now = Date.now();
-
-    if (lastTime && now - Number(lastTime) < 60000) {
-      const remain = Math.ceil((60000 - (now - Number(lastTime))) / 1000);
-      showToast(`请等待 ${remain}s 后再试`);
-      return;
-    }
-
-    // 防止重复点击
-    btn.disabled = true;
-
-    try {
-      await supabase.auth.signInWithOtp({
-        email,
-        options: {
-          emailRedirectTo: location.origin + '/oauth-callback.html?redirect=ai'
-        }
-      });
-
-      showToast("邮件已发送，请检查收件箱或垃圾邮件");
-
-      // ⭐ 记录发送时间
-      localStorage.setItem("email_last_send", now.toString());
-
-      // ⭐ 倒计时 UI
-      let countdown = 60;
-      btn.innerText = `重新发送 (${countdown}s)`;
-
-      const timer = setInterval(() => {
-        countdown--;
-        btn.innerText = `重新发送 (${countdown}s)`;
-
-        if (countdown <= 0) {
-          clearInterval(timer);
-          btn.disabled = false;
-          btn.innerText = "发送登录链接";
-        }
-      }, 1000);
-
-    } catch (e) {
-      console.error(e);
-      showToast("发送失败，请稍后再试");
-
-      btn.disabled = false;
-      btn.innerText = "发送登录链接";
-    }
-  };
-
-  // ===== 管理员入口 =====
-  let adminClickCount = 0;
-  let adminTimer = null;
-
-  modal.querySelector("#adminDot").onclick = () => {
-    adminClickCount++;
-    clearTimeout(adminTimer);
-    adminTimer = setTimeout(() => adminClickCount = 0, 2000);
-
-    if (adminClickCount >= 7) {
-      adminClickCount = 0;
-      modal.querySelector("#adminBox").style.display = "block";
-      modal.querySelector("#adminInput").focus();
-    }
-  };
-
-  modal.querySelector("#adminInput").addEventListener("keydown", (e) => {
-    if (e.key !== "Enter") return;
-    const val = modal.querySelector("#adminInput").value;
-    const msg = modal.querySelector("#adminMsg");
-
-    if (val === "Xixi20090520") {
-      session = { user: { id: "admin", email: "admin" }, _isAdmin: true };
-      isActivated = true;
-      sessionReady = true;
-
-      const hintEl = document.getElementById("usageHint");
-      if (hintEl) hintEl.innerText = "管理员 ∞";
-
-      const box = document.getElementById("userBox");
-      if (box) {
-        box.innerHTML = "";
-
-        const adminTag = document.createElement("div");
-        adminTag.innerText = "管理员";
-        adminTag.style.cssText = `
-          font-size:12px;
-          color:#22d3ee;
-          padding:4px 8px;
-          border-radius:8px;
-          background:rgba(34,211,238,0.1);
-          cursor:pointer;
-        `;
-
-        adminTag.onclick = () => {
-          session = null;
-          isActivated = false;
-          sessionReady = false;
-
-          const hintEl = document.getElementById("usageHint");
-          if (hintEl) hintEl.innerText = "";
-
-          renderUser();
-          showLoginPrompt();
-        };
-
-        box.appendChild(adminTag);
-        closeModal();
-      }
-    } else {
-      msg.innerText = "密码错误";
-      modal.querySelector("#adminInput").value = "";
-    }
-  });
+  
 }
 
 function showLimitModal() {
@@ -1902,71 +1744,6 @@ setTimeout(() => {
   }
 }, 0);
 renderUser(); // ⭐ 兜底：强制渲染登录按钮
-// 监听登录状态变化（防止刷新/登录后不同步）
-supabase.auth.onAuthStateChange(async (_event, newSession) => {
-  console.log("Auth变化:", newSession);
-
-  if (newSession) {
-    stopRealtime();
-    setTimeout(() => {
-      try {
-        startRealtime();
-      } catch (e) {
-        console.warn("realtime 延迟启动失败:", e);
-      }
-    }, 0);
-  } else {
-    stopRealtime();
-  }
-
-  // ⭐ 管理员保护
-  if (session?.user?.id === "admin") return;
-
-  session = newSession;
-  sessionReady = true;
-
-  renderUser();
-  await checkActivation();
-
-  // ⭐ 登录后强制刷新次数（防止UI不更新）
-  try {
-    if (newSession?.user && newSession.user.id !== "admin" && !isActivated) {
-      const { data } = await supabase.rpc("check_limit", {
-        p_user: newSession.user.id
-      });
-
-      const hintEl = document.getElementById("usageHint");
-      if (hintEl) {
-        const remain = Math.max(0, 20 - (Number(data) || 0));
-        hintEl.innerText = `今日剩余 ${remain} 次`;
-      }
-    }
-  } catch (e) {
-    console.warn("登录后刷新次数失败:", e);
-  }
-
-  // ⭐ 登录成功自动清理弹窗
-  if (newSession) {
-    document.getElementById("loginModal")?.remove();
-    document.body.style.overflow = "";
-
-    // ⭐ 强制同步云端（防止刚登录为空）
-    syncFromCloud();
-  }
-});
-
-// ⭐ 页面初始化时也监听一次（防止 OAuth 回来时丢 session）
-setTimeout(async () => {
-  const { data } = await supabase.auth.getSession();
-  if (data?.session) {
-    console.log("初始化补偿 session:", data.session);
-    session = data.session;
-    sessionReady = true;
-    renderUser();
-    await checkActivation();
-    syncFromCloud();
-  }
-}, 300);
 
 let controller = null;
 let sendingLock = false;
@@ -2014,7 +1791,7 @@ let history = [
 `
   }
 ];
-let conversations = JSON.parse(localStorage.getItem("conversations") || "[]");
+let conversations = [];
 let syncTimer = null;
 
 async function syncFromCloud() {
@@ -2076,7 +1853,12 @@ if (currentId) {
   }
 }
 
-      localStorage.setItem("conversations", JSON.stringify(conversations));
+      if (session?.user) {
+  localStorage.setItem(
+    "conversations_" + session.user.id,
+    JSON.stringify(conversations)
+  );
+}
       renderChatList();
 
       // ⭐ 只在当前没有会话时才自动加载（防止切走当前对话）
@@ -2156,7 +1938,12 @@ function startRealtime() {
           (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)
         );
 
-        localStorage.setItem("conversations", JSON.stringify(conversations));
+        if (session?.user) {
+  localStorage.setItem(
+    "conversations_" + session.user.id,
+    JSON.stringify(conversations)
+  );
+}
         renderChatList();
 
         // 如果当前对话存在 → 刷新内容
@@ -2178,7 +1965,12 @@ function stopRealtime() {
   }
 }
 function saveConversations() {
-  localStorage.setItem("conversations", JSON.stringify(conversations));
+  if (session?.user) {
+  localStorage.setItem(
+    "conversations_" + session.user.id,
+    JSON.stringify(conversations)
+  );
+}
 
   // ⭐ 防抖同步（减少请求）
   clearTimeout(syncTimer);
@@ -2353,14 +2145,10 @@ async function generateTitleFromAI(userMsg, aiMsg) {
   try {
     const prompt = `请根据下面的对话生成一个简短标题（不超过12个字，不要标点结尾）：\n用户：${userMsg}\n助手：${aiMsg}`;
 
-    if (!session || !session.access_token) return null;
+    if (!session || !localStorage.getItem("token")) return null;
 
-    const res = await fetch("https://ai.liuxizekali.workers.dev", {
+    const res = await apiFetch("https://ai.liuxizekali.workers.dev", {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${session.access_token}`
-      },
       body: JSON.stringify({
         messages: [
           { role: "system", content: "你是一个标题生成器，只返回标题本身。" },
@@ -2410,7 +2198,7 @@ async function send() {
   // ===== ⭐ 新版：统一限额 + Pro 判断 =====
   let usageData = null;
 
-  if (session?.user?.id !== "admin" && !isActivated) {
+  if (!isActivated) {
     try {
       const { data, error } = await supabase.rpc("check_limit", {
         p_user: session.user.id
@@ -2426,7 +2214,7 @@ async function send() {
       console.warn("限额调用失败:", e);
     }
 
-    if (usageData !== null && usageData >= 20 && session.user.id !== "admin") {
+    if (usageData !== null && usageData >= 20){
       showLimitModal();
       sendingLock = false;
       return;
@@ -2549,42 +2337,24 @@ isStreaming = true;
   }
   try {
     console.log("准备发送请求", { session, history });
-    // ⭐ 每次发送时实时获取最新 session（避免 token 失效/为空）
-    const { data: fresh } = await supabase.auth.getSession();
-    const currentSession = fresh?.session;
-
-    console.log("实时 session:", currentSession);
-
-    if (!currentSession) {
+    // ⭐ 检查本地 token（替代 supabase session 检查）
+    const token = localStorage.getItem("token");
+    if (!token) {
       alert("登录状态失效，请重新登录");
       showLoginPrompt();
       sendingLock = false;
       return;
     }
 
-    let token = currentSession.access_token;
-
-    console.log("实时 token:", token);
-
-    // ⭐ 管理员直通
-    if (currentSession.user?.id === "admin") {
-      token = "xixi_9f3k2kfj29dkfj29dk_2026_secure";
-    }
-
     // --- Non-streaming fetch ---
     console.log("开始 fetch");
-    const res = await fetch("https://ai.liuxizekali.workers.dev", {
-  method: "POST",
-  headers: {
-    "Content-Type": "application/json",
-    "Authorization": `Bearer ${token}`
-  },
-  body: JSON.stringify({
-    messages: history,
-    deep: deepMode
-  }),
-  mode: "cors"
-});
+    const res = await apiFetch("https://ai.liuxizekali.workers.dev", {
+      method: "POST",
+      body: JSON.stringify({
+        messages: history,
+        deep: deepMode
+      })
+    });
     console.log("fetch 已返回", res);
 
     if (!res.ok) {
@@ -2746,7 +2516,7 @@ isStreaming = true;
     history.push({ role: "assistant", content: fullText });
 
     // ===== ⭐ 成功后再计数（修复一直20次的问题） =====
-    if (session?.user?.id !== "admin" && !isActivated) {
+    if (!isActivated) {
       try {
         await supabase.rpc("increment_usage", {
           p_user: session.user.id
@@ -3010,13 +2780,16 @@ function toggleUserMenu(e) {
     menu.remove();
 
     try {
-      await supabase.auth.signOut();
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
     } catch(e) {
       console.warn("退出失败:", e);
     }
 
     conversations = [];
-    localStorage.removeItem("conversations");
+    if (session?.user) {
+  localStorage.removeItem("conversations_" + session.user.id);
+}
     currentId = null;
 
     chatInner.innerHTML = "";
@@ -3048,7 +2821,7 @@ function toggleUserMenu(e) {
   }
 }
 document.getElementById("newChatBtn").onclick = createNewChat;
-if (conversations.length) {
+if (session?.user && conversations.length) {
   loadChat(conversations[0].id);
 } else {
   createNewChat();
