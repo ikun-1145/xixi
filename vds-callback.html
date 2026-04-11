@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>登录中...</title>
+</head>
+<body>
+<script type="module">
+const params = new URLSearchParams(location.search);
+const code = params.get("code");
+
+if (!code) {
+  alert("登录失败：没有 code");
+  location.href = "/";
+}
+
+// 👉 发给 Worker
+const res = await fetch("/api/vds-login", {
+  method: "POST",
+  headers: {
+    "Content-Type": "application/json"
+  },
+  body: JSON.stringify({ code })
+});
+
+const data = await res.json();
+
+if (!data.supabase_token) {
+  alert("登录失败");
+  console.error(data);
+  return;
+}
+
+// 保存
+localStorage.setItem("token", data.supabase_token);
+localStorage.setItem("user", JSON.stringify(data.user));
+
+// 跳转
+location.href = "/ai.html";
+</script>
+</body>
+</html>
