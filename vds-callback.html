@@ -1,9 +1,13 @@
 <script>
-  console.log("🚀 callback start");
+console.log("🚀 callback start");
 alert("callback start");
+
 (async () => {
   try {
-    const code = new URLSearchParams(location.search).get("code");
+    const params = new URLSearchParams(location.search);
+    const code = params.get("code");
+
+    console.log("🔑 code:", code);
 
     if (!code) {
       document.body.innerText = "❌ 没有 code";
@@ -20,11 +24,23 @@ alert("callback start");
       body: JSON.stringify({ code })
     });
 
-    const data = await res.json();
-    console.log(data);
+    console.log("🌐 response status:", res.status);
+
+    const text = await res.text();
+    console.log("📦 raw response:", text);
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch {
+      document.body.innerText = "❌ 返回不是 JSON";
+      return;
+    }
+
+    console.log("✅ parsed:", data);
 
     if (!data.supabase_token) {
-      document.body.innerText = "❌ 登录失败";
+      document.body.innerText = "❌ 登录失败：" + (data.error || "未知错误");
       return;
     }
 
@@ -38,7 +54,7 @@ alert("callback start");
     }, 800);
 
   } catch (err) {
-    console.error(err);
+    console.error("💥 callback error:", err);
     document.body.innerText = "❌ 错误：" + err.message;
   }
 })();
