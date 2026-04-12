@@ -24,7 +24,7 @@
 console.log("🚀 callback start");
 
 window.addEventListener("DOMContentLoaded", async () => {
-  const app = document.getElementById("app");
+  const app = document.getElementById("app") || { innerText: "" };
 
   try {
     const code = new URLSearchParams(location.search).get("code");
@@ -37,7 +37,8 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     app.innerText = "🔐 登录中...";
 
-    const res = await fetch("https://ai.liuxizekali.workers.dev/vds-login", {
+    console.log("🚀 准备请求 Worker");
+    const res = await fetch("/vds-login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
@@ -46,6 +47,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     });
 
     const text = await res.text();
+    console.log("📡 response status:", res.status);
     console.log("📦 raw:", text);
 
     let data;
