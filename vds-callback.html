@@ -1,46 +1,60 @@
+<!DOCTYPE html>
+<html lang="zh-cn">
+<head>
+  <meta charset="UTF-8">
+  <title>登录中...</title>
+  <style>
+    body {
+      margin: 0;
+      height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: #0f172a;
+      color: #fff;
+      font-size: 18px;
+      font-family: -apple-system, BlinkMacSystemFont;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">初始化中...</div>
+
 <script>
 console.log("🚀 callback start");
-alert("callback start");
 
 window.addEventListener("DOMContentLoaded", async () => {
+  const app = document.getElementById("app");
+
   try {
-    const params = new URLSearchParams(location.search);
-    const code = params.get("code");
-
+    const code = new URLSearchParams(location.search).get("code");
     console.log("🔑 code:", code);
-
-    const app = document.body || document.documentElement;
 
     if (!code) {
       app.innerText = "❌ 没有 code";
       return;
     }
 
-    app.innerText = "登录中...";
+    app.innerText = "🔐 登录中...";
 
     const res = await fetch("https://ai.liuxizekali.workers.dev/vds-login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ code }),
-      mode: "cors"
+      body: JSON.stringify({ code })
     });
 
-    console.log("🌐 response status:", res.status);
-
     const text = await res.text();
-    console.log("📦 raw response:", text);
+    console.log("📦 raw:", text);
 
     let data;
     try {
       data = JSON.parse(text);
     } catch {
-      app.innerText = "❌ 返回不是 JSON";
+      app.innerText = "❌ 返回异常";
       return;
     }
-
-    console.log("✅ parsed:", data);
 
     if (!data.supabase_token) {
       app.innerText = "❌ 登录失败：" + (data.error || "未知错误");
@@ -50,15 +64,18 @@ window.addEventListener("DOMContentLoaded", async () => {
     localStorage.setItem("token", data.supabase_token);
     localStorage.setItem("user", JSON.stringify(data.user));
 
-    app.innerText = "✅ 登录成功";
+    app.innerText = "✅ 登录成功，跳转中...";
 
     setTimeout(() => {
       location.href = "/ai.html";
     }, 800);
 
   } catch (err) {
-    console.error("💥 callback error:", err);
-    (document.body || document.documentElement).innerText = "❌ 错误：" + err.message;
+    console.error(err);
+    app.innerText = "❌ 错误：" + err.message;
   }
 });
 </script>
+
+</body>
+</html>
