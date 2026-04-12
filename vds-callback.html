@@ -2,26 +2,29 @@
 console.log("🚀 callback start");
 alert("callback start");
 
-(async () => {
+window.addEventListener("DOMContentLoaded", async () => {
   try {
     const params = new URLSearchParams(location.search);
     const code = params.get("code");
 
     console.log("🔑 code:", code);
 
+    const app = document.body || document.documentElement;
+
     if (!code) {
-      document.body.innerText = "❌ 没有 code";
+      app.innerText = "❌ 没有 code";
       return;
     }
 
-    document.body.innerText = "登录中...";
+    app.innerText = "登录中...";
 
     const res = await fetch("https://ai.liuxizekali.workers.dev/vds-login", {
       method: "POST",
       headers: {
         "Content-Type": "application/json"
       },
-      body: JSON.stringify({ code })
+      body: JSON.stringify({ code }),
+      mode: "cors"
     });
 
     console.log("🌐 response status:", res.status);
@@ -33,21 +36,21 @@ alert("callback start");
     try {
       data = JSON.parse(text);
     } catch {
-      document.body.innerText = "❌ 返回不是 JSON";
+      app.innerText = "❌ 返回不是 JSON";
       return;
     }
 
     console.log("✅ parsed:", data);
 
     if (!data.supabase_token) {
-      document.body.innerText = "❌ 登录失败：" + (data.error || "未知错误");
+      app.innerText = "❌ 登录失败：" + (data.error || "未知错误");
       return;
     }
 
     localStorage.setItem("token", data.supabase_token);
     localStorage.setItem("user", JSON.stringify(data.user));
 
-    document.body.innerText = "✅ 登录成功";
+    app.innerText = "✅ 登录成功";
 
     setTimeout(() => {
       location.href = "/ai.html";
@@ -55,7 +58,7 @@ alert("callback start");
 
   } catch (err) {
     console.error("💥 callback error:", err);
-    document.body.innerText = "❌ 错误：" + err.message;
+    (document.body || document.documentElement).innerText = "❌ 错误：" + err.message;
   }
-})();
+});
 </script>
