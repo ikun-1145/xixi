@@ -49,9 +49,10 @@
 }
 
 .pro-btn:hover {
+  background: linear-gradient(135deg, #6a5cff, #9f7cff);
   box-shadow: 0 0 15px rgba(122,92,255,0.8);
+  color: white;
 }
-
 .avatar {
   width: 36px;
   height: 36px;
@@ -1049,6 +1050,25 @@ body.ai-entering::before {
 
 <body>
 <div id="app">
+  <button id="scrollBottomBtn" style="
+    position: fixed;
+    bottom: 90px;
+    right: 20px;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: rgba(255,255,255,0.85);
+    backdrop-filter: blur(8px);
+    border: 1px solid rgba(0,0,0,0.08);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+    color: #555;
+    font-size: 16px;
+    cursor: pointer;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity .25s ease, transform .25s ease;
+    z-index: 40;
+  ">↓</button>
 <div id="sidebar">
   <button id="newChatBtn" class="ghost-btn" style="width:100%;justify-content:center;">+ 新对话</button>
   <div id="chatList"></div>
@@ -1088,9 +1108,6 @@ body.ai-entering::before {
   </div>
 
 
-
-</style>
-</head>
 
 </div>
 
@@ -1350,8 +1367,11 @@ item.style.borderRadius = "12px";
 import { supabase } from './p/js/supabaseClient.js';
 
 let session = null;
-// ⭐ 暴露到全局（给普通 script 使用）
-window.session = session;
+
+function setSession(s) {
+  session = s;
+  window.session = s;
+}
 let isActivated = false;
 let deepMode = false; // ⭐ 深度思考
 let conversations = []; // ⭐ 提前声明，避免 TDZ
@@ -1457,13 +1477,13 @@ user = {
         }
       }
 
-      session = user ? { user } : null;
+      setSession(user ? { user } : null);
     } else {
-      session = null;
+      setSession(null);
     }
 
     sessionReady = true;
-    window.session = session;
+    
     renderUser(); // ⭐ 提前刷新UI，避免后续异常导致不显示
 
     if (session?.user) {
@@ -2494,16 +2514,11 @@ async function send() {
   }
 
   if (!session || !session.user) {
-    const old = document.getElementById("loginModal");
-    if (old) old.remove();
-    showLoginPrompt();
-    return;
-    if (res.status === 429) {
-  showLimitModal();
+  const old = document.getElementById("loginModal");
+  if (old) old.remove();
+  showLoginPrompt();
   return;
 }
-  }
-
 
   // ===== ⭐ 新版：统一限额 + Pro 判断 =====
   let usageData = 0;
@@ -2662,6 +2677,11 @@ isStreaming = true;
       messages: history,
       deep: deepMode
     });
+    if (res && res.status === 429) {
+  showLimitModal();
+  sendingLock = false;
+  return;
+}
     console.log("fetch 已返回", res);
 
     if (!res.ok) {
@@ -2825,25 +2845,21 @@ isStreaming = true;
     // ===== ⭐ 成功后再计数（修复一直20次的问题） =====
     if (!isActivated) {
       try {
-        const { data } = await supabase
-          .from("usage")
-          .select("count")
-          .eq("user_id", session.user.id)
-          .maybeSingle();
+        const { error } = await supabase.rpc("increment_usage", {
+  uid: session.user.id
+});
 
-        if (!data) {
-          await supabase.from("usage").insert({
-            user_id: session.user.id,
-            count: 1
-          });
-        } else {
-          await supabase
-            .from("usage")
-            .update({ count: data.count + 1 })
-            .eq("user_id", session.user.id);
-        }
+if (error) {
+  console.warn("计数失败:", error);
+}
 
-        const newCount = (data?.count || 0) + 1;
+const { data } = await supabase
+  .from("usage")
+  .select("count")
+  .eq("user_id", session.user.id)
+  .maybeSingle();
+
+const newCount = data?.count || 0;
         const hintEl = document.getElementById("usageHint");
         if (hintEl) {
           const remain = Math.max(0, 20 - newCount);
@@ -3171,29 +3187,7 @@ window.addEventListener("DOMContentLoaded", () => {
   }
 });
 // 用户设置弹窗
-function showUserSettings() {
-  if (document.getElementById("settingsModal")) return;
 
-  const modal = document.createElement("div");
-  modal.id = "settingsModal";
-  modal.className = "modal active";
-
-  const user = session?.user || {};
-
-  modal.innerHTML = `
-    <div class="modal-content">
-      <span class="close">×</span>
-      <h2 style="margin-bottom:1rem;">用户信息</h2>
-
-      <div style="text-align:left;font-size:13px;color:#444;line-height:1.6;">
-        <p><b>邮箱：</b>${user.email || "未知"}</p>
-        <p><b>ID：</b>${user.id || "未知"}</p>
-        <p><b>会员：</b>${isActivated ? "💎 Pro会员（永久）" : "普通用户"}</p>
-      </div>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
 
   function closeModal() {
     modal.classList.remove("active");
@@ -3202,28 +3196,10 @@ function showUserSettings() {
 
   modal.querySelector(".close").onclick = closeModal;
   modal.onclick = e => { if (e.target === modal) closeModal(); };
-}
+
 </script>
 
-  <button id="scrollBottomBtn" style="
-    position: fixed;
-    bottom: 90px;
-    right: 20px;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.85);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(0,0,0,0.08);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-    color: #555;
-    font-size: 16px;
-    cursor: pointer;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity .25s ease, transform .25s ease;
-    z-index: 40;
-  ">↓</button>
+  
 </div>
 </body>
 <script>
