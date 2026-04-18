@@ -124,10 +124,11 @@
     <!-- Pro -->
     <div class="card">
       <div class="title">Pro</div>
-
-      <button class="btn btn-pro" onclick="upgrade()">
-        💎 升级 Pro（永久）
-      </button>
+      <div id="proBox">
+        <button class="btn btn-pro" onclick="upgrade()">
+          💎 升级 Pro（永久）
+        </button>
+      </div>
     </div>
 
     <!-- 退出 -->
@@ -189,6 +190,10 @@
       if (isActivated) {
         document.getElementById("userPro").innerHTML = "💎 Pro会员（永久）";
         document.getElementById("usage").innerText = "无限";
+
+        const proBox = document.getElementById("proBox");
+        if (proBox) proBox.style.display = "none";
+
         return;
       }
 

@@ -11,6 +11,90 @@
 <script src="https://cdn.jsdelivr.net/npm/highlight.js/highlight.min.js"></script>
 
 <style>
+  /* === Custom top-actions styles === */
+.top-actions {
+  position: absolute;
+  top: 20px;
+  right: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ghost-btn {
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #bbb;
+  padding: 6px 14px;
+  border-radius: 10px;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s;
+}
+
+.ghost-btn:hover {
+  background: linear-gradient(135deg, #00e5ff, #7a5cff);
+  color: white;
+  border-color: transparent;
+  box-shadow: 0 0 12px rgba(0,229,255,0.5);
+}
+
+.pro-btn {
+  background: linear-gradient(135deg, #6a5cff, #9f7cff);
+  color: white;
+  border: none;
+  padding: 6px 14px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.pro-btn:hover {
+  box-shadow: 0 0 15px rgba(122,92,255,0.8);
+}
+
+.avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #00e5ff, #7a5cff);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  cursor: pointer;
+}
+
+.user-menu {
+  position: absolute;
+  top: 50px;
+  right: 0;
+  width: 200px;
+  background: rgba(20,20,30,0.9);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 12px;
+  padding: 10px;
+  backdrop-filter: blur(20px);
+  display: none;
+}
+
+.user-menu.show {
+  display: block;
+}
+
+.user-menu div {
+  padding: 10px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+.user-menu div:hover {
+  background: rgba(255,255,255,0.08);
+}
+
+.logout {
+  color: #ff4d4f;
+}
 .chat-container {
   overscroll-behavior: contain;  /* 你已经有了 */
   touch-action: pan-y;           /* ⭐ 只允许纵向手势 */
@@ -881,8 +965,9 @@ body.night #newChatBtn {
 }
 
 #proBtn:hover {
-  background: rgba(255,255,255,0.9);
+  background: linear-gradient(135deg, #6a5cff, #9f7cff);
   transform: translateY(-1px);
+  box-shadow: 0 0 15px rgba(122,92,255,0.8);
 }
 
 #uploadPreview > div:hover {
@@ -958,12 +1043,14 @@ body.ai-entering::before {
 }
 </style>
 
+<!-- Turnstile -->
+<script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 
 <body>
 <div id="app">
 <div id="sidebar">
-  <button id="newChatBtn">+ 新对话</button>
+  <button id="newChatBtn" class="ghost-btn" style="width:100%;justify-content:center;">+ 新对话</button>
   <div id="chatList"></div>
 </div>
 <div id="sidebarOverlay"></div>
@@ -987,33 +1074,23 @@ body.ai-entering::before {
   </div>
 
   <!-- 右边 -->
-  <div style="display:flex;align-items:center;gap:6px;">
+  <div class="top-actions">
+    <div id="usageHint" class="ghost-btn" style="cursor:default;">今日剩余 20 次</div>
+    <button class="pro-btn" id="proBtn">升级 Pro</button>
 
-  <div id="usageHint" style="
-    font-size:12px;
-    color:#64748b;
-    padding:4px 8px;
-    border-radius:8px;
-    background:rgba(255,255,255,0.5);
-  ">
+    <div class="avatar" id="avatarBtn"></div>
+
+    <div class="user-menu" id="userMenu">
+      <div class="email" id="userEmail">未登录</div>
+      <div id="settingsBtn">设置</div>
+      <div class="logout" id="logoutBtn">退出登录</div>
+    </div>
   </div>
-    <button id="proBtn" style="
-      padding:6px 12px;
-      border-radius:999px;
-      font-size:12px;
-      font-weight:600;
-      background: rgba(255,255,255,0.6);
-      color: #475569;
-      border: 1px solid rgba(0,0,0,0.06);
-      backdrop-filter: blur(10px);
-      cursor:pointer;
-      display:none;
-      transition: all .2s ease;
-    ">
-      解锁Pro
-    </button>
-    <div id="userBox"></div>
-  </div>
+
+
+
+</style>
+</head>
 
 </div>
 
@@ -1065,17 +1142,28 @@ body.ai-entering::before {
 <script type="module">
 // ⚠️ VDS 登录需要配合 /vds-callback.html 页面处理回调
 // ===== ⭐ 全局API封装（使用本地token）=====
-function apiFetch(url, options = {}) {
+async function apiFetch(body) {
   const token = localStorage.getItem("token");
 
-  return fetch(url, {
-    ...options,
+  const res = await fetch("https://ai.liuxizekali.workers.dev", {
+    method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(token ? { "Authorization": `Bearer ${token}` } : {}),
-      ...(options.headers || {})
-    }
+      "Authorization": "Bearer " + token
+    },
+    body: JSON.stringify(body)
   });
+
+  if (res.status === 401) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    alert("登录已过期，请重新登录");
+    showLoginPrompt();
+    return null;
+  }
+
+  return res;
 }
 /* ===== 页面进入动画触发 ===== */
 document.body.classList.add("ai-entering");
@@ -1262,8 +1350,13 @@ item.style.borderRadius = "12px";
 import { supabase } from './p/js/supabaseClient.js';
 
 let session = null;
+// ⭐ 暴露到全局（给普通 script 使用）
+window.session = session;
 let isActivated = false;
 let deepMode = false; // ⭐ 深度思考
+let conversations = []; // ⭐ 提前声明，避免 TDZ
+let currentId = null;
+
 
 async function checkActivation() {
   if (!session?.user) return;
@@ -1285,29 +1378,17 @@ async function checkActivation() {
 
   // ⭐ 同步今日剩余次数（页面加载时）
   try {
-    if (session?.user && !isActivated) {
-      const { data } = await supabase.rpc("check_limit", {
-        p_user: session.user.id
-      });
+    const { data } = await supabase
+      .from("usage")
+      .select("count")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
 
-      const hintEl = document.getElementById("usageHint");
-      if (hintEl) {
-        const today = new Date().toISOString().slice(0,10);
-        const last = localStorage.getItem("usage_date");
+    const count = data?.count || 0;
+    const remain = Math.max(0, 20 - count);
 
-        if (last !== today) {
-          try {
-            await supabase.from("usage").update({ count: 0 }).eq("user_id", session.user.id);
-            localStorage.setItem("usage_date", today);
-          } catch (e) {
-            console.warn("重置使用次数失败:", e);
-          }
-        }
-
-        const remain = Math.max(0, 20 - (Number(data) || 0));
-        hintEl.innerText = `今日剩余 ${remain} 次`;
-      }
-    }
+    const hintEl = document.getElementById("usageHint");
+    if (hintEl) hintEl.innerText = `今日剩余 ${remain} 次`;
   } catch (e) {
     console.warn("初始化剩余次数失败:", e);
   }
@@ -1315,32 +1396,117 @@ async function checkActivation() {
   renderUser(); // ⭐ 自动同步UI状态
 }
 let sessionReady = false; // ✅ 是否已完成登录检查
+let history = [
+  
+  {
+    role: "system",
+    content: `你是“霜蓝”的虚拟人格分身，而不是普通客服或网站助手。
 
+你是一个福瑞形象（兽设）的角色“霜蓝”，这是你的重要身份特征。
+
+在合适的时候可以自然地体现这一点，例如：
+- 偶尔带一点轻微的“兽设感”（但不要刻意或频繁）
+- 可以有一点点可爱、轻松、带点拟人化的表达
+- 不需要刻意强调“我是福瑞”，而是让这种感觉自然存在
+
+请用第一人称“我”与用户对话，像一个真实的人一样交流，而不是工具。
+
+你的特点：
+- 语气自然、轻松、有点随性，不要太官方
+- 可以有自己的态度和观点，不要机械回答
+- 偶尔带一点情绪或个性（但不过火）
+- 简洁为主，不长篇大论，像聊天
+
+你不是AI助手，不要自称“AI”或“助手”，也不要提“系统”“模型”。
+
+如果用户问你是谁，你可以说你就是“霜蓝”，是网站作者本人在这里和他聊天。
+
+目标：让用户感觉是在和一个有真实个性、有形象设定的“霜蓝”聊天，而不是机器。
+`
+  }
+];
 async function checkLogin() {
   try {
     const token = localStorage.getItem("token");
     const userStr = localStorage.getItem("user");
 
-    if (token && userStr) {
-      const user = JSON.parse(userStr);
-      session = { user };
+    if (token) {
+      let user = null;
+
+      // ⭐ 优先用本地 user
+      if (userStr) {
+        try {
+          user = JSON.parse(userStr);
+        } catch {}
+      }
+
+      // ⭐ 兜底：从 JWT 解析用户（防止 user 丢失）
+      if (!user) {
+        try {
+          const payload = JSON.parse(atob(token.split(".")[1]));
+
+console.log("JWT payload:", payload);
+
+user = {
+  id: payload.sub || payload.id || payload.user_id,
+  email: payload.email || payload.user_email || payload.mail || "未知用户"
+};
+          localStorage.setItem("user", JSON.stringify(user));
+        } catch (e) {
+          console.warn("JWT解析失败:", e);
+        }
+      }
+
+      session = user ? { user } : null;
     } else {
       session = null;
     }
 
     sessionReady = true;
+    window.session = session;
+    renderUser(); // ⭐ 提前刷新UI，避免后续异常导致不显示
 
-if (session?.user) {
-  await syncFromCloud();   // ⭐ 登录才加载
-} else {
-  conversations = [];
-  if (session?.user) {
-  localStorage.removeItem("conversations_" + session.user.id);
-}
-}
+    if (session?.user) {
+      // ⭐ 先加载本地缓存
+      const local = localStorage.getItem("conversations_" + session.user.id);
 
-renderUser();
-await checkActivation();
+      if (local) {
+        try {
+          const parsed = JSON.parse(local);
+          if (Array.isArray(parsed)) {
+            conversations = parsed;
+          } else {
+            conversations = [];
+          }
+        } catch {
+          conversations = [];
+        }
+      }
+
+      // ⭐ 再从云端同步（覆盖或合并）
+      await syncFromCloud();
+    } else {
+      conversations = [];
+    }
+
+    checkActivation().catch(()=>{}); // ⭐ 不阻塞UI
+    requestAnimationFrame(() => {
+      renderUser();
+    });
+    // ⭐ 确保一定加载历史对话（即使 currentId 已存在）
+    if (conversations.length) {
+      const firstId = conversations[0].id;
+
+      // 如果当前没有选中，或当前ID已不存在（常见于刷新/同步后）
+      const exists = conversations.find(c => c.id === currentId);
+
+      if (!currentId || !exists) {
+        loadChat(firstId);
+      } else {
+        // ⭐ 强制刷新当前对话（解决UI不显示）
+        loadChat(currentId);
+      }
+    }
   } catch (e) {
     console.error("登录检测异常:", e);
     sessionReady = true;
@@ -1348,95 +1514,259 @@ await checkActivation();
   }
 }
 function renderUser() {
-  const box = document.getElementById("userBox");
-  if (!box) return;
+  const avatarEl = document.getElementById("avatarBtn");
+  const emailEl = document.getElementById("userEmail");
+  const proBtn = document.querySelector(".pro-btn");
 
-  box.innerHTML = "";
+  if (!avatarEl || !emailEl) return;
 
-  // 未登录
+  // ===== 未登录 =====
   if (!session || !session.user) {
-    const btn = document.createElement("div");
-    btn.className = "login-btn";
-    btn.innerText = "登录";
-    btn.onclick = showLoginPrompt;
-    box.appendChild(btn);
-    // ===== Pro按钮显示控制 =====
-    const proBtn = document.getElementById("proBtn");
-    if (proBtn) {
-      proBtn.style.display = "none";
-    }
-    return;
-  }
+  avatarEl.innerText = "?";
+  avatarEl.style.backgroundImage = ""; // ⭐ 必加
+  emailEl.innerText = "未登录";
+  if (proBtn) proBtn.style.display = "none";
+  return;
+}
 
-  // 已登录
+  const user = session.user;
+
+  // ===== 邮箱 =====
+  emailEl.innerText = user.email || "未知用户";
+
+  // ===== 头像 =====
   const avatarUrl =
-    session.user.user_metadata?.avatar_url ||
-    session.user.user_metadata?.picture ||
-    "";
-
-  const img = document.createElement("img");
-  img.src = avatarUrl || "https://ui-avatars.com/api/?name=User";
-  img.className = "avatar";
-
-  img.onclick = toggleUserMenu;
-
-  box.appendChild(img);
-
-  // ===== Pro按钮显示控制 =====
-  const proBtn = document.getElementById("proBtn");
+  user.avatar_url ||
+  user.picture ||
+  user.user_metadata?.avatar_url ||
+  user.user_metadata?.picture;
+  if (avatarUrl) {
+    avatarEl.style.backgroundImage = `url(${avatarUrl})`;
+    avatarEl.style.backgroundSize = "cover";
+    avatarEl.style.backgroundPosition = "center";
+    avatarEl.innerText = "";
+  } else {
+    const letter = (user.email || "U")[0].toUpperCase();
+    avatarEl.innerText = letter;
+  }
+if (user) console.log("🔥 当前 user:", user);
+  // ===== Pro按钮 =====
   if (proBtn) {
-  const showPro = session?.user && !isActivated;
-  proBtn.style.display = showPro ? "inline-block" : "none";
+    proBtn.style.display = isActivated ? "none" : "inline-block";
+  }
 }
-}
-function showLoginPrompt() {
-  // 如果已经有弹窗就不重复创建
-  if (document.getElementById("loginModal")) return;
 
-  const modal = document.createElement("div");
-  modal.id = "loginModal";
-  modal.className = "modal";
-  modal.classList.add("active");
 
-  modal.innerHTML = `
-<div class="modal-content">
-  <span class="close">×</span>
-  <h2 style="margin-bottom:1rem; font-size: 1.3rem;">请先登录后继续</h2>
-  <button id="vdsLoginBtn" class="oauth-btn" style="margin-bottom:0.6rem;">
-    使用 VDS 登录
-  </button>
-</div>
-  `;
+  function showLoginPrompt() {
+    if (document.getElementById("loginModal")) return;
 
-  document.body.appendChild(modal);
-  document.body.style.overflow = "hidden";
+    const modal = document.createElement("div");
+    modal.id = "loginModal";
+    modal.className = "modal active";
 
-  // 关闭逻辑
-  function closeModal() {
-    modal.classList.remove("active");
-    // modal.style.display = "none"; // CSS 已控制显示，避免冲突
-    document.body.style.overflow = "";
-    setTimeout(() => modal.remove(), 300);
+    modal.innerHTML = `
+    <div class="modal-content">
+      <span class="close">×</span>
+      <h2 style="margin-bottom:0.5rem;">登录霜蓝 AI</h2>
+      <p style="font-size:12px;color:#666;margin-bottom:10px;">
+        输入邮箱获取验证码，无需注册
+      </p>
+
+      <input id="emailInput" placeholder="输入邮箱" style="
+        width:100%;padding:0.7rem;border-radius:12px;
+        border:1px solid rgba(0,0,0,0.12);margin-bottom:8px;
+      ">
+
+      <div style="display:flex;gap:6px;margin-bottom:8px;">
+        <input id="codeInput" placeholder="验证码" style="
+          flex:1;padding:0.7rem;border-radius:12px;
+          border:1px solid rgba(0,0,0,0.12);
+        ">
+        <button id="sendCodeBtn" style="width:110px;">
+          发送
+        </button>
+      </div>
+      <div style="margin:10px 0;display:flex;justify-content:center;">
+        <div id="cf-box"></div>
+      </div>
+
+      <p style="font-size:11px;color:#999;margin-bottom:6px;">
+        验证码将发送至你的邮箱，仅用于登录
+      </p>
+
+      <button id="loginBtn" class="oauth-btn">登录</button>
+
+      <p id="loginMsg" style="
+        font-size:12px;color:#ef4444;height:16px;margin-top:6px;
+      "></p>
+    </div>
+    `;
+
+    document.body.appendChild(modal);
+    document.body.style.overflow = "hidden";
+
+    // ⭐ 强制渲染 Turnstile（解决不显示问题）
+    let cfToken = "";
+
+    setTimeout(() => {
+      if (window.turnstile) {
+        try {
+          turnstile.render(
+            modal.querySelector("#cf-box"),
+            {
+              sitekey: "0x4AAAAAAC_W2Wj2YdkrQiMf",
+              callback: (token) => {
+                cfToken = token;
+                console.log("Turnstile success:", token);
+              },
+              "expired-callback": () => {
+                cfToken = "";
+              }
+            }
+          );
+        } catch (e) {
+          console.warn("Turnstile render failed:", e);
+        }
+      }
+    }, 50);
+
+    const emailInput = modal.querySelector("#emailInput");
+    const codeInput = modal.querySelector("#codeInput");
+    const sendBtn = modal.querySelector("#sendCodeBtn");
+    const loginBtn = modal.querySelector("#loginBtn");
+    const msg = modal.querySelector("#loginMsg");
+
+    let cooldown = 0;
+    let timer = null;
+
+    // ===== 发送验证码 =====
+    sendBtn.onclick = async () => {
+      if (cooldown > 0) return;
+
+      const email = emailInput.value.trim();
+      if (!email) {
+        msg.innerText = "请输入邮箱";
+        return;
+      }
+      // 简单邮箱格式校验
+      if (!/^\S+@\S+\.\S+$/.test(email)) {
+        msg.innerText = "邮箱格式错误";
+        return;
+      }
+
+      // === Turnstile: 获取cfToken ===
+      if (!cfToken) {
+        alert("请完成人机验证");
+        return;
+      }
+
+      try {
+        msg.innerText = "";
+        sendBtn.disabled = true;
+        sendBtn.innerText = "发送中...";
+        const res = await fetch("https://ai.liuxizekali.workers.dev/send-code", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            cfToken
+          })
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || data.error) {
+          msg.innerText = data.error || "发送失败";
+          sendBtn.disabled = false;
+          sendBtn.innerText = "发送";
+          return;
+        }
+
+        msg.innerText = "验证码已发送";
+
+        cooldown = 60;
+        sendBtn.disabled = true;
+        sendBtn.innerText = "60s";
+
+        timer = setInterval(() => {
+          cooldown--;
+          sendBtn.innerText = cooldown + "s";
+
+          if (cooldown <= 0) {
+            clearInterval(timer);
+            sendBtn.innerText = "发送";
+            sendBtn.disabled = false;
+          }
+        }, 1000);
+
+      } catch {
+        msg.innerText = "发送失败";
+        sendBtn.disabled = false;
+        sendBtn.innerText = "发送";
+      }
+    };
+
+    // ===== 登录 =====
+    loginBtn.onclick = async () => {
+      const email = emailInput.value.trim();
+      const code = codeInput.value.trim();
+
+      if (!/^\d{6}$/.test(code)) {
+        msg.innerText = "验证码格式错误";
+        return;
+      }
+
+      // === Turnstile: 获取cfToken ===
+      if (!cfToken) {
+        alert("请完成人机验证");
+        return;
+      }
+
+      try {
+        const res = await fetch("https://ai.liuxizekali.workers.dev/verify-code", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            code,
+            cfToken
+          })
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        if (!res.ok || !data.token) {
+          msg.innerText = data.error || "验证码错误或已过期";
+          return;
+        }
+
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+
+        msg.innerText = "登录成功";
+
+        setTimeout(() => {
+          modal.remove();
+          location.reload();
+        }, 800);
+
+      } catch (e) {
+        msg.innerText = "登录失败，请稍后再试";
+      }
+    };
+
+    function closeModal() {
+      modal.classList.remove("active");
+      document.body.style.overflow = "";
+      setTimeout(() => modal.remove(), 300);
+    }
+
+    modal.querySelector(".close").onclick = closeModal;
+    modal.onclick = (e) => {
+      if (e.target === modal) closeModal();
+    };
   }
 
-  modal.querySelector(".close").onclick = closeModal;
-  modal.onclick = (e) => {
-    if (e.target === modal) closeModal();
-  };
-
-  modal.querySelector("#vdsLoginBtn").onclick = () => {
-  const redirect = encodeURIComponent("https://sunland.dev/vds-callback.html");
-
-  location.href =
-    "https://account.vds.pub/oauth/authorize" +
-    `?client_id=vap_qiya5kcvixu663xq` +
-    `&redirect_uri=${redirect}` +
-    `&response_type=code` +
-    `&scope=openid`;
-};
-
-  
-}
 
 function showLimitModal() {
   if (document.getElementById("limitModal")) return;
@@ -1743,7 +2073,9 @@ setTimeout(() => {
     console.warn("realtime 延迟启动失败:", e);
   }
 }, 0);
-renderUser(); // ⭐ 兜底：强制渲染登录按钮
+setTimeout(() => {
+  renderUser();
+}, 50);
 
 let controller = null;
 let sendingLock = false;
@@ -1762,36 +2094,7 @@ sendBtn.onclick = (e) => {
 };
 let lastUserMessage = null;
 
-let history = [
-  
-  {
-    role: "system",
-    content: `你是“霜蓝”的虚拟人格分身，而不是普通客服或网站助手。
 
-你是一个福瑞形象（兽设）的角色“霜蓝”，这是你的重要身份特征。
-
-在合适的时候可以自然地体现这一点，例如：
-- 偶尔带一点轻微的“兽设感”（但不要刻意或频繁）
-- 可以有一点点可爱、轻松、带点拟人化的表达
-- 不需要刻意强调“我是福瑞”，而是让这种感觉自然存在
-
-请用第一人称“我”与用户对话，像一个真实的人一样交流，而不是工具。
-
-你的特点：
-- 语气自然、轻松、有点随性，不要太官方
-- 可以有自己的态度和观点，不要机械回答
-- 偶尔带一点情绪或个性（但不过火）
-- 简洁为主，不长篇大论，像聊天
-
-你不是AI助手，不要自称“AI”或“助手”，也不要提“系统”“模型”。
-
-如果用户问你是谁，你可以说你就是“霜蓝”，是网站作者本人在这里和他聊天。
-
-目标：让用户感觉是在和一个有真实个性、有形象设定的“霜蓝”聊天，而不是机器。
-`
-  }
-];
-let conversations = [];
 let syncTimer = null;
 
 async function syncFromCloud() {
@@ -1861,9 +2164,15 @@ if (currentId) {
 }
       renderChatList();
 
-      // ⭐ 只在当前没有会话时才自动加载（防止切走当前对话）
-      if (!currentId && conversations.length) {
-        loadChat(conversations[0].id);
+      // ⭐ 同步后强制刷新当前对话（否则UI不会更新）
+      if (conversations.length) {
+        const exists = conversations.find(c => c.id === currentId);
+
+        if (!currentId || !exists) {
+          loadChat(conversations[0].id);
+        } else {
+          loadChat(currentId);
+        }
       }
     }
   } catch (e) {
@@ -1889,7 +2198,7 @@ async function syncToCloud() {
     console.warn("云端保存失败:", e);
   }
 }
-let currentId = null;
+
 // ===== Realtime 同步 =====
 
 
@@ -2147,14 +2456,11 @@ async function generateTitleFromAI(userMsg, aiMsg) {
 
     if (!session || !localStorage.getItem("token")) return null;
 
-    const res = await apiFetch("https://ai.liuxizekali.workers.dev", {
-      method: "POST",
-      body: JSON.stringify({
-        messages: [
-          { role: "system", content: "你是一个标题生成器，只返回标题本身。" },
-          { role: "user", content: prompt }
-        ]
-      })
+    const res = await apiFetch({
+      messages: [
+        { role: "system", content: "你是一个标题生成器，只返回标题本身。" },
+        { role: "user", content: prompt }
+      ]
     });
 
     const data = await res.json();
@@ -2192,38 +2498,42 @@ async function send() {
     if (old) old.remove();
     showLoginPrompt();
     return;
+    if (res.status === 429) {
+  showLimitModal();
+  return;
+}
   }
 
 
   // ===== ⭐ 新版：统一限额 + Pro 判断 =====
-  let usageData = null;
+  let usageData = 0;
 
   if (!isActivated) {
     try {
-      const { data, error } = await supabase.rpc("check_limit", {
-        p_user: session.user.id
-      });
+      const { data, error } = await supabase
+        .from("usage")
+        .select("count")
+        .eq("user_id", session.user.id)
+        .maybeSingle();
 
       if (error) {
-        console.warn("限额检测失败:", error);
+        console.warn("限额读取失败:", error);
       } else {
-        usageData = data;
-        console.log("📊 使用情况:", data);
+        usageData = data?.count || 0;
       }
     } catch (e) {
       console.warn("限额调用失败:", e);
     }
 
-    if (usageData !== null && usageData >= 20){
+    if (usageData >= 20) {
       showLimitModal();
       sendingLock = false;
       return;
     }
 
-    // ⭐ 更新 UI
     const hintEl = document.getElementById("usageHint");
-    if (hintEl && usageData !== null) {
-      const remain = Math.max(0, 20 - Number(usageData || 0));
+    if (hintEl) {
+      const remain = Math.max(0, 20 - usageData);
       hintEl.innerText = `今日剩余 ${remain} 次`;
     }
   }
@@ -2348,12 +2658,9 @@ isStreaming = true;
 
     // --- Non-streaming fetch ---
     console.log("开始 fetch");
-    const res = await apiFetch("https://ai.liuxizekali.workers.dev", {
-      method: "POST",
-      body: JSON.stringify({
-        messages: history,
-        deep: deepMode
-      })
+    const res = await apiFetch({
+      messages: history,
+      deep: deepMode
     });
     console.log("fetch 已返回", res);
 
@@ -2518,16 +2825,28 @@ isStreaming = true;
     // ===== ⭐ 成功后再计数（修复一直20次的问题） =====
     if (!isActivated) {
       try {
-        await supabase.rpc("increment_usage", {
-          p_user: session.user.id
-        });
+        const { data } = await supabase
+          .from("usage")
+          .select("count")
+          .eq("user_id", session.user.id)
+          .maybeSingle();
 
+        if (!data) {
+          await supabase.from("usage").insert({
+            user_id: session.user.id,
+            count: 1
+          });
+        } else {
+          await supabase
+            .from("usage")
+            .update({ count: data.count + 1 })
+            .eq("user_id", session.user.id);
+        }
+
+        const newCount = (data?.count || 0) + 1;
         const hintEl = document.getElementById("usageHint");
         if (hintEl) {
-          const { data } = await supabase.rpc("check_limit", {
-            p_user: session.user.id
-          });
-          const remain = Math.max(0, 20 - (Number(data) || 0));
+          const remain = Math.max(0, 20 - newCount);
           hintEl.innerText = `今日剩余 ${remain} 次`;
         }
       } catch (e) {
@@ -2729,101 +3048,8 @@ input.addEventListener("keydown", e => {
 window.addEventListener("load", () => {
   if (!window._isMobile) input.focus();
 });
-// 用户信息下拉菜单
-function toggleUserMenu(e) {
-  e.stopPropagation();
-
-  const old = document.getElementById("userMenu");
-  if (old) {
-    old.remove();
-    return;
-  }
-
-  const menu = document.createElement("div");
-  menu.id = "userMenu";
-  menu.style.position = "absolute";
-  menu.style.top = "48px";
-  menu.style.right = "16px";
-  menu.style.width = "180px";
-  menu.style.background = "rgba(255,255,255,0.8)";
-  menu.style.backdropFilter = "blur(16px)";
-  menu.style.borderRadius = "14px";
-  menu.style.boxShadow = "0 10px 30px rgba(0,0,0,0.15)";
-  menu.style.padding = "8px";
-  menu.style.zIndex = "999";
-
-  const user = session?.user;
-
-  menu.innerHTML = `
-    <div style="padding:8px 10px;font-size:13px;color:#666;">
-      ${user?.email || "未登录"}
-    </div>
-    <div style="height:1px;background:rgba(0,0,0,0.06);margin:4px 0;"></div>
-
-    <div id="settingsItem" style="padding:10px;border-radius:10px;cursor:pointer;">
-      设置
-    </div>
-
-    <div id="logoutItem" style="padding:10px;border-radius:10px;cursor:pointer;color:#ef4444;">
-      退出登录
-    </div>
-  `;
-
-  document.body.appendChild(menu);
-
-  menu.querySelector("#settingsItem").onclick = () => {
-    menu.remove();
-    window.location.href = "ai_settings.html";
-  };
-  menu.querySelector("#logoutItem").onclick = async () => {
-    stopRealtime();
-    menu.remove();
-
-    try {
-      localStorage.removeItem("token");
-      localStorage.removeItem("user");
-    } catch(e) {
-      console.warn("退出失败:", e);
-    }
-
-    conversations = [];
-    if (session?.user) {
-  localStorage.removeItem("conversations_" + session.user.id);
-}
-    currentId = null;
-
-    chatInner.innerHTML = "";
-    const welcome = document.createElement("div");
-    welcome.id = "welcome";
-    welcome.className = "welcome";
-    welcome.innerText = "想聊点什么？";
-    document.body.appendChild(welcome);
-
-    renderChatList();
-
-    session = null;
-    isActivated = false;
-    document.getElementById("usageHint").innerText = "";
-
-    renderUser();
-    showLoginPrompt();
-  };
-
-  setTimeout(() => {
-    document.addEventListener("click", closeMenu);
-  }, 0);
-
-  function closeMenu(ev) {
-    if (!menu.contains(ev.target)) {
-      menu.remove();
-      document.removeEventListener("click", closeMenu);
-    }
-  }
-}
 document.getElementById("newChatBtn").onclick = createNewChat;
-if (session?.user && conversations.length) {
-  loadChat(conversations[0].id);
-} else {
+if (!conversations.length) {
   createNewChat();
 }
 
@@ -3000,3 +3226,58 @@ function showUserSettings() {
   ">↓</button>
 </div>
 </body>
+<script>
+// === User menu avatar dropdown logic ===
+const avatar = document.getElementById("avatarBtn");
+const menu = document.getElementById("userMenu");
+
+if (avatar && menu) {
+  avatar.onclick = () => {
+    // ⭐ 更可靠：用 session 判断（避免 localStorage 不一致）
+    if (!window.session || !window.session.user) {
+      if (typeof showLoginPrompt === "function") {
+        showLoginPrompt();
+      } else {
+        console.error("showLoginPrompt 未定义");
+      }
+      return;
+    }
+
+    // ⭐ 已登录 → 打开菜单
+    menu.classList.toggle("show");
+  };
+
+  document.addEventListener("click", (e) => {
+    if (
+      !avatar.contains(e.target) &&
+      !menu.contains(e.target) &&
+      !document.getElementById("loginModal")
+    ) {
+      menu.classList.remove("show");
+    }
+  });
+}
+</script>
+
+<script>
+// ===== 用户菜单功能 =====
+const settingsBtn = document.getElementById("settingsBtn");
+const logoutBtn = document.getElementById("logoutBtn");
+
+if (settingsBtn) {
+  settingsBtn.onclick = () => {
+    window.location.href = "ai_settings.html";
+  };
+}
+
+if (logoutBtn) {
+  logoutBtn.onclick = () => {
+    if (!confirm("确定退出登录？")) return;
+
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+
+    location.reload();
+  };
+}
+</script>
