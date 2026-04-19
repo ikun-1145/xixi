@@ -14,11 +14,19 @@
   /* === Custom top-actions styles === */
 .top-actions {
   position: absolute;
-  top: 20px;
-  right: 20px;
+  top: 50%;
+  right: 16px;
+  transform: translateY(-50%);
+
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+
+  /* ⭐ 不再作为定位父级，避免错位 */
+}
+
+.top-actions > .avatar {
+  position: relative; /* ⭐ 让菜单跟头像走 */
 }
 
 .ghost-btn {
@@ -68,15 +76,25 @@
 
 .user-menu {
   position: absolute;
-  top: 50px;
+  top: calc(100% + 8px);
   right: 0;
+  left: auto;
   width: 200px;
-  background: rgba(20,20,30,0.9);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(255,255,255,0.7));
+  border: 1px solid rgba(0,0,0,0.08);
+  color: #1f2937;
   border-radius: 12px;
   padding: 10px;
   backdrop-filter: blur(20px);
   display: none;
+  z-index: 9999; /* ⭐ 防止被遮挡 */
+  transform: translateY(6px);
+}
+
+body.night .user-menu {
+  background: rgba(20,20,30,0.9);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #e5e7eb;
 }
 
 .user-menu.show {
@@ -803,7 +821,7 @@ body.thinking-mode button {
 }
 
 #userMenu div:hover {
-  background: rgba(0,0,0,0.05);
+  background: rgba(0,0,0,0.06);
 }
 #sidebar {
   position: fixed;
@@ -3231,7 +3249,8 @@ const avatar = document.getElementById("avatarBtn");
 const menu = document.getElementById("userMenu");
 
 if (avatar && menu) {
-  avatar.onclick = () => {
+  avatar.onclick = (e) => {
+    e.stopPropagation();
     // ⭐ 更可靠：用 session 判断（避免 localStorage 不一致）
     if (!window.session || !window.session.user) {
       if (typeof showLoginPrompt === "function") {
