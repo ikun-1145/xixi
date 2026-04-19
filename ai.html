@@ -1627,11 +1627,15 @@ if (user) console.log("🔥 当前 user:", user);
 
     // ⭐ 强制渲染 Turnstile（解决不显示问题）
     let cfToken = "";
+    let widgetId = null;
+    // 防止重复渲染 Turnstile
+    const oldBox = modal.querySelector("#cf-box");
+    if (oldBox) oldBox.innerHTML = "";
 
     setTimeout(() => {
       if (window.turnstile) {
         try {
-          turnstile.render(
+          widgetId = turnstile.render(
             modal.querySelector("#cf-box"),
             {
               sitekey: "0x4AAAAAAC_W2Wj2YdkrQiMf",
@@ -1640,6 +1644,9 @@ if (user) console.log("🔥 当前 user:", user);
                 console.log("Turnstile success:", token);
               },
               "expired-callback": () => {
+                cfToken = "";
+              },
+              "error-callback": () => {
                 cfToken = "";
               }
             }
@@ -1676,7 +1683,7 @@ if (user) console.log("🔥 当前 user:", user);
 
       // === Turnstile: 获取cfToken ===
       if (!cfToken) {
-        alert("请完成人机验证");
+        msg.innerText = "请先完成人机验证";
         return;
       }
 
@@ -1703,6 +1710,14 @@ if (user) console.log("🔥 当前 user:", user);
         }
 
         msg.innerText = "验证码已发送";
+
+        // 发送验证码成功后也重置 Turnstile
+        if (widgetId !== null && window.turnstile) {
+          try {
+            turnstile.reset(widgetId);
+            cfToken = "";
+          } catch {}
+        }
 
         cooldown = 60;
         sendBtn.disabled = true;
@@ -1738,7 +1753,7 @@ if (user) console.log("🔥 当前 user:", user);
 
       // === Turnstile: 获取cfToken ===
       if (!cfToken) {
-        alert("请完成人机验证");
+        msg.innerText = "请先完成人机验证";
         return;
       }
 
@@ -1764,6 +1779,14 @@ if (user) console.log("🔥 当前 user:", user);
         localStorage.setItem("user", JSON.stringify(data.user));
 
         msg.innerText = "登录成功";
+
+        // 登录成功后重置 Turnstile
+        if (widgetId !== null && window.turnstile) {
+          try {
+            turnstile.reset(widgetId);
+            cfToken = "";
+          } catch {}
+        }
 
         setTimeout(() => {
           modal.remove();
