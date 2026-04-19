@@ -402,7 +402,6 @@ html, body {
   min-width: 0;
   font-size: 14px;
 
-  animation: fadeInBubble 0.25s ease;
   display: inline-flex;
   flex-direction: column;
   gap: 2px;
@@ -411,6 +410,7 @@ html, body {
 .message.ai .bubble {
   background: linear-gradient(145deg,#ffffff,#f1f5f9);
   border: 1px solid rgba(255,255,255,0.5);
+  animation: bubbleAI 0.22s cubic-bezier(0.34,1.56,0.64,1);
   box-shadow: 0 4px 16px rgba(0,0,0,0.06);
   color: #1f2937;
 }
@@ -418,6 +418,7 @@ html, body {
 .message.user .bubble {
   background: linear-gradient(135deg,#22d3ee,#67e8f9);
   color: #00323a;
+  animation: bubbleUser 0.22s cubic-bezier(0.34,1.56,0.64,1);
   box-shadow: 0 6px 18px rgba(34,211,238,0.25);
 }
 
@@ -615,6 +616,20 @@ button:hover {
   }
 }
 
+@keyframes modalOut {
+  from { opacity: 1; transform: translateY(0) scale(1); }
+  to   { opacity: 0; transform: translateY(12px) scale(0.95); }
+}
+
+.modal.closing .modal-content {
+  animation: modalOut 0.2s ease forwards;
+}
+
+.modal.closing {
+  background: rgba(0,0,0,0);
+  transition: background 0.2s ease;
+}
+
 @media (max-width: 768px) {
   .bubble {
     max-width: 78%;   /* 桌面是65%，移动端适当放宽但不要撑满 */
@@ -721,6 +736,28 @@ button:hover {
 @keyframes blinkCursor {
   0%, 50%, 100% { opacity: 1; }
   25%, 75% { opacity: 0; }
+}
+
+@keyframes bubbleUser {
+  from {
+    opacity: 0;
+    transform: translateX(10px) translateY(4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) translateY(0) scale(1);
+  }
+}
+
+@keyframes bubbleAI {
+  from {
+    opacity: 0;
+    transform: translateX(-8px) translateY(4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) translateY(0) scale(1);
+  }
 }
 
 @keyframes fadeInBubble {
@@ -1043,6 +1080,12 @@ body.ai-entering::before {
   z-index: 999;
 }
 
+.bubble,
+.modal-content,
+#scrollBottomBtn {
+  will-change: transform, opacity;
+}
+
 @keyframes aiEnter {
   0% {
     transform: scale(0.95);
@@ -1084,7 +1127,8 @@ body.ai-entering::before {
     cursor: pointer;
     opacity: 0;
     pointer-events: none;
-    transition: opacity .25s ease, transform .25s ease;
+    transform: translateY(8px) scale(0.9);
+    transition: opacity .25s ease, transform .25s cubic-bezier(0.34,1.56,0.64,1);
     z-index: 40;
   ">↓</button>
 <div id="sidebar">
@@ -1294,9 +1338,9 @@ function startActivationPolling() {
       // ⭐ 自动关闭支付弹窗
       const payModal = document.getElementById("payModal");
       if (payModal) {
-        payModal.classList.remove("active");
-        setTimeout(() => payModal.remove(), 300);
-      }
+  payModal.classList.add("closing");
+  setTimeout(() => payModal.remove(), 200);
+}
 
       clearInterval(timer);
     }
@@ -1817,10 +1861,10 @@ if (user) console.log("🔥 当前 user:", user);
     };
 
     function closeModal() {
-      modal.classList.remove("active");
-      document.body.style.overflow = "";
-      setTimeout(() => modal.remove(), 300);
-    }
+  modal.classList.add("closing");
+  document.body.style.overflow = "";
+  setTimeout(() => modal.remove(), 200);
+}
 
     modal.querySelector(".close").onclick = closeModal;
     modal.onclick = (e) => {
@@ -1866,8 +1910,12 @@ function showLimitModal() {
   document.body.appendChild(modal);
 
   function closeModal() {
-    modal.classList.remove("active");
-    setTimeout(() => modal.remove(), 300);
+    modal.classList.add("closing");
+
+setTimeout(() => {
+  modal.classList.remove("active");
+  modal.remove();
+}, 200);
   }
 
   modal.querySelector(".close").onclick = closeModal;
@@ -1930,8 +1978,12 @@ function showActivationModal() {
   document.body.appendChild(modal);
 
   function closeModal() {
-    modal.classList.remove("active");
-    setTimeout(() => modal.remove(), 300);
+    modal.classList.add("closing");
+
+setTimeout(() => {
+  modal.classList.remove("active");
+  modal.remove();
+}, 200);
   }
 
   modal.querySelector(".close").onclick = closeModal;
@@ -2067,12 +2119,15 @@ await checkActivation();
 
   // ⭐ 跳转支付
   modal.querySelector("#goPayBtn").onclick = () => {
+  modal.classList.add("closing");
+
+  setTimeout(() => {
     modal.classList.remove("active");
-    setTimeout(() => {
-      modal.remove();
-      showPayModal();
-    }, 300);
-  };
+    modal.remove();
+  }, 200);
+
+  setTimeout(() => showPayModal(), 250); // ⭐ 补上
+};
 }
 
 function showPayModal() {
@@ -2116,8 +2171,12 @@ function showPayModal() {
 
   // 重新绑定关闭事件
   function closeModal() {
-    modal.classList.remove("active");
-    setTimeout(() => modal.remove(), 300);
+    modal.classList.add("closing");
+
+setTimeout(() => {
+  modal.classList.remove("active");
+  modal.remove();
+}, 200);
   }
   content.querySelector(".close").onclick = closeModal;
   modal.onclick = e => { if (e.target === modal) closeModal(); };
@@ -2462,11 +2521,22 @@ function loadChat(id) {
 setTimeout(() => {
   chatInner.innerHTML = "";
 
+  // ⭐ 禁用气泡动画（关键修复）
+  const style = document.createElement("style");
+  style.id = "no-anim";
+  style.innerText = ".bubble { animation: none !important; }";
+  document.head.appendChild(style);
+
   history.slice(1).forEach(m => {
     addMessage(m.content, m.role === "user" ? "user" : "ai");
   });
 
   chatInner.style.opacity = "1";
+
+  // ⭐ 恢复动画
+  requestAnimationFrame(() => {
+    document.getElementById("no-anim")?.remove();
+  });
 }, 120);
 
   // ⭐ 重新渲染侧边栏（更新选中高亮）
@@ -2518,12 +2588,13 @@ async function generateTitleFromAI(userMsg, aiMsg) {
     if (!session || !localStorage.getItem("token")) return null;
 
     const res = await apiFetch({
+      
       messages: [
         { role: "system", content: "你是一个标题生成器，只返回标题本身。" },
         { role: "user", content: prompt }
       ]
     });
-
+if (!res) return null;
     const data = await res.json();
     console.log("标题API返回:", data);
     let title = data.choices?.[0]?.message?.content?.trim() || "";
@@ -2715,6 +2786,7 @@ isStreaming = true;
     // --- Non-streaming fetch ---
     console.log("开始 fetch");
     const res = await apiFetch({
+      
       messages: history,
       deep: deepMode
     });
@@ -3165,10 +3237,12 @@ if (scrollBtn) {
     const distFromBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight;
     if (distFromBottom > 150) {
       scrollBtn.style.opacity = "1";
-      scrollBtn.style.pointerEvents = "auto";
+scrollBtn.style.pointerEvents = "auto";
+scrollBtn.style.transform = "translateY(0) scale(1)";
     } else {
       scrollBtn.style.opacity = "0";
-      scrollBtn.style.pointerEvents = "none";
+scrollBtn.style.pointerEvents = "none";
+scrollBtn.style.transform = "translateY(8px) scale(0.9)";
     }
   });
 
@@ -3227,16 +3301,6 @@ window.addEventListener("DOMContentLoaded", () => {
     console.warn("renderUser fallback error:", e);
   }
 });
-// 用户设置弹窗
-
-
-  function closeModal() {
-    modal.classList.remove("active");
-    setTimeout(() => modal.remove(), 300);
-  }
-
-  modal.querySelector(".close").onclick = closeModal;
-  modal.onclick = e => { if (e.target === modal) closeModal(); };
 
 </script>
 

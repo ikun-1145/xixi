@@ -4,252 +4,647 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>设置 - 霜蓝 AI</title>
-
   <style>
-    body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", sans-serif;
-      background: #f7f7f8;
-      color: #1f2937;
+    :root {
+      --accent: #22d3ee;
+      --accent2: #67e8f9;
+      --pro: #a78bfa;
+      --pro2: #7c3aed;
+      --danger: #ef4444;
+      --bg: #f0f7ff;
+      --surface: rgba(255,255,255,0.85);
+      --border: rgba(0,0,0,0.06);
+      --text: #0f172a;
+      --subtext: #64748b;
+      --shadow: 0 8px 32px rgba(34,211,238,0.08), 0 2px 8px rgba(0,0,0,0.06);
     }
 
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, "PingFang SC", "Hiragino Sans GB", sans-serif;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* Animated background */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+      background:
+        radial-gradient(ellipse 60% 40% at 20% 10%, rgba(34,211,238,0.12) 0%, transparent 70%),
+        radial-gradient(ellipse 50% 60% at 80% 90%, rgba(167,139,250,0.10) 0%, transparent 70%),
+        radial-gradient(ellipse 80% 40% at 50% 50%, rgba(103,232,249,0.06) 0%, transparent 80%);
+      animation: bgShift 14s ease-in-out infinite alternate;
+    }
+
+    @keyframes bgShift {
+      0%   { opacity: 0.7; transform: scale(1); }
+      100% { opacity: 1;   transform: scale(1.05); }
+    }
+
+    /* Header */
     .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
       height: 52px;
       display: flex;
       align-items: center;
-      padding: 0 16px;
-      font-weight: 600;
-      background: rgba(255,255,255,0.9);
-      backdrop-filter: blur(10px);
-      border-bottom: 1px solid rgba(0,0,0,0.05);
+      gap: 12px;
+      padding: 0 20px;
+      background: rgba(240,247,255,0.85);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-bottom: 1px solid rgba(34,211,238,0.12);
     }
 
-    .container {
-      max-width: 680px;
+    .back-btn {
+      width: 32px; height: 32px;
+      border-radius: 10px;
+      background: rgba(34,211,238,0.1);
+      border: none;
+      cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      color: var(--accent);
+      font-size: 16px;
+      transition: background .18s, transform .15s;
+      flex-shrink: 0;
+    }
+    .back-btn:hover { background: rgba(34,211,238,0.18); transform: translateX(-2px); }
+
+    .header-title {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      color: var(--text);
+    }
+
+    /* Page wrapper */
+    .page {
+      position: relative;
+      z-index: 1;
+      max-width: 580px;
       margin: 0 auto;
-      padding: 16px;
+      padding: 20px 16px 48px;
     }
 
+    /* Avatar hero */
+    .avatar-hero {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 10px;
+      padding: 28px 0 20px;
+      animation: fadeUp .4s ease both;
+    }
+
+    .avatar-ring {
+      width: 76px; height: 76px;
+      border-radius: 50%;
+      padding: 3px;
+      background: linear-gradient(135deg, var(--accent), var(--pro));
+      box-shadow: 0 0 0 4px rgba(34,211,238,0.15), 0 8px 24px rgba(34,211,238,0.2);
+    }
+
+    .avatar-inner {
+      width: 100%; height: 100%;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #e0f2fe, #f0fdf4);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 28px;
+      font-weight: 700;
+      color: #0f172a;
+      letter-spacing: -1px;
+      overflow: hidden;
+    }
+    .avatar-inner img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+    .hero-name {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .hero-badge {
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .hero-badge.free {
+      background: rgba(100,116,139,0.1);
+      color: var(--subtext);
+    }
+    .hero-badge.pro {
+      background: linear-gradient(135deg, rgba(167,139,250,0.2), rgba(34,211,238,0.2));
+      color: var(--pro2);
+      border: 1px solid rgba(167,139,250,0.3);
+    }
+
+    /* Section label */
+    .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      letter-spacing: 0.8px;
+      text-transform: uppercase;
+      color: var(--subtext);
+      margin: 20px 0 8px 4px;
+      animation: fadeUp .4s ease both;
+    }
+
+    /* Card */
     .card {
-      background: white;
-      border-radius: 16px;
-      padding: 16px;
-      margin-bottom: 14px;
-      box-shadow: 0 6px 20px rgba(0,0,0,0.06);
-    }
-
-    .title {
-      font-size: 13px;
-      color: #6b7280;
-      margin-bottom: 8px;
+      background: var(--surface);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border-radius: 18px;
+      border: 1px solid rgba(255,255,255,0.7);
+      box-shadow: var(--shadow);
+      overflow: hidden;
+      margin-bottom: 12px;
+      animation: fadeUp .4s ease both;
     }
 
     .row {
       display: flex;
-      justify-content: space-between;
       align-items: center;
-      padding: 10px 0;
-      border-bottom: 1px solid rgba(0,0,0,0.05);
+      justify-content: space-between;
+      padding: 14px 16px;
+      border-bottom: 1px solid var(--border);
       font-size: 14px;
+      gap: 12px;
+      transition: background .15s;
+    }
+    .row:last-child { border-bottom: none; }
+    .row:hover { background: rgba(34,211,238,0.03); }
+
+    .row-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      color: var(--subtext);
     }
 
-    .row:last-child {
-      border-bottom: none;
+    .row-icon {
+      width: 30px; height: 30px;
+      border-radius: 8px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 15px;
+      flex-shrink: 0;
     }
 
-    .pro {
-      color: #f59e0b;
-      font-weight: 600;
+    .row-label {
+      font-size: 14px;
+      color: var(--text);
+      font-weight: 500;
+    }
+    .row-label small {
+      display: block;
+      font-size: 11px;
+      color: var(--subtext);
+      font-weight: 400;
+      margin-top: 1px;
     }
 
-    .btn {
-      width: 100%;
-      padding: 12px;
+    .row-value {
+      font-size: 13px;
+      color: var(--subtext);
+      text-align: right;
+      max-width: 55%;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .row-value.accent { color: var(--accent); font-weight: 600; }
+    .row-value.pro-badge {
+      background: linear-gradient(135deg, var(--accent), var(--pro));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      font-weight: 700;
+    }
+
+    /* Usage bar */
+    .usage-wrap {
+      padding: 14px 16px;
+    }
+    .usage-top {
+      display: flex; justify-content: space-between; align-items: baseline;
+      margin-bottom: 8px;
+    }
+    .usage-left {
+      display: flex; align-items: center; gap: 10px;
+    }
+    .usage-label { font-size: 14px; font-weight: 500; color: var(--text); }
+    .usage-count { font-size: 13px; font-weight: 600; color: var(--accent); }
+    .usage-bar-bg {
+      height: 6px;
+      background: rgba(34,211,238,0.12);
+      border-radius: 99px;
+      overflow: hidden;
+    }
+    .usage-bar-fill {
+      height: 100%;
+      border-radius: 99px;
+      background: linear-gradient(90deg, var(--accent), var(--pro));
+      transition: width .6s cubic-bezier(0.34,1.2,0.64,1);
+      width: 0%;
+    }
+    .usage-hint {
+      font-size: 11px;
+      color: var(--subtext);
+      margin-top: 6px;
+    }
+
+    /* Pro card */
+    .pro-card {
+      background: linear-gradient(135deg,
+        rgba(34,211,238,0.12) 0%,
+        rgba(167,139,250,0.14) 60%,
+        rgba(34,211,238,0.08) 100%
+      );
+      border: 1px solid rgba(167,139,250,0.25);
+    }
+
+    .pro-inner {
+      padding: 20px 16px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .pro-header {
+      display: flex; align-items: center; gap: 10px;
+    }
+
+    .pro-gem {
+      width: 40px; height: 40px;
       border-radius: 12px;
-      border: none;
-      font-size: 14px;
-      cursor: pointer;
-      margin-top: 10px;
+      background: linear-gradient(135deg, #22d3ee, #a78bfa);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 20px;
+      box-shadow: 0 4px 14px rgba(167,139,250,0.35);
+    }
+
+    .pro-title { font-size: 16px; font-weight: 700; }
+    .pro-sub { font-size: 12px; color: var(--subtext); margin-top: 1px; }
+
+    .pro-features {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 6px;
+    }
+
+    .pro-feat {
+      display: flex; align-items: center; gap: 6px;
+      font-size: 12px;
+      color: var(--subtext);
+    }
+    .pro-feat::before {
+      content: "✓";
+      width: 16px; height: 16px;
+      border-radius: 50%;
+      background: rgba(34,211,238,0.15);
+      color: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px;
+      font-weight: 700;
+      flex-shrink: 0;
     }
 
     .btn-pro {
-      background: linear-gradient(135deg,#fbbf24,#f59e0b);
-      color: #000;
+      width: 100%;
+      padding: 13px;
+      border-radius: 14px;
+      border: none;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+      letter-spacing: 0.3px;
+      background: linear-gradient(135deg, #22d3ee, #a78bfa);
+      color: white;
+      box-shadow: 0 6px 20px rgba(167,139,250,0.35);
+      transition: transform .18s, box-shadow .18s;
+      position: relative;
+      overflow: hidden;
+    }
+    .btn-pro::after {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.15), transparent);
+    }
+    .btn-pro:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 28px rgba(167,139,250,0.45);
+    }
+    .btn-pro:active { transform: scale(0.97); }
+
+    /* Activated state */
+    .activated-banner {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 16px;
+    }
+    .activated-icon {
+      font-size: 22px;
+    }
+    .activated-text { font-size: 14px; font-weight: 600; }
+    .activated-sub { font-size: 12px; color: var(--subtext); }
+
+    /* Danger zone */
+    .btn-logout {
+      width: 100%;
+      padding: 13px;
+      border-radius: 14px;
+      border: none;
+      font-size: 14px;
       font-weight: 600;
+      cursor: pointer;
+      background: rgba(239,68,68,0.08);
+      color: var(--danger);
+      transition: background .18s, transform .15s;
+    }
+    .btn-logout:hover { background: rgba(239,68,68,0.14); }
+    .btn-logout:active { transform: scale(0.97); }
+
+    /* Version footer */
+    .footer {
+      text-align: center;
+      font-size: 11px;
+      color: rgba(100,116,139,0.5);
+      padding-top: 8px;
+      animation: fadeUp .5s ease both;
+      animation-delay: .3s;
     }
 
-    .btn-logout {
-      background: rgba(239,68,68,0.1);
-      color: #ef4444;
+    @keyframes fadeUp {
+      from { opacity: 0; transform: translateY(12px); }
+      to   { opacity: 1; transform: translateY(0); }
     }
+
+    /* Stagger delays */
+    .card:nth-child(1) { animation-delay: .05s; }
+    .card:nth-child(2) { animation-delay: .10s; }
+    .card:nth-child(3) { animation-delay: .15s; }
+    .card:nth-child(4) { animation-delay: .20s; }
+    .section-label:nth-of-type(1) { animation-delay: .04s; }
+    .section-label:nth-of-type(2) { animation-delay: .09s; }
+    .section-label:nth-of-type(3) { animation-delay: .14s; }
+    .section-label:nth-of-type(4) { animation-delay: .19s; }
   </style>
 </head>
-
 <body>
 
-  <div class="header">设置</div>
+  <div class="header">
+    <button class="back-btn" onclick="history.back()">←</button>
+    <span class="header-title">设置</span>
+  </div>
 
-  <div class="container">
+  <div class="page">
 
-    <!-- 用户信息 -->
+    <!-- 头像区域 -->
+    <div class="avatar-hero">
+      <div class="avatar-ring">
+        <div class="avatar-inner" id="avatarEl">…</div>
+      </div>
+      <div class="hero-name" id="heroName">加载中</div>
+      <div class="hero-badge free" id="heroBadge">普通用户</div>
+    </div>
+
+    <!-- 账号 -->
+    <div class="section-label">账号</div>
     <div class="card">
-      <div class="title">账号</div>
-
       <div class="row">
-        <span>邮箱</span>
-        <span id="userEmail">加载中...</span>
+        <div class="row-left">
+          <div class="row-icon" style="background:rgba(34,211,238,0.1)">✉️</div>
+          <div class="row-label">邮箱</div>
+        </div>
+        <div class="row-value" id="userEmail">--</div>
       </div>
-
       <div class="row">
-        <span>ID</span>
-        <span id="userId">-</span>
-      </div>
-
-      <div class="row">
-        <span>会员</span>
-        <span id="userPro">普通用户</span>
+        <div class="row-left">
+          <div class="row-icon" style="background:rgba(99,102,241,0.1)">🪪</div>
+          <div class="row-label">用户 ID<small>你的唯一标识</small></div>
+        </div>
+        <div class="row-value" id="userId" style="font-size:11px;font-family:monospace;">--</div>
       </div>
     </div>
 
     <!-- 使用情况 -->
+    <div class="section-label">今日使用</div>
     <div class="card">
-      <div class="title">使用情况</div>
-
-      <div class="row">
-        <span>今日剩余</span>
-        <span id="usage">--</span>
+      <div class="usage-wrap">
+        <div class="usage-top">
+          <div class="usage-left">
+            <div class="row-icon" style="background:rgba(34,211,238,0.1)">📊</div>
+            <span class="usage-label">剩余次数</span>
+          </div>
+          <span class="usage-count" id="usageCount">--</span>
+        </div>
+        <div class="usage-bar-bg">
+          <div class="usage-bar-fill" id="usageBar"></div>
+        </div>
+        <div class="usage-hint" id="usageHint">每天重置 20 次免费额度</div>
       </div>
     </div>
 
     <!-- Pro -->
-    <div class="card">
-      <div class="title">Pro</div>
-      <div id="proBox">
-        <button class="btn btn-pro" onclick="upgrade()">
-          💎 升级 Pro（永久）
-        </button>
+    <div class="section-label">会员</div>
+    <div class="card pro-card" id="proCard">
+      <div class="pro-inner">
+        <div class="pro-header">
+          <div class="pro-gem">💎</div>
+          <div>
+            <div class="pro-title">霜蓝 Pro</div>
+            <div class="pro-sub">一次付费，永久解锁</div>
+          </div>
+        </div>
+        <div class="pro-features">
+          <div class="pro-feat">无限次对话</div>
+          <div class="pro-feat">深度思考模式</div>
+          <div class="pro-feat">优先响应速度</div>
+          <div class="pro-feat">永久有效</div>
+        </div>
+        <button class="btn-pro" onclick="upgrade()">立即升级 · ¥10 永久</button>
       </div>
     </div>
 
-    <!-- 退出 -->
+    <!-- 危险区 -->
+    <div class="section-label">其他</div>
     <div class="card">
-      <button class="btn btn-logout" onclick="logout()">
-        退出登录
-      </button>
+      <div style="padding:16px;">
+        <button class="btn-logout" onclick="logout()">退出登录</button>
+      </div>
     </div>
+
+    <div class="footer">霜蓝 AI · v1.0 &nbsp;·&nbsp; 数据安全存储于云端</div>
 
   </div>
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
-<script>
-  window._supabaseClient = window._supabaseClient || window.supabase.createClient(
-    "https://klyrasrqgxijwrxuoevj.supabase.co",
-    "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtseXJhc3JxZ3hpandyeHVvZXZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4ODUyMzcsImV4cCI6MjA2ODQ2MTIzN30.qjeTrLp_QquSwvF09HrrQd-stPtgu6H51-Zdb4JUeSM"
-  );
-  var supabase = window._supabaseClient;
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
+  <script>
+    window._supabaseClient = window._supabaseClient || window.supabase.createClient(
+      "https://klyrasrqgxijwrxuoevj.supabase.co",
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtseXJhc3JxZ3hpandyeHVvZXZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4ODUyMzcsImV4cCI6MjA2ODQ2MTIzN30.qjeTrLp_QquSwvF09HrrQd-stPtgu6H51-Zdb4JUeSM"
+    );
+    var supabase = window._supabaseClient;
 
-  let session = null;
-  let isActivated = false;
-
-  async function init() {
-    // ⭐ 强制拉取用户（确保 session 已恢复）
-    const { data: userData } = await supabase.auth.getUser();
-    if (!userData || !userData.user) {
-      console.log("用户未登录（getUser）");
+    // ===== 从 token 读取 user（和主页逻辑一致）=====
+    function getUserFromToken() {
+      const token = localStorage.getItem("token");
+      const userStr = localStorage.getItem("user");
+      if (userStr) {
+        try { return JSON.parse(userStr); } catch {}
+      }
+      if (token) {
+        try {
+          // base64url 解码
+          const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+          const payload = JSON.parse(decodeURIComponent(escape(atob(base64))));
+          return {
+            id: payload.sub || payload.id || payload.user_id || payload.email || "unknown",
+            email: payload.email || payload.user_email || "未知用户"
+          };
+        } catch {}
+      }
+      return null;
     }
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
 
-      if (!session || !session.user) {
+    function setUsageBar(remain, total = 20) {
+      const pct = Math.min(100, Math.round((remain / total) * 100));
+      document.getElementById("usageBar").style.width = pct + "%";
+      document.getElementById("usageCount").innerText = remain + " 次";
+    }
+
+    function renderActivated() {
+      // 头像徽章
+      const badge = document.getElementById("heroBadge");
+      badge.innerText = "💎 Pro 会员";
+      badge.className = "hero-badge pro";
+
+      // 使用情况
+      document.getElementById("usageCount").innerText = "∞";
+      document.getElementById("usageBar").style.width = "100%";
+      document.getElementById("usageBar").style.background = "linear-gradient(90deg,#22d3ee,#a78bfa)";
+      document.getElementById("usageHint").innerText = "Pro 会员 · 无限次对话";
+
+      // Pro 卡片变已激活样式
+      const proCard = document.getElementById("proCard");
+      proCard.innerHTML = `
+        <div class="activated-banner">
+          <div class="activated-icon">🎉</div>
+          <div>
+            <div class="activated-text">已是 Pro 会员</div>
+            <div class="activated-sub">感谢支持，享受无限对话体验</div>
+          </div>
+        </div>
+      `;
+    }
+
+    async function init() {
+      const user = getUserFromToken();
+
+      if (!user) {
         document.getElementById("userEmail").innerText = "未登录";
-        document.getElementById("userId").innerText = "-";
-        document.getElementById("userPro").innerText = "普通用户";
-        document.getElementById("usage").innerText = "--";
+        document.getElementById("heroName").innerText = "未登录";
+        document.getElementById("userId").innerText = "--";
+        document.getElementById("usageCount").innerText = "--";
+        document.getElementById("usageBar").style.width = "0%";
         return;
       }
 
-      const user = session.user;
+      // 基础信息
+      const email = user.email || "未知";
+      const letter = (email[0] || "?").toUpperCase();
 
-      // ⭐ 先显示基础信息（避免一直 loading）
-      document.getElementById("userEmail").innerText = user.email || "未知";
-      document.getElementById("userId").innerText = user.id || "-";
+      document.getElementById("userEmail").innerText = email;
+      const userIdEl = document.getElementById("userId");
+      // 优先显示 id，否则用 email 做 fallback
+      userIdEl.innerText = user.id
+        ? user.id
+        : (user.email ? user.email.split("@")[0] : "--");
+      document.getElementById("heroName").innerText = email;
+      document.getElementById("avatarEl").innerText = letter;
 
-      // 👉 判断 Pro
-      const { data: actData, error: actError } = await supabase
-        .from("activation_codes")
-        .select("code")
-        .eq("used_by", user.id)
-        .maybeSingle();
-
-      if (actError) {
-        console.error("查询激活状态失败:", actError);
+      // 头像图片（如果有）
+      const avatarUrl = user.avatar_url || user.picture;
+      if (avatarUrl) {
+        // 安全插入 img，防止 XSS
+        const img = document.createElement("img");
+        img.src = avatarUrl;
+        img.alt = "avatar";
+        const avatarEl = document.getElementById("avatarEl");
+        avatarEl.innerHTML = "";
+        avatarEl.appendChild(img);
       }
 
-      isActivated = !!actData;
-
-      if (isActivated) {
-        document.getElementById("userPro").innerHTML = "💎 Pro会员（永久）";
-        document.getElementById("usage").innerText = "无限";
-
-        const proBox = document.getElementById("proBox");
-        if (proBox) proBox.style.display = "none";
-
-        return;
-      }
-
-      // 👉 普通用户：查询次数
-      document.getElementById("userPro").innerText = "普通用户";
-
-      // 👉 获取今日使用次数（带兜底）
-      let used = 0;
-
+      // 激活状态
       try {
-        const { data: count, error: rpcError } = await supabase.rpc("check_limit", {
-          p_user: user.id
-        });
+        const { data: actData } = await supabase
+          .from("activation_codes")
+          .select("code")
+          .eq("used_by", user.id)
+          .maybeSingle();
 
-        if (rpcError) throw rpcError;
+        if (actData) {
+          renderActivated();
+          return;
+        }
+      } catch (e) { console.warn("激活状态查询失败:", e); }
 
-        used = count || 0;
+      // 普通用户：查次数，增强 fallback
+      try {
+        let used = 0;
+
+        try {
+          const { data } = await supabase
+            .from("usage")
+            .select("count")
+            .eq("user_id", user.id)
+            .maybeSingle();
+
+          used = data?.count || 0;
+        } catch (e) {
+          console.warn("usage表失败，fallback:", e);
+
+          const { data: logs } = await supabase
+            .from("request_logs")
+            .select("created_at")
+            .eq("user_id", user.id);
+
+          const today = new Date().toDateString();
+          used = (logs || []).filter(l =>
+            new Date(l.created_at).toDateString() === today
+          ).length;
+        }
+
+        const remain = Math.max(0, 20 - used);
+        setUsageBar(remain);
       } catch (e) {
-        console.warn("RPC失败，使用本地兜底:", e);
-
-        // 👉 fallback：从 request_logs 自己算
-        const { data: logs } = await supabase
-          .from("request_logs")
-          .select("created_at")
-          .eq("user_id", user.id);
-
-        const today = new Date().toDateString();
-        used = (logs || []).filter(l => new Date(l.created_at).toDateString() === today).length;
+        console.warn("使用次数查询失败:", e);
+        document.getElementById("usageCount").innerText = "--";
       }
-
-      document.getElementById("usage").innerText = `${Math.max(0, 20 - used)} 次`;
-
-    } catch (err) {
-      console.error("init 崩了:", err);
     }
-  }
 
-  function upgrade() {
-    // 👉 跳转到AI页面并打开激活弹窗
-    window.location.href = "ai.html#upgrade";
-  }
-
-  async function logout() {
-    await supabase.auth.signOut();
-    location.href = "ai.html";
-  }
-
-  // ⭐ 监听 session 恢复（解决刷新后拿不到登录状态）
-  supabase.auth.onAuthStateChange((_event, newSession) => {
-    if (newSession) {
-      console.log("session 更新");
-      init();
+    function upgrade() {
+      window.location.href = "ai.html#upgrade";
     }
-  });
-  init();
-</script>
 
+    function logout() {
+      if (!confirm("确定退出登录？")) return;
+      localStorage.removeItem("token");
+      localStorage.removeItem("user");
+      location.href = "ai.html";
+    }
+
+    init();
+  </script>
 </body>
 </html>
