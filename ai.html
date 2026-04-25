@@ -1424,7 +1424,7 @@ body.ai-entering::before {
 
   <div id="uploadPreview"></div>
 
-  <textarea id="input" rows="1" placeholder="How can I help you today?"></textarea>
+  <textarea id="input" rows="1" placeholder="想聊点啥"></textarea>
 
   <button id="sendBtn" class="icon-btn">↑</button>
 
@@ -2113,17 +2113,17 @@ if (user) console.log("🔥 当前 user:", user);
       if (cooldown > 0) return;
 
       const email = emailInput.value.trim();
+
       if (!email) {
         msg.innerText = "请输入邮箱";
         return;
       }
-      // 简单邮箱格式校验
+
       if (!/^\S+@\S+\.\S+$/.test(email)) {
         msg.innerText = "邮箱格式错误";
         return;
       }
 
-      // === Turnstile: 获取cfToken ===
       if (!cfToken) {
         msg.innerText = "请先完成人机验证";
         return;
@@ -2133,38 +2133,28 @@ if (user) console.log("🔥 当前 user:", user);
         msg.innerText = "";
         sendBtn.disabled = true;
         sendBtn.innerText = "发送中...";
+
         const res = await fetch("https://ai.liuxizekali.workers.dev/send-code", {
           method: "POST",
-          headers: { "Content-Type": "application/json" },
+          headers: {
+            "Content-Type": "application/json"
+          },
           body: JSON.stringify({
             email,
-            cfToken,
-            turnstileToken: cfToken,
-            cf_token: cfToken
+            cfToken
           })
         });
 
         const data = await res.json().catch(() => ({}));
 
         if (!res.ok || data.error) {
-          msg.innerText = data.error || "发送失败";
-          sendBtn.disabled = false;
-          sendBtn.innerText = "发送";
-          return;
+          throw new Error(data.error || "发送失败");
         }
 
         msg.innerText = "验证码已发送";
 
-        // 发送验证码成功后也重置 Turnstile
-        if (widgetId !== null && window.turnstile) {
-          try {
-            turnstile.reset(widgetId);
-            cfToken = "";
-          } catch {}
-        }
-
+        // 开始倒计时
         cooldown = 60;
-        sendBtn.disabled = true;
         sendBtn.innerText = "60s";
 
         timer = setInterval(() => {
@@ -2179,8 +2169,10 @@ if (user) console.log("🔥 当前 user:", user);
         }, 1000);
 
       } catch (e) {
-        console.error("验证码发送失败:", e);
-        msg.innerText = "发送失败，请检查邮件服务";
+        console.error(e);
+        msg.innerText = e.message || "发送失败";
+
+        // 失败也恢复按钮
         sendBtn.disabled = false;
         sendBtn.innerText = "发送";
       }
