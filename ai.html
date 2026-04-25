@@ -115,7 +115,7 @@ body.night .user-menu {
   color: #ff4d4f;
 }
 .chat-container {
-  overscroll-behavior: contain;  /* 你已经有了 */
+  overscroll-behavior-y: contain; /* 你已经有了 */
   touch-action: pan-y;           /* ⭐ 只允许纵向手势 */
 }
 
@@ -326,6 +326,15 @@ body.night::before {
 
 /* ===== 聊天区 ===== */
 .chat-container {
+  overflow-y: auto;
+
+  -webkit-overflow-scrolling: touch;
+
+  height: 100%;                     /* ⭐ 必加 */
+
+  overscroll-behavior-y: contain;   /* ⭐ 阻断滚动传递 */
+
+  touch-action: pan-y;              /* ⭐ 限制手势 */
   position: relative;
   flex: 1;
   overflow-y: auto;
@@ -340,7 +349,7 @@ body.night::before {
   gap: 8px;
   min-height: 0;         /* ⭐ 关键，防止撑破容器 */
   overflow-y: auto;
-  overscroll-behavior: contain;
+  overscroll-behavior-y: contain;
   scroll-behavior: smooth;
   background: transparent;
   background: radial-gradient(circle at 50% 20%, rgba(34,211,238,0.08), transparent 60%);
@@ -361,6 +370,10 @@ html, body {
   height: 100%;
   margin: 0;
   overflow: hidden;
+
+  position: fixed;          /* ⭐ 关键：锁住页面 */
+  width: 100%;
+  overscroll-behavior: none; /* ⭐ 禁止系统回弹 */
 }
 
 
@@ -1178,13 +1191,13 @@ body.night #newChatBtn {
   transition: transform .2s ease;
 }
 #app {
-  position: relative;   /* ❗从 fixed 改成 relative */
+  position: fixed;   /* ⭐ 很关键 */
+  inset: 0;
   height: 100dvh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
-
 #proBtn:hover {
   background: linear-gradient(135deg, #6a5cff, #9f7cff);
   transform: translateY(-1px);
@@ -2068,36 +2081,31 @@ if (user) console.log("🔥 当前 user:", user);
     document.body.style.overflow = "hidden";
 
     // ⭐ 强制渲染 Turnstile（解决不显示问题）
-    let cfToken = "";
-    let widgetId = null;
-    // 防止重复渲染 Turnstile
-    const oldBox = modal.querySelector("#cf-box");
-    if (oldBox) oldBox.innerHTML = "";
+    let cfToken = window.__cfToken || "";
+let widgetId = window.__cfWidgetId || null;
 
-    setTimeout(() => {
-      if (window.turnstile) {
-        try {
-          widgetId = turnstile.render(
-            modal.querySelector("#cf-box"),
-            {
-              sitekey: "0x4AAAAAAC_W2Wj2YdkrQiMf",
-              callback: (token) => {
-                cfToken = token;
-                console.log("Turnstile success:", token);
-              },
-              "expired-callback": () => {
-                cfToken = "";
-              },
-              "error-callback": () => {
-                cfToken = "";
-              }
-            }
-          );
-        } catch (e) {
-          console.warn("Turnstile render failed:", e);
-        }
+function ensureTurnstile() {
+  if (!window.turnstile) return;
+
+  // 已经渲染过就不重复
+  if (widgetId !== null) return;
+
+  widgetId = turnstile.render(
+    modal.querySelector("#cf-box"),
+    {
+      sitekey: "0x4AAAAAAC_W2Wj2YdkrQiMf",
+      size: "invisible", // ⭐ 关键：无感验证
+      callback: (token) => {
+        cfToken = token;
+        window.__cfToken = token;
       }
-    }, 50);
+    }
+  );
+
+  window.__cfWidgetId = widgetId;
+}
+
+ensureTurnstile();
 
     const emailInput = modal.querySelector("#emailInput");
     const codeInput = modal.querySelector("#codeInput");
@@ -2125,9 +2133,14 @@ if (user) console.log("🔥 当前 user:", user);
       }
 
       if (!cfToken) {
-        msg.innerText = "请先完成人机验证";
-        return;
-      }
+  msg.innerText = "验证中...";
+
+  if (window.turnstile && widgetId !== null) {
+    turnstile.execute(widgetId); // ⭐ 主动触发
+  }
+
+  return;
+}
 
       try {
         msg.innerText = "";
@@ -2188,12 +2201,15 @@ if (user) console.log("🔥 当前 user:", user);
         return;
       }
 
-      // === Turnstile: 获取cfToken ===
       if (!cfToken) {
-        msg.innerText = "请先完成人机验证";
-        return;
-      }
+  msg.innerText = "验证中...";
 
+  if (window.turnstile && widgetId !== null) {
+    turnstile.execute(widgetId); // ⭐ 主动触发
+  }
+
+  return;
+}
       try {
         const res = await fetch("https://ai.liuxizekali.workers.dev/verify-code", {
           method: "POST",
@@ -2222,8 +2238,7 @@ if (user) console.log("🔥 当前 user:", user);
         // 登录成功后重置 Turnstile
         if (widgetId !== null && window.turnstile) {
           try {
-            turnstile.reset(widgetId);
-            cfToken = "";
+            
           } catch {}
         }
 
@@ -3734,7 +3749,9 @@ if (avatar && menu) {
       }
       return;
     }
-
+    // ⭐ 全局缓存 Turnstile
+window.__cfToken = window.__cfToken || "";
+window.__cfWidgetId = window.__cfWidgetId || null;
     // ⭐ 已登录 → 打开菜单
     menu.classList.toggle("show");
   };
