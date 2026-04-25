@@ -17,6 +17,11 @@
       --text: #0f172a;
       --subtext: #64748b;
       --shadow: 0 8px 32px rgba(34,211,238,0.08), 0 2px 8px rgba(0,0,0,0.06);
+      --bg-dark: #020617;
+--surface-dark: rgba(15,23,42,0.72);
+--border-dark: rgba(255,255,255,0.08);
+--text-dark: #e2e8f0;
+--subtext-dark: #94a3b8;
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -103,13 +108,96 @@
       padding: 28px 0 20px;
       animation: fadeUp .4s ease both;
     }
+    body.dark {
+  background: var(--bg-dark);
+  color: var(--text-dark);
+  color: #f1f5f9;
+}
+  body.dark .header {
+  background: rgba(2,6,23,0.7);
+  border-bottom: 1px solid rgba(34,211,238,0.18);
+}
+body.dark .card {
+  background: var(--surface-dark);
+  border: 1px solid var(--border-dark);
+  box-shadow: 0 8px 32px rgba(0,0,0,0.45);
+}
+body.dark .row:hover {
+  background: rgba(34,211,238,0.06);
+}
+body.dark .row-label {
+  color: #f1f5f9;
+}
 
+body.dark .row-value {
+  color: #cbd5f5;
+}
+
+body.dark .section-label {
+  color: #94a3b8;
+}
+body.dark .footer {
+  color: rgba(148,163,184,0.5);
+}
+
+body.dark .hero-name {
+  color: #f8fafc;
+}
+
+body.dark .avatar-upload-hint {
+  color: #94a3b8;
+}
+
+body.dark .usage-label {
+  color: #e2e8f0;
+}
+
+body.dark .usage-hint {
+  color: #94a3b8;
+}
     .avatar-ring {
       width: 76px; height: 76px;
       border-radius: 50%;
       padding: 3px;
       background: linear-gradient(135deg, var(--accent), var(--pro));
       box-shadow: 0 0 0 4px rgba(34,211,238,0.15), 0 8px 24px rgba(34,211,238,0.2);
+      cursor: pointer;
+      position: relative;
+      transition: transform .18s, box-shadow .18s;
+    }
+    .avatar-ring:hover {
+      transform: translateY(-2px) scale(1.02);
+      box-shadow: 0 0 0 5px rgba(34,211,238,0.18), 0 12px 30px rgba(34,211,238,0.26);
+    }
+    .avatar-ring::after {
+      content: "📷";
+      position: absolute;
+      right: -2px;
+      bottom: -2px;
+      width: 24px;
+      height: 24px;
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(15,23,42,0.9);
+      color: #fff;
+      font-size: 12px;
+      border: 2px solid #fff;
+      box-shadow: 0 4px 12px rgba(15,23,42,0.18);
+    }
+    .avatar-ring.uploading::before {
+      content: "";
+      position: absolute;
+      inset: -5px;
+      border-radius: 50%;
+      border: 2px solid transparent;
+      border-top-color: var(--accent);
+      border-right-color: var(--pro);
+      animation: avatarSpin .8s linear infinite;
+    }
+    @keyframes avatarSpin {
+      to { transform: rotate(360deg); }
     }
 
     .avatar-inner {
@@ -122,8 +210,19 @@
       color: #0f172a;
       letter-spacing: -1px;
       overflow: hidden;
+      pointer-events: none;
     }
     .avatar-inner img { width: 100%; height: 100%; object-fit: cover; border-radius: 50%; }
+
+    .avatar-upload-hint,
+    .avatar-upload-status {
+      font-size: 11px;
+      color: var(--subtext);
+    }
+    .avatar-upload-status {
+      min-height: 14px;
+      color: var(--accent);
+    }
 
     .hero-name {
       font-size: 17px;
@@ -170,6 +269,10 @@
       overflow: hidden;
       margin-bottom: 12px;
       animation: fadeUp .4s ease both;
+    }
+
+    body.dark .card {
+      backdrop-filter: blur(20px);
     }
 
     .row {
@@ -271,6 +374,37 @@
         rgba(34,211,238,0.08) 100%
       );
       border: 1px solid rgba(167,139,250,0.25);
+    }
+    .pro-card.activated {
+      position: relative;
+      overflow: hidden;
+      background: linear-gradient(120deg,
+        rgba(34,211,238,0.18) 0%,
+        rgba(16,185,129,0.18) 28%,
+        rgba(167,139,250,0.22) 58%,
+        rgba(34,211,238,0.16) 100%
+      );
+      background-size: 280% 280%;
+      border-color: rgba(34,211,238,0.38);
+      animation: proFlow 5.8s ease-in-out infinite;
+    }
+    .pro-card.activated::before {
+      content: "";
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(105deg, transparent 20%, rgba(255,255,255,0.38) 46%, transparent 72%);
+      transform: translateX(-120%);
+      animation: proShine 3.4s ease-in-out infinite;
+      pointer-events: none;
+    }
+    @keyframes proFlow {
+      0% { background-position: 0% 50%; }
+      50% { background-position: 100% 50%; }
+      100% { background-position: 0% 50%; }
+    }
+    @keyframes proShine {
+      0%, 35% { transform: translateX(-120%); }
+      70%, 100% { transform: translateX(120%); }
     }
 
     .pro-inner {
@@ -411,11 +545,14 @@
 
     <!-- 头像区域 -->
     <div class="avatar-hero">
-      <div class="avatar-ring">
+      <div class="avatar-ring" id="avatarButton" role="button" tabindex="0" title="点击上传头像">
         <div class="avatar-inner" id="avatarEl">…</div>
       </div>
       <div class="hero-name" id="heroName">加载中</div>
       <div class="hero-badge free" id="heroBadge">普通用户</div>
+      <div class="avatar-upload-hint">点击头像上传新头像</div>
+      <div class="avatar-upload-status" id="avatarStatus"></div>
+      <input type="file" id="avatarInput" accept="image/*" style="display:none">
     </div>
 
     <!-- 账号 -->
@@ -495,6 +632,17 @@
       "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtseXJhc3JxZ3hpandyeHVvZXZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4ODUyMzcsImV4cCI6MjA2ODQ2MTIzN30.qjeTrLp_QquSwvF09HrrQd-stPtgu6H51-Zdb4JUeSM"
     );
     var supabase = window._supabaseClient;
+    const PROFILE_META_ID = "__xixi_user_profile__";
+    const PROFILE_CACHE_PREFIX = "xixi_profile_";
+    const AVATAR_BUCKET = "avatars";
+
+    function decodeJwtPayload(token) {
+      const payload = token.split(".")[1];
+      if (!payload) return null;
+      const base64 = payload.replace(/-/g, "+").replace(/_/g, "/");
+      const padded = base64.padEnd(base64.length + (4 - base64.length % 4) % 4, "=");
+      return JSON.parse(decodeURIComponent(escape(atob(padded))));
+    }
 
     // ===== 从 token 读取 user（和主页逻辑一致）=====
     function getUserFromToken() {
@@ -505,9 +653,7 @@
       }
       if (token) {
         try {
-          // base64url 解码
-          const base64 = token.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-          const payload = JSON.parse(decodeURIComponent(escape(atob(base64))));
+          const payload = decodeJwtPayload(token);
           return {
             id: payload.sub || payload.id || payload.user_id || payload.email || "unknown",
             email: payload.email || payload.user_email || "未知用户"
@@ -515,6 +661,231 @@
         } catch {}
       }
       return null;
+    }
+
+    function getProfileCacheKey(userId) {
+      return PROFILE_CACHE_PREFIX + userId;
+    }
+
+    function getCachedProfile(userId) {
+      if (!userId) return null;
+      try {
+        return JSON.parse(localStorage.getItem(getProfileCacheKey(userId)) || "null");
+      } catch {
+        return null;
+      }
+    }
+
+    function cacheProfile(userId, profile) {
+      if (!userId || !profile) return;
+      localStorage.setItem(getProfileCacheKey(userId), JSON.stringify(profile));
+    }
+
+    function setAvatarImage(url, fallbackLetter) {
+      const avatarEl = document.getElementById("avatarEl");
+      avatarEl.innerHTML = "";
+
+      if (url) {
+        const img = document.createElement("img");
+        img.src = url;
+        img.alt = "avatar";
+        avatarEl.appendChild(img);
+        return;
+      }
+
+      avatarEl.innerText = fallbackLetter || "?";
+    }
+
+    function syncLocalUserProfile(profile) {
+      if (!profile?.avatar_url) return;
+      try {
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
+        user.avatar_url = profile.avatar_url;
+        user.avatar_path = profile.avatar_path || user.avatar_path || "";
+        localStorage.setItem("user", JSON.stringify(user));
+      } catch {}
+    }
+
+    function extractProfile(data) {
+      const rows = Array.isArray(data) ? data : [];
+      return rows.find(item => item?.id === PROFILE_META_ID && item?.type === "profile")?.profile || null;
+    }
+
+    async function loadCloudProfile(userId) {
+      if (!userId) return null;
+      const { data, error } = await supabase
+        .from("conversations")
+        .select("data")
+        .eq("user_id", userId)
+        .maybeSingle();
+
+      if (error) throw error;
+      return extractProfile(data?.data);
+    }
+
+    async function saveProfileToCloud(user, profile) {
+      const { data, error } = await supabase
+        .from("conversations")
+        .select("data")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (error) throw error;
+
+      const rows = Array.isArray(data?.data) ? data.data : [];
+      const nextRows = rows.filter(item => item?.id !== PROFILE_META_ID);
+      nextRows.unshift({
+        id: PROFILE_META_ID,
+        type: "profile",
+        profile: {
+          ...profile,
+          user_id: user.id,
+          email: user.email || "",
+          updated_at: new Date().toISOString()
+        }
+      });
+
+      const { error: saveError } = await supabase
+        .from("conversations")
+        .upsert({
+          user_id: user.id,
+          data: nextRows
+        }, {
+          onConflict: "user_id"
+        });
+
+      if (saveError) throw saveError;
+    }
+
+    function loadImage(file) {
+      return new Promise((resolve, reject) => {
+        const img = new Image();
+        img.onload = () => resolve(img);
+        img.onerror = reject;
+        img.src = URL.createObjectURL(file);
+      });
+    }
+
+    async function compressAvatar(file) {
+      const img = await loadImage(file);
+      const size = 384;
+      const canvas = document.createElement("canvas");
+      canvas.width = size;
+      canvas.height = size;
+      const ctx = canvas.getContext("2d");
+      const minSide = Math.min(img.width, img.height);
+      const sx = (img.width - minSide) / 2;
+      const sy = (img.height - minSide) / 2;
+      ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
+
+      return new Promise((resolve) => {
+        canvas.toBlob((blob) => {
+          resolve(blob || file);
+        }, "image/jpeg", 0.82);
+      });
+    }
+
+    function blobToDataUrl(blob) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = reject;
+        reader.readAsDataURL(blob);
+      });
+    }
+
+    async function uploadAvatar(user, file) {
+      const avatarBlob = await compressAvatar(file);
+      const path = `${user.id}/avatar-${Date.now()}.jpg`;
+
+      try {
+        const { error } = await supabase.storage
+          .from(AVATAR_BUCKET)
+          .upload(path, avatarBlob, {
+            contentType: "image/jpeg",
+            upsert: true
+          });
+
+        if (error) throw error;
+
+        const { data } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
+        if (data?.publicUrl) {
+          return {
+            avatar_url: `${data.publicUrl}?t=${Date.now()}`,
+            avatar_path: path
+          };
+        }
+      } catch (e) {
+        console.warn("Storage 头像上传失败，改用资料同步保存:", e);
+      }
+
+      return {
+        avatar_url: await blobToDataUrl(avatarBlob),
+        avatar_path: ""
+      };
+    }
+
+    async function handleAvatarUpload(user, file) {
+      const statusEl = document.getElementById("avatarStatus");
+      const ringEl = document.getElementById("avatarButton");
+
+      if (!file) return;
+      if (!file.type.startsWith("image/")) {
+        statusEl.innerText = "请选择图片文件";
+        return;
+      }
+      if (file.size > 8 * 1024 * 1024) {
+        statusEl.innerText = "图片太大，请选择 8MB 内的图片";
+        return;
+      }
+
+      try {
+        statusEl.innerText = "正在上传头像...";
+        ringEl.classList.add("uploading");
+
+        const profile = await uploadAvatar(user, file);
+        setAvatarImage(profile.avatar_url, (user.email || "?")[0].toUpperCase());
+        await saveProfileToCloud(user, profile);
+        cacheProfile(user.id, profile);
+        syncLocalUserProfile(profile);
+        statusEl.innerText = "头像已保存";
+        setTimeout(() => { statusEl.innerText = ""; }, 2200);
+      } catch (e) {
+        console.error("头像保存失败:", e);
+        statusEl.innerText = "头像保存失败，请稍后再试";
+      } finally {
+        ringEl.classList.remove("uploading");
+      }
+    }
+
+    function setupAvatarUpload(user) {
+      const button = document.getElementById("avatarButton");
+      const input = document.getElementById("avatarInput");
+      if (!button || !input) return;
+
+      button.onclick = () => {
+        if (!user) return;
+        input.click();
+      };
+      // 额外保险：点击内部元素也能触发
+      button.addEventListener("click", () => {
+        if (!user) return;
+        input.click();
+      });
+      button.onkeydown = (e) => {
+        if ((e.key === "Enter" || e.key === " ") && user) {
+          e.preventDefault();
+          input.click();
+        }
+      };
+      input.onchange = () => {
+        handleAvatarUpload(user, input.files?.[0]);
+        input.value = "";
+      };
+      // 防止某些浏览器不触发 change
+      input.addEventListener("input", () => {
+        handleAvatarUpload(user, input.files?.[0]);
+      });
     }
 
     function setUsageBar(remain, total = 20) {
@@ -537,12 +908,13 @@
 
       // Pro 卡片变已激活样式
       const proCard = document.getElementById("proCard");
+      proCard.classList.add("activated");
       proCard.innerHTML = `
         <div class="activated-banner">
           <div class="activated-icon">🎉</div>
           <div>
             <div class="activated-text">已是 Pro 会员</div>
-            <div class="activated-sub">感谢支持，享受无限对话体验</div>
+            <div class="activated-sub">深度思考与无限对话已解锁</div>
           </div>
         </div>
       `;
@@ -557,6 +929,7 @@
         document.getElementById("userId").innerText = "--";
         document.getElementById("usageCount").innerText = "--";
         document.getElementById("usageBar").style.width = "0%";
+        setupAvatarUpload(null);
         return;
       }
 
@@ -571,18 +944,21 @@
         ? user.id
         : (user.email ? user.email.split("@")[0] : "--");
       document.getElementById("heroName").innerText = email;
-      document.getElementById("avatarEl").innerText = letter;
+      setupAvatarUpload(user);
 
-      // 头像图片（如果有）
-      const avatarUrl = user.avatar_url || user.picture;
-      if (avatarUrl) {
-        // 安全插入 img，防止 XSS
-        const img = document.createElement("img");
-        img.src = avatarUrl;
-        img.alt = "avatar";
-        const avatarEl = document.getElementById("avatarEl");
-        avatarEl.innerHTML = "";
-        avatarEl.appendChild(img);
+      const cachedProfile = getCachedProfile(user.id);
+      const avatarUrl = cachedProfile?.avatar_url || user.avatar_url || user.picture;
+      setAvatarImage(avatarUrl, letter);
+
+      try {
+        const cloudProfile = await loadCloudProfile(user.id);
+        if (cloudProfile?.avatar_url) {
+          cacheProfile(user.id, cloudProfile);
+          syncLocalUserProfile(cloudProfile);
+          setAvatarImage(cloudProfile.avatar_url, letter);
+        }
+      } catch (e) {
+        console.warn("头像资料读取失败:", e);
       }
 
       // 激活状态
@@ -643,7 +1019,33 @@
       localStorage.removeItem("user");
       location.href = "ai.html";
     }
+// ===== 夜间模式同步 + 自动模式 =====
+(function syncTheme() {
+  function applyTheme() {
+    let theme = localStorage.getItem("theme");
 
+    // 如果用户没有手动设置，则按时间自动
+    if (!theme) {
+      const hour = new Date().getHours();
+      theme = (hour >= 18 || hour < 6) ? "dark" : "light";
+    }
+
+    document.body.classList.toggle("dark", theme === "dark");
+  }
+
+  // 初始执行
+  applyTheme();
+
+  // 跨页面同步
+  window.addEventListener("storage", (e) => {
+    if (e.key === "theme") {
+      applyTheme();
+    }
+  });
+
+  // 每5分钟检查一次时间（避免跨6点不刷新）
+  setInterval(applyTheme, 5 * 60 * 1000);
+})();
     init();
   </script>
 </body>

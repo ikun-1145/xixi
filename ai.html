@@ -473,6 +473,169 @@ html, body {
   z-index: 2100;
 }
 
+.input-box {
+  flex-direction: column;
+  border-radius: 20px;
+  padding: 10px;
+  align-items: stretch;   /* ⭐ 让子元素撑满 */
+  gap: 6px;
+}
+
+.input-top {
+  width: 100%;
+  justify-content: flex-start;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.input-main {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;        /* ⭐ 关键 */
+}
+
+.mini-btn {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  font-size: 13px;
+
+  background: rgba(255,255,255,0.06);
+  border: 1px solid rgba(255,255,255,0.08);
+
+  color: #9ca3af;
+
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+
+  transition: all .2s ease;
+  flex-shrink: 0;
+}
+
+.deep-logo {
+  width: 14px;
+  height: 14px;
+  position: relative;
+}
+
+/* 外圈 */
+.deep-logo::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+
+  border-radius: 50%;
+  border: 1.5px solid rgba(34,211,238,0.5);
+
+  opacity: 0.6;
+  transition: all .2s ease;
+}
+
+.mini-btn.active .deep-logo::before {
+  border-color: #22d3ee;
+  opacity: 1;
+  box-shadow: 0 0 8px rgba(34,211,238,0.6);
+}
+
+.mini-btn.active .deep-logo::after {
+  box-shadow: 0 0 10px rgba(34,211,238,1);
+}
+
+.mini-btn.active .deep-logo::before {
+  animation: deepPulse 1.8s ease-in-out infinite;
+}
+
+@keyframes deepPulse {
+  0%,100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.3);
+    opacity: 0.5;
+  }
+}
+
+.mini-btn::after {
+  content: "深度思考";
+  position: absolute;
+  bottom: 120%;
+  left: 50%;
+  transform: translateX(-50%);
+
+  font-size: 11px;
+  padding: 4px 8px;
+  border-radius: 6px;
+
+  background: rgba(0,0,0,0.7);
+  color: #fff;
+
+  opacity: 0;
+  pointer-events: none;
+  transition: .2s;
+}
+
+.mini-btn:hover::after {
+  opacity: 1;
+}
+
+/* 中心点 */
+.deep-logo::after {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+
+  width: 4px;
+  height: 4px;
+
+  border-radius: 50%;
+  background: #22d3ee;
+
+  transform: translate(-50%, -50%);
+  box-shadow: 0 0 6px rgba(34,211,238,0.8);
+}
+
+.mini-btn.active .deep-logo {
+  background: radial-gradient(
+    circle at 30% 30%,
+    #a5f3fc,
+    #22d3ee 60%,
+    #0891b2
+  );
+
+  box-shadow: 0 0 10px rgba(34,211,238,0.9);
+  transform: scale(1.1);
+}
+
+.mini-btn:hover .deep-logo {
+  box-shadow: 0 0 12px rgba(34,211,238,1);
+}
+
+.mini-btn.active {
+  background: rgba(34,211,238,0.18);
+  border: 1px solid rgba(34,211,238,0.35);
+  color: #22d3ee;
+}
+
+.mini-btn:hover {
+  background: rgba(255,255,255,0.12);
+  color: #e5e7eb;
+}
+
+.input-top {
+  opacity: 0.65;
+  transition: opacity .2s ease;
+}
+
+
 .input-box:focus-within {
   box-shadow:
     0 0 0 1.5px rgba(34,211,238,0.25),
@@ -481,6 +644,7 @@ html, body {
 
 textarea {
   flex: 1;
+  min-width: 0;       /* ⭐ 超关键，不然会撑爆布局 */
   border: none;
   outline: none;
   resize: none;
@@ -516,6 +680,7 @@ button {
   height: 36px;
   border-radius: 50%;
   display: flex;
+  flex-shrink: 0;
   align-items: center;
   justify-content: center;
   padding: 0;
@@ -1043,6 +1208,7 @@ body.night #uploadPreview {
 }
 #uploadPreview {
   display: flex;
+  flex-shrink: 0;   /* ⭐ 防止挤压输入框 */
   gap: 6px;
   align-items: center;
 
@@ -1102,6 +1268,66 @@ body.ai-entering::before {
 @keyframes aiEnterFade {
   0% { opacity: 1; }
   100% { opacity: 0; }
+}
+
+.activation-success {
+  position: relative;
+  overflow: hidden;
+  padding: 0.4rem 0 0.2rem;
+}
+
+.success-orb {
+  width: 82px;
+  height: 82px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffffff 0 10%, #67e8f9 22%, #22c55e 62%, #7c3aed 100%);
+  box-shadow: 0 0 0 0 rgba(34,211,238,0.35), 0 18px 42px rgba(34,211,238,0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 34px;
+  animation: successPop .58s cubic-bezier(.34,1.56,.64,1), successPulse 1.3s ease-in-out infinite .5s;
+}
+
+.success-ribbon {
+  position: absolute;
+  inset: -40% -20%;
+  background: conic-gradient(from 90deg, transparent, rgba(34,211,238,0.22), transparent, rgba(167,139,250,0.2), transparent);
+  animation: successSpin 2.2s linear infinite;
+  z-index: -1;
+}
+
+.success-confetti {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  width: 7px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--accent);
+  transform: translateX(-50%);
+  animation: confettiFall .9s ease-out forwards;
+}
+
+@keyframes successPop {
+  from { opacity: 0; transform: scale(.55) rotate(-12deg); }
+  to { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+@keyframes successPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34,211,238,0.35), 0 18px 42px rgba(34,211,238,0.28); }
+  50% { box-shadow: 0 0 0 12px rgba(34,211,238,0), 0 18px 42px rgba(124,58,237,0.3); }
+}
+
+@keyframes successSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes confettiFall {
+  0% { opacity: 1; transform: translate(-50%, 0) rotate(0); }
+  100% { opacity: 0; transform: translate(var(--x), 90px) rotate(210deg); }
 }
 </style>
 
@@ -1181,40 +1407,30 @@ body.ai-entering::before {
 
 <div class="input-area">
   <div class="input-box">
-    <div id="deepBar" style="
-      position:absolute;
-      top:-36px;
-      left:50%;
-      transform:translateX(-50%);
-      display:flex;
-      gap:6px;
-      align-items:center;
-    ">
-      <button id="deepBtn" style="
-        padding:5px 10px;
-        border-radius:10px;
-        font-size:12px;
-        background: rgba(255,255,255,0.6);
-        color:#475569;
-        border:1px solid rgba(0,0,0,0.05);
-        cursor:pointer;
-        transition:all .2s ease;
-        backdrop-filter: blur(10px);
-      ">
-        🧠 深度思考
-      </button>
-    </div>
 
-    <input type="file" id="fileInput" style="display:none;" multiple>
-    <button id="uploadBtn" class="icon-btn" title="上传文件">📎</button>
+  <!-- 顶部功能（融合） -->
+  
 
-    <!-- ⭐ 关键：放这里 -->
-    <div id="uploadPreview"></div>
+  <!-- 主输入区 -->
+  <div class="input-main">
 
-    <textarea id="input" rows="1" placeholder="有问题，尽管问"></textarea>
+  <button id="deepBtn" class="mini-btn">
+  <span class="deep-logo"></span>
+</button>
 
-    <button id="sendBtn" class="icon-btn">↑</button>
-  </div>
+  <input type="file" id="fileInput" style="display:none;" multiple>
+
+  <button id="uploadBtn" class="icon-btn">＋</button>
+
+  <div id="uploadPreview"></div>
+
+  <textarea id="input" rows="1" placeholder="How can I help you today?"></textarea>
+
+  <button id="sendBtn" class="icon-btn">↑</button>
+
+</div>
+
+</div>
 </div>
 
 
@@ -1429,6 +1645,8 @@ item.style.borderRadius = "12px";
 import { supabase } from './p/js/supabaseClient.js';
 
 let session = null;
+const PROFILE_META_ID = "__xixi_user_profile__";
+const PROFILE_CACHE_PREFIX = "xixi_profile_";
 
 function setSession(s) {
   session = s;
@@ -1436,8 +1654,161 @@ function setSession(s) {
 }
 let isActivated = false;
 let deepMode = false; // ⭐ 深度思考
+let currentProfile = null;
 let conversations = []; // ⭐ 提前声明，避免 TDZ
 let currentId = null;
+
+function getProfileCacheKey(userId) {
+  return PROFILE_CACHE_PREFIX + userId;
+}
+
+function cacheProfile(userId, profile) {
+  if (!userId || !profile) return;
+  currentProfile = profile;
+  localStorage.setItem(getProfileCacheKey(userId), JSON.stringify(profile));
+  try {
+    const user = JSON.parse(localStorage.getItem("user") || "{}");
+    user.avatar_url = profile.avatar_url || user.avatar_url;
+    user.avatar_path = profile.avatar_path || user.avatar_path || "";
+    localStorage.setItem("user", JSON.stringify(user));
+  } catch {}
+}
+
+function loadCachedProfile(userId) {
+  if (!userId) return null;
+  try {
+    return JSON.parse(localStorage.getItem(getProfileCacheKey(userId)) || "null");
+  } catch {
+    return null;
+  }
+}
+
+function extractProfileMeta(data) {
+  const rows = Array.isArray(data) ? data : [];
+  const meta = rows.find(item => item?.id === PROFILE_META_ID && item?.type === "profile");
+  return meta?.profile || null;
+}
+
+function stripProfileMeta(data) {
+  return (Array.isArray(data) ? data : []).filter(item => item?.id !== PROFILE_META_ID);
+}
+
+function normalizeCloudData(data) {
+  const profile = extractProfileMeta(data);
+  if (profile?.avatar_url && session?.user?.id) {
+    cacheProfile(session.user.id, profile);
+  }
+
+  return stripProfileMeta(data);
+}
+
+function buildCloudData() {
+  const rows = stripProfileMeta(conversations);
+  if (currentProfile?.avatar_url && session?.user?.id) {
+    rows.unshift({
+      id: PROFILE_META_ID,
+      type: "profile",
+      profile: {
+        ...currentProfile,
+        user_id: session.user.id,
+        email: session.user.email || "",
+        updated_at: currentProfile.updated_at || new Date().toISOString()
+      }
+    });
+  }
+  return rows;
+}
+
+async function loadUserProfileFromCloud() {
+  if (!session?.user?.id) return;
+
+  const cached = loadCachedProfile(session.user.id);
+  if (cached?.avatar_url) {
+    currentProfile = cached;
+    renderUser();
+  }
+
+  try {
+    const { data, error } = await supabase
+      .from("conversations")
+      .select("data")
+      .eq("user_id", session.user.id)
+      .maybeSingle();
+
+    if (error) throw error;
+    const profile = extractProfileMeta(data?.data);
+    if (profile?.avatar_url) {
+      cacheProfile(session.user.id, profile);
+      renderUser();
+    }
+  } catch (e) {
+    console.warn("头像资料同步失败:", e);
+  }
+}
+
+function getAvatarUrl(user) {
+  return (
+    currentProfile?.avatar_url ||
+    user.avatar_url ||
+    user.picture ||
+    user.user_metadata?.avatar_url ||
+    user.user_metadata?.picture
+  );
+}
+
+function updateDeepButton() {
+  const btn = document.getElementById("deepBtn");
+  if (!btn) return;
+
+  btn.classList.toggle("active", deepMode);
+}
+
+function showProRequiredModal() {
+  if (document.getElementById("proRequiredModal")) return;
+
+  const modal = document.createElement("div");
+  modal.id = "proRequiredModal";
+  modal.className = "modal active";
+  modal.innerHTML = `
+    <div class="modal-content">
+      <span class="close">×</span>
+      <h2 style="margin-bottom:0.5rem;font-size:1.2rem;">深度思考是 Pro 功能</h2>
+      <p style="color:#666;font-size:13px;margin-bottom:1.2rem;line-height:1.6;">
+        升级后可开启深度思考模式，并解锁无限次对话。
+      </p>
+      <button id="openProBtn" class="oauth-btn" style="margin-bottom:0.6rem;">
+        升级 / 输入激活码
+      </button>
+      <button id="closeProTipBtn" style="
+        width:100%;
+        border-radius:10px;
+        padding:0.7rem;
+        background:rgba(0,0,0,0.05);
+        color:#555;
+        cursor:pointer;
+        border:none;
+      ">稍后再说</button>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  function closeModal() {
+    modal.classList.add("closing");
+    setTimeout(() => {
+      modal.classList.remove("active");
+      modal.remove();
+    }, 200);
+  }
+
+  modal.querySelector(".close").onclick = closeModal;
+  modal.querySelector("#closeProTipBtn").onclick = closeModal;
+  modal.onclick = e => { if (e.target === modal) closeModal(); };
+  modal.querySelector("#openProBtn").onclick = () => {
+    closeModal();
+    setTimeout(showActivationModal, 250);
+  };
+}
 
 
 async function checkActivation() {
@@ -1455,7 +1826,13 @@ async function checkActivation() {
   if (isActivated) {
     const hintEl = document.getElementById("usageHint");
     if (hintEl) hintEl.innerText = "💎 Pro · 无限使用";
+    updateDeepButton();
     return;
+  }
+
+  if (deepMode) {
+    deepMode = false;
+    updateDeepButton();
   }
 
   // ⭐ 同步今日剩余次数（页面加载时）
@@ -1542,13 +1919,19 @@ user = {
       setSession(user ? { user } : null);
     } else {
       setSession(null);
+      currentProfile = null;
     }
 
     sessionReady = true;
+
+    if (session?.user) {
+      currentProfile = loadCachedProfile(session.user.id);
+    }
     
     renderUser(); // ⭐ 提前刷新UI，避免后续异常导致不显示
 
     if (session?.user) {
+      loadUserProfileFromCloud().catch(()=>{});
       // ⭐ 先加载本地缓存
       const local = localStorage.getItem("conversations_" + session.user.id);
 
@@ -1617,11 +2000,7 @@ function renderUser() {
   emailEl.innerText = user.email || "未知用户";
 
   // ===== 头像 =====
-  const avatarUrl =
-  user.avatar_url ||
-  user.picture ||
-  user.user_metadata?.avatar_url ||
-  user.user_metadata?.picture;
+  const avatarUrl = getAvatarUrl(user);
   if (avatarUrl) {
     avatarEl.style.backgroundImage = `url(${avatarUrl})`;
     avatarEl.style.backgroundSize = "cover";
@@ -1629,6 +2008,7 @@ function renderUser() {
     avatarEl.innerText = "";
   } else {
     const letter = (user.email || "U")[0].toUpperCase();
+    avatarEl.style.backgroundImage = "";
     avatarEl.innerText = letter;
   }
 if (user) console.log("🔥 当前 user:", user);
@@ -1758,7 +2138,9 @@ if (user) console.log("🔥 当前 user:", user);
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             email,
-            cfToken
+            cfToken,
+            turnstileToken: cfToken,
+            cf_token: cfToken
           })
         });
 
@@ -1796,8 +2178,9 @@ if (user) console.log("🔥 当前 user:", user);
           }
         }, 1000);
 
-      } catch {
-        msg.innerText = "发送失败";
+      } catch (e) {
+        console.error("验证码发送失败:", e);
+        msg.innerText = "发送失败，请检查邮件服务";
         sendBtn.disabled = false;
         sendBtn.innerText = "发送";
       }
@@ -1826,7 +2209,9 @@ if (user) console.log("🔥 当前 user:", user);
           body: JSON.stringify({
             email,
             code,
-            cfToken
+            cfToken,
+            turnstileToken: cfToken,
+            cf_token: cfToken
           })
         });
 
@@ -1872,6 +2257,7 @@ if (user) console.log("🔥 当前 user:", user);
     };
   }
 
+window.showLoginPrompt = showLoginPrompt;
 
 function showLimitModal() {
   if (document.getElementById("limitModal")) return;
@@ -1929,6 +2315,33 @@ setTimeout(() => {
     closeModal();
     setTimeout(showActivationModal, 300);
   };
+}
+
+function showActivationSuccess(modal, closeModal) {
+  const content = modal.querySelector(".modal-content");
+  if (!content) return;
+
+  const pieces = Array.from({ length: 14 }, (_, i) => {
+    const x = Math.round((Math.random() - 0.5) * 260);
+    const hue = ["#22d3ee", "#67e8f9", "#a78bfa", "#22c55e"][i % 4];
+    const delay = (i * 0.035).toFixed(2);
+    const left = 32 + (i * 7) % 40;
+    return `<span class="success-confetti" style="left:${left}%;--x:${x}px;background:${hue};animation-delay:${delay}s;"></span>`;
+  }).join("");
+
+  content.innerHTML = `
+    <div class="activation-success">
+      <div class="success-ribbon"></div>
+      ${pieces}
+      <div class="success-orb">✓</div>
+      <h2 style="margin:0 0 0.4rem;font-size:1.35rem;">激活成功</h2>
+      <p style="font-size:13px;color:#666;line-height:1.6;margin:0;">
+        Pro 已绑定到当前账号。深度思考和无限对话现在可以用了。
+      </p>
+    </div>
+  `;
+
+  setTimeout(closeModal, 1900);
 }
 
 function showActivationModal() {
@@ -2047,12 +2460,10 @@ setTimeout(() => {
 
     if (data.used_by) {
       if (data.used_by === session.user.id) {
-        msg.innerText = "已绑定 ✓";
-        msg.style.color = "#22c55e";
         isActivated = true;
-        btn.disabled = false;
-        btn.innerText = "激活";
-        setTimeout(closeModal, 1000);
+        await checkActivation();
+        updateDeepButton();
+        showActivationSuccess(modal, closeModal);
       } else {
         msg.innerText = "已被他人使用";
         msg.style.color = "#ef4444";
@@ -2107,14 +2518,11 @@ setTimeout(() => {
 // 3) 状态同步
 await checkActivation();
 
-    msg.innerText = "激活成功 🎉";
-    msg.style.color = "#22c55e";
-
     const hintEl = document.getElementById("usageHint");
     if (hintEl) hintEl.innerText = "已激活 ∞";
 
-    btn.innerText = "已激活 ✓";
-    setTimeout(closeModal, 1200);
+    updateDeepButton();
+    showActivationSuccess(modal, closeModal);
   };
 
   // ⭐ 跳转支付
@@ -2233,7 +2641,7 @@ async function syncFromCloud() {
     }
 
     if (data && data.data) {
-      const cloudConversations = data.data || [];
+      const cloudConversations = normalizeCloudData(data.data);
 // ⭐兼容旧数据（没有updatedAt）
 conversations.forEach(c => {
   if (!c.updatedAt) c.updatedAt = c.id;
@@ -2310,7 +2718,7 @@ async function syncToCloud() {
       .from("conversations")
       .upsert({
         user_id: session.user.id,
-        data: conversations
+        data: buildCloudData()
       }, {
         onConflict: "user_id"
       });
@@ -2339,8 +2747,9 @@ function startRealtime() {
       (payload) => {
         console.log("Realtime:", payload);
 
-        const cloudData = payload.new?.data;
+        const cloudData = normalizeCloudData(payload.new?.data);
         if (!cloudData) return;
+        renderUser();
 
         const map = new Map();
 
@@ -2626,11 +3035,18 @@ async function send() {
   }
 
   if (!session || !session.user) {
-  const old = document.getElementById("loginModal");
-  if (old) old.remove();
-  showLoginPrompt();
-  return;
-}
+    const old = document.getElementById("loginModal");
+    if (old) old.remove();
+    showLoginPrompt();
+    return;
+  }
+
+  if (deepMode && !isActivated) {
+    deepMode = false;
+    updateDeepButton();
+    showProRequiredModal();
+    return;
+  }
 
   // ===== ⭐ 新版：统一限额 + Pro 判断 =====
   let usageData = 0;
@@ -3275,13 +3691,15 @@ const deepBtn = document.getElementById("deepBtn");
 
 if (deepBtn) {
   deepBtn.onclick = () => {
+    if (!isActivated) {
+      deepMode = false;
+      updateDeepButton();
+      showProRequiredModal();
+      return;
+    }
+
     deepMode = !deepMode;
-
-    deepBtn.style.background = deepMode
-      ? "linear-gradient(135deg,#22d3ee,#67e8f9)"
-      : "rgba(255,255,255,0.5)";
-
-    deepBtn.style.color = deepMode ? "#00323a" : "#475569";
+    updateDeepButton();
 
     showToast(deepMode ? "深度思考已开启 🧠" : "深度思考已关闭");
   };
