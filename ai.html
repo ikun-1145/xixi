@@ -327,7 +327,9 @@ body.night::before {
 /* ===== 聊天区 ===== */
 .chat-container {
   overflow-y: auto;
+max-width: 820px;
 
+  margin: 0 auto;
   -webkit-overflow-scrolling: touch;
 
   height: 100%;                     /* ⭐ 必加 */
@@ -356,6 +358,13 @@ body.night::before {
   padding-bottom: 140px;  /* 给底部输入框让空间，防止遮挡 */
 }
 .chat-inner {
+  background: rgba(255,255,255,0.6);
+
+  backdrop-filter: blur(12px);
+
+  border-radius: 20px;
+
+  padding: 16px;
   width: 100%;
   max-width: 680px;   /* ⭐ 关键：中间列 */
   margin: 0 auto;
@@ -1051,7 +1060,7 @@ body.thinking-mode button {
   transition: transform .25s ease;
 
   z-index: 300;
-  background: rgba(255, 255, 255, 0.85);
+  background: transparent;
   backdrop-filter: blur(16px);
   -webkit-backdrop-filter: blur(16px);
   border-right: 1px solid rgba(0, 0, 0, 0.06);
@@ -1101,7 +1110,7 @@ body.night #newChatBtn {
 }
 @media (max-width: 768px) {
   #sidebar {
-    transform: translateX(-100%);
+    display: none !important;
     position: fixed;
 
     top: 0;   /* ❗不要48 */
@@ -1341,6 +1350,13 @@ body.ai-entering::before {
 @keyframes confettiFall {
   0% { opacity: 1; transform: translate(-50%, 0) rotate(0); }
   100% { opacity: 0; transform: translate(var(--x), 90px) rotate(210deg); }
+}
+@media (max-width: 768px) {
+  .header,
+  .chat-container,
+  .input-area {
+    margin-left: 0 !important;
+  }
 }
 </style>
 
