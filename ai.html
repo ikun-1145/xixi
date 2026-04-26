@@ -2148,9 +2148,8 @@ if (user) console.log("🔥 当前 user:", user);
         modal.querySelector("#cf-box"),
         {
           sitekey: SITE_KEY,
-          appearance: "interaction-only", // ⭐ 防止重复弹出
+          appearance: "always",
           size: "normal",
-          execution: "execute",
           callback: (token) => {
             cfToken = token;
             tokenExpire = Date.now() + 2 * 60 * 1000;
@@ -2170,27 +2169,10 @@ if (user) console.log("🔥 当前 user:", user);
     ensureTurnstile();
 
     async function getCfToken() {
-      const now = Date.now();
-
-      // 2分钟内复用 token
-      if (cfToken && now < tokenExpire) {
-        return cfToken;
+      if (!cfToken) {
+        throw new Error("请先完成人机验证");
       }
-
-      if (!window.turnstile || widgetId === null) {
-        throw new Error("验证组件未加载");
-      }
-
-      const token = await turnstile.execute(widgetId, { action: "login" });
-
-      if (!token) {
-        throw new Error("人机验证失败");
-      }
-
-      cfToken = token;
-      tokenExpire = now + 2 * 60 * 1000;
-
-      return token;
+      return cfToken;
     }
     setTimeout(() => {
       if (widgetId === null) {
