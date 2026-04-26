@@ -2111,7 +2111,22 @@ if (user) console.log("🔥 当前 user:", user);
         验证码将发送至你的邮箱，仅用于登录
       </p>
 
+      <div style="display:flex;align-items:flex-start;gap:6px;margin:8px 0 6px;text-align:left;font-size:11px;color:#666;">
+        <input type="checkbox" id="agreeCheck" style="margin-top:2px;cursor:pointer;">
+        <div>
+          我已阅读并同意
+          <a href="xukexieyi.html" target="_blank" style="color:#22d3ee;">《用户协议》</a>
+          和
+          <a href="privacy.html" target="_blank" style="color:#22d3ee;">《隐私政策》</a>
+        </div>
+      </div>
       <button id="loginBtn" class="oauth-btn">登录</button>
+      <p style="font-size:11px;color:#999;margin-top:10px;line-height:1.5;">
+        登录即代表您同意
+        <a href="xukexieyi.html" target="_blank" style="color:#22d3ee;">《用户协议》</a>
+        和
+        <a href="privacy.html" target="_blank" style="color:#22d3ee;">《隐私政策》</a>
+      </p>
 
       <p id="loginMsg" style="
         font-size:12px;color:#ef4444;height:16px;margin-top:6px;
@@ -2126,6 +2141,16 @@ if (user) console.log("🔥 当前 user:", user);
     let cfToken = "";
     let tokenExpire = 0;
     let widgetId = null;
+
+    function refreshTurnstile() {
+      if (window.turnstile && widgetId !== null) {
+        try {
+          turnstile.reset(widgetId);
+        } catch {}
+      }
+      cfToken = "";
+      tokenExpire = 0;
+    }
 
     function ensureTurnstile() {
       // ⭐ 等待脚本加载完成
@@ -2169,8 +2194,9 @@ if (user) console.log("🔥 当前 user:", user);
     ensureTurnstile();
 
     async function getCfToken() {
-      if (!cfToken) {
-        throw new Error("请先完成人机验证");
+      if (!cfToken || Date.now() > tokenExpire) {
+        refreshTurnstile();
+        throw new Error("请重新完成人机验证");
       }
       return cfToken;
     }
@@ -2185,6 +2211,14 @@ if (user) console.log("🔥 当前 user:", user);
     const sendBtn = modal.querySelector("#sendCodeBtn");
     const loginBtn = modal.querySelector("#loginBtn");
     const msg = modal.querySelector("#loginMsg");
+    const agreeCheck = modal.querySelector("#agreeCheck");
+    loginBtn.disabled = true;
+    loginBtn.style.opacity = "0.6";
+
+    agreeCheck.onchange = () => {
+      loginBtn.disabled = !agreeCheck.checked;
+      loginBtn.style.opacity = agreeCheck.checked ? "1" : "0.6";
+    };
 
     let cooldown = 0;
     let timer = null;
@@ -2241,8 +2275,7 @@ if (user) console.log("🔥 当前 user:", user);
 
         msg.innerText = "验证码已发送";
 
-        // ⭐ 不重置验证码（避免再次弹出）
-        // turnstile.reset(widgetId);
+        refreshTurnstile(); // ⭐ 发送验证码后刷新token（避免verify阶段失效）
 
         // 开始倒计时
         cooldown = 60;
@@ -2267,6 +2300,7 @@ if (user) console.log("🔥 当前 user:", user);
           msg.innerText = e.message || "发送失败，请稍后再试";
         }
 
+        refreshTurnstile(); // ⭐ 出错也刷新，避免token卡死
         // 失败也恢复按钮
         sendBtn.disabled = false;
         sendBtn.innerText = "发送";
@@ -2275,6 +2309,10 @@ if (user) console.log("🔥 当前 user:", user);
 
     // ===== 登录 =====
     loginBtn.onclick = async () => {
+      if (!agreeCheck.checked) {
+        msg.innerText = "请先同意用户协议";
+        return;
+      }
       const email = emailInput.value.trim();
       const code = codeInput.value.trim();
 
@@ -2317,10 +2355,7 @@ if (user) console.log("🔥 当前 user:", user);
         localStorage.setItem("user", JSON.stringify(data.user));
 
         // ⭐ 登录后再重置（安全）
-        if (window.turnstile && widgetId !== null) {
-          turnstile.reset(widgetId);
-          cfToken = "";
-        }
+        refreshTurnstile();
 
         msg.innerText = "登录成功";
 
@@ -2330,6 +2365,7 @@ if (user) console.log("🔥 当前 user:", user);
         }, 800);
 
       } catch (e) {
+        refreshTurnstile(); // ⭐ 出错也刷新，避免token卡死
         if (e.message === "Failed to fetch") {
           msg.innerText = "网络连接失败（API异常）";
         } else {
