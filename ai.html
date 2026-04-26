@@ -2113,9 +2113,15 @@ function ensureTurnstile() {
       sitekey: "0x4AAAAAAC_W2Wj2YdkrQiMf",
       size: "invisible", // ⭐ 关键：无感验证
       callback: (token) => {
-        cfToken = token;
-        window.__cfToken = token;
-      }
+  cfToken = token;
+  window.__cfToken = token;
+
+  // ⭐ 自动继续发送（关键）
+  if (window.__pendingSend) {
+    window.__pendingSend();
+    window.__pendingSend = null;
+  }
+}
     }
   );
 
@@ -2152,10 +2158,9 @@ ensureTurnstile();
       if (!cfToken) {
   msg.innerText = "验证中...";
 
-  if (window.turnstile && widgetId !== null) {
-    turnstile.execute(widgetId); // ⭐ 主动触发
-  }
+  window.__pendingSend = sendBtn.onclick; // ⭐ 记住当前操作
 
+  turnstile.execute(widgetId);
   return;
 }
 
@@ -2230,10 +2235,9 @@ ensureTurnstile();
       if (!cfToken) {
   msg.innerText = "验证中...";
 
-  if (window.turnstile && widgetId !== null) {
-    turnstile.execute(widgetId); // ⭐ 主动触发
-  }
+  window.__pendingSend = sendBtn.onclick; // ⭐ 记住当前操作
 
+  turnstile.execute(widgetId);
   return;
 }
       try {

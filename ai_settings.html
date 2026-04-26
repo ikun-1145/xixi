@@ -867,11 +867,6 @@ body.dark .usage-hint {
         if (!user) return;
         input.click();
       };
-      // 额外保险：点击内部元素也能触发
-      button.addEventListener("click", () => {
-        if (!user) return;
-        input.click();
-      });
       button.onkeydown = (e) => {
         if ((e.key === "Enter" || e.key === " ") && user) {
           e.preventDefault();
@@ -882,10 +877,6 @@ body.dark .usage-hint {
         handleAvatarUpload(user, input.files?.[0]);
         input.value = "";
       };
-      // 防止某些浏览器不触发 change
-      input.addEventListener("input", () => {
-        handleAvatarUpload(user, input.files?.[0]);
-      });
     }
 
     function setUsageBar(remain, total = 20) {
