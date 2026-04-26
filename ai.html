@@ -2114,9 +2114,9 @@ if (user) console.log("🔥 当前 user:", user);
     document.body.style.overflow = "hidden";
 
     // ⭐ 强制渲染 Turnstile（解决不显示问题）
-    let cfToken = window.__cfToken || "";
-    let widgetId = window.__cfWidgetId || null;
-    let pendingAction = null; // ⭐ 区分发送和登录
+    let cfToken = "";
+    let tokenExpire = 0;
+    let widgetId = null;
 
     function ensureTurnstile() {
       // ⭐ 等待脚本加载完成
@@ -2143,7 +2143,7 @@ if (user) console.log("🔥 当前 user:", user);
           size: "normal",
           callback: (token) => {
             cfToken = token;
-            window.__cfToken = token;
+            tokenExpire = Date.now() + 2 * 60 * 1000;
             console.log("✅ Turnstile token:", token);
           }
         }
@@ -2152,6 +2152,30 @@ if (user) console.log("🔥 当前 user:", user);
     }
 
     ensureTurnstile();
+
+    async function getCfToken() {
+      const now = Date.now();
+
+      // 2分钟内复用 token
+      if (cfToken && now < tokenExpire) {
+        return cfToken;
+      }
+
+      if (!window.turnstile || widgetId === null) {
+        throw new Error("验证组件未加载");
+      }
+
+      const token = await turnstile.execute(widgetId);
+
+      if (!token) {
+        throw new Error("人机验证失败");
+      }
+
+      cfToken = token;
+      tokenExpire = now + 2 * 60 * 1000;
+
+      return token;
+    }
     setTimeout(() => {
       if (widgetId === null) {
         console.error("Turnstile 未渲染成功");
@@ -2183,9 +2207,11 @@ if (user) console.log("🔥 当前 user:", user);
         return;
       }
 
-      // 只保留：cfToken 校验
-      if (!cfToken) {
-        msg.innerText = "请先完成人机验证";
+      let token;
+      try {
+        token = await getCfToken();
+      } catch (e) {
+        msg.innerText = e.message;
         return;
       }
 
@@ -2201,7 +2227,7 @@ if (user) console.log("🔥 当前 user:", user);
           },
           body: JSON.stringify({
             email,
-            cfToken
+            cfToken: token
           })
         });
 
@@ -2216,14 +2242,6 @@ if (user) console.log("🔥 当前 user:", user);
         }
 
         msg.innerText = "验证码已发送";
-
-        // 使用后重置一次，避免 token 复用/过期
-        if (window.turnstile && widgetId !== null) {
-          try {
-            turnstile.reset(widgetId);
-            cfToken = "";
-          } catch {}
-        }
 
         // 开始倒计时
         cooldown = 60;
@@ -2264,8 +2282,11 @@ if (user) console.log("🔥 当前 user:", user);
         return;
       }
 
-      if (!cfToken) {
-        msg.innerText = "请先完成人机验证";
+      let token;
+      try {
+        token = await getCfToken();
+      } catch (e) {
+        msg.innerText = e.message;
         return;
       }
       try {
@@ -2275,7 +2296,7 @@ if (user) console.log("🔥 当前 user:", user);
           body: JSON.stringify({
             email,
             code,
-            cfToken
+            cfToken: token
           })
         });
 
@@ -2295,14 +2316,6 @@ if (user) console.log("🔥 当前 user:", user);
         localStorage.setItem("user", JSON.stringify(data.user));
 
         msg.innerText = "登录成功";
-
-        // 登录成功后重置 Turnstile
-        if (window.turnstile && widgetId !== null) {
-          try {
-            turnstile.reset(widgetId);
-            cfToken = "";
-          } catch {}
-        }
 
         setTimeout(() => {
           modal.remove();
