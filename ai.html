@@ -348,8 +348,6 @@ body.night::before {
   background: transparent;
 
   border-radius: 20px;
-
-  padding: 16px;
   width: 100%;
   max-width: 680px;   /* ⭐ 关键：中间列 */
   margin: 0 auto;
@@ -364,7 +362,7 @@ html, body {
   height: 100%;
   margin: 0;
   overflow: hidden;
-
+  position: fixed;   /* ⭐ 关键 */
   width: 100%;
   overscroll-behavior: none;
 }
@@ -459,10 +457,19 @@ html, body {
 
 
 .input-box {
+  display: flex;
+  width: 100%;
+  max-width: 720px;
+
+  background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(255,255,255,0.6));
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255,255,255,0.4);
+  box-shadow: 0 8px 24px rgba(0,0,0,0.12);
+
   flex-direction: column;
   border-radius: 20px;
   padding: 10px;
-  align-items: stretch;   /* ⭐ 让子元素撑满 */
+  align-items: stretch;
   gap: 6px;
 }
 
@@ -1063,6 +1070,9 @@ body.thinking-mode button {
   cursor: pointer;
 
   background: linear-gradient(135deg,#38bdf8,#22d3ee);
+  color: #00323a;              /* ⭐ 提高对比度 */
+  font-weight: 600;            /* ⭐ 更清晰 */
+  letter-spacing: 0.3px;       /* ⭐ 更易读 */
 }
 
 #chatList div {
@@ -1090,7 +1100,9 @@ body.night #newChatBtn {
 }
 @media (max-width: 768px) {
   #sidebar {
-    display: none !important;
+    transform: translateX(0);
+
+  display: block !important; /* ⭐ 必加 */
     position: fixed;
 
     top: 0;   /* ❗不要48 */
@@ -1103,9 +1115,6 @@ body.night #newChatBtn {
     z-index: 400; /* 提高，避免被压 */
   }
 
-  #sidebar.open {
-    transform: translateX(0);
-  }
   #sidebar.open {
     transform: translateX(0);
   }
@@ -2099,36 +2108,49 @@ if (user) console.log("🔥 当前 user:", user);
 
     // ⭐ 强制渲染 Turnstile（解决不显示问题）
     let cfToken = window.__cfToken || "";
-let widgetId = window.__cfWidgetId || null;
+    let widgetId = window.__cfWidgetId || null;
+    let pendingAction = null; // ⭐ 区分发送和登录
 
-function ensureTurnstile() {
-  if (!window.turnstile) return;
+    function ensureTurnstile() {
+      // ⭐ 等待脚本加载完成
+      if (!window.turnstile) {
+        setTimeout(ensureTurnstile, 100);
+        return;
+      }
 
-  // 已经渲染过就不重复
-  if (widgetId !== null) return;
+      // 已经渲染过就不重复
+      if (widgetId !== null) return;
 
-  widgetId = turnstile.render(
-    modal.querySelector("#cf-box"),
-    {
-      sitekey: "0x4AAAAAAC_W2Wj2YdkrQiMf",
-      size: "invisible", // ⭐ 关键：无感验证
-      callback: (token) => {
-  cfToken = token;
-  window.__cfToken = token;
+      // ⭐ 本地开发用测试 key
+      const SITE_KEY =
+        location.hostname === "localhost" ||
+        location.hostname === "127.0.0.1"
+          ? "1x00000000000000000000AA"
+          : "0x4AAAAAAC_W2Wj2YdkrQiMf";
 
-  // ⭐ 自动继续发送（关键）
-  if (window.__pendingSend) {
-    window.__pendingSend();
-    window.__pendingSend = null;
-  }
-}
+      widgetId = turnstile.render(
+  modal.querySelector("#cf-box"),
+  {
+    sitekey: SITE_KEY,
+    size: "normal",
+    callback: (token) => {
+      cfToken = token;
+      window.__cfToken = token;
+
+      console.log("✅ Turnstile token:", token);
     }
-  );
+  }
+);
 
-  window.__cfWidgetId = widgetId;
-}
+      window.__cfWidgetId = widgetId;
+    }
 
-ensureTurnstile();
+    ensureTurnstile();
+    setTimeout(() => {
+      if (widgetId === null) {
+        console.error("Turnstile 未渲染成功");
+      }
+    }, 1500);
 
     const emailInput = modal.querySelector("#emailInput");
     const codeInput = modal.querySelector("#codeInput");
@@ -2156,11 +2178,7 @@ ensureTurnstile();
       }
 
       if (!cfToken) {
-  msg.innerText = "验证中...";
-
-  window.__pendingSend = sendBtn.onclick; // ⭐ 记住当前操作
-
-  turnstile.execute(widgetId);
+  msg.innerText = "请先完成人机验证";
   return;
 }
 
@@ -2233,11 +2251,7 @@ ensureTurnstile();
       }
 
       if (!cfToken) {
-  msg.innerText = "验证中...";
-
-  window.__pendingSend = sendBtn.onclick; // ⭐ 记住当前操作
-
-  turnstile.execute(widgetId);
+  msg.innerText = "请先完成人机验证";
   return;
 }
       try {
@@ -2667,6 +2681,9 @@ sendBtn.onclick = (e) => {
   sendBtn.classList.remove("send-anim");
   void sendBtn.offsetWidth; // 强制重绘，不然不会重复触发
   sendBtn.classList.add("send-anim");
+  setTimeout(() => {
+    sendBtn.classList.remove("send-anim");
+  }, 350);
 
   send();
 };
