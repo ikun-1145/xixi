@@ -1377,6 +1377,15 @@ body.ai-entering::before {
 }
 </style>
 
+<!-- CSP for Turnstile -->
+<meta http-equiv="Content-Security-Policy" content="
+  default-src 'self' https:;
+  script-src 'self' https://challenges.cloudflare.com https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval';
+  connect-src 'self' https://api.sunland.dev https://*.supabase.co https://challenges.cloudflare.com;
+  img-src 'self' data: https:;
+  style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
+  frame-src https://challenges.cloudflare.com;
+">
 <!-- Turnstile -->
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
@@ -2139,12 +2148,19 @@ if (user) console.log("🔥 当前 user:", user);
         modal.querySelector("#cf-box"),
         {
           sitekey: SITE_KEY,
-          appearance: "always",
+          appearance: "interaction-only", // ⭐ 防止重复弹出
           size: "normal",
+          execution: "execute",
           callback: (token) => {
             cfToken = token;
             tokenExpire = Date.now() + 2 * 60 * 1000;
             console.log("✅ Turnstile token:", token);
+          },
+          "error-callback": () => {
+            cfToken = "";
+          },
+          "expired-callback": () => {
+            cfToken = "";
           }
         }
       );
@@ -2165,7 +2181,7 @@ if (user) console.log("🔥 当前 user:", user);
         throw new Error("验证组件未加载");
       }
 
-      const token = await turnstile.execute(widgetId);
+      const token = await turnstile.execute(widgetId, { action: "login" });
 
       if (!token) {
         throw new Error("人机验证失败");
@@ -2243,6 +2259,9 @@ if (user) console.log("🔥 当前 user:", user);
 
         msg.innerText = "验证码已发送";
 
+        // ⭐ 不重置验证码（避免再次弹出）
+        // turnstile.reset(widgetId);
+
         // 开始倒计时
         cooldown = 60;
         sendBtn.innerText = "60s";
@@ -2314,6 +2333,12 @@ if (user) console.log("🔥 当前 user:", user);
 
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
+
+        // ⭐ 登录后再重置（安全）
+        if (window.turnstile && widgetId !== null) {
+          turnstile.reset(widgetId);
+          cfToken = "";
+        }
 
         msg.innerText = "登录成功";
 
