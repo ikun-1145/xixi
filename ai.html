@@ -2173,18 +2173,6 @@ if (user) console.log("🔥 当前 user:", user);
 
       const email = emailInput.value.trim();
 
-      // ⭐ 每次发送前刷新 Turnstile（防止 token 过期）
-      if (window.turnstile && widgetId !== null) {
-        try {
-          turnstile.reset(widgetId);
-          cfToken = "";
-          msg.innerText = "请完成人机验证";
-          return;
-        } catch (e) {
-          console.warn("Turnstile reset failed", e);
-        }
-      }
-
       if (!email) {
         msg.innerText = "请输入邮箱";
         return;
@@ -2195,6 +2183,7 @@ if (user) console.log("🔥 当前 user:", user);
         return;
       }
 
+      // 只保留：cfToken 校验
       if (!cfToken) {
         msg.innerText = "请先完成人机验证";
         return;
@@ -2228,6 +2217,14 @@ if (user) console.log("🔥 当前 user:", user);
 
         msg.innerText = "验证码已发送";
 
+        // 使用后重置一次，避免 token 复用/过期
+        if (window.turnstile && widgetId !== null) {
+          try {
+            turnstile.reset(widgetId);
+            cfToken = "";
+          } catch {}
+        }
+
         // 开始倒计时
         cooldown = 60;
         sendBtn.innerText = "60s";
@@ -2259,18 +2256,6 @@ if (user) console.log("🔥 当前 user:", user);
 
     // ===== 登录 =====
     loginBtn.onclick = async () => {
-      // ⭐ 登录前确保 token 最新
-      if (window.turnstile && widgetId !== null) {
-        try {
-          turnstile.reset(widgetId);
-          cfToken = "";
-          msg.innerText = "请重新完成人机验证";
-          return;
-        } catch (e) {
-          console.warn("Turnstile reset failed", e);
-        }
-      }
-
       const email = emailInput.value.trim();
       const code = codeInput.value.trim();
 
@@ -2312,9 +2297,10 @@ if (user) console.log("🔥 当前 user:", user);
         msg.innerText = "登录成功";
 
         // 登录成功后重置 Turnstile
-        if (widgetId !== null && window.turnstile) {
+        if (window.turnstile && widgetId !== null) {
           try {
-            
+            turnstile.reset(widgetId);
+            cfToken = "";
           } catch {}
         }
 
