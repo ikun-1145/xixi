@@ -445,7 +445,7 @@ html, body {
   bottom: 0;
   left: 0;
   right: 0;
-
+background: transparent;
   display: flex;
   justify-content: center;
   padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
@@ -1159,6 +1159,7 @@ body.night #newChatBtn {
   .input-area {
     margin-left: 220px;
     transition: margin-left .25s ease;
+    background: transparent;
   }
 
   .chat-container {
@@ -1189,12 +1190,18 @@ body.night #newChatBtn {
   transition: transform .2s ease;
 }
 #app {
-  position: fixed;   /* ⭐ 很关键 */
+  position: fixed;
   inset: 0;
-  height: 100dvh;
+
+  height: 100%;
+  min-height: 100dvh;   /* ⭐ 解决 iOS 白边 */
+
   display: flex;
   flex-direction: column;
   overflow: hidden;
+
+  /* ⭐ 核心修复：不要再用 body 背景 */
+  background: linear-gradient(135deg,#eef2ff,#e0f2fe,#f0fdfa);
 }
 #proBtn:hover {
   background: linear-gradient(135deg, #6a5cff, #9f7cff);
@@ -2129,19 +2136,18 @@ if (user) console.log("🔥 当前 user:", user);
           : "0x4AAAAAAC_W2Wj2YdkrQiMf";
 
       widgetId = turnstile.render(
-  modal.querySelector("#cf-box"),
-  {
-    sitekey: SITE_KEY,
-    size: "normal",
-    callback: (token) => {
-      cfToken = token;
-      window.__cfToken = token;
-
-      console.log("✅ Turnstile token:", token);
-    }
-  }
-);
-
+        modal.querySelector("#cf-box"),
+        {
+          sitekey: SITE_KEY,
+          appearance: "always",
+          size: "normal",
+          callback: (token) => {
+            cfToken = token;
+            window.__cfToken = token;
+            console.log("✅ Turnstile token:", token);
+          }
+        }
+      );
       window.__cfWidgetId = widgetId;
     }
 
@@ -2167,6 +2173,18 @@ if (user) console.log("🔥 当前 user:", user);
 
       const email = emailInput.value.trim();
 
+      // ⭐ 每次发送前刷新 Turnstile（防止 token 过期）
+      if (window.turnstile && widgetId !== null) {
+        try {
+          turnstile.reset(widgetId);
+          cfToken = "";
+          msg.innerText = "请完成人机验证";
+          return;
+        } catch (e) {
+          console.warn("Turnstile reset failed", e);
+        }
+      }
+
       if (!email) {
         msg.innerText = "请输入邮箱";
         return;
@@ -2178,9 +2196,9 @@ if (user) console.log("🔥 当前 user:", user);
       }
 
       if (!cfToken) {
-  msg.innerText = "请先完成人机验证";
-  return;
-}
+        msg.innerText = "请先完成人机验证";
+        return;
+      }
 
       try {
         msg.innerText = "";
@@ -2199,7 +2217,6 @@ if (user) console.log("🔥 当前 user:", user);
         });
 
         const data = await res.json().catch(() => ({}));
-        
 
         // ==== PATCH: handle non-ok or error ====
         if (!res.ok || data.error) {
@@ -2242,6 +2259,18 @@ if (user) console.log("🔥 当前 user:", user);
 
     // ===== 登录 =====
     loginBtn.onclick = async () => {
+      // ⭐ 登录前确保 token 最新
+      if (window.turnstile && widgetId !== null) {
+        try {
+          turnstile.reset(widgetId);
+          cfToken = "";
+          msg.innerText = "请重新完成人机验证";
+          return;
+        } catch (e) {
+          console.warn("Turnstile reset failed", e);
+        }
+      }
+
       const email = emailInput.value.trim();
       const code = codeInput.value.trim();
 
@@ -2251,9 +2280,9 @@ if (user) console.log("🔥 当前 user:", user);
       }
 
       if (!cfToken) {
-  msg.innerText = "请先完成人机验证";
-  return;
-}
+        msg.innerText = "请先完成人机验证";
+        return;
+      }
       try {
         const res = await fetch("https://api.sunland.dev/verify-code", {
           method: "POST",
@@ -2261,9 +2290,7 @@ if (user) console.log("🔥 当前 user:", user);
           body: JSON.stringify({
             email,
             code,
-            cfToken,
-            turnstileToken: cfToken,
-            cf_token: cfToken
+            cfToken
           })
         });
 
