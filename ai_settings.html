@@ -719,50 +719,29 @@ body.dark .usage-hint {
     }
 
     async function loadCloudProfile(userId) {
-      if (!userId) return null;
-      const { data, error } = await supabase
-        .from("conversations")
-        .select("data")
-        .eq("user_id", userId)
-        .maybeSingle();
+  if (!userId) return null;
+  const { data, error } = await supabase
+    .from("user_profiles")
+    .select("avatar_url, avatar_path")
+    .eq("user_id", userId)
+    .maybeSingle();
 
-      if (error) throw error;
-      return extractProfile(data?.data);
-    }
+  if (error) throw error;
+  return data || null;
+}
 
     async function saveProfileToCloud(user, profile) {
-      const { data, error } = await supabase
-        .from("conversations")
-        .select("data")
-        .eq("user_id", user.id)
-        .maybeSingle();
+  const { error } = await supabase
+    .from("user_profiles")
+    .upsert({
+      user_id: user.id,
+      avatar_url: profile.avatar_url || "",
+      avatar_path: profile.avatar_path || "",
+      updated_at: new Date().toISOString()
+    }, { onConflict: "user_id" });
 
-      if (error) throw error;
-
-      const rows = Array.isArray(data?.data) ? data.data : [];
-      const nextRows = rows.filter(item => item?.id !== PROFILE_META_ID);
-      nextRows.unshift({
-        id: PROFILE_META_ID,
-        type: "profile",
-        profile: {
-          ...profile,
-          user_id: user.id,
-          email: user.email || "",
-          updated_at: new Date().toISOString()
-        }
-      });
-
-      const { error: saveError } = await supabase
-        .from("conversations")
-        .upsert({
-          user_id: user.id,
-          data: nextRows
-        }, {
-          onConflict: "user_id"
-        });
-
-      if (saveError) throw saveError;
-    }
+  if (error) throw error;
+}
 
     function loadImage(file) {
       return new Promise((resolve, reject) => {
@@ -802,8 +781,9 @@ body.dark .usage-hint {
     }
 
     async function uploadAvatar(user, file) {
-      const avatarBlob = await compressAvatar(file);
-      const path = `${user.id}/avatar-${Date.now()}.jpg`;
+  const avatarBlob = await compressAvatar(file);
+  const safeId = (user.id || "unknown").replace(/[^a-zA-Z0-9_-]/g, "_");
+  const path = `${safeId}/avatar-${Date.now()}.jpg`;
 
       try {
         const { error } = await supabase.storage
