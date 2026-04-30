@@ -3155,6 +3155,75 @@ if (!res) return null;
   }
 }
 
+const MODERATION_REFUSAL_TEXT = "抱歉，这条内容包含敏感或不文明用语，我无法继续回答。请修改后再发送。";
+const MODERATION_RULES = [
+  {
+    category: "不文明用语",
+    terms: [
+      "傻逼", "傻b", "煞笔", "沙比", "尼玛", "你妈", "妈的", "他妈的",
+      "操你", "草你", "艹你", "卧槽", "滚蛋", "废物", "脑残", "弱智",
+      "贱人", "王八蛋", "混蛋", "去死", "狗东西"
+    ]
+  },
+  {
+    category: "敏感违规",
+    terms: [
+      "炸弹制作", "制作炸药", "制毒", "毒品交易", "买枪", "卖枪",
+      "黑客攻击", "盗号教程", "诈骗教程", "洗钱教程", "人肉搜索",
+      "绕过实名", "绕过风控"
+    ]
+  },
+  {
+    category: "低俗色情",
+    terms: [
+      "裸聊", "约炮", "色情交易", "卖淫", "嫖娼", "援交", "成人视频",
+      "黄色网站"
+    ]
+  },
+  {
+    category: "暴力威胁",
+    terms: [
+      "杀人方法", "怎么杀人", "砍人", "恐怖袭击", "炸学校", "炸商场",
+      "自杀方法", "怎么自杀"
+    ]
+  }
+];
+
+function normalizeModerationText(text) {
+  return String(text || "")
+    .normalize("NFKC")
+    .toLowerCase()
+    .replace(/[\s.,!?;:'"`~@#$%^&*()[\]{}<>\\/|+=_，。！？；：、"'“”‘’（）【】《》·…￥-]+/g, "");
+}
+
+function checkInputModeration(text) {
+  const compactText = normalizeModerationText(text);
+  if (!compactText) return null;
+
+  for (const rule of MODERATION_RULES) {
+    const term = rule.terms.find(item => {
+      const compactTerm = normalizeModerationText(item);
+      return compactTerm && compactText.includes(compactTerm);
+    });
+
+    if (term) {
+      return {
+        category: rule.category,
+        term
+      };
+    }
+  }
+
+  return null;
+}
+
+function refuseModeratedInput(result) {
+  console.warn("前端审核拦截:", result);
+  showToast("内容未通过审核，请修改后再发送");
+  addMessage(MODERATION_REFUSAL_TEXT, "ai");
+  if (!window._isMobile) input.focus();
+}
+
 async function send() {
   // ===== 轻量防抖（不阻止发送，只提示） =====
   const now = Date.now();
@@ -3164,6 +3233,18 @@ async function send() {
   window._lastSendTime = now;
   if (sendingLock) {
     console.warn("发送被锁定，跳过");
+    return;
+  }
+
+  const text = input.value.trim();
+  const moderationText = [
+    text,
+    ...pendingFiles.map(file => file.name)
+  ].join(" ");
+  const moderationResult = checkInputModeration(moderationText);
+
+  if (moderationResult) {
+    refuseModeratedInput(moderationResult);
     return;
   }
   
@@ -3228,8 +3309,6 @@ async function send() {
     return;
   }
   window._lastRealSend = Date.now();
-
-  const text = input.value.trim();
 
   // ⭐ 合并上传文件
   if (pendingFiles.length) {
