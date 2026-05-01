@@ -2577,14 +2577,24 @@ setTimeout(() => {
     msg.innerText = "验证中...";
     msg.style.color = "#999";
 
-    const { data } = await supabase
+    const { data, error } = await supabase
       .from("activation_codes")
       .select("code, used_by")
       .eq("code", code)
-      .maybeSingle();
+      .limit(1)
+      .single();
+
+    if (error) {
+      console.error("查询激活码失败:", error);
+      msg.innerText = "激活码查询失败";
+      msg.style.color = "#ef4444";
+      btn.disabled = false;
+      btn.innerText = "激活";
+      return;
+    }
 
     if (!data) {
-      msg.innerText = "激活码无效";
+      msg.innerText = "激活码不存在";
       msg.style.color = "#ef4444";
       btn.disabled = false;
       btn.innerText = "激活";
@@ -2640,7 +2650,8 @@ setTimeout(() => {
 
     // ⭐ 没有更新成功（可能被抢先使用）
     if (!updated || updated.length === 0) {
-      msg.innerText = "激活失败，可能已被使用";
+      console.warn("激活失败：未更新任何行，可能被占用或RLS限制");
+      msg.innerText = "激活失败（可能被占用或权限限制）";
       msg.style.color = "#ef4444";
       btn.disabled = false;
       btn.innerText = "激活";
