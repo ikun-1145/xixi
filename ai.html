@@ -2454,27 +2454,39 @@ function showActivationSuccess(modal, closeModal) {
   const content = modal.querySelector(".modal-content");
   if (!content) return;
 
-  const pieces = Array.from({ length: 14 }, (_, i) => {
-    const x = Math.round((Math.random() - 0.5) * 260);
-    const hue = ["#22d3ee", "#67e8f9", "#a78bfa", "#22c55e"][i % 4];
-    const delay = (i * 0.035).toFixed(2);
-    const left = 32 + (i * 7) % 40;
-    return `<span class="success-confetti" style="left:${left}%;--x:${x}px;background:${hue};animation-delay:${delay}s;"></span>`;
-  }).join("");
-
   content.innerHTML = `
-    <div class="activation-success">
-      <div class="success-ribbon"></div>
-      ${pieces}
-      <div class="success-orb">✓</div>
-      <h2 style="margin:0 0 0.4rem;font-size:1.35rem;">激活成功</h2>
-      <p style="font-size:13px;color:#666;line-height:1.6;margin:0;">
-        Pro 已绑定到当前账号。深度思考和无限对话现在可以用了。
+    <div style="text-align:center;padding:10px 0;">
+      <div style="
+        width:64px;
+        height:64px;
+        margin:0 auto 12px;
+        border-radius:50%;
+        background:linear-gradient(135deg,#22d3ee,#7c3aed);
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        color:white;
+        font-size:28px;
+        box-shadow:0 8px 24px rgba(34,211,238,0.35);
+        animation: fadeInBubble .25s ease;
+      ">✓</div>
+
+      <h2 style="margin:0 0 6px;font-size:1.2rem;font-weight:600;">
+        激活成功
+      </h2>
+
+      <p style="
+        font-size:13px;
+        color:#666;
+        line-height:1.5;
+        margin:0;
+      ">
+        已解锁 Pro · 无限使用
       </p>
     </div>
   `;
 
-  setTimeout(closeModal, 1900);
+  setTimeout(closeModal, 1400);
 }
 
 function showActivationModal() {
