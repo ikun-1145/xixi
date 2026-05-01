@@ -2757,8 +2757,8 @@ function setupSidebarByDevice() {
   const width = window.innerWidth;
   const isMobile = width < 768;
 
-  // ⭐ 防止 resize 频繁触发导致状态跳动
-  if (window.__lastIsMobile === isMobile) return;
+  // ⭐ 首次执行必须生效（否则初始状态会错）
+  if (window.__lastIsMobile !== undefined && window.__lastIsMobile === isMobile) return;
   window.__lastIsMobile = isMobile;
 
   if (isMobile) {
