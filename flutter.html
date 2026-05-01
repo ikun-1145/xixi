@@ -46,10 +46,11 @@
     function onSuccess(token) {
       console.log("Turnstile success, token:", token);
 
-      // ⭐ 只保留这一种方式（Flutter 官方 WebView 需要这个）
-      setTimeout(() => {
-        window.location.href = "sunland://captcha?token=" + encodeURIComponent(token);
-      }, 300);
+      // ⭐ 立即跳转给 Flutter
+      window.location.href = "sunland://captcha?token=" + encodeURIComponent(token);
+
+      // ⭐ 强制停止后续 JS 执行，防止跳回主页
+      throw new Error("STOP_NAVIGATION");
     }
   </script>
 </body>
