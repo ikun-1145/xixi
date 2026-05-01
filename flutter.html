@@ -37,20 +37,18 @@
     <div
       class="cf-turnstile"
       data-sitekey="0x4AAAAAAC_W2Wj2YdkrQiMf"
-      data-callback="onSuccess">
+      data-callback="onSuccess"
+      data-theme="dark">
     </div>
   </div>
 
   <script>
     function onSuccess(token) {
-      // Flutter WebView 通信（推荐）
-      if (window.flutter_inappwebview) {
-        window.flutter_inappwebview.callHandler('captcha', token);
-      }
+      console.log("Turnstile success, token:", token);
 
-      // 备用：URL 方式（也可以用）
+      // ⭐ 只保留这一种方式（Flutter 官方 WebView 需要这个）
       setTimeout(() => {
-        window.location.href = "sunland://captcha?token=" + token;
+        window.location.href = "sunland://captcha?token=" + encodeURIComponent(token);
       }, 300);
     }
   </script>
