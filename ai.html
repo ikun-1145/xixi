@@ -1104,7 +1104,7 @@ body.night #newChatBtn {
 }
 @media (max-width: 768px) {
   #sidebar {
-    transform: translateX(0);
+    transform: translateX(-100%); /* 默认收起 */
 
   display: block !important; /* ⭐ 必加 */
     position: fixed;
@@ -2749,6 +2749,38 @@ setTimeout(() => {
 
 // 页面加载时检查登录
 await checkLogin(); // 确保 session 初始化完成再允许发送
+// ===== 设备检测控制侧边栏 =====
+function setupSidebarByDevice() {
+  const sidebar = document.getElementById("sidebar");
+  if (!sidebar) return;
+
+  const width = window.innerWidth;
+  const isMobile = width < 768;
+
+  // ⭐ 防止 resize 频繁触发导致状态跳动
+  if (window.__lastIsMobile === isMobile) return;
+  window.__lastIsMobile = isMobile;
+
+  if (isMobile) {
+    // 手机：默认关闭
+    sidebar.classList.remove("open");
+    sidebar.classList.remove("collapsed");
+  } else {
+    // 平板 / PC：默认展开（除非用户手动收起）
+    if (!sidebar.classList.contains("collapsed")) {
+      sidebar.classList.add("open");
+    }
+  }
+}
+
+// 初始化执行
+setupSidebarByDevice();
+
+// 屏幕变化时重新判断（横竖屏）
+window.addEventListener("resize", () => {
+  // ⭐ 使用 requestAnimationFrame 防抖，避免卡顿
+  requestAnimationFrame(setupSidebarByDevice);
+});
 // ⭐ 延迟启动 realtime，避免初始化顺序问题
 setTimeout(() => {
   try {
