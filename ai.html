@@ -366,9 +366,11 @@ html, body {
   height: 100%;
   margin: 0;
   overflow: hidden;
-  position: fixed;   /* ⭐ 关键 */
+  position: fixed;
   width: 100%;
   overscroll-behavior: none;
+
+  background: transparent !important;
 }
 
 
@@ -1060,7 +1062,7 @@ body.thinking-mode button {
   box-sizing: border-box;
 }
 
-/* 打开 */
+/* 打开 - 唯一展开控制 */
 #sidebar.open {
   transform: translateX(0);
 }
@@ -1104,9 +1106,9 @@ body.night #newChatBtn {
 }
 @media (max-width: 768px) {
   #sidebar {
-    transform: translateX(-100%); /* 默认收起 */
-
-  display: block !important; /* ⭐ 必加 */
+    /* 默认收起 */
+    transform: translateX(-100%);
+    display: block !important; /* ⭐ 必加 */
     position: fixed;
 
     top: 0;   /* ❗不要48 */
@@ -1119,9 +1121,7 @@ body.night #newChatBtn {
     z-index: 400; /* 提高，避免被压 */
   }
 
-  #sidebar.open {
-    transform: translateX(0);
-  }
+  /* #sidebar.open 展开控制已在主样式定义 */
 
   #menuToggle {
     display: inline-block;
@@ -1144,7 +1144,7 @@ body.night #newChatBtn {
 /* 桌面端：聊天区和输入框为侧边栏留出空间 */
 @media (min-width: 769px) {
   #sidebar {
-    transform: translateX(0);   /* 默认显示 */
+     /* 默认显示 */
   }
 
   #sidebar.collapsed {
@@ -1206,6 +1206,9 @@ body.night #newChatBtn {
 
   /* ⭐ 核心修复：不要再用 body 背景 */
   background: linear-gradient(135deg,#eef2ff,#e0f2fe,#f0fdfa);
+}
+body.night #app {
+  background: linear-gradient(135deg,#020617,#0b1220,#020617);
 }
 #proBtn:hover {
   background: linear-gradient(135deg, #6a5cff, #9f7cff);
@@ -2774,7 +2777,7 @@ function setupSidebarByDevice() {
 }
 
 // 初始化执行
-setupSidebarByDevice();
+requestAnimationFrame(setupSidebarByDevice);
 
 // 屏幕变化时重新判断（横竖屏）
 window.addEventListener("resize", () => {
