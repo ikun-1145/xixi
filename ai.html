@@ -2782,7 +2782,7 @@ function setupSidebarByDevice() {
   const isMobile = width < 768;
 
   // ⭐ 首次执行必须生效（否则初始状态会错）
-  if (window.__lastIsMobile !== undefined && window.__lastIsMobile === isMobile) return;
+
   window.__lastIsMobile = isMobile;
 
   if (isMobile) {
@@ -2807,13 +2807,6 @@ requestAnimationFrame(() => {
 
 // 屏幕变化时重新判断（横竖屏）
 window.addEventListener("resize", () => {
-  // ⭐ 使用 requestAnimationFrame 防抖，避免卡顿
-  // ⭐ 强制初始化隐藏（关键补丁）
-const sidebar = document.getElementById("sidebar");
-if (sidebar) {
-  sidebar.classList.remove("open");
-
-}
   requestAnimationFrame(setupSidebarByDevice);
 });
 // ⭐ 延迟启动 realtime，避免初始化顺序问题
