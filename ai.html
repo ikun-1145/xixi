@@ -530,12 +530,12 @@ background: transparent;
   flex-shrink: 0;
 }
 
-  .deep-logo {
-    width: 18px;
-    height: 18px;
-    background: url('p/ailogo.png') center/contain no-repeat;
-  }
-
+.deep-logo {
+  width: 22px;
+  height: 22px;
+  background: url('p/ailogo.png') center/contain no-repeat;
+  transition: transform .2s ease, filter .2s ease;
+}
 
 .mini-btn::after {
   content: "深度思考";
@@ -562,14 +562,15 @@ background: transparent;
 
 
 .mini-btn.active .deep-logo {
-  filter: drop-shadow(0 0 6px rgba(34,211,238,0.9));
+  filter: drop-shadow(0 0 8px rgba(34,211,238,0.9));
+  transform: scale(1.15);
+}
+.mini-btn:hover .deep-logo {
   transform: scale(1.1);
 }
-
-.mini-btn:hover .deep-logo {
-  box-shadow: 0 0 12px rgba(34,211,238,1);
+.mini-btn {
+  overflow: visible;
 }
-
 .mini-btn.active {
   background: rgba(34,211,238,0.18);
   border: 1px solid rgba(34,211,238,0.35);
