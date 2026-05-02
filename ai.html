@@ -1112,7 +1112,7 @@ body.night #newChatBtn {
 @media (max-width: 768px) {
   #sidebar {
     /* 默认收起 */
-    transform: translateX(-100%) !important;
+    transform: translateX(-100%);
     display: block !important; /* ⭐ 必加 */
     position: fixed;
 
@@ -1124,6 +1124,10 @@ body.night #newChatBtn {
     height: 100dvh;
 
     z-index: 400; /* 提高，避免被压 */
+  }
+
+  #sidebar.open {
+    transform: translateX(0) !important;
   }
 
   /* #sidebar.open 展开控制已在主样式定义 */
@@ -2277,12 +2281,18 @@ if (user) console.log("🔥 当前 user:", user);
 
         const data = await res.json().catch(() => ({}));
 
-        // ==== PATCH: handle non-ok or error ====
-        if (!res.ok || data.error) {
-          if (res.status === 0) {
-            throw new Error("网络请求失败");
-          }
-          throw new Error(data.error || "发送失败");
+        console.log("send-code 返回:", res.status, data);
+
+        if (!res.ok) {
+          let errMsg = "服务器异常";
+          try {
+            errMsg = data.error || errMsg;
+          } catch {}
+          throw new Error(errMsg + ` (状态码 ${res.status})`);
+        }
+
+        if (data.error) {
+          throw new Error(data.error);
         }
 
         msg.innerText = "验证码已发送";
@@ -2353,13 +2363,19 @@ if (user) console.log("🔥 当前 user:", user);
 
         const data = await res.json().catch(() => ({}));
 
-        // ==== PATCH for status ====
-        if (!res.ok || !data.token) {
-          if (res.status === 0) {
-            msg.innerText = "网络错误（请求被拦截）";
-          } else {
-            msg.innerText = data.error || "验证码错误或已过期";
-          }
+        console.log("verify-code 返回:", res.status, data);
+
+        if (!res.ok) {
+          let errMsg = "服务器异常";
+          try {
+            errMsg = data.error || errMsg;
+          } catch {}
+          msg.innerText = errMsg + ` (${res.status})`;
+          return;
+        }
+
+        if (!data.token) {
+          msg.innerText = data.error || "验证码错误或已过期";
           return;
         }
 
