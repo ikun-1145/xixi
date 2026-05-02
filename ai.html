@@ -21,6 +21,13 @@
     transform: translateX(-100%) !important;
     transition: none !important;
   }
+
+  /* ===== 移动端兜底：即使JS失效也默认隐藏侧边栏（防止闪现/展开） ===== */
+  @media (max-width: 768px) {
+    body:not(.sidebar-ready) #sidebar {
+      transform: translateX(-100%) !important;
+    }
+  }
   /* === Custom top-actions styles === */
 .top-actions {
   position: absolute;
@@ -2795,15 +2802,18 @@ function setupSidebarByDevice() {
       sidebar.classList.add("open");
     }
   }
+  // ⭐ 标记已初始化（防止移动端CSS兜底长期生效）
+  document.body.classList.add("sidebar-ready");
 }
 
 // 初始化执行
 
-requestAnimationFrame(() => {
-  setupSidebarByDevice();
-  document.documentElement.classList.remove("preload");
-  document.body.classList.remove("preload");
-});
+// ⭐ 立即执行（不要等动画帧，防止移动端闪现/默认展开）
+setupSidebarByDevice();
+
+// 再移除 preload
+document.documentElement.classList.remove("preload");
+document.body.classList.remove("preload");
 
 // 屏幕变化时重新判断（横竖屏）
 window.addEventListener("resize", () => {
