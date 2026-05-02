@@ -3251,6 +3251,18 @@ const MODERATION_RULES = [
       "杀人方法", "怎么杀人", "砍人", "恐怖袭击", "炸学校", "炸商场",
       "自杀方法", "怎么自杀"
     ]
+  },
+  {
+    category: "政治敏感",
+    terms: [
+      "习近平", "胡锦涛", "江泽民", "邓小平",
+      "中共", "共产党", "中南海", "政治局",
+      "六四", "天安门事件", "1989学运",
+      "法轮功", "台独", "港独", "疆独",
+      "翻墙", "VPN翻墙", "代理上网",
+      "反动言论", "推翻政府", "颠覆国家",
+      "国家机密", "敏感政治", "言论审查"
+    ]
   }
 ];
 
@@ -3263,12 +3275,17 @@ function normalizeModerationText(text) {
 
 function checkInputModeration(text) {
   const compactText = normalizeModerationText(text);
+  // 用于增强检测绕过能力
+  const rawText = String(text || "").toLowerCase();
   if (!compactText) return null;
 
   for (const rule of MODERATION_RULES) {
     const term = rule.terms.find(item => {
       const compactTerm = normalizeModerationText(item);
-      return compactTerm && compactText.includes(compactTerm);
+      return (
+        compactTerm &&
+        (compactText.includes(compactTerm) || rawText.includes(item.toLowerCase()))
+      );
     });
 
     if (term) {
@@ -3311,6 +3328,39 @@ async function send() {
   if (moderationResult) {
     refuseModeratedInput(moderationResult);
     return;
+  }
+
+  // ===== ⭐ 模型语义审核（补充关键词审核）=====
+  try {
+    const res = await apiFetch({
+      messages: [
+        {
+          role: "system",
+          content: "你是内容审核系统。判断用户输入是否涉及政治敏感或不适合回答的内容。如果安全，返回 ok；如果不安全，返回 refuse。只允许返回 ok 或 refuse。"
+        },
+        {
+          role: "user",
+          content: moderationText
+        }
+      ]
+    });
+
+    if (res) {
+      const data = await res.json().catch(() => ({}));
+      const decision = data.choices?.[0]?.message?.content?.trim().toLowerCase();
+
+      if (decision === "refuse") {
+        console.warn("模型审核拦截:", moderationText);
+
+        // ⭐ 不直接ban，而是AI风格拒绝
+        addMessage("这个问题我不太方便回答，换个话题试试？", "ai");
+
+        return;
+      }
+    }
+  } catch (e) {
+    console.warn("模型审核失败（已忽略）:", e);
+    // ⭐ 审核失败不影响主流程（避免误伤）
   }
   
 
@@ -3483,6 +3533,7 @@ isStreaming = true;
       return;
     }
 
+    // ===== ⭐ 主请求（已通过关键词 + 模型双重审核）=====
     // --- Non-streaming fetch ---
     console.log("开始 fetch");
     const res = await apiFetch({
