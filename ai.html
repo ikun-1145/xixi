@@ -1119,7 +1119,7 @@ body.night #newChatBtn {
 @media (max-width: 768px) {
   #sidebar {
     /* 默认收起 */
-    transform: translateX(-100%);
+
     display: block !important; /* ⭐ 必加 */
     position: fixed;
 
@@ -1435,7 +1435,7 @@ body.ai-entering::before {
     transition: opacity .25s ease, transform .25s cubic-bezier(0.34,1.56,0.64,1);
     z-index: 40;
   ">↓</button>
-<div id="sidebar">
+<div id="sidebar" style="transform:translateX(-100%)">
   <button id="newChatBtn" class="ghost-btn" style="width:100%;justify-content:center;">+ 新对话</button>
   <div id="chatList"></div>
 </div>
@@ -2818,6 +2818,12 @@ function setupSidebarByDevice() {
       sidebar.classList.remove("open");
     });
   }
+  if (window.innerWidth < 768) {
+  setTimeout(() => {
+    sidebar.style.transform = "translateX(-100%)";
+    sidebar.classList.remove("open");
+  }, 120);
+}
 }
 
 // 初始化执行
