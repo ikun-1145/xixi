@@ -15,6 +15,11 @@
 <script src="https://cdn.jsdelivr.net/npm/highlight.js/highlight.min.js"></script>
 
 <style>
+  /* ===== 首帧强制隐藏侧边栏（防止移动端闪现/默认展开） ===== */
+  html.preload #sidebar {
+    transform: translateX(-100%) !important;
+    transition: none !important;
+  }
   /* === Custom top-actions styles === */
 .top-actions {
   position: absolute;
@@ -1397,7 +1402,7 @@ body.ai-entering::before {
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
 </head>
 
-<body>
+<body class="preload">
 <div id="app">
   <button id="scrollBottomBtn" style="
     position: fixed;
@@ -2778,7 +2783,11 @@ function setupSidebarByDevice() {
 
 // 初始化执行
 
-requestAnimationFrame(setupSidebarByDevice);
+requestAnimationFrame(() => {
+  setupSidebarByDevice();
+  document.documentElement.classList.remove("preload");
+  document.body.classList.remove("preload");
+});
 
 // 屏幕变化时重新判断（横竖屏）
 window.addEventListener("resize", () => {
