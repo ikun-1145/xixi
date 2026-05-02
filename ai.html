@@ -2785,6 +2785,12 @@ function setupSidebarByDevice() {
   const sidebar = document.getElementById("sidebar");
   if (!sidebar) return;
 
+  // ⭐ 强制移动端首帧隐藏（覆盖一切状态）
+  if (window.innerWidth < 768) {
+    sidebar.style.transform = "translateX(-100%)";
+    sidebar.classList.remove("open");
+  }
+
   const width = window.innerWidth;
   const isMobile = width < 768;
 
@@ -2804,12 +2810,22 @@ function setupSidebarByDevice() {
   }
   // ⭐ 标记已初始化（防止移动端CSS兜底长期生效）
   document.body.classList.add("sidebar-ready");
+
+  // ⭐ 强制再执行一次（防止某些浏览器延迟渲染）
+  if (window.innerWidth < 768) {
+    requestAnimationFrame(() => {
+      sidebar.style.transform = "translateX(-100%)";
+      sidebar.classList.remove("open");
+    });
+  }
 }
 
 // 初始化执行
 
 // ⭐ 立即执行（不要等动画帧，防止移动端闪现/默认展开）
 setupSidebarByDevice();
+// ⭐ iOS/Safari 兼容：再延迟一次
+setTimeout(setupSidebarByDevice, 50);
 
 // 再移除 preload
 document.documentElement.classList.remove("preload");
