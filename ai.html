@@ -11,6 +11,7 @@
 
 <!-- Markdown & Highlight -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js/styles/github.min.css">
 <script src="https://cdn.jsdelivr.net/npm/highlight.js/highlight.min.js"></script>
 
@@ -424,7 +425,7 @@ html, body {
 .message.ai .bubble {
   background: linear-gradient(145deg,#ffffff,#f1f5f9);
   border: 1px solid rgba(255,255,255,0.5);
-  animation: bubbleAI 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  
   box-shadow: 0 4px 16px rgba(0,0,0,0.06);
   color: #1f2937;
 }
@@ -432,7 +433,7 @@ html, body {
 .message.user .bubble {
   background: linear-gradient(135deg,#22d3ee,#67e8f9);
   color: #00323a;
-  animation: bubbleUser 0.22s cubic-bezier(0.34,1.56,0.64,1);
+  
   box-shadow: 0 6px 18px rgba(34,211,238,0.25);
 }
 
@@ -897,7 +898,6 @@ button:hover {
 
 .typing span {
   opacity: 0;
-  animation: fadeChar 0.25s forwards;
 }
 
 @keyframes fadeChar {
@@ -1424,7 +1424,7 @@ body.ai-entering::before {
     transition: opacity .25s ease, transform .25s cubic-bezier(0.34,1.56,0.64,1);
     z-index: 40;
   ">↓</button>
-<div id="sidebar" style="transform: translateX(-100%);">
+<div id="sidebar">
   <button id="newChatBtn" class="ghost-btn" style="width:100%;justify-content:center;">+ 新对话</button>
   <div id="chatList"></div>
 </div>
@@ -2796,7 +2796,7 @@ window.addEventListener("resize", () => {
 const sidebar = document.getElementById("sidebar");
 if (sidebar) {
   sidebar.classList.remove("open");
-  sidebar.style.transform = "translateX(-100%)";
+
 }
   requestAnimationFrame(setupSidebarByDevice);
 });
@@ -2824,13 +2824,15 @@ sendBtn.onclick = (e) => {
 
   if (sendingLock) return;
 
-  // ⭐ 播放动画（关键技巧）
-  sendBtn.classList.remove("send-anim");
-  void sendBtn.offsetWidth; // 强制重绘，不然不会重复触发
-  sendBtn.classList.add("send-anim");
-  setTimeout(() => {
-    sendBtn.classList.remove("send-anim");
-  }, 350);
+  // ⭐ Anime.js 点击反馈
+  if (window.anime) {
+    anime({
+      targets: '#sendBtn',
+      scale: [1, 0.9, 1.1, 1],
+      duration: 280,
+      easing: 'easeOutQuad'
+    });
+  }
 
   send();
 };
@@ -3176,16 +3178,24 @@ function addMessage(text, type) {
 
   const bubble = document.createElement("div");
   bubble.className = "bubble";
+
   if (type === "ai") {
     if (text.includes("thinking")) {
       bubble.style.animation = "fadeInBubble 0.2s ease";
       bubble.innerHTML = text;
       bubble.style.opacity = "0.8";
     } else {
-      bubble.innerHTML = marked.parse(text);
-    }
+  const html = marked.parse(text);
+
+  // ⭐ 如果包含代码块，不做打字动画（避免炸）
+  if (html.includes("<pre") || html.includes("<code")) {
+    bubble.innerHTML = html;
   } else {
-    // 如果是图片HTML，直接渲染
+    bubble.innerHTML = `<span class="typing">${
+      html.replace(/([^\n])/g, '<span>$1</span>')
+    }</span>`;
+  }
+}}else {
     if (typeof text === "string" && text.startsWith("<img")) {
       bubble.innerHTML = text;
     } else {
@@ -3195,8 +3205,34 @@ function addMessage(text, type) {
 
   const welcome = document.getElementById("welcome");
   if (welcome) welcome.remove();
+
   div.appendChild(bubble);
   chatInner.appendChild(div);
+
+  // ⭐ 气泡进入动画（正确位置）
+  if (window.anime) {
+    anime({
+      targets: bubble,
+      opacity: [0, 1],
+      translateY: [12, 0],
+      duration: 380,
+      easing: 'easeOutExpo'
+    });
+  }
+
+  // ⭐ 打字动画（真正生效）
+  if (window.anime) {
+    const chars = bubble.querySelectorAll('.typing span');
+    if (chars.length) {
+      anime({
+        targets: chars,
+        opacity: [0, 1],
+        translateY: [4, 0],
+        delay: anime.stagger(18),
+        easing: 'easeOutQuad'
+      });
+    }
+  }
 
   if (isNearBottom()) {
     chat.scrollTop = chat.scrollHeight;
@@ -3595,6 +3631,15 @@ isStreaming = true;
 
       // ===== 深度思考展示（带打字动画） =====
       bubble.innerHTML = "";
+      if (window.anime) {
+  anime({
+    targets: bubble,
+    opacity: [0.6, 1],
+    scale: [0.98, 1],
+    duration: 220,
+    easing: 'easeOutQuad'
+  });
+}
       if (deepMode && reasoning) {
         const reasoningDiv = document.createElement("div");
         reasoningDiv.style.cssText = `
