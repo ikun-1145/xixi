@@ -491,6 +491,7 @@ background: transparent;
   padding: 10px;
   align-items: stretch;
   gap: 6px;
+  position: relative;
 }
 
 .input-top {
@@ -1340,6 +1341,45 @@ body.ai-entering::before {
 }
 </style>
 
+<style>
+  #modelMenu {
+    display: none;
+    opacity: 0;
+    transform: translate(-50%, -8px) scale(0.95);
+    pointer-events: none;
+    transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+    left:50%;
+    pointer-events: none;
+
+  transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+
+  left:50%;
+    transform:translate(-50%, -8px) scale(0.95);
+    filter: drop-shadow(0 16px 30px rgba(0,0,0,0.18));
+  }
+  #modelMenu.show {
+    opacity: 1;
+    transform: translate(-50%, -2px) scale(1);
+    pointer-events: auto;
+  }
+  .model-item {
+    padding:8px 10px;
+    border-radius:10px;
+    cursor:pointer;
+    font-size:13px;
+    transition: all .15s;
+    display:flex;
+    align-items:center;
+  }
+  .model-item.flash { color:#0ea5e9; }
+  .model-item.flash:hover { background: rgba(14,165,233,0.1); }
+  .model-item.pro {
+    color:#7c3aed;
+    font-weight:600;
+  }
+  .model-item.pro:hover { background: rgba(124,58,237,0.12); }
+</style>
+
 <!-- CSP for Turnstile -->
 <meta http-equiv="Content-Security-Policy" content="
   default-src 'self' https:;
@@ -1442,7 +1482,18 @@ body.ai-entering::before {
 
   <div id="uploadPreview"></div>
 
-  <textarea id="input" rows="1" placeholder="想聊点啥"></textarea>
+  <div id="modelSelector" style="
+  font-size:12px;
+  padding:4px 8px;
+  border-radius:8px;
+  background:rgba(0,0,0,0.05);
+  cursor:pointer;
+  user-select:none;
+">
+  Flash
+</div>
+
+<textarea id="input" rows="1" placeholder="想聊点啥"></textarea>
 
   <button id="sendBtn" class="icon-btn">↑</button>
 
@@ -1450,7 +1501,27 @@ body.ai-entering::before {
 
 </div>
 </div>
-
+<div id="modelMenu" style="
+position:absolute;
+left:50%;
+transform:translateX(-50%);
+width:160px;
+background:rgba(255,255,255,0.95);
+backdrop-filter:blur(12px);
+border-radius:12px;
+padding:6px;
+box-shadow:0 10px 30px rgba(0,0,0,0.2);
+z-index:999;
+">
+  <div class="model-item flash" data-model="flash">
+    <img src="p/deepseek.png" style="width:14px;height:14px;margin-right:6px;vertical-align:-2px;">
+    DeepSeek V4 Flash
+  </div>
+  <div class="model-item pro" data-model="pro">
+    <img src="p/deepseek.png" style="width:14px;height:14px;margin-right:6px;vertical-align:-2px;">
+    DeepSeek V4 Pro
+  </div>
+</div>
 
 <script type="module">
 // ⚠️ VDS 登录需要配合 /vds-callback.html 页面处理回调
@@ -1688,7 +1759,8 @@ function setSession(s) {
   window.session = s;
 }
 let isActivated = false;
-let deepMode = false; // ⭐ 深度思考
+let deepMode = false;
+let currentModel = "deepseek-v4-flash";
 let currentProfile = null;
 let conversations = []; // ⭐ 提前声明，避免 TDZ
 let currentId = null;
@@ -1797,7 +1869,68 @@ function updateDeepButton() {
 
   btn.classList.toggle("active", deepMode);
 }
+function updateModelUI() {
+  const el = document.getElementById("modelSelector");
+  if (!el) return;
 
+  if (currentModel === "deepseek-v4-pro") {
+    el.innerText = "Pro";
+    el.style.color = "#7c3aed";
+    el.style.background = "rgba(124,58,237,0.12)";
+  } else {
+    el.innerText = "Flash";
+    el.style.color = "#0ea5e9";
+    el.style.background = "rgba(14,165,233,0.12)";
+  }
+}
+
+// 初始化
+ setTimeout(() => {
+  const modelSelector = document.getElementById("modelSelector");
+  const modelMenu = document.getElementById("modelMenu");
+
+  if (!modelSelector || !modelMenu) return;
+
+  modelSelector.onclick = (e) => {
+    e.stopPropagation();
+
+    const rect = modelSelector.getBoundingClientRect();
+
+    modelMenu.style.display = "block";
+modelMenu.style.position = "fixed";
+    modelMenu.style.left = rect.left + rect.width / 2 + "px";
+    modelMenu.style.top = (rect.top - modelMenu.offsetHeight - 18) + "px";
+
+    modelMenu.classList.toggle("show");
+  };
+
+  document.querySelectorAll(".model-item").forEach(item => {
+    item.onclick = () => {
+      const model = item.dataset.model;
+
+      // ⭐ Pro权限
+      if (model === "pro" && !isActivated) {
+  showProModelModal();
+  return;
+}
+
+      currentModel =
+        model === "pro"
+          ? "deepseek-v4-pro"
+          : "deepseek-v4-flash";
+
+      updateModelUI();
+      modelMenu.classList.remove("show");
+    };
+  });
+
+  document.addEventListener("click", (e) => {
+    if (!modelMenu.contains(e.target) && e.target !== modelSelector) {
+      modelMenu.classList.remove("show");
+      modelMenu.style.display = "none";
+    }
+  });
+}, 0);
 function showProRequiredModal() {
   if (document.getElementById("proRequiredModal")) return;
 
@@ -1844,7 +1977,65 @@ function showProRequiredModal() {
     setTimeout(showActivationModal, 250);
   };
 }
+function showProModelModal() {
+  if (document.getElementById("proModelModal")) return;
 
+  const modal = document.createElement("div");
+  modal.id = "proModelModal";
+  modal.className = "modal active";
+
+  modal.innerHTML = `
+    <div class="modal-content">
+      <span class="close">×</span>
+
+      <h2 style="margin-bottom:0.5rem;font-size:1.2rem;">
+        DeepSeek V4 Pro 为 Pro 专属
+      </h2>
+
+      <p style="color:#666;font-size:13px;margin-bottom:1.2rem;line-height:1.6;">
+        当前模型为 <b>DeepSeek V4 Pro</b><br>
+        该模型仅对 Pro 用户开放
+      </p>
+
+      <button id="openProBtn" class="oauth-btn" style="margin-bottom:0.6rem;">
+        升级 Pro / 输入激活码
+      </button>
+
+      <button id="useFlashBtn" style="
+        width:100%;
+        border-radius:10px;
+        padding:0.7rem;
+        background:rgba(0,0,0,0.05);
+        color:#555;
+        cursor:pointer;
+        border:none;
+      ">
+        继续使用 Flash
+      </button>
+    </div>
+  `;
+
+  document.body.appendChild(modal);
+
+  function closeModal() {
+    modal.classList.add("closing");
+    setTimeout(() => modal.remove(), 200);
+  }
+
+  modal.querySelector(".close").onclick = closeModal;
+  modal.onclick = e => { if (e.target === modal) closeModal(); };
+
+  modal.querySelector("#openProBtn").onclick = () => {
+    closeModal();
+    setTimeout(showActivationModal, 200);
+  };
+
+  modal.querySelector("#useFlashBtn").onclick = () => {
+    currentModel = "deepseek-v4-flash";
+    updateModelUI();
+    closeModal();
+  };
+}
 
 async function checkActivation() {
   if (!session?.user) return;
@@ -3274,8 +3465,8 @@ async function generateTitleFromAI(userMsg, aiMsg) {
     if (!session || !localStorage.getItem("token")) return null;
 
     const res = await apiFetch({
-      
-      messages: [
+  model: currentModel,
+  messages: [
         { role: "system", content: "你是一个标题生成器，只返回标题本身。" },
         { role: "user", content: prompt }
       ]
@@ -3405,7 +3596,8 @@ async function send() {
   // ===== ⭐ 模型语义审核（补充关键词审核）=====
   try {
     const res = await apiFetch({
-      messages: [
+  model: currentModel,
+  messages: [
         {
           role: "system",
           content: "你是内容审核系统。判断用户输入是否涉及政治敏感或不适合回答的内容。如果安全，返回 ok；如果不安全，返回 refuse。只允许返回 ok 或 refuse。"
@@ -3609,6 +3801,7 @@ isStreaming = true;
     // --- Non-streaming fetch ---
     console.log("开始 fetch");
     const res = await apiFetch({
+  model: currentModel,
       
       messages: history,
       deep: deepMode
