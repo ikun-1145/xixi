@@ -518,6 +518,10 @@ window.addEventListener("load", () => {
     printLine("Built-in commands: help ls cd pwd whoami history clear cat sudo alias echo ps top sleep jobs fg kill export exit");
   };
 });
+
+function showGlobalLoading() {   const el = document.getElementById("loadingBar");   if (el) el.classList.add("active"); }  function hideGlobalLoading() {   const el = document.getElementById("loadingBar");   if (el) el.classList.remove("active"); }
+window.addEventListener("load", () => {   showGlobalLoading();   setTimeout(hideGlobalLoading, 400); });
+document.querySelectorAll("a").forEach(a => {   a.addEventListener("click", () => {     showGlobalLoading();   }); });
 </script>
 
 <style>
@@ -530,7 +534,11 @@ window.addEventListener("load", () => {
   background:#000 !important;
   border-color:#00ff66;
 }
+
+#loadingBar {   pointer-events: none; }  #loadingBar.active {   opacity: 1;   pointer-events: auto; }  #loadingBar img {   transform: scale(0.9);   transition: transform .25s ease; }  #loadingBar.active img {   transform: scale(1); }
 </style>
 
+
+<div id="loadingBar" style="   display:flex;   opacity:0;   transition:opacity .25s ease;    position:fixed;   inset:0;   background:rgba(0,0,0,0.45);   backdrop-filter:blur(6px);   z-index:9999;    align-items:center;   justify-content:center;   flex-direction:column; ">   <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">   <div style="color:#fff;font-size:18px;opacity:0.9;font-weight:500;letter-spacing:0.5px;">     加载中   </div> </div>
 </body>
 </html>
