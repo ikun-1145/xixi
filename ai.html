@@ -187,9 +187,13 @@ body.night .header {
 }
 
 body.night #sidebar {
-  background: rgba(2,6,23,0.88);
+  background: rgba(2,6,23,0.96);
   border-right: 1px solid rgba(255,255,255,0.06);
   color: #cbd5e1;
+}
+
+#sidebar {
+  will-change: transform;
 }
 
 body.night .bubble {
@@ -1005,13 +1009,18 @@ body.thinking-mode button {
   width: 220px;
   height: 100dvh;
 
-  transform: translateX(-100%); /* 默认隐藏 */
+  transform: translateX(-100%);
   transition: transform .25s ease;
 
-  z-index: 300;
-  background: rgba(255,255,255,0.88);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
+  z-index: 1000; /* ⭐ 提高层级 */
+
+  background: rgba(255,255,255,0.96); /* ⭐ 提高不透明度 */
+  isolation: isolate; /* ⭐ 核心修复：隔离 blur */
+
+  /* ❌ 删除这两行 */
+  /* backdrop-filter: blur(16px); */
+  /* -webkit-backdrop-filter: blur(16px); */
+
   border-right: 1px solid rgba(0, 0, 0, 0.06);
   box-shadow: 4px 0 20px rgba(0, 0, 0, 0.08);
   padding: 16px 12px;
@@ -3203,17 +3212,28 @@ function addMessage(text, type) {
       bubble.innerHTML = text;
       bubble.style.opacity = "0.8";
     } else {
-  const html = marked.parse(text);
+      // ⭐ 修复：如果已经是 HTML（如 <p> 开头），直接渲染，避免再次被转义
+      const trimmed = text.trim();
 
-  // ⭐ 如果包含代码块，不做打字动画（避免炸）
-  if (html.includes("<pre") || html.includes("<code")) {
-    bubble.innerHTML = html;
+      let html;
+      if (trimmed.startsWith("<") && trimmed.endsWith(">")) {
+        html = trimmed;
+      } else {
+        html = marked.parse(text);
+      }
+
+      // ⭐ 如果包含代码块，不做打字动画（避免炸）
+      if (html.includes("<pre") || html.includes("<code")) {
+        // ⭐ 清理多余 <p> 包裹（避免显示 <p>xxx</p> 原样）
+        html = html.replace(/^<p>|<\/p>$/g, "");
+        bubble.innerHTML = html;
+      } else {
+        bubble.innerHTML = `<span class="typing">${
+          html.replace(/([^\n])/g, '<span>$1</span>')
+        }</span>`;
+      }
+    }
   } else {
-    bubble.innerHTML = `<span class="typing">${
-      html.replace(/([^\n])/g, '<span>$1</span>')
-    }</span>`;
-  }
-}}else {
     if (typeof text === "string" && text.startsWith("<img")) {
       bubble.innerHTML = text;
     } else {
