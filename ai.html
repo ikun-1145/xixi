@@ -532,12 +532,16 @@ background: transparent;
   flex-shrink: 0;
 }
 
-.deep-logo {
-  width: 100%;
-  height: 100%;
-  background: url('p/ailogo.png') center/185% no-repeat;
-  transition: transform .2s ease, filter .2s ease;
-}
+  .deep-logo {
+    width: 100%;
+    height: 100%;
+    background: url('p/ailogo.png') center/185% no-repeat;
+    transition: transform .2s ease, filter .2s ease;
+  }
+
+  body.night .deep-logo {
+    background: url('p/ailogo_dark.png') center/185% no-repeat;
+  }
 
 .mini-btn::after {
   content: "深度思考";
@@ -1136,6 +1140,7 @@ body.night #newChatBtn {
   }
 }
 #uploadPreview > div {
+  flex-shrink: 0;
   position: relative;
   width: 60px;
   height: 60px;
@@ -1181,7 +1186,7 @@ body.night #uploadPreview > div {
   background: rgba(255,255,255,0.08) !important;
 }
 body.night #uploadPreview {
-  background: rgba(2,6,23,0.75);
+  background: transparent;
   border: 1px solid rgba(255,255,255,0.06);
 }
 
@@ -1190,17 +1195,15 @@ body.night #uploadPreview {
 }
 #uploadPreview {
   display: flex;
-  flex-shrink: 0;   /* ⭐ 防止挤压输入框 */
+  flex-wrap: wrap;         /* ⭐ 多行 */
   gap: 6px;
-  align-items: center;
 
-  max-width: 160px;
+  margin-bottom: 6px;      /* ⭐ 和输入框分开 */
+
+  max-width: 100%;
   overflow-x: auto;
 
-  padding: 0 4px;
-
-  position: relative;
-  z-index: 2;        /* ⭐ 提升层级 */
+  padding: 2px;
 }
 
 #uploadPreview::-webkit-scrollbar {
@@ -1335,49 +1338,114 @@ body.ai-entering::before {
     transform: scale(1);
   }
 }
+#loadingBar {
+  pointer-events: none;
+}
 
+#loadingBar.active {
+  opacity: 1;
+  pointer-events: auto;
+}
 .send-anim {
   animation: sendPulse 0.35s cubic-bezier(.34,1.56,.64,1);
+}
+#loadingBar img {
+  transform: scale(0.9);
+  transition: transform .25s ease;
+}
+
+#loadingBar.active img {
+  transform: scale(1);
 }
 </style>
 
 <style>
+  /* ===== 模型按钮（Flash/Pro）重做 ===== */
+  #modelSelector {
+    font-size:12px;
+    padding:4px 10px;
+    border-radius:999px;
+    background: linear-gradient(135deg, rgba(14,165,233,0.12), rgba(34,211,238,0.12));
+    color:#0284c7;
+    border:1px solid rgba(14,165,233,0.25);
+    cursor:pointer;
+    user-select:none;
+    transition: all .2s ease;
+    display:flex;
+    align-items:center;
+    gap:4px;
+  }
+
+  #modelSelector::before {
+    content:"⚡";
+    font-size:11px;
+    opacity:0.8;
+  }
+
+  #modelSelector:hover {
+    background: linear-gradient(135deg, rgba(14,165,233,0.18), rgba(34,211,238,0.18));
+    box-shadow:0 0 8px rgba(34,211,238,0.4);
+  }
+
+  /* ===== 夜间模式按钮 ===== */
+  body.night #modelSelector {
+    background: rgba(255,255,255,0.08) !important;
+    color: #67e8f9 !important;
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+
+  /* ===== 模型弹窗（白天） ===== */
   #modelMenu {
+    background: rgba(255,255,255,0.96) !important;
+    color:#1f2937;
+    border:1px solid rgba(0,0,0,0.08);
+    box-shadow:0 18px 40px rgba(0,0,0,0.2);
+    backdrop-filter: blur(16px);
     display: none;
     opacity: 0;
-    transform: translate(-50%, -8px) scale(0.95);
+    transform: translate(-50%, -100%) scale(0.95);
     pointer-events: none;
     transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
-    left:50%;
-    pointer-events: none;
-
-  transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
-
-  left:50%;
-    transform:translate(-50%, -8px) scale(0.95);
-    filter: drop-shadow(0 16px 30px rgba(0,0,0,0.18));
   }
+
   #modelMenu.show {
+    display: block;
     opacity: 1;
-    transform: translate(-50%, -2px) scale(1);
+    transform: translate(-50%, -110%) scale(1);
     pointer-events: auto;
   }
+
+  /* ===== 模型弹窗（夜间） ===== */
+  body.night #modelMenu {
+    background: rgba(10,15,25,0.96) !important;
+    color:#e5e7eb;
+    border:1px solid rgba(255,255,255,0.08);
+    box-shadow:0 20px 50px rgba(0,0,0,0.7);
+  }
+
+  /* ===== 菜单项 ===== */
   .model-item {
     padding:8px 10px;
     border-radius:10px;
     cursor:pointer;
     font-size:13px;
     transition: all .15s;
-    display:flex;
-    align-items:center;
   }
+
+  .model-item:hover {
+    background: rgba(0,0,0,0.05);
+  }
+
+  body.night .model-item:hover {
+    background: rgba(255,255,255,0.08);
+  }
+
+  /* Flash / Pro 颜色强化 */
   .model-item.flash { color:#0ea5e9; }
-  .model-item.flash:hover { background: rgba(14,165,233,0.1); }
-  .model-item.pro {
-    color:#7c3aed;
-    font-weight:600;
-  }
-  .model-item.pro:hover { background: rgba(124,58,237,0.12); }
+  .model-item.pro { color:#8b5cf6; font-weight:600; }
+
+  body.night .model-item.flash { color:#38bdf8; }
+  body.night .model-item.pro { color:#a78bfa; }
 </style>
 
 <!-- CSP for Turnstile -->
@@ -1470,35 +1538,30 @@ body.ai-entering::before {
   
 
   <!-- 主输入区 -->
-  <div class="input-main">
+<div class="input-box">
 
-  <button id="deepBtn" class="mini-btn">
-  <span class="deep-logo"></span>
-</button>
-
-  <input type="file" id="fileInput" style="display:none;" multiple>
-
-  <button id="uploadBtn" class="icon-btn">＋</button>
-
+  <!-- ⭐ 预览区放最上面 -->
   <div id="uploadPreview"></div>
 
-  <div id="modelSelector" style="
-  font-size:12px;
-  padding:4px 8px;
-  border-radius:8px;
-  background:rgba(0,0,0,0.05);
-  cursor:pointer;
-  user-select:none;
-">
-  Flash
-</div>
 
-<textarea id="input" rows="1" placeholder="想聊点啥"></textarea>
 
-  <button id="sendBtn" class="icon-btn">↑</button>
+  <div class="input-main">
 
-</div>
+    <button id="deepBtn" class="mini-btn">
+      <span class="deep-logo"></span>
+    </button>
 
+    <input type="file" id="fileInput" style="display:none;" multiple>
+
+    <button id="uploadBtn" class="icon-btn">＋</button>
+
+    <div id="modelSelector">Flash</div>
+
+    <textarea id="input" rows="1" placeholder="想聊点啥"></textarea>
+
+    <button id="sendBtn" class="icon-btn">↑</button>
+
+  </div>
 </div>
 </div>
 <div id="modelMenu" style="
@@ -1507,6 +1570,7 @@ left:50%;
 transform:translateX(-50%);
 width:160px;
 background:rgba(255,255,255,0.95);
+color:#1f2937;
 backdrop-filter:blur(12px);
 border-radius:12px;
 padding:6px;
@@ -1687,6 +1751,49 @@ function showToast(text) {
   `;
   document.body.appendChild(toast);
   setTimeout(() => toast.remove(), 2000);
+}
+let thinkingBubble = null;
+
+function showLoading() {
+  // 如果已经存在就不重复创建
+  if (thinkingBubble) return;
+
+  const div = document.createElement("div");
+  div.className = "message ai";
+
+  const bubble = document.createElement("div");
+  bubble.className = "bubble";
+
+  bubble.innerHTML = `
+    <div class="thinking">
+      <div class="dot"></div>
+      <div class="dot"></div>
+      <div class="dot"></div>
+    </div>
+  `;
+
+  div.appendChild(bubble);
+  document.getElementById("chatInner").appendChild(div);
+
+  thinkingBubble = div;
+
+  const chat = document.getElementById("chat");
+  chat.scrollTop = chat.scrollHeight;
+}
+function showGlobalLoading() {
+  const el = document.getElementById("loadingBar");
+  if (el) el.classList.add("active");
+}
+
+function hideGlobalLoading() {
+  const el = document.getElementById("loadingBar");
+  if (el) el.classList.remove("active");
+}
+function hideLoading() {
+  if (thinkingBubble) {
+    thinkingBubble.remove();
+    thinkingBubble = null;
+  }
 }
 // ===== 统一文件处理函数 =====
 function handleFile(file) {
@@ -1875,12 +1982,8 @@ function updateModelUI() {
 
   if (currentModel === "deepseek-v4-pro") {
     el.innerText = "Pro";
-    el.style.color = "#7c3aed";
-    el.style.background = "rgba(124,58,237,0.12)";
   } else {
     el.innerText = "Flash";
-    el.style.color = "#0ea5e9";
-    el.style.background = "rgba(14,165,233,0.12)";
   }
 }
 
@@ -1891,16 +1994,24 @@ function updateModelUI() {
 
   if (!modelSelector || !modelMenu) return;
 
-  modelSelector.onclick = (e) => {
-    e.stopPropagation();
+modelSelector.onclick = (e) => {
+  e.stopPropagation();
+
+  showGlobalLoading();
+
+  setTimeout(hideGlobalLoading, 300);
+  setTimeout(hideLoading, 180);
 
     const rect = modelSelector.getBoundingClientRect();
 
-    modelMenu.style.display = "block";
-modelMenu.style.position = "fixed";
+    modelMenu.style.position = "fixed";
     modelMenu.style.left = rect.left + rect.width / 2 + "px";
-    modelMenu.style.top = (rect.top - modelMenu.offsetHeight - 18) + "px";
 
+    // ⭐ 改为向上展开
+    modelMenu.style.top = rect.top - 8 + "px";
+    modelMenu.style.transform = "translate(-50%, -100%) scale(0.95)";
+
+    modelMenu.style.display = ""; // ⭐ 清掉可能残留的 display:none
     modelMenu.classList.toggle("show");
   };
 
@@ -1910,9 +2021,9 @@ modelMenu.style.position = "fixed";
 
       // ⭐ Pro权限
       if (model === "pro" && !isActivated) {
-  showProModelModal();
-  return;
-}
+        showProModelModal();
+        return;
+      }
 
       currentModel =
         model === "pro"
@@ -1927,7 +2038,6 @@ modelMenu.style.position = "fixed";
   document.addEventListener("click", (e) => {
     if (!modelMenu.contains(e.target) && e.target !== modelSelector) {
       modelMenu.classList.remove("show");
-      modelMenu.style.display = "none";
     }
   });
 }, 0);
@@ -3022,6 +3132,8 @@ setTimeout(() => {
 let controller = null;
 let sendingLock = false;
 let isStreaming = false;
+let hasTypedOnce = false;       // ⭐ 只允许一次打字动画
+let isLoadingHistory = false;   // ⭐ 是否在加载历史记录
 let realtimeSub = null;
 const sendBtn = document.getElementById("sendBtn");
 sendBtn.type = "button"; // 防止被当成提交按钮
@@ -3031,7 +3143,6 @@ sendBtn.onclick = (e) => {
 
   if (sendingLock) return;
 
-  // ⭐ Anime.js 点击反馈
   if (window.anime) {
     anime({
       targets: '#sendBtn',
@@ -3346,30 +3457,34 @@ function loadChat(id) {
   const c = conversations.find(x => x.id === id);
   if (!c) return;
 
+  isLoadingHistory = true;
+
   currentId = id;
   history = JSON.parse(JSON.stringify(c.history));
   chatInner.style.opacity = "0";
 
-setTimeout(() => {
-  chatInner.innerHTML = "";
+  setTimeout(() => {
+    chatInner.innerHTML = "";
 
-  // ⭐ 禁用气泡动画（关键修复）
-  const style = document.createElement("style");
-  style.id = "no-anim";
-  style.innerText = ".bubble { animation: none !important; }";
-  document.head.appendChild(style);
+    // ⭐ 禁用气泡动画（关键修复）
+    const style = document.createElement("style");
+    style.id = "no-anim";
+    style.innerText = ".bubble { animation: none !important; }";
+    document.head.appendChild(style);
 
-  history.slice(1).forEach(m => {
-    addMessage(m.content, m.role === "user" ? "user" : "ai");
-  });
+    history.slice(1).forEach(m => {
+      addMessage(m.content, m.role === "user" ? "user" : "ai");
+    });
 
-  chatInner.style.opacity = "1";
+    chatInner.style.opacity = "1";
 
-  // ⭐ 恢复动画
-  requestAnimationFrame(() => {
-    document.getElementById("no-anim")?.remove();
-  });
-}, 120);
+    // ⭐ 恢复动画
+    requestAnimationFrame(() => {
+      document.getElementById("no-anim")?.remove();
+    });
+
+    isLoadingHistory = false;
+  }, 120);
 
   // ⭐ 重新渲染侧边栏（更新选中高亮）
   renderChatList();
@@ -3392,30 +3507,49 @@ function addMessage(text, type) {
       bubble.innerHTML = text;
       bubble.style.opacity = "0.8";
     } else {
-      // ⭐ 修复：如果已经是 HTML（如 <p> 开头），直接渲染，避免再次被转义
-      const trimmed = text.trim();
-
-      let html;
-      if (trimmed.startsWith("<") && trimmed.endsWith(">")) {
-        html = trimmed;
-      } else {
-        html = marked.parse(text);
-      }
+      // ⭐ 强制走 Markdown 渲染，避免 <p> 标签直接显示
+      let html = marked.parse(text);
 
       // ⭐ 如果包含代码块，不做打字动画（避免炸）
       if (html.includes("<pre") || html.includes("<code")) {
-        // ⭐ 清理多余 <p> 包裹（避免显示 <p>xxx</p> 原样）
-        html = html.replace(/^<p>|<\/p>$/g, "");
         bubble.innerHTML = html;
       } else {
-        bubble.innerHTML = `<span class="typing">${
-          html.replace(/([^\n])/g, '<span>$1</span>')
-        }</span>`;
+        // ⭐ 只在首次AI回复 & 非历史加载时使用打字动画
+        if (!hasTypedOnce && !isLoadingHistory) {
+          bubble.innerHTML = `<span class="typing">${
+            html.replace(/([^\n])/g, '<span>$1</span>')
+          }</span>`;
+          hasTypedOnce = true;
+        } else {
+          bubble.innerHTML = html;
+        }
       }
     }
   } else {
-    if (typeof text === "string" && text.startsWith("<img")) {
-      bubble.innerHTML = text;
+    if (typeof text === "string" && text.includes("<img")) {
+      // ⭐ 更安全：拆分图片和文本，避免被浏览器吞掉
+      const wrapper = document.createElement("div");
+      wrapper.innerHTML = text;
+
+      // 清空 bubble
+      bubble.innerHTML = "";
+
+      wrapper.childNodes.forEach(node => {
+        if (node.nodeName === "IMG") {
+          const img = document.createElement("img");
+          img.src = node.src;
+          img.style.maxWidth = "100%";
+          img.style.borderRadius = "10px";
+          img.style.marginTop = "4px";
+          bubble.appendChild(img);
+        } else if (node.nodeType === Node.TEXT_NODE) {
+          const span = document.createElement("span");
+          span.innerText = node.textContent;
+          bubble.appendChild(span);
+        } else {
+          bubble.appendChild(node);
+        }
+      });
     } else {
       bubble.innerText = text;
     }
@@ -3452,9 +3586,11 @@ function addMessage(text, type) {
     }
   }
 
-  if (isNearBottom()) {
-    chat.scrollTop = chat.scrollHeight;
-  }
+
+
+if (isNearBottom()) {
+  chat.scrollTop = chat.scrollHeight;
+}
 }
 
 // AI标题生成助手
@@ -4333,6 +4469,25 @@ window.addEventListener("DOMContentLoaded", () => {
 
   
 </div>
+<div id="loadingBar" style="
+  display:flex;              /* ⭐ 改这里 */
+  opacity:0;                 /* ⭐ 初始透明 */
+  transition:opacity .25s ease;
+
+  position:fixed;
+  inset:0;
+  background:rgba(0,0,0,0.45);
+  backdrop-filter:blur(6px);
+  z-index:9999;
+
+  align-items:center;
+  justify-content:center;
+  flex-direction:column;
+">
+  <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">
+<div style="color:#fff;font-size:18px;opacity:0.9;font-weight:500;letter-spacing:0.5px;">
+  加载中
+</div>
 </body>
 <script>
 // === User menu avatar dropdown logic ===
@@ -4368,6 +4523,8 @@ window.__cfWidgetId = window.__cfWidgetId || null;
     }
   });
 }
+window.addEventListener("error", hideLoading);
+window.addEventListener("unhandledrejection", hideLoading);
 </script>
 
 <script>
@@ -4391,4 +4548,6 @@ if (logoutBtn) {
     location.reload();
   };
 }
+window.addEventListener("error", hideLoading);
+window.addEventListener("unhandledrejection", hideLoading);
 </script>
