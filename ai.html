@@ -16,6 +16,11 @@
 <script src="https://cdn.jsdelivr.net/npm/highlight.js/highlight.min.js"></script>
 
 <style>
+  :root {
+  --btn-size: 34px;
+  --btn-radius: 10px;
+  --btn-font: 13px;
+}
   /* ===== 首帧强制隐藏侧边栏（防止移动端闪现/默认展开） ===== */
   html.preload #sidebar {
     transform: translateX(-100%) !important;
@@ -367,7 +372,7 @@ body.night::before {
 }
 .chat-inner {
   width: 100%;
-  max-width: 720px;
+  max-width: 680px;
   margin: 0 auto;
 
   padding: 0 16px;
@@ -468,10 +473,10 @@ html, body {
 background: transparent;
   display: flex;
   justify-content: center;
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
   box-sizing: border-box;
 
-  z-index: 2000;   /* 提高层级，确保可点击 */
+  z-index: 100;   /* 提高层级，确保可点击 */
   pointer-events: auto;
 }
 
@@ -479,7 +484,7 @@ background: transparent;
 .input-box {
   display: flex;
   width: 100%;
-  max-width: 720px;
+  max-width: 680px;
 
   background: linear-gradient(145deg, rgba(255,255,255,0.9), rgba(255,255,255,0.6));
   backdrop-filter: blur(12px);
@@ -492,6 +497,8 @@ background: transparent;
   align-items: stretch;
   gap: 6px;
   position: relative;
+
+  z-index: 1;
 }
 
 .input-top {
@@ -502,23 +509,37 @@ background: transparent;
   gap: 6px;
 }
 
-.input-main {
+.input-toolbar {
   display: flex;
   align-items: center;
-  gap: 8px;
-  width: 100%;        /* ⭐ 关键 */
+  justify-content: space-between;
+  gap: 6px;
+  padding: 4px 2px;
 }
-
+.input-toolbar button,
+.input-toolbar .mini-btn,
+.input-toolbar #modelSelector {
+  height: var(--btn-size);
+}
+.left-tools {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+textarea {
+  width: 100%;
+  padding: 8px 10px;
+}
 .mini-btn {
-  width: 44px;
-  height: 44px;
+  width: var(--btn-size);
+  height: var(--btn-size);
   border-radius: 50%;
 
   display: flex;
   align-items: center;
   justify-content: center;
 
-  font-size: 13px;
+  font-size: var(--btn-font);
 
   background: rgba(255,255,255,0.06);
   border: 1px solid rgba(255,255,255,0.08);
@@ -639,8 +660,9 @@ button {
   z-index: 2100;
 }
  .icon-btn {
-  width: 36px;
-  height: 36px;
+  width: var(--btn-size);
+  height: var(--btn-size);
+  font-size: var(--btn-font);
   border-radius: 50%;
   display: flex;
   flex-shrink: 0;
@@ -1339,6 +1361,7 @@ body.ai-entering::before {
   }
 }
 #loadingBar {
+opacity: 0;
   pointer-events: none;
 }
 
@@ -1375,8 +1398,9 @@ body:not(.night) #loadingBar img {
 <style>
   /* ===== 模型按钮（Flash/Pro）重做 ===== */
   #modelSelector {
-    font-size:12px;
-    padding:4px 10px;
+    font-size:11px;
+    height: var(--btn-size);
+    padding:0px 10px;
     border-radius:999px;
     background: linear-gradient(135deg, rgba(14,165,233,0.12), rgba(34,211,238,0.12));
     color:#0284c7;
@@ -1388,7 +1412,11 @@ body:not(.night) #loadingBar img {
     align-items:center;
     gap:4px;
   }
-
+button {
+  border-radius: var(--btn-radius);
+  padding: 4px 8px;
+  font-size: var(--btn-font);
+}
   #modelSelector::before {
     content:"⚡";
     font-size:11px;
@@ -1417,8 +1445,9 @@ body:not(.night) #loadingBar img {
     display: none;
     opacity: 0;
     transform: translate(-50%, -100%) scale(0.95);
-    pointer-events: none;
+    pointer-events: auto;
     transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+    z-index: 99999;
   }
 
   #modelMenu.show {
@@ -1551,30 +1580,38 @@ body:not(.night) #loadingBar img {
   
 
   <!-- 主输入区 -->
-<div class="input-box">
+
 
   <!-- ⭐ 预览区放最上面 -->
   <div id="uploadPreview"></div>
 
 
 
-  <div class="input-main">
+<div class="input-main">
 
-    <button id="deepBtn" class="mini-btn">
-      <span class="deep-logo"></span>
-    </button>
+  <!-- 输入框 -->
+  <textarea id="input" rows="1" placeholder="有问题，尽管问"></textarea>
 
-    <input type="file" id="fileInput" style="display:none;" multiple>
+  <!-- 功能区 -->
+  <div class="input-toolbar">
 
-    <button id="uploadBtn" class="icon-btn">＋</button>
+    <div class="left-tools">
+      <button id="uploadBtn" class="icon-btn">＋</button>
 
-    <div id="modelSelector">Flash</div>
+      <button id="deepBtn" class="mini-btn">
+        <span class="deep-logo"></span>
+      </button>
 
-    <textarea id="input" rows="1" placeholder="想聊点啥"></textarea>
+      <div id="modelSelector">Flash</div>
+    </div>
 
     <button id="sendBtn" class="icon-btn">↑</button>
 
   </div>
+
+  <input type="file" id="fileInput" style="display:none;" multiple>
+
+</div>
 </div>
 </div>
 <div id="modelMenu" style="
@@ -1671,14 +1708,24 @@ let pendingFiles = [];
 uploadBtn.onclick = () => fileInput.click();
 
 fileInput.onchange = async () => {
+  showGlobalLoading(); // ⭐ 开始 loading
+
   const files = Array.from(fileInput.files);
-  if (!files.length) return;
+  if (!files.length) {
+    hideGlobalLoading();
+    return;
+  }
 
   for (const file of files) {
     handleFile(file);
   }
 
   fileInput.value = "";
+
+  // ⭐ 防止闪一下就消失
+  setTimeout(() => {
+    hideGlobalLoading();
+  }, 300);
 };
 
 // ===== 粘贴上传（Ctrl+V）=====
@@ -1810,6 +1857,7 @@ function hideLoading() {
 }
 // ===== 统一文件处理函数 =====
 function handleFile(file) {
+
   pendingFiles.push(file);
 
   const item = document.createElement("div");
@@ -1866,6 +1914,7 @@ item.style.borderRadius = "12px";
 
   item.appendChild(del);
   previewBox.appendChild(item);
+
 }
 
 import { supabase } from './p/js/supabaseClient.js';
@@ -2010,23 +2059,20 @@ function updateModelUI() {
 modelSelector.onclick = (e) => {
   e.stopPropagation();
 
-  showGlobalLoading();
+  const rect = modelSelector.getBoundingClientRect();
 
-  setTimeout(hideGlobalLoading, 300);
-  setTimeout(hideLoading, 180);
+  modelMenu.style.position = "fixed";
+  modelMenu.style.left = rect.left + rect.width / 2 + "px";
 
-    const rect = modelSelector.getBoundingClientRect();
+  // 向上展开
+  modelMenu.style.top = rect.top - 8 + "px";
+  modelMenu.style.transform = "translate(-50%, -100%) scale(0.95)";
 
-    modelMenu.style.position = "fixed";
-    modelMenu.style.left = rect.left + rect.width / 2 + "px";
+  modelMenu.style.zIndex = "99999";   // ⭐ 强制最高
+  modelMenu.style.pointerEvents = "auto";
 
-    // ⭐ 改为向上展开
-    modelMenu.style.top = rect.top - 8 + "px";
-    modelMenu.style.transform = "translate(-50%, -100%) scale(0.95)";
-
-    modelMenu.style.display = ""; // ⭐ 清掉可能残留的 display:none
-    modelMenu.classList.toggle("show");
-  };
+  modelMenu.classList.toggle("show");
+};
 
   document.querySelectorAll(".model-item").forEach(item => {
     item.onclick = () => {
@@ -2265,7 +2311,11 @@ user = {
         }
       }
 
-      setSession(user ? { user } : null);
+      if (user && user.id) {
+  setSession({ user });
+} else {
+  setSession(null);
+}
     } else {
       setSession(null);
       currentProfile = null;
@@ -2335,7 +2385,7 @@ function renderUser() {
   if (!avatarEl || !emailEl) return;
 
   // ===== 未登录 =====
-  if (!session || !session.user) {
+  if (!session || !session.user || !session.user.id){
   avatarEl.innerText = "?";
   avatarEl.style.backgroundImage = ""; // ⭐ 必加
   emailEl.innerText = "未登录";
@@ -2344,6 +2394,16 @@ function renderUser() {
 }
 
   const user = session.user;
+  // ⭐ 兜底修复 user.id 丢失问题
+if (!user.id) {
+  try {
+    const token = localStorage.getItem("token");
+    if (token) {
+      const payload = JSON.parse(atob(token.split(".")[1]));
+      user.id = payload.sub || payload.id || payload.user_id;
+    }
+  } catch {}
+}
 
   // ===== 邮箱 =====
   emailEl.innerText = user.email || "未知用户";
@@ -2666,9 +2726,20 @@ if (user) console.log("🔥 当前 user:", user);
         msg.innerText = "登录成功";
 
         setTimeout(() => {
-          modal.remove();
-          location.reload();
-        }, 800);
+  modal.remove();
+
+  try {
+    const token = localStorage.getItem("token");
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+
+    if (token && user) {
+      setSession({ user });
+      renderUser(); // ⭐ 立即更新UI
+    }
+  } catch {}
+
+  location.reload();
+}, 800);
 
       } catch (e) {
         refreshTurnstile(); // ⭐ 出错也刷新，避免token卡死
@@ -3719,6 +3790,9 @@ function refuseModeratedInput(result) {
 }
 
 async function send() {
+  if (pendingFiles.length > 0) {
+  showGlobalLoading(); // ⭐ 上传才显示
+}
   // ===== 轻量防抖（不阻止发送，只提示） =====
   const now = Date.now();
   if (window._lastSendTime && now - window._lastSendTime < 800) {
@@ -4310,6 +4384,7 @@ if (bubble) {
     clearTimeout(timeoutId);
     clearTimeout(hardTimeoutId);
     sendingLock = false;
+    hideGlobalLoading();
     document.body.classList.remove("thinking-mode");
     input.readOnly = false;
     if (!window._isMobile) input.focus();
@@ -4483,23 +4558,18 @@ window.addEventListener("DOMContentLoaded", () => {
   
 </div>
 <div id="loadingBar" style="
-  display:flex;              /* ⭐ 改这里 */
-  opacity:0;                 /* ⭐ 初始透明 */
-  transition:opacity .25s ease;
-
   position:fixed;
   inset:0;
-  background:rgba(0,0,0,0.45);
-  backdrop-filter:blur(6px);
-  z-index:9999;
-
+  display:flex;
+  flex-direction:column;
   align-items:center;
   justify-content:center;
-  flex-direction:column;
+  background:rgba(0,0,0,0.6);
+  z-index:99999;
+  transition:opacity .25s ease;
 ">
-  <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">
-<div style="font-size:18px;opacity:0.95;font-weight:500;letter-spacing:0.5px;">
-  加载中
+  <img src="p/load.gif" style="width:90px;">
+  <div style="margin-top:12px;color:#fff;">加载中</div>
 </div>
 </body>
 <script>
