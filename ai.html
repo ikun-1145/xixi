@@ -1863,7 +1863,54 @@ if (isIOS && isSafariBrowser && window.navigator.standalone !== true && !hideTip
 // ⚠️ VDS 登录需要配合 /vds-callback.html 页面处理回调
 // ===== ⭐ 全局API封装（使用本地token）=====
 async function apiFetch(body) {
-  const token = localStorage.getItem("token");
+  let token = localStorage.getItem("token");
+
+  // ⭐ 过期检测 + 自动续期
+  function isExpired(tk) {
+    try {
+      const payload = JSON.parse(atob(tk.split(".")[1]));
+      if (!payload.exp) return false;
+      // 提前30秒刷新
+      return payload.exp * 1000 < Date.now() + 30000;
+    } catch {
+      return true;
+    }
+  }
+
+  async function refreshToken() {
+    try {
+      const old = localStorage.getItem("token");
+      if (!old) return null;
+
+      const res = await fetch("https://api.sunland.dev/refresh", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + old
+        }
+      });
+
+      if (!res.ok) return null;
+
+      const data = await res.json().catch(() => ({}));
+      if (data?.token) {
+        localStorage.setItem("token", data.token);
+        if (data.user) {
+          localStorage.setItem("user", JSON.stringify(data.user));
+        }
+        return data.token;
+      }
+    } catch (e) {
+      console.warn("refresh token 失败:", e);
+    }
+    return null;
+  }
+
+  // ⭐ 如果过期 → 先刷新
+  if (token && isExpired(token)) {
+    const newToken = await refreshToken();
+    if (newToken) token = newToken;
+  }
 
   const res = await fetch("https://api.sunland.dev", {
     method: "POST",
@@ -1874,7 +1921,22 @@ async function apiFetch(body) {
     body: JSON.stringify(body)
   });
 
+  // ⭐ 如果401 → 尝试刷新一次
   if (res.status === 401) {
+    const newToken = await refreshToken();
+
+    if (newToken) {
+      return fetch("https://api.sunland.dev", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": "Bearer " + newToken
+        },
+        body: JSON.stringify(body)
+      });
+    }
+
+    // ❌ 刷新失败才真正登出
     localStorage.removeItem("token");
     localStorage.removeItem("user");
 
@@ -2210,9 +2272,70 @@ let session = null;
 const PROFILE_META_ID = "__xixi_user_profile__";
 const PROFILE_CACHE_PREFIX = "xixi_profile_";
 
+// ===== ⭐ 实时同步：头像 & 对话 =====
+function setupRealtimeSync() {
+  if (!session?.user?.id) return;
+
+  // ⭐ 头像同步
+  supabase
+    .channel('profile-sync-' + session.user.id)
+    .on(
+      'postgres_changes',
+      {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'conversations',
+        filter: `user_id=eq.${session.user.id}`
+      },
+      (payload) => {
+        try {
+          const profile = extractProfileMeta(payload.new.data);
+
+          if (profile?.avatar_url) {
+            cacheProfile(session.user.id, profile);
+            renderUser();
+          }
+        } catch (e) {
+          console.warn('头像同步解析失败:', e);
+        }
+      }
+    )
+    .subscribe();
+
+  // ⭐ 对话同步
+  supabase
+    .channel('chat-sync-' + session.user.id)
+    .on(
+      'postgres_changes',
+      {
+        event: '*',
+        schema: 'public',
+        table: 'conversations',
+        filter: `user_id=eq.${session.user.id}`
+      },
+      async () => {
+        try {
+          await syncFromCloud();
+
+          if (currentId) {
+            loadChat(currentId);
+          }
+        } catch (e) {
+          console.warn('对话同步失败:', e);
+        }
+      }
+    )
+    .subscribe();
+}
+
 function setSession(s) {
   session = s;
   window.session = s;
+
+  // ⭐ 每次登录/刷新 session 都重新绑定实时同步
+  setTimeout(() => {
+    setupRealtimeSync();
+  }, 0);
 }
 let isActivated = false;
 let deepMode = false;
@@ -2569,6 +2692,19 @@ let history = [
 async function checkLogin() {
   try {
     const token = localStorage.getItem("token");
+    // ⭐ 启动时检测过期
+    if (token) {
+      try {
+        const payload = JSON.parse(atob(token.split(".")[1]));
+        if (payload.exp && payload.exp * 1000 < Date.now()) {
+          console.warn("token 启动时已过期");
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+        }
+      } catch (e) {
+        console.warn("token 解析失败:", e);
+      }
+    }
     const userStr = localStorage.getItem("user");
 
     if (token) {
@@ -3451,6 +3587,9 @@ setTimeout(() => {
 
 // 页面加载时检查登录
 await checkLogin(); // 确保 session 初始化完成再允许发送
+
+// ⭐ 登录完成后启动实时同步
+setupRealtimeSync();
 // ===== 设备检测控制侧边栏 =====
 function setupSidebarByDevice() {
   const sidebar = document.getElementById("sidebar");
