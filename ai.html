@@ -478,10 +478,10 @@ html, body {
   bottom: 0;
   left: 0;
   right: 0;
-background: transparent;
+  background: transparent;
   display: flex;
   justify-content: center;
-  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  padding: 10px 12px calc(16px + env(safe-area-inset-bottom));
   box-sizing: border-box;
 
   z-index: 100;   /* 提高层级，确保可点击 */
@@ -501,6 +501,7 @@ background: transparent;
 
   flex-direction: column;
   border-radius: 20px;
+  margin-bottom: env(safe-area-inset-bottom);
   padding: 10px;
   align-items: stretch;
   gap: 6px;
@@ -1191,6 +1192,7 @@ body.night #newChatBtn {
 
   height: 100%;
   min-height: 100dvh;   /* ⭐ 解决 iOS 白边 */
+  padding-bottom: env(safe-area-inset-bottom);
 
   display: flex;
   flex-direction: column;
