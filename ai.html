@@ -1650,22 +1650,41 @@ z-index:999;
 <script type="module">
 // ===== PWA Service Worker 注册 + 更新检测 =====
 if ('serviceWorker' in navigator) {
-  navigator.serviceWorker.register('/flutter_service_worker.js')
+  navigator.serviceWorker.register('/sw.js')
     .then(reg => {
 
-      // 检测新版本
+      // ⭐ 强制定期检查更新（解决不触发问题）
+      setInterval(() => {
+        reg.update();
+      }, 60 * 1000);
+
+      // ⭐ 监听更新
       reg.onupdatefound = () => {
         const newWorker = reg.installing;
+        if (!newWorker) return;
 
         newWorker.onstatechange = () => {
           if (newWorker.state === 'installed') {
+
+            // 有旧版本在控制（说明是更新）
             if (navigator.serviceWorker.controller) {
-              // ⭐ 有新版本
-              showUpdateTip();
+
+              // ⭐ 如果已经进入 waiting
+              if (reg.waiting) {
+                showUpdateTip();
+
+                // ⭐ 直接激活新版本
+                reg.waiting.postMessage({ type: "SKIP_WAITING" });
+              }
             }
           }
         };
       };
+
+      // ⭐ 当新SW接管后自动刷新
+      navigator.serviceWorker.addEventListener("controllerchange", () => {
+        location.reload();
+      });
 
     })
     .catch(err => {
