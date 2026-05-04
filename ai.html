@@ -2,7 +2,7 @@
 <html lang="zh-Hans">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
 <title>AI助手</title>
 <link rel="manifest" href="/manifest.json">
@@ -647,8 +647,15 @@ textarea {
   padding: 6px 8px;
   -webkit-overflow-scrolling: touch;
 }
+input, textarea, select {
+  font-size: 16px !important;
+}
 html {
   touch-action: manipulation;
+}
+/* ⭐ 禁止 iOS 自动缩放（点击输入框放大问题） */
+input, textarea {
+  transform: scale(1);
 }
 input, textarea {
   -webkit-text-size-adjust: 100%;
