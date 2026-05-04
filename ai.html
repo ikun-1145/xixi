@@ -1646,16 +1646,106 @@ z-index:999;
 </div>
 
 <script type="module">
-  // ===== PWA Service Worker 注册 =====
+// ===== PWA Service Worker 注册 + 更新检测 =====
 if ('serviceWorker' in navigator) {
-  window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/flutter_service_worker.js')
-      .then(reg => {
-        console.log('SW 注册成功:', reg.scope);
-      })
-      .catch(err => {
-        console.warn('SW 注册失败:', err);
-      });
+  navigator.serviceWorker.register('/flutter_service_worker.js')
+    .then(reg => {
+
+      // 检测新版本
+      reg.onupdatefound = () => {
+        const newWorker = reg.installing;
+
+        newWorker.onstatechange = () => {
+          if (newWorker.state === 'installed') {
+            if (navigator.serviceWorker.controller) {
+              // ⭐ 有新版本
+              showUpdateTip();
+            }
+          }
+        };
+      };
+
+    })
+    .catch(err => {
+      console.warn('SW 注册失败:', err);
+    });
+}
+
+// ===== 更新提示UI =====
+function showUpdateTip() {
+  const box = document.createElement("div");
+
+  box.innerHTML = `
+    <div style="
+      position:fixed;
+      bottom:160px;
+      left:50%;
+      transform:translateX(-50%);
+      background:linear-gradient(135deg,#22d3ee,#67e8f9);
+      color:#00323a;
+      padding:10px 16px;
+      border-radius:14px;
+      font-size:13px;
+      z-index:9999;
+      box-shadow:0 10px 30px rgba(0,0,0,0.25);
+      cursor:pointer;
+      animation: fadeInBubble .25s ease;
+    ">
+      🔄 正在更新…
+    </div>
+  `;
+
+  document.body.appendChild(box);
+
+  // ⭐ 自动刷新（更像原生App）
+  setTimeout(() => {
+    location.reload();
+  }, 1200);
+}
+// ===== iOS 非 Safari 引导（跳转Safari）=====
+const isIOSDevice = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isSafariBrowser = /safari/i.test(navigator.userAgent) && !/crios|fxios/i.test(navigator.userAgent);
+
+if (isIOSDevice && !isSafariBrowser) {
+  window.addEventListener("load", () => {
+    setTimeout(() => {
+      const tip = document.createElement("div");
+
+      tip.innerHTML = `
+        👉 请使用 Safari 打开
+        <span id="openSafari" style="margin-left:8px;color:#22d3ee;cursor:pointer;">去打开</span>
+      `;
+
+      tip.style.cssText = `
+        position: fixed;
+        top: 80px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.8);
+        color: #fff;
+        padding: 10px 14px;
+        border-radius: 12px;
+        font-size: 12px;
+        z-index: 9999;
+        backdrop-filter: blur(10px);
+      `;
+
+      document.body.appendChild(tip);
+
+      // 点击尝试跳转 Safari
+      tip.querySelector("#openSafari").onclick = () => {
+        const url = window.location.href;
+
+        // ⭐ iOS 尝试跳转 Safari（部分场景可用）
+        window.location.href = "x-web-search://" + url;
+
+        // fallback
+        setTimeout(() => {
+          alert("请点击右上角 → 在 Safari 打开");
+        }, 800);
+      };
+
+    }, 1500);
   });
 }
 // ===== iOS 安装引导（PWA关键）=====
