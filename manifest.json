@@ -1,0 +1,20 @@
+{
+  "name": "霜蓝 AI",
+  "short_name": "霜蓝",
+  "start_url": "/ai.html",
+  "display": "standalone",
+  "background_color": "#0b1220",
+  "theme_color": "#71f8fc",
+  "icons": [
+    {
+      "src": "/p/ailogo.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "/p/ailogo.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}

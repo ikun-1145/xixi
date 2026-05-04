@@ -5,6 +5,14 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
 <title>AI助手</title>
+<link rel="manifest" href="/manifest.json">
+
+<meta name="theme-color" content="#71f8fc">
+
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="霜蓝AI">
+<link rel="apple-touch-icon" href="/p/ailogo.png">
 <!-- 网站 favicon -->
 <link rel="icon" type="image/png" href="p/ailogo.png">
 <link rel="shortcut icon" href="p/ailogo.png">
@@ -1638,6 +1646,55 @@ z-index:999;
 </div>
 
 <script type="module">
+  // ===== PWA Service Worker 注册 =====
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/flutter_service_worker.js')
+      .then(reg => {
+        console.log('SW 注册成功:', reg.scope);
+      })
+      .catch(err => {
+        console.warn('SW 注册失败:', err);
+      });
+  });
+}
+// ===== iOS 安装引导（PWA关键）=====
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const hideTip = localStorage.getItem("hidePwaTip");
+if (isIOS && window.navigator.standalone !== true && !hideTip) {
+  window.addEventListener("load", () => {
+    setTimeout(() => {
+      const tip = document.createElement("div");
+      tip.innerHTML = `👉 点击分享 → 添加到主屏幕 <span id="pwaIgnore" style="margin-left:8px;color:#aaa;cursor:pointer;">忽略</span>`;
+
+      tip.style.cssText = `
+        position: fixed;
+        bottom: 110px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(0,0,0,0.75);
+        color: #fff;
+        padding: 8px 12px;
+        border-radius: 10px;
+        font-size: 12px;
+        z-index: 9999;
+        backdrop-filter: blur(10px);
+      `;
+
+      document.body.appendChild(tip);
+
+      // 点击忽略后永久不再提示
+      tip.querySelector("#pwaIgnore").onclick = () => {
+        localStorage.setItem("hidePwaTip", "1");
+        tip.remove();
+      };
+
+      setTimeout(() => {
+        tip.remove();
+      }, 3000);
+    }, 2000);
+  });
+}
 // ⚠️ VDS 登录需要配合 /vds-callback.html 页面处理回调
 // ===== ⭐ 全局API封装（使用本地token）=====
 async function apiFetch(body) {
