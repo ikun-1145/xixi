@@ -1689,9 +1689,11 @@ if ('serviceWorker' in navigator) {
       };
 
       // ⭐ 当新SW接管后自动刷新
-      navigator.serviceWorker.addEventListener("controllerchange", () => {
-        location.reload();
-      });
+      let hadController = !!navigator.serviceWorker.controller;
+navigator.serviceWorker.addEventListener("controllerchange", () => {
+  if (hadController) location.reload();
+  hadController = true;
+});
 
     })
     .catch(err => {
@@ -3031,21 +3033,23 @@ if (user) console.log("🔥 当前 user:", user);
 
         msg.innerText = "登录成功";
 
-        setTimeout(() => {
-          modal.remove();
-
-          try {
-            const token = localStorage.getItem("token");
-            const user = JSON.parse(localStorage.getItem("user") || "null");
-
-            if (token && user) {
-              setSession({ user });
-              renderUser(); // ⭐ 立即更新UI
-            }
-          } catch {}
-
-          location.reload();
-        }, 800);
+        setTimeout(async () => {
+  modal.remove();
+  try {
+    const token = localStorage.getItem("token");
+    const user = JSON.parse(localStorage.getItem("user") || "null");
+    if (token && user) {
+      setSession({ user });
+      renderUser();
+      await syncFromCloud();
+      if (conversations.length) loadChat(conversations[0].id);
+      else createNewChat();
+      checkActivation().catch(() => {});
+    }
+  } catch(e) {
+    console.error("登录初始化失败:", e);
+  }
+}, 800);
 
       } catch (e) {
         refreshTurnstile(); // ⭐ 出错也刷新，避免token卡死
