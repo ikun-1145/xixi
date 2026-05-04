@@ -69,6 +69,13 @@
   transition: all 0.2s;
 }
 
+/* ⭐ 白天模式修复 */
+body:not(.night) .ghost-btn {
+  background: rgba(0,0,0,0.05);
+  border: 1px solid rgba(0,0,0,0.1);
+  color: #555;
+}
+
 .ghost-btn:hover {
   background: linear-gradient(135deg, #00e5ff, #7a5cff);
   color: white;
@@ -2118,12 +2125,16 @@ function showLoading() {
 }
 function showGlobalLoading() {
   const el = document.getElementById("loadingBar");
-  if (el) el.classList.add("active");
+  if (!el) return;
+  el.style.display = "flex";
+  el.classList.add("active");
 }
 
 function hideGlobalLoading() {
   const el = document.getElementById("loadingBar");
-  if (el) el.classList.remove("active");
+  if (!el) return;
+  el.classList.remove("active");
+  el.style.display = "none";
 }
 function hideLoading() {
   if (thinkingBubble) {
@@ -4878,7 +4889,7 @@ window.addEventListener("DOMContentLoaded", () => {
 <div id="loadingBar" style="
   position:fixed;
   inset:0;
-  display:flex;
+  display:none;
   flex-direction:column;
   align-items:center;
   justify-content:center;
