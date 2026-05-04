@@ -122,7 +122,7 @@
       100% { background-position: 100% 100%; }
     }
 
-    @keyframes fadeInUp { from {opacity:0; transform:translateY(30px);} to {opacity:1; transform:translateY(0);} }
+    @keyframes fadeInUp { from { transform:translateY(30px);} to {opacity:1; transform:translateY(0);} }
     @keyframes breatheGlow {
       0% { box-shadow: 0 0 12px rgba(113, 248, 252, 0.35); }
       50% { box-shadow: 0 0 22px rgba(113, 248, 252, 0.55); }
@@ -452,44 +452,6 @@ body.night .oauth-btn {
     }
 
 
-    .splash-logo {
-      width: min(80vw, 520px);
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-
-
-    .ai-icon-img {
-      width: 70%;
-      height: 70%;
-      object-fit: contain;
-      transition: transform .3s ease;
-    }
-
-    .ai-entry:hover .ai-icon-img {
-      transform: scale(1.1);
-    }
-
-    .splash-svg text {
-      font-size: 96px;
-      fill: none;
-      stroke: var(--accent);
-      stroke-width: 3;
-      stroke-dasharray: 1200;
-      stroke-dashoffset: 1200;
-      animation:
-        logoDraw 4s linear forwards,
-        logoFill 1.4s ease forwards 4s;
-    }
-
-    @keyframes logoDraw {
-      to { stroke-dashoffset: 0; }
-    }
-
-    @keyframes logoFill {
-      to { fill: var(--accent); }
-    }
 
   .modal {
     display: none;
@@ -679,16 +641,16 @@ body.night .modal-content {
   bottom: 20px;
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 8px;
 
-  padding: 14px 18px;
+  padding: 10px 14px;
   border-radius: 999px;
 
   background: linear-gradient(135deg, var(--accent), #9ffcff);
   color: #000;
 
   font-weight: 600;
-  font-size: 0.95rem;
+  font-size: 0.85rem;
 
   box-shadow:
     0 15px 40px rgba(0,0,0,0.25),
@@ -708,8 +670,8 @@ body.night .modal-content {
 }
 
 .ai-entry-icon {
-  width: 42px;
-  height: 42px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: rgba(255,255,255,0.8);
 
@@ -717,7 +679,13 @@ body.night .modal-content {
   align-items: center;
   justify-content: center;
 
-  font-size: 20px;
+  font-size: 16px;
+}
+
+.ai-entry-icon img {
+  width: 18px;
+  height: 18px;
+  object-fit: contain;
 }
 
 .ai-entry-text {
@@ -727,12 +695,12 @@ body.night .modal-content {
 }
 
 .ai-entry-title {
-  font-size: 0.95rem;
+  font-size: 0.85rem;
   font-weight: 700;
 }
 
 .ai-entry-desc {
-  font-size: 0.75rem;
+  font-size: 0.65rem;
   opacity: 0.7;
 }
 
@@ -751,7 +719,18 @@ body.night .ai-entry {
   transition: none !important;
 }
 
-#loadingBar {   pointer-events: none; }  #loadingBar.active {   opacity: 1;   pointer-events: auto; }  #loadingBar img {   transform: scale(0.9);   transition: transform .25s ease; }  #loadingBar.active img {   transform: scale(1); }
+#loadingBar {
+  opacity: 0;
+  pointer-events: none;
+  display: none;
+}
+
+#loadingBar.active {
+  opacity: 1;
+  pointer-events: auto;
+  display: flex;
+}
+#loadingBar img {   transform: scale(0.9);   transition: transform .25s ease; }  #loadingBar.active img {   transform: scale(1); } body:not(.night) #loadingBar { background: rgba(255,255,255,0.65); backdrop-filter: blur(12px); } body:not(.night) #loadingBar div { color: #334155; } body:not(.night) #loadingBar img { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15)); }
 </style>
 </head>
 
@@ -762,18 +741,10 @@ body.night .ai-entry {
     <button data-lang="ja">日本語</button>
   </div>
   <div id="loading" aria-live="polite" aria-label="页面加载中">
-    <div class="splash-logo">
-      <svg viewBox="0 0 600 160" class="splash-svg">
-        <text x="50%" y="60%" text-anchor="middle">SUNLAND</text>
-      </svg>
-      <div id="firstVisitTip" style="
-        margin-top: 12px;
-        font-size: 0.9rem;
-        color: var(--accent);
-        opacity: 0;
-        transform: translateY(6px);
-        transition: opacity 0.6s ease, transform 0.6s ease;
-      ">
+    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;">
+      <img src="p/load.gif" style="width:110px;height:110px;opacity:0.95;">
+      <div id="loadingText" style="color:var(--accent);font-size:1rem;opacity:0.85;">
+        加载中...
       </div>
     </div>
   </div>
@@ -860,6 +831,8 @@ body.night .ai-entry {
 
 
     document.addEventListener('DOMContentLoaded', async () => {
+      // 🔥 进入页面立即关闭全局 loading（防止跨页面残留）
+      hideGlobalLoading();
       // 如果用户刚刚在 donate 页面主动退出，禁止 Supabase 自动恢复 session
       if (sessionStorage.getItem("forceLoggedOut") === "1") {
         try {
@@ -984,28 +957,11 @@ body.night .ai-entry {
     });
 
     window.addEventListener('load', () => {
-      // 如果是后退返回，不播放动画
       if (isBackForward) return;
 
-      // 新增首次访问提示逻辑
-      const firstVisitKey = "siteVisited";
-      const isFirstVisit = !localStorage.getItem(firstVisitKey);
-      if (isFirstVisit) {
-        localStorage.setItem(firstVisitKey, "1");
-      }
-
-      const firstVisitTip = document.getElementById("firstVisitTip");
-      if (isFirstVisit && firstVisitTip) {
-        setTimeout(() => {
-          firstVisitTip.style.opacity = "1";
-          firstVisitTip.style.transform = "translateY(0)";
-        }, 4500); // 在 logoDraw 结束后出现
-      }
-
       const splash = document.getElementById('loading');
-      const logoText = document.querySelector('.splash-svg text');
 
-      if (!splash || !logoText) {
+      if (!splash) {
         document.body.classList.add('ready');
         document.dispatchEvent(new Event('app-ready'));
         return;
@@ -1023,17 +979,11 @@ body.night .ai-entry {
           splash.remove();
           document.body.classList.add('ready');
           document.dispatchEvent(new Event('app-ready'));
-        }, 800);
+        }, 500);
       }
 
-      logoText.addEventListener('animationend', (e) => {
-        if (e.animationName === 'logoFill') {
-          finishSplash();
-        }
-      });
-
-      // 兜底机制
-      setTimeout(finishSplash, 6000);
+      // 纯 GIF 加载：固定时间结束（更稳定）
+      setTimeout(finishSplash, 1800);
     });
 </script>
 
@@ -1328,14 +1278,30 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 })();
 
-function showGlobalLoading() {   const el = document.getElementById("loadingBar");   if (el) el.classList.add("active"); }  function hideGlobalLoading() {   const el = document.getElementById("loadingBar");   if (el) el.classList.remove("active"); }
-window.addEventListener("load", () => {   showGlobalLoading();   setTimeout(hideGlobalLoading, 400); });
-document.querySelectorAll("a").forEach(a => {   a.addEventListener("click", () => {     showGlobalLoading();   }); });
+function showGlobalLoading() {
+  const el = document.getElementById("loadingBar");
+  if (el) el.classList.add("active");
+}
+function hideGlobalLoading() {
+  const el = document.getElementById("loadingBar");
+  if (el) el.classList.remove("active");
+}
+
+// 链接点击时显示 loading
+document.querySelectorAll("a").forEach(a => {
+  a.addEventListener("click", (e) => {
+    const href = a.getAttribute("href");
+    if (!href || href.startsWith("http") || href.startsWith("#")) return;
+    showGlobalLoading();
+  });
+});
+
+// 页面离开前关闭 loading（解决 BFCache 返回残留问题）
 </script>
   <div class="ai-entry-group" style="position:fixed;right:20px;bottom:20px;z-index:999;">
     <div class="ai-entry" id="aiEntry">
       <div class="ai-entry-icon">
-        <img src="p/ailogo.png" alt="AI" class="ai-icon-img">
+        <img src="p/ailogo.png" alt="AI" class="ai-icon-img" style="width:18px;height:18px;">
       </div>
       <div class="ai-entry-text">
         <div class="ai-entry-title">AI 助手</div>
@@ -1345,6 +1311,6 @@ document.querySelectorAll("a").forEach(a => {   a.addEventListener("click", () =
   </div>
 
 
-<div id="loadingBar" style="   display:flex;   opacity:0;   transition:opacity .25s ease;    position:fixed;   inset:0;   background:rgba(0,0,0,0.45);   backdrop-filter:blur(6px);   z-index:9999;    align-items:center;   justify-content:center;   flex-direction:column; ">   <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">   <div style="color:#fff;font-size:18px;opacity:0.9;font-weight:500;letter-spacing:0.5px;">     加载中   </div> </div>
+<div id="loadingBar" style="transition:opacity .25s ease; position:fixed; inset:0; background:rgba(0,0,0,0.45); backdrop-filter:blur(6px); z-index:9999; align-items:center; justify-content:center; flex-direction:column; display:none;">   <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">   <div style="color:#fff;font-size:18px;opacity:0.9;font-weight:500;letter-spacing:0.5px;">     加载中   </div> </div>
 </body>
 </html>

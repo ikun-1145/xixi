@@ -56,7 +56,7 @@ body::before{
   pointer-events:none;
   background:radial-gradient(rgba(255,255,255,0.03) 1px, transparent 1px);
   background-size:3px 3px;
-  opacity:0;
+  
   transition:opacity 1s ease;
 }
 
@@ -105,7 +105,7 @@ body.instant-dark{
   width:min(700px,90%);
   line-height:1.7;
   font-size:15px;
-  opacity:0;
+  
   animation:fadeIn 2s ease forwards 3.8s;
 }
 
@@ -138,7 +138,7 @@ h1{
 
 .log{
   margin-top:1.5rem;
-  opacity:0;
+  
   animation:fadeIn 2s ease forwards 8.5s;
 }
 
@@ -149,7 +149,7 @@ h1{
   border:1px solid var(--accent);
   color:var(--accent);
   text-decoration:none;
-  opacity:0;
+  
   transition:all .3s ease;
   animation:fadeIn 2s ease forwards 13s;
 }
@@ -186,7 +186,7 @@ h1{
 
 @keyframes cursorBlink{
   0%{ opacity:1; }
-  50%{ opacity:0; }
+  50%{  }
   100%{ opacity:1; }
 }
 
@@ -225,7 +225,7 @@ h1{
   left:0;
   width:1px;
   height:1px;
-  opacity:0;
+  
   z-index:1;
 }
 
@@ -275,10 +275,10 @@ h1{
 }
 
 @keyframes particleFloat{
-  from{ transform:translateY(100vh) scale(0.8); opacity:0; }
+  from{ transform:translateY(100vh) scale(0.8);  }
   10%{ opacity:1; }
   90%{ opacity:1; }
-  to{ transform:translateY(-10vh) scale(1.2); opacity:0; }
+  to{ transform:translateY(-10vh) scale(1.2);  }
 }
 
 
@@ -287,7 +287,7 @@ h1{
   position:fixed;
   inset:0;
   background:#000;
-  opacity:0;
+  
   pointer-events:none;
   transition:opacity 1s ease;
   z-index:9999;
@@ -313,7 +313,7 @@ body.entering-deep #console{
   font-size:32px;
   letter-spacing:4px;
   color:#71f8fc;
-  opacity:0;
+  
   pointer-events:none;
   z-index:10000;
   transition:opacity .6s ease;
@@ -352,7 +352,7 @@ body.entering-deep #console{
     <p>有些东西不会出现在首页。</p>
     <p>但它们一直在运行。</p>
   
-  <div id="console" style="margin-top:2rem; opacity:0; animation:fadeIn 2s ease forwards 10s; font-size:14px;">
+  <div id="console" style="margin-top:2rem;  animation:fadeIn 2s ease forwards 10s; font-size:14px;">
   <div id="terminal">
     <div id="currentLine">
       <span class="prompt" id="promptText">霜蓝@hidden-layer:~$ </span>
@@ -360,7 +360,7 @@ body.entering-deep #console{
     </div>
   </div>
   <input id="hiddenInput" type="text" autocomplete="off"
-         style="position:fixed;bottom:0;left:0;opacity:0;height:1px;width:1px;" />
+         style="position:fixed;bottom:0;left:0;height:1px;width:1px;" />
 </div>
   </div>
 
@@ -535,10 +535,10 @@ document.querySelectorAll("a").forEach(a => {   a.addEventListener("click", () =
   border-color:#00ff66;
 }
 
-#loadingBar {   pointer-events: none; }  #loadingBar.active {   opacity: 1;   pointer-events: auto; }  #loadingBar img {   transform: scale(0.9);   transition: transform .25s ease; }  #loadingBar.active img {   transform: scale(1); }
+##loadingBar {   opacity: 0; pointer-events: none; }  #loadingBar.active {   opacity: 1;   pointer-events: auto; }  #loadingBar img {   transform: scale(0.9);   transition: transform .25s ease; }  #loadingBar.active img {   transform: scale(1); } body:not(.night) #loadingBar { background: rgba(255,255,255,0.65); backdrop-filter: blur(12px); } body:not(.night) #loadingBar div { color: #334155; } body:not(.night) #loadingBar img { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15)); }
 </style>
 
 
-<div id="loadingBar" style="   display:flex;   opacity:0;   transition:opacity .25s ease;    position:fixed;   inset:0;   background:rgba(0,0,0,0.45);   backdrop-filter:blur(6px);   z-index:9999;    align-items:center;   justify-content:center;   flex-direction:column; ">   <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">   <div style="color:#fff;font-size:18px;opacity:0.9;font-weight:500;letter-spacing:0.5px;">     加载中   </div> </div>
+<div id="loadingBar" style="   display:flex;      transition:opacity .25s ease;    position:fixed;   inset:0;   background:rgba(0,0,0,0.45);   backdrop-filter:blur(6px);   z-index:9999;    align-items:center;   justify-content:center;   flex-direction:column; ">   <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">   <div style="color:#fff;font-size:18px;opacity:0.9;font-weight:500;letter-spacing:0.5px;">     加载中   </div> </div>
 </body>
 </html>

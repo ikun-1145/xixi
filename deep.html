@@ -37,7 +37,7 @@ body{
   vertical-align:bottom;
   animation:blink 1s steps(1) infinite;
 }
-@keyframes blink{50%{opacity:0;}}
+@keyframes blink{50%{}}
 .prompt{color:#4fc3f7;}
 .input{color:#ffffff;}
 .fail{color:#f44747;}
@@ -63,11 +63,11 @@ body{
 
   @keyframes cursorBlink{
     0%{opacity:1;}
-    50%{opacity:0;}
+    50%{}
     100%{opacity:1;}
   }
 
-#loadingBar {   pointer-events: none; }  #loadingBar.active {   opacity: 1;   pointer-events: auto; }  #loadingBar img {   transform: scale(0.9);   transition: transform .25s ease; }  #loadingBar.active img {   transform: scale(1); }
+##loadingBar {   opacity: 0; pointer-events: none; }  #loadingBar.active {   opacity: 1;   pointer-events: auto; }  #loadingBar img {   transform: scale(0.9);   transition: transform .25s ease; }  #loadingBar.active img {   transform: scale(1); } body:not(.night) #loadingBar { background: rgba(255,255,255,0.65); backdrop-filter: blur(12px); } body:not(.night) #loadingBar div { color: #334155; } body:not(.night) #loadingBar img { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15)); }
 </style>
 <script src="p/js/terminal-core.js"></script>
 <script>
@@ -90,7 +90,7 @@ body{
        autocorrect="off"
        spellcheck="false"
        tabindex="0"
-       style="position:fixed;bottom:0;left:0;width:1px;height:1px;opacity:0;z-index:1;">
+       style="position:fixed;bottom:0;left:0;width:1px;height:1px;z-index:1;">
 <script>
 const boot = document.getElementById("boot");
 const hiddenInputEl = document.getElementById("hiddenInput");
@@ -625,6 +625,6 @@ window.addEventListener("load", () => {   showGlobalLoading();   setTimeout(hide
 document.querySelectorAll("a").forEach(a => {   a.addEventListener("click", () => {     showGlobalLoading();   }); });
 </script>
 
-<div id="loadingBar" style="   display:flex;   opacity:0;   transition:opacity .25s ease;    position:fixed;   inset:0;   background:rgba(0,0,0,0.45);   backdrop-filter:blur(6px);   z-index:9999;    align-items:center;   justify-content:center;   flex-direction:column; ">   <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">   <div style="color:#fff;font-size:18px;opacity:0.9;font-weight:500;letter-spacing:0.5px;">     加载中   </div> </div>
+<div id="loadingBar" style="   display:flex;      transition:opacity .25s ease;    position:fixed;   inset:0;   background:rgba(0,0,0,0.45);   backdrop-filter:blur(6px);   z-index:9999;    align-items:center;   justify-content:center;   flex-direction:column; ">   <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">   <div style="color:#fff;font-size:18px;opacity:0.9;font-weight:500;letter-spacing:0.5px;">     加载中   </div> </div>
 </body>
 </html>

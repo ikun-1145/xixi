@@ -225,7 +225,17 @@
       }
     }
   
-#loadingBar {   pointer-events: none; }  #loadingBar.active {   opacity: 1;   pointer-events: auto; }  #loadingBar img {   transform: scale(0.9);   transition: transform .25s ease; }  #loadingBar.active img {   transform: scale(1); }
+#loadingBar {
+  opacity: 0;
+  pointer-events: none;
+  display: none;
+}
+#loadingBar.active {
+  opacity: 1;
+  pointer-events: auto;
+  display: flex;
+}
+body:not(.night) #loadingBar { background: rgba(255,255,255,0.65); backdrop-filter: blur(12px); } body:not(.night) #loadingBar div { color: #334155; } body:not(.night) #loadingBar img { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15)); }
 </style>
 </head>
 <body>
@@ -317,11 +327,34 @@ requestAnimationFrame(() => {
 });
 
   
-function showGlobalLoading() {   const el = document.getElementById("loadingBar");   if (el) el.classList.add("active"); }  function hideGlobalLoading() {   const el = document.getElementById("loadingBar");   if (el) el.classList.remove("active"); }
-window.addEventListener("load", () => {   showGlobalLoading();   setTimeout(hideGlobalLoading, 400); });
-document.querySelectorAll("a").forEach(a => {   a.addEventListener("click", () => {     showGlobalLoading();   }); });
+function showGlobalLoading() {
+  const el = document.getElementById("loadingBar");
+  if (!el) return;
+  el.style.display = "flex";
+  requestAnimationFrame(() => el.classList.add("active"));
+}
+
+function hideGlobalLoading() {
+  const el = document.getElementById("loadingBar");
+  if (!el) return;
+  el.classList.remove("active");
+  setTimeout(() => {
+    el.style.display = "none";
+  }, 250);
+}
+
+// 页面进入立即关闭 loading（防止跨页面残留）
+document.addEventListener("DOMContentLoaded", () => {
+  hideGlobalLoading();
+});
+
+document.querySelectorAll("a").forEach(a => {
+  a.addEventListener("click", () => {
+    showGlobalLoading();
+  });
+});
 </script>
 
-<div id="loadingBar" style="   display:flex;   opacity:0;   transition:opacity .25s ease;    position:fixed;   inset:0;   background:rgba(0,0,0,0.45);   backdrop-filter:blur(6px);   z-index:9999;    align-items:center;   justify-content:center;   flex-direction:column; ">   <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">   <div style="color:#fff;font-size:18px;opacity:0.9;font-weight:500;letter-spacing:0.5px;">     加载中   </div> </div>
+<div id="loadingBar" style="   display:none;      transition:opacity .25s ease;    position:fixed;   inset:0;   background:rgba(0,0,0,0.45);   backdrop-filter:blur(6px);   z-index:9999;    align-items:center;   justify-content:center;   flex-direction:column; ">   <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">   <div style="color:#fff;font-size:18px;opacity:0.9;font-weight:500;letter-spacing:0.5px;">     加载中   </div> </div>
 </body>
 </html>
