@@ -2562,7 +2562,7 @@ async function checkLogin() {
       }
 
       // ⭐ 兜底：从 JWT 解析用户（防止 user 丢失）
-      if (!user) {
+      if (!user || !user.id) {
         try {
           const payload = JSON.parse(atob(token.split(".")[1]));
 
