@@ -770,21 +770,38 @@ body:not(.night) #loadingBar img { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.1
 
     async function compressAvatar(file) {
       const img = await loadImage(file);
-      const size = 384;
-      const canvas = document.createElement("canvas");
-      canvas.width = size;
-      canvas.height = size;
-      const ctx = canvas.getContext("2d");
-      const minSide = Math.min(img.width, img.height);
-      const sx = (img.width - minSide) / 2;
-      const sy = (img.height - minSide) / 2;
-      ctx.drawImage(img, sx, sy, minSide, minSide, 0, 0, size, size);
 
-      return new Promise((resolve) => {
-        canvas.toBlob((blob) => {
-          resolve(blob || file);
-        }, "image/jpeg", 0.82);
-      });
+      const maxSize = 384; // ⭐ 最大边长
+      const canvas = document.createElement("canvas");
+      const ctx = canvas.getContext("2d");
+
+      // ⭐ 等比例缩放
+      let width = img.width;
+      let height = img.height;
+
+      if (width > height && width > maxSize) {
+        height *= maxSize / width;
+        width = maxSize;
+      } else if (height > maxSize) {
+        width *= maxSize / height;
+        height = maxSize;
+      }
+
+      canvas.width = width;
+      canvas.height = height;
+
+      ctx.drawImage(img, 0, 0, width, height);
+
+      // ⭐ 动态压缩质量（目标：<= 300KB）
+      let quality = 0.9;
+      let blob = await new Promise(res => canvas.toBlob(res, "image/jpeg", quality));
+
+      while (blob && blob.size > 300 * 1024 && quality > 0.5) {
+        quality -= 0.1;
+        blob = await new Promise(res => canvas.toBlob(res, "image/jpeg", quality));
+      }
+
+      return blob || file;
     }
 
     function blobToDataUrl(blob) {
@@ -833,17 +850,26 @@ body:not(.night) #loadingBar img { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.1
       const ringEl = document.getElementById("avatarButton");
 
       if (!file) return;
-      if (!file.type.startsWith("image/")) {
-        statusEl.innerText = "请选择图片文件";
+      // 更严格的图片格式校验
+      const allowedTypes = ["image/jpeg", "image/png", "image/webp"];
+      const allowedExt = ["jpg", "jpeg", "png", "webp"];
+      const ext = file.name.split(".").pop()?.toLowerCase();
+      if (!allowedTypes.includes(file.type) || !allowedExt.includes(ext)) {
+        statusEl.innerText = "仅支持 JPG / PNG / WEBP 格式";
         return;
       }
       if (file.size > 8 * 1024 * 1024) {
         statusEl.innerText = "图片太大，请选择 8MB 内的图片";
         return;
       }
+      // ⭐ 防止伪造 MIME（简单二次校验）
+      if (!file.type || file.type === "application/octet-stream") {
+        statusEl.innerText = "文件格式异常，请重新选择图片";
+        return;
+      }
 
       try {
-        statusEl.innerText = "正在上传头像...";
+        statusEl.innerText = "正在压缩并上传头像...";
         ringEl.classList.add("uploading");
 
         const profile = await uploadAvatar(user, file);

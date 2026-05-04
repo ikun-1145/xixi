@@ -2328,13 +2328,55 @@ function setupRealtimeSync() {
     .subscribe();
 }
 
+let realtimeChannels = [];
+
 function setSession(s) {
+  // ⭐ 清理旧订阅（不然会叠加）
+  realtimeChannels.forEach(ch => {
+    try { supabase.removeChannel(ch); } catch {}
+  });
+  realtimeChannels = [];
+
   session = s;
   window.session = s;
 
-  // ⭐ 每次登录/刷新 session 都重新绑定实时同步
   setTimeout(() => {
-    setupRealtimeSync();
+    if (!session?.user?.id) return;
+
+    const profileChannel = supabase
+      .channel('profile-sync-' + session.user.id)
+      .on('postgres_changes', {
+        event: 'UPDATE',
+        schema: 'public',
+        table: 'conversations',
+        filter: `user_id=eq.${session.user.id}`
+      }, (payload) => {
+        try {
+          const profile = extractProfileMeta(payload.new.data);
+          if (profile?.avatar_url) {
+            cacheProfile(session.user.id, profile);
+            renderUser();
+          }
+        } catch {}
+      })
+      .subscribe();
+
+    const chatChannel = supabase
+      .channel('chat-sync-' + session.user.id)
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'conversations',
+        filter: `user_id=eq.${session.user.id}`
+      }, async () => {
+        try {
+          await syncFromCloud();
+          if (currentId) loadChat(currentId);
+        } catch {}
+      })
+      .subscribe();
+
+    realtimeChannels.push(profileChannel, chatChannel);
   }, 0);
 }
 let isActivated = false;
@@ -2724,8 +2766,16 @@ async function checkLogin() {
 
 console.log("JWT payload:", payload);
 
+const uid = payload.sub || payload.id || payload.user_id;
+
+if (!uid) {
+  console.warn("⚠️ token里没有user id");
+  setSession(null);
+  return;
+}
+
 user = {
-  id: payload.sub || payload.id || payload.user_id,
+  id: uid,
   email: payload.email || payload.user_email || payload.mail || "未知用户"
 };
           localStorage.setItem("user", JSON.stringify(user));
@@ -2801,6 +2851,7 @@ user = {
   }
 }
 function renderUser() {
+if (!sessionReady) return; // ⭐ 防止初始化乱刷
   const avatarEl = document.getElementById("avatarBtn");
   const emailEl = document.getElementById("userEmail");
   const proBtn = document.querySelector(".pro-btn");
@@ -2808,7 +2859,7 @@ function renderUser() {
   if (!avatarEl || !emailEl) return;
 
   // ===== 未登录 =====
-  if (!session || !session.user || !session.user.id){
+  if (!session || !session.user){
   avatarEl.innerText = "?";
   avatarEl.style.backgroundImage = ""; // ⭐ 必加
   emailEl.innerText = "未登录";
@@ -3588,8 +3639,7 @@ setTimeout(() => {
 // 页面加载时检查登录
 await checkLogin(); // 确保 session 初始化完成再允许发送
 
-// ⭐ 登录完成后启动实时同步
-setupRealtimeSync();
+
 // ===== 设备检测控制侧边栏 =====
 function setupSidebarByDevice() {
   const sidebar = document.getElementById("sidebar");
