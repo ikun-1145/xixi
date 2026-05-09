@@ -2537,17 +2537,27 @@ async function loadUserProfileFromCloud() {
 
   try {
     const { data, error } = await supabase
-      .from("conversations")
-      .select("data")
+      .from("user_profiles")
+      .select("avatar_url, avatar_path, name, pro")
       .eq("user_id", session.user.id)
       .maybeSingle();
 
     if (error) throw error;
-    const profile = extractProfileMeta(data?.data);
-    if (profile?.avatar_url) {
-      cacheProfile(session.user.id, profile);
+
+    if (data) {
+      cacheProfile(session.user.id, data);
+      currentProfile = data;
       renderUser();
     }
+
+    // ⭐ 同步 Pro 状态（避免额外请求）
+    if (data?.pro) {
+      isActivated = true;
+      const hintEl = document.getElementById("usageHint");
+      if (hintEl) hintEl.innerText = "💎 Pro · 无限使用";
+      updateDeepButton();
+    }
+
   } catch (e) {
     console.warn("头像资料同步失败:", e);
   }
@@ -3585,9 +3595,16 @@ setTimeout(() => {
 
     if (data.used_by) {
       if (data.used_by === session.user.id) {
-        isActivated = true;
-        await checkActivation();
-        updateDeepButton();
+  isActivated = true;
+
+  await supabase.from("user_profiles").upsert({
+    user_id: session.user.id,
+    pro: true,
+    updated_at: new Date().toISOString()
+  }, { onConflict: "user_id" });
+
+  await checkActivation();
+  updateDeepButton();
         showActivationSuccess(modal, closeModal);
       } else {
         msg.innerText = "已被他人使用";
@@ -3640,8 +3657,14 @@ setTimeout(() => {
       return;
     }
 
-    isActivated = true;
-// 3) 状态同步
+isActivated = true;
+
+await supabase.from("user_profiles").upsert({
+  user_id: session.user.id,
+  pro: true,
+  updated_at: new Date().toISOString()
+}, { onConflict: "user_id" });
+
 await checkActivation();
 
     const hintEl = document.getElementById("usageHint");
