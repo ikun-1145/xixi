@@ -2311,15 +2311,15 @@ function setupRealtimeSync() {
       {
         event: 'UPDATE',
         schema: 'public',
-        table: 'conversations',
+        table: 'user_profiles',
         filter: `user_id=eq.${session.user.id}`
       },
       (payload) => {
         try {
-          const profile = extractProfileMeta(payload.new.data);
-
+          const profile = payload.new;
           if (profile?.avatar_url) {
             cacheProfile(session.user.id, profile);
+            currentProfile = profile;
             renderUser();
           }
         } catch (e) {
@@ -2375,13 +2375,14 @@ function setSession(s) {
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
-        table: 'conversations',
+        table: 'user_profiles',
         filter: `user_id=eq.${session.user.id}`
       }, (payload) => {
         try {
-          const profile = extractProfileMeta(payload.new.data);
+          const profile = payload.new;
           if (profile?.avatar_url) {
             cacheProfile(session.user.id, profile);
+            currentProfile = profile;
             renderUser();
           }
         } catch {}
