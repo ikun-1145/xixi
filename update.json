@@ -1,5 +1,5 @@
 {
-  "version": "1.0.8+3",
+  "version": "1.0.8",
   "force": false,
   "url": "https://download-worker.liuxizekali.workers.dev/",
   "desc": "修复已知问题（beta）"
