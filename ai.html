@@ -2457,8 +2457,18 @@ function renderChatList() {
 
     div.onclick = (e) => {
       e.stopPropagation();
+
       if (typeof loadChat === "function") {
         loadChat(c.id);
+      }
+
+      // ⭐ 移动端点击后自动收起侧边栏
+      const sidebar = document.getElementById("sidebar");
+      const overlay = document.getElementById("sidebarOverlay");
+
+      if (window.innerWidth <= 768 && sidebar?.classList.contains("open")) {
+        sidebar.classList.remove("open");
+        if (overlay) overlay.classList.remove("active");
       }
     };
 
@@ -2646,7 +2656,26 @@ function updateModelUI() {
 
 // ===== 侧边栏点击关闭优化 =====
 (function () {
+  const menuToggle = document.getElementById("menuToggle");
   const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("sidebarOverlay");
+
+  if (menuToggle && sidebar) {
+    menuToggle.onclick = (e) => {
+      e.stopPropagation();
+
+      const isOpen = sidebar.classList.contains("open");
+
+      if (isOpen) {
+        sidebar.classList.remove("open");
+        if (overlay) overlay.classList.remove("active");
+      } else {
+        sidebar.classList.add("open");
+        if (overlay) overlay.classList.add("active");
+      }
+    };
+  }
+
   if (!sidebar) return;
 
   // 阻止侧边栏内部点击冒泡
@@ -2662,10 +2691,9 @@ function updateModelUI() {
     // 只有在打开状态才处理
     if (!sidebar.classList.contains("open")) return;
 
-    if (!sidebar.contains(e.target)) {
+    const overlay = document.getElementById("sidebarOverlay");
+    if (!sidebar.contains(e.target) && e.target !== menuToggle) {
       sidebar.classList.remove("open");
-
-      const overlay = document.getElementById("sidebarOverlay");
       if (overlay) overlay.classList.remove("active");
     }
   });
