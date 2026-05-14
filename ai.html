@@ -2455,7 +2455,8 @@ function renderChatList() {
       div.innerText = title;
     }
 
-    div.onclick = () => {
+    div.onclick = (e) => {
+      e.stopPropagation();
       if (typeof loadChat === "function") {
         loadChat(c.id);
       }
@@ -2598,23 +2599,23 @@ function updateModelUI() {
 
   if (!modelSelector || !modelMenu) return;
 
-modelSelector.onclick = (e) => {
-  e.stopPropagation();
+  modelSelector.onclick = (e) => {
+    e.stopPropagation();
 
-  const rect = modelSelector.getBoundingClientRect();
+    const rect = modelSelector.getBoundingClientRect();
 
-  modelMenu.style.position = "fixed";
-  modelMenu.style.left = rect.left + rect.width / 2 + "px";
+    modelMenu.style.position = "fixed";
+    modelMenu.style.left = rect.left + rect.width / 2 + "px";
 
-  // 向上展开
-  modelMenu.style.top = rect.top - 8 + "px";
-  modelMenu.style.transform = "translate(-50%, -100%) scale(0.95)";
+    // 向上展开
+    modelMenu.style.top = rect.top - 8 + "px";
+    modelMenu.style.transform = "translate(-50%, -100%) scale(0.95)";
 
-  modelMenu.style.zIndex = "99999";   // ⭐ 强制最高
-  modelMenu.style.pointerEvents = "auto";
+    modelMenu.style.zIndex = "99999";   // ⭐ 强制最高
+    modelMenu.style.pointerEvents = "auto";
 
-  modelMenu.classList.toggle("show");
-};
+    modelMenu.classList.toggle("show");
+  };
 
   document.querySelectorAll(".model-item").forEach(item => {
     item.onclick = () => {
@@ -2642,6 +2643,33 @@ modelSelector.onclick = (e) => {
     }
   });
 }, 0);
+
+// ===== 侧边栏点击关闭优化 =====
+(function () {
+  const sidebar = document.getElementById("sidebar");
+  if (!sidebar) return;
+
+  // 阻止侧边栏内部点击冒泡
+  sidebar.addEventListener("click", (e) => {
+    e.stopPropagation();
+  });
+
+  // 仅点击侧边栏外部才关闭
+  document.addEventListener("click", (e) => {
+    const sidebar = document.getElementById("sidebar");
+    if (!sidebar) return;
+
+    // 只有在打开状态才处理
+    if (!sidebar.classList.contains("open")) return;
+
+    if (!sidebar.contains(e.target)) {
+      sidebar.classList.remove("open");
+
+      const overlay = document.getElementById("sidebarOverlay");
+      if (overlay) overlay.classList.remove("active");
+    }
+  });
+})();
 function showProRequiredModal() {
   if (document.getElementById("proRequiredModal")) return;
 
