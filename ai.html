@@ -2664,14 +2664,27 @@ function updateModelUI() {
     menuToggle.onclick = (e) => {
       e.stopPropagation();
 
+      const isMobile = window.innerWidth <= 768;
       const isOpen = sidebar.classList.contains("open");
 
-      if (isOpen) {
-        sidebar.classList.remove("open");
-        if (overlay) overlay.classList.remove("active");
+      if (isMobile) {
+        // ===== 移动端逻辑（用 open 控制）
+        if (isOpen) {
+          sidebar.classList.remove("open");
+          if (overlay) overlay.classList.remove("active");
+        } else {
+          sidebar.classList.add("open");
+          if (overlay) overlay.classList.add("active");
+        }
       } else {
-        sidebar.classList.add("open");
-        if (overlay) overlay.classList.add("active");
+        // ===== 桌面端逻辑（用 collapsed 控制）
+        const isCollapsed = sidebar.classList.contains("collapsed");
+
+        if (isCollapsed) {
+          sidebar.classList.remove("collapsed");
+        } else {
+          sidebar.classList.add("collapsed");
+        }
       }
     };
   }
