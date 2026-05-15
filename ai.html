@@ -1884,7 +1884,7 @@ if (isIOS && isSafariBrowser && window.navigator.standalone !== true && !hideTip
 }
 // ⚠️ VDS 登录需要配合 /vds-callback.html 页面处理回调
 // ===== ⭐ 全局API封装（使用本地token）=====
-async function apiFetch(body) {
+async function apiFetch(body, _retried = false) {
   let token = localStorage.getItem("token");
 
   // ⭐ 过期检测 + 自动续期
@@ -1892,8 +1892,8 @@ async function apiFetch(body) {
     try {
       const payload = JSON.parse(atob(tk.split(".")[1]));
       if (!payload.exp) return false;
-      // 提前30秒刷新
-      return payload.exp * 1000 < Date.now() + 30000;
+      // 仅提前5秒判断过期，避免误杀
+      return payload.exp * 1000 < Date.now() + 5000;
     } catch {
       return true;
     }
@@ -1903,6 +1903,9 @@ async function apiFetch(body) {
     try {
       const old = localStorage.getItem("token");
       if (!old) return null;
+      // 防止并发刷新（简单锁）
+      if (window.__refreshing) return null;
+      window.__refreshing = true;
 
       const res = await fetch("https://api.sunland.dev/refresh", {
         method: "POST",
@@ -1912,7 +1915,11 @@ async function apiFetch(body) {
         }
       });
 
-      if (!res.ok) return null;
+      if (!res.ok) {
+        console.warn("refresh 失败:", res.status);
+        window.__refreshing = false;
+        return null;
+      }
 
       const data = await res.json().catch(() => ({}));
       if (data?.token) {
@@ -1920,48 +1927,53 @@ async function apiFetch(body) {
         if (data.user) {
           localStorage.setItem("user", JSON.stringify(data.user));
         }
+        window.__refreshing = false;
         return data.token;
       }
     } catch (e) {
       console.warn("refresh token 失败:", e);
     }
+    window.__refreshing = false;
     return null;
   }
 
-  // ⭐ 如果过期 → 先刷新
-  if (token && isExpired(token)) {
-    const newToken = await refreshToken();
-    if (newToken) token = newToken;
+  // 即使过期也尝试刷新（不要提前删除）
+  if (token) {
+    if (isExpired(token)) {
+      const newToken = await refreshToken();
+      if (newToken) token = newToken;
+    }
   }
 
   const res = await fetch("https://api.sunland.dev", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "Authorization": "Bearer " + token
+      ...(token ? { "Authorization": "Bearer " + token } : {})
     },
     body: JSON.stringify(body)
   });
 
   // ⭐ 如果401 → 尝试刷新一次
-  if (res.status === 401) {
+  if (res.status === 401 && !_retried) {
+    // 只重试一次，防止死循环
     const newToken = await refreshToken();
 
     if (newToken) {
-      return fetch("https://api.sunland.dev", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + newToken
-        },
-        body: JSON.stringify(body)
-      });
+      return apiFetch(body, true);
     }
-
-    // ❌ 刷新失败才真正登出
+    // refresh 失败才真正登出
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    alert("登录已过期，请重新登录");
+    showLoginPrompt();
+    return null;
+  }
 
+  // ⭐ fallback 401 guard after retry
+  if (res.status === 401 && _retried) {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
     alert("登录已过期，请重新登录");
     showLoginPrompt();
     return null;
@@ -2696,15 +2708,18 @@ function updateModelUI() {
     e.stopPropagation();
   });
 
-  // 仅点击侧边栏外部才关闭
+  // 仅点击侧边栏外部才关闭（只在移动端生效，PC禁用自动收起）
   document.addEventListener("click", (e) => {
     const sidebar = document.getElementById("sidebar");
     if (!sidebar) return;
 
-    // 只有在打开状态才处理
+    const isMobile = window.innerWidth <= 768;
+    if (!isMobile) return; // ⭐ PC端禁止自动收缩
+
     if (!sidebar.classList.contains("open")) return;
 
     const overlay = document.getElementById("sidebarOverlay");
+
     if (!sidebar.contains(e.target) && e.target !== menuToggle) {
       sidebar.classList.remove("open");
       if (overlay) overlay.classList.remove("active");
@@ -2898,9 +2913,9 @@ async function checkLogin() {
       try {
         const payload = JSON.parse(atob(token.split(".")[1]));
         if (payload.exp && payload.exp * 1000 < Date.now()) {
-          console.warn("token 启动时已过期");
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
+          console.warn("token 启动时已过期（交给 refresh 处理）");
+          // ❌ 不要在这里删除 token
+          // 保留 token，让后续请求自动 refresh
         }
       } catch (e) {
         console.warn("token 解析失败:", e);
@@ -3185,7 +3200,7 @@ if (user) console.log("🔥 当前 user:", user);
     async function getCfToken() {
       if (!cfToken || Date.now() > tokenExpire) {
         refreshTurnstile();
-        throw new Error("请重新完成人机验证");
+        throw new Error("人机验证已过期，请重新点击验证");
       }
       return cfToken;
     }
@@ -3268,9 +3283,7 @@ if (user) console.log("🔥 当前 user:", user);
           throw new Error(data.error);
         }
 
-        msg.innerText = "验证码已发送";
-
-        refreshTurnstile(); // ⭐ 发送验证码后刷新token（避免verify阶段失效）
+        msg.innerText = "验证码已发送（有效期约5分钟）";
 
         // 开始倒计时
         cooldown = 60;
@@ -3325,8 +3338,8 @@ if (user) console.log("🔥 当前 user:", user);
         msg.innerText = e.message;
         return;
       }
-      // 新增: 检查 token 是否为空
-      if (!token) {
+      // ⭐ 防止用户未重新验证
+      if (!cfToken) {
         msg.innerText = "请先完成人机验证";
         return;
       }
@@ -4450,40 +4463,7 @@ async function send() {
     return;
   }
 
-  // ===== ⭐ 模型语义审核（补充关键词审核）=====
-  try {
-    const res = await apiFetch({
-  model: currentModel,
-  messages: [
-        {
-          role: "system",
-          content: "你是内容审核系统。判断用户输入是否涉及政治敏感或不适合回答的内容。如果安全，返回 ok；如果不安全，返回 refuse。只允许返回 ok 或 refuse。"
-        },
-        {
-          role: "user",
-          content: moderationText
-        }
-      ]
-    });
-
-    if (res) {
-      const data = await res.json().catch(() => ({}));
-      const decision = data.choices?.[0]?.message?.content?.trim().toLowerCase();
-
-      if (decision === "refuse") {
-        console.warn("模型审核拦截:", moderationText);
-
-        // ⭐ 不直接ban，而是AI风格拒绝
-        addMessage("这个问题我不太方便回答，换个话题试试？", "ai");
-
-        return;
-      }
-    }
-  } catch (e) {
-    console.warn("模型审核失败（已忽略）:", e);
-    // ⭐ 审核失败不影响主流程（避免误伤）
-  }
-  
+  sendingLock = true; // ⭐ 审核通过后立即加锁
 
   // ===== 状态保护（防锁死）=====
   if (!sessionReady) {
@@ -4503,39 +4483,6 @@ async function send() {
     updateDeepButton();
     showProRequiredModal();
     return;
-  }
-
-  // ===== ⭐ 新版：统一限额 + Pro 判断 =====
-  let usageData = 0;
-
-  if (!isActivated) {
-    try {
-      const { data, error } = await supabase
-        .from("usage")
-        .select("count")
-        .eq("user_id", session.user.id)
-        .maybeSingle();
-
-      if (error) {
-        console.warn("限额读取失败:", error);
-      } else {
-        usageData = data?.count || 0;
-      }
-    } catch (e) {
-      console.warn("限额调用失败:", e);
-    }
-
-    if (usageData >= 20) {
-      showLimitModal();
-      sendingLock = false;
-      return;
-    }
-
-    const hintEl = document.getElementById("usageHint");
-    if (hintEl) {
-      const remain = Math.max(0, 20 - usageData);
-      hintEl.innerText = `今日剩余 ${remain} 次`;
-    }
   }
 
   // ===== ⭐ 前端轻量限频（替代服务端） =====
@@ -4577,9 +4524,6 @@ async function send() {
   if (!text) {
     return;
   }
-
-  // ===== 真正开始发送时再加锁（避免提前锁死）
-  sendingLock = true;
 
   document.body.classList.add("thinking-mode");
   input.readOnly = true;
@@ -4681,189 +4625,99 @@ isStreaming = true;
       throw new Error(errText || "API响应异常");
     }
 
-    let data;
-    try {
-      data = await res.json();
-    } catch (e) {
-      const text = await res.text();
-      console.error("JSON解析失败:", text);
-      throw new Error("返回格式错误");
-    }
-    const msg = data.choices?.[0]?.message || {};
-    const content = msg.content || "";
-    const reasoning = msg.reasoning_content || msg.reasoning || "";
-
-    console.log("AI response:", data);
-
-    // ⭐ 等待最短思考时间（保证动画可见）
-    const elapsed = Date.now() - thinkingStart;
-    if (elapsed < minThinkingTime) {
-      await new Promise(r => setTimeout(r, minThinkingTime - elapsed));
-    }
-    fullText = content;
-
-    if (bubble) {
-      bubble.style.animation = "fadeInBubble 0.2s ease";
-      bubble.style.opacity = "1";
-
-      // ===== 深度思考展示（带打字动画） =====
-      bubble.innerHTML = "";
-      if (window.anime) {
-  anime({
-    targets: bubble,
-    opacity: [0.6, 1],
-    scale: [0.98, 1],
-    duration: 220,
-    easing: 'easeOutQuad'
-  });
+    // ===== 读取剩余次数（来自响应头）=====
+const remain = parseInt(res.headers.get("x-remain") ?? "-1");
+if (!isActivated && remain >= 0) {
+  const hintEl = document.getElementById("usageHint");
+  if (hintEl) hintEl.innerText = `今日剩余 ${remain} 次`;
 }
-      if (deepMode && reasoning) {
-        const reasoningDiv = document.createElement("div");
-        reasoningDiv.style.cssText = `
-          font-size:12px;
-          color:#888;
-          margin-bottom:8px;
-          border-left:3px solid #22d3ee;
-          padding-left:8px;
-          line-height:1.5;
-        `;
 
+// ===== SSE 流式读取 =====
+const reader = res.body.getReader();
+const decoder = new TextDecoder();
+let reasoning = "";
+let reasoningDiv = null;
+let reasoningContent = null;
+let contentDiv = null;
+
+// 清空思考动画
+if (bubble) {
+  bubble.innerHTML = "";
+}
+
+while (true) {
+  const { done, value } = await reader.read();
+  if (done) break;
+
+  const chunk = decoder.decode(value, { stream: true });
+  const lines = chunk.split("\n");
+
+  for (const line of lines) {
+    if (!line.startsWith("data: ")) continue;
+    const raw = line.slice(6).trim();
+    if (raw === "[DONE]") break;
+
+    let parsed;
+    try {
+      parsed = JSON.parse(raw);
+    } catch {
+      continue;
+    }
+
+    const delta = parsed.choices?.[0]?.delta || {};
+
+    // ===== 深度思考内容 =====
+    if (delta.reasoning_content) {
+      reasoning += delta.reasoning_content;
+
+      if (!reasoningDiv) {
+        reasoningDiv = document.createElement("div");
+        reasoningDiv.style.cssText = `
+          font-size:12px;color:#888;margin-bottom:8px;
+          border-left:3px solid #22d3ee;padding-left:8px;line-height:1.5;
+        `;
         const title = document.createElement("div");
         title.innerText = "🧠 思考过程";
         title.style.marginBottom = "4px";
-
-        const content = document.createElement("div");
-        content.className = "typing";
-
+        reasoningContent = document.createElement("div");
         reasoningDiv.appendChild(title);
-        reasoningDiv.appendChild(content);
+        reasoningDiv.appendChild(reasoningContent);
         bubble.appendChild(reasoningDiv);
-
-        // ⭐ 先逐字显示思考过程
-        const temp = document.createElement("div");
-        temp.innerHTML = marked.parse(reasoning);
-
-        function wrapText(node) {
-          if (node.nodeType === 3) {
-            const frag = document.createDocumentFragment();
-            [...node.textContent].forEach((ch, i) => {
-              const span = document.createElement("span");
-              span.textContent = ch;
-              span.style.animationDelay = i * 0.008 + "s";
-              frag.appendChild(span);
-            });
-            return frag;
-          }
-          if (node.nodeType === 1) {
-            const clone = node.cloneNode(false);
-            node.childNodes.forEach(child => {
-              clone.appendChild(wrapText(child));
-            });
-            return clone;
-          }
-          return node;
-        }
-
-        temp.childNodes.forEach(n => {
-          content.appendChild(wrapText(n));
-        });
-
-        // ⭐ 等思考动画结束再显示答案
-        const delay = Math.min(1200, reasoning.length * 8);
-
-        await new Promise(r => setTimeout(r, delay));
       }
 
-      // ⭐ 思考结束 → 淡出效果
-      const thinkingEl = bubble.querySelector(".thinking");
-      if (thinkingEl) {
-        thinkingEl.style.animation = "fadeOutThinking .25s forwards";
-        await new Promise(r => setTimeout(r, 200));
-      }
-
-      const html = marked.parse(fullText);
-
-      // ⭐ 移动端直接渲染
-      if (window._isMobile) {
-        const contentDiv = document.createElement("div");
-        contentDiv.innerHTML = html;
-        bubble.appendChild(contentDiv);
-      } else {
-        // ⭐ 桌面端打字动画
-        const temp = document.createElement("div");
-        temp.innerHTML = html;
-
-        function wrapText(node) {
-          if (node.nodeType === 3) {
-            const frag = document.createDocumentFragment();
-            [...node.textContent].forEach((ch, i) => {
-              const span = document.createElement("span");
-              span.textContent = ch;
-              span.style.animationDelay = i * 0.015 + "s";
-              frag.appendChild(span);
-            });
-            return frag;
-          }
-
-          if (node.nodeType === 1) {
-            const clone = node.cloneNode(false);
-            node.childNodes.forEach(child => {
-              clone.appendChild(wrapText(child));
-            });
-            return clone;
-          }
-
-          return node;
-        }
-
-        const animated = document.createElement("div");
-        animated.className = "typing";
-
-        temp.childNodes.forEach(n => {
-          animated.appendChild(wrapText(n));
-        });
-
-        bubble.appendChild(animated);
-      }
-      // ⭐ 兜底（防止某些情况内容为空）
-      if (!bubble.innerHTML.trim()) {
-        bubble.innerText = fullText || "返回为空，请重试";
-      }
-
-      const regenWrap = document.createElement("div");
-      regenWrap.className = "regen";
-      regenWrap.innerHTML = `<button class="regen-btn">↻</button>`;
-      bubble.appendChild(regenWrap);
+      reasoningContent.innerHTML = marked.parse(reasoning);
     }
-    history.push({ role: "assistant", content: fullText });
 
-    // ===== ⭐ 成功后再计数（修复一直20次的问题） =====
-    if (!isActivated) {
-      try {
-        const { error } = await supabase.rpc("increment_usage", {
-  uid: session.user.id
-});
+    // ===== 正文内容 =====
+    if (delta.content) {
+      fullText += delta.content;
 
-if (error) {
-  console.warn("计数失败:", error);
+      if (!contentDiv) {
+        contentDiv = document.createElement("div");
+        bubble.appendChild(contentDiv);
+      }
+
+      contentDiv.innerHTML = marked.parse(fullText);
+
+      if (isNearBottom()) chat.scrollTop = chat.scrollHeight;
+    }
+  }
 }
 
-const { data } = await supabase
-  .from("usage")
-  .select("count")
-  .eq("user_id", session.user.id)
-  .maybeSingle();
+// ===== 流结束后加重生按钮 =====
+if (bubble && fullText) {
+  // 兜底：内容为空时提示
+  if (!bubble.innerHTML.trim()) {
+    bubble.innerText = "返回为空，请重试";
+  }
 
-const newCount = data?.count || 0;
-        const hintEl = document.getElementById("usageHint");
-        if (hintEl) {
-          const remain = Math.max(0, 20 - newCount);
-          hintEl.innerText = `今日剩余 ${remain} 次`;
-        }
-      } catch (e) {
-        console.warn("计数失败:", e);
-      }
-    }
+  const regenWrap = document.createElement("div");
+  regenWrap.className = "regen";
+  regenWrap.innerHTML = `<button class="regen-btn">↻</button>`;
+  bubble.appendChild(regenWrap);
+}
+    history.push({ role: "assistant", content: fullText });
+
     if (currentId) {
       const c = conversations.find(x => x.id === currentId);
       if (c) {
