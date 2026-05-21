@@ -1,0 +1,1030 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>霜蓝 AI · 公测公告</title>
+  <meta name="description" content="霜蓝 AI 公测正式开启，立即下载体验智能对话助手">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <style>
+    /* ═══════════════════════════════════════════════
+       VARIABLES & RESET
+    ═══════════════════════════════════════════════ */
+    :root {
+      --bg:          #0c0e1a;
+      --bg2:         #161823;
+      --bg3:         #1e2033;
+      --card:        rgba(18, 20, 32, 0.75);
+      --border:      rgba(113, 248, 252, 0.14);
+      --accent:      #71f8fc;
+      --accent2:     #3EEDE7;
+      --accent3:     #b8fffe;
+      --text:        #e8ffff;
+      --text-dim:    rgba(232,255,255,0.62);
+      --text-faint:  rgba(232,255,255,0.3);
+    }
+
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: 'Sora', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
+                   'Noto Sans CJK SC', sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      min-height: 100vh;
+      overflow-x: hidden;
+      line-height: 1.75;
+    }
+
+    /* ═══════════════════════════════════════════════
+       CANVAS BACKGROUND
+    ═══════════════════════════════════════════════ */
+    #bg-canvas {
+      position: fixed;
+      inset: 0;
+      z-index: 0;
+      pointer-events: none;
+    }
+
+    /* ═══════════════════════════════════════════════
+       GRAIN OVERLAY
+    ═══════════════════════════════════════════════ */
+    .grain {
+      position: fixed;
+      inset: 0;
+      z-index: 1;
+      pointer-events: none;
+      opacity: 0.035;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 300px;
+    }
+
+    /* Ambient radial blobs */
+    .ambient {
+      position: fixed;
+      pointer-events: none;
+      z-index: 1;
+      border-radius: 50%;
+      filter: blur(120px);
+      opacity: 0.5;
+    }
+    .ambient-1 {
+      width: 500px; height: 500px;
+      top: -120px; left: -100px;
+      background: radial-gradient(circle, rgba(113,248,252,0.07), transparent 70%);
+      animation: blobDrift 20s ease-in-out infinite alternate;
+    }
+    .ambient-2 {
+      width: 400px; height: 400px;
+      bottom: 100px; right: -80px;
+      background: radial-gradient(circle, rgba(62,237,231,0.06), transparent 70%);
+      animation: blobDrift 16s ease-in-out infinite alternate-reverse;
+    }
+    .ambient-3 {
+      width: 300px; height: 300px;
+      top: 40%; left: 50%;
+      transform: translateX(-50%);
+      background: radial-gradient(circle, rgba(113,248,252,0.04), transparent 70%);
+      animation: blobDrift 24s ease-in-out infinite alternate;
+    }
+    @keyframes blobDrift {
+      0%   { transform: translate(0,0) scale(1); }
+      50%  { transform: translate(30px, 20px) scale(1.1); }
+      100% { transform: translate(-20px, 40px) scale(0.95); }
+    }
+
+    /* ═══════════════════════════════════════════════
+       WRAPPER
+    ═══════════════════════════════════════════════ */
+    .wrap {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      min-height: 100vh;
+    }
+
+    /* ═══════════════════════════════════════════════
+       HERO
+    ═══════════════════════════════════════════════ */
+    .hero {
+      min-height: 88svh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 6rem 1.5rem 5rem;
+      position: relative;
+      overflow: hidden;
+      text-align: center;
+    }
+
+    /* ── Logo ── */
+    .logo-wrap {
+      position: relative;
+      width: 120px;
+      height: 120px;
+      margin: 0 auto 2rem;
+      opacity: 0;
+      animation: riseIn 1s cubic-bezier(.16,1,.3,1) 0.15s forwards;
+    }
+
+    .logo-img {
+      width: 120px;
+      height: 120px;
+      border-radius: 28px;
+      object-fit: cover;
+      position: relative;
+      z-index: 2;
+      animation: logoLev 7s ease-in-out infinite;
+      box-shadow:
+        0 0 0 1px rgba(113,248,252,0.18),
+        0 12px 30px rgba(0,0,0,0.5);
+    }
+
+    @keyframes logoLev {
+      0%,100% { transform: translateY(0px) rotate(0deg); }
+      50%      { transform: translateY(-10px) rotate(0.5deg); }
+    }
+
+
+    /* Spinning ring */
+    .logo-ring {
+      position: absolute;
+      inset: -18px;
+      border-radius: 50%;
+      border: 1px solid rgba(113,248,252,0.18);
+      animation: spinRing 12s linear infinite;
+    }
+    .logo-ring::before {
+      content: '';
+      position: absolute;
+      top: -4px; left: calc(50% - 4px);
+      width: 8px; height: 8px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 12px var(--accent), 0 0 24px var(--accent);
+    }
+    .logo-ring-2 {
+      position: absolute;
+      inset: -32px;
+      border-radius: 50%;
+      border: 1px dashed rgba(113,248,252,0.08);
+      animation: spinRing 22s linear infinite reverse;
+    }
+    @keyframes spinRing {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
+
+    /* ── Chip ── */
+    .hero-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.45rem;
+      padding: 0.32rem 1rem;
+      border: 1px solid rgba(113,248,252,0.28);
+      border-radius: 999px;
+      background: rgba(113,248,252,0.07);
+      font-size: 0.72rem;
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.18em;
+      text-transform: uppercase;
+      margin-bottom: 1.2rem;
+      opacity: 0;
+      animation: riseIn 0.9s cubic-bezier(.16,1,.3,1) 0.4s forwards;
+    }
+    .chip-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 8px var(--accent);
+      animation: dotBlink 2.2s ease-in-out infinite;
+    }
+    @keyframes dotBlink {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0.25; }
+    }
+
+    /* ── Title ── */
+    .hero-title {
+      font-family: 'Noto Serif SC', serif;
+      font-size: clamp(3rem, 9vw, 5.5rem);
+      font-weight: 900;
+      line-height: 1.05;
+      letter-spacing: -0.02em;
+      background: linear-gradient(180deg, #ffffff 0%, #dffcff 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 0.5rem;
+      opacity: 0;
+      animation: riseIn 0.9s cubic-bezier(.16,1,.3,1) 0.55s forwards;
+    }
+
+    /* ── Subtitle ── */
+    .hero-sub {
+      font-size: clamp(1rem, 2.5vw, 1.15rem);
+      color: rgba(232,255,255,0.75);
+      max-width: 440px;
+      margin: 0 auto 2.8rem;
+      opacity: 0;
+      animation: riseIn 0.9s cubic-bezier(.16,1,.3,1) 0.7s forwards;
+    }
+
+    /* ── CTA Button ── */
+    .hero-cta {
+      opacity: 0;
+      animation: riseIn 0.9s cubic-bezier(.16,1,.3,1) 0.85s forwards;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1rem 2.2rem;
+      border-radius: 16px;
+      background: linear-gradient(135deg, rgba(113,248,252,0.14) 0%, rgba(62,237,231,0.08) 100%);
+      border: 1px solid rgba(113,248,252,0.38);
+      color: var(--accent);
+      font-size: 1rem;
+      font-weight: 600;
+      text-decoration: none;
+      cursor: pointer;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.35s cubic-bezier(.16,1,.3,1);
+      backdrop-filter: blur(6px);
+    }
+    .btn-primary:hover {
+      background: linear-gradient(135deg, rgba(113,248,252,0.24) 0%, rgba(62,237,231,0.16) 100%);
+      border-color: rgba(113,248,252,0.65);
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      transform: translateY(-3px);
+      color: #fff;
+    }
+
+    /* Sweep shimmer on CTA */
+    .btn-primary::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 60%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
+      animation: none;
+      opacity: 0;
+    }
+    @keyframes sweep {
+      0%   { left: -100%; }
+      100% { left: 200%; }
+    }
+
+
+    /* ── Scroll arrow ── */
+    .scroll-arrow {
+      position: absolute;
+      bottom: 2.2rem;
+      left: 50%;
+      transform: translateX(-50%);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 0.35rem;
+      opacity: 0;
+      animation: riseIn 1s ease 1.4s forwards;
+      color: var(--text-faint);
+      font-size: 0.65rem;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+    .scroll-line {
+      width: 1px; height: 44px;
+      background: linear-gradient(to bottom, transparent, var(--accent));
+      animation: linePulse 2.2s ease-in-out infinite;
+    }
+    @keyframes linePulse {
+      0%,100% { opacity: 0.3; transform: scaleY(1); }
+      50%      { opacity: 1;   transform: scaleY(1.15); }
+    }
+
+    /* ═══════════════════════════════════════════════
+       SECTION SHELL
+    ═══════════════════════════════════════════════ */
+    .section {
+      padding: 3.5rem 1.5rem;
+      position: relative;
+    }
+    .inner {
+      max-width: 860px;
+      margin: 0 auto;
+    }
+
+    .dl-section .inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+
+    /* ── Section eyebrow label ── */
+    .s-label {
+      font-size: 0.68rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 0.65rem;
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+      text-align: center;
+      display: block;
+    }
+    .s-label.on { opacity: 1; transform: none; }
+
+    /* ── Section title ── */
+    .s-title {
+      font-family: 'Noto Serif SC', serif;
+      font-size: clamp(1.9rem, 4.5vw, 2.8rem);
+      font-weight: 700;
+      line-height: 1.28;
+      color: var(--text);
+      margin-bottom: 2.2rem;
+      opacity: 0;
+      transform: translateY(18px);
+      transition: opacity 0.6s ease 0.08s, transform 0.6s ease 0.08s;
+      text-align: center;
+    }
+    .s-title.on { opacity: 1; transform: none; }
+
+    /* ═══════════════════════════════════════════════
+       CARD BASE
+    ═══════════════════════════════════════════════ */
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      backdrop-filter: blur(10px);
+      -webkit-backdrop-filter: blur(10px);
+      position: relative;
+      overflow: hidden;
+      opacity: 0;
+      transform: translateY(28px);
+      transition: opacity 0.7s cubic-bezier(.16,1,.3,1) 0.15s,
+                  transform 0.7s cubic-bezier(.16,1,.3,1) 0.15s;
+    }
+    .card.on { opacity: 1; transform: none; }
+
+    /* Top accent line */
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.6;
+    }
+
+    /* ═══════════════════════════════════════════════
+       ANNOUNCEMENT CARD
+    ═══════════════════════════════════════════════ */
+    .ann-card {
+      padding: 2.4rem 2.6rem 2.6rem;
+      max-width: 720px;
+      margin: 0 auto;
+    }
+
+    /* Ghost watermark */
+    .ann-card::after {
+      content: '公测';
+      position: absolute;
+      top: -1rem; right: -0.5rem;
+      font-family: 'Noto Serif SC', serif;
+      font-size: 9rem;
+      font-weight: 900;
+      color: rgba(255,255,255,0.02);
+      line-height: 1;
+      pointer-events: none;
+      user-select: none;
+    }
+
+    .ann-meta {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      flex-wrap: wrap;
+      margin-bottom: 1.6rem;
+    }
+
+    .meta-pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.85rem;
+      border-radius: 999px;
+      font-size: 0.78rem;
+      border: 1px solid;
+    }
+    .meta-date {
+      background: rgba(113,248,252,0.07);
+      border-color: rgba(113,248,252,0.2);
+      color: var(--accent2);
+    }
+    .meta-version {
+      background: rgba(255,255,255,0.04);
+      border-color: rgba(255,255,255,0.1);
+      color: var(--text-dim);
+    }
+
+    .ann-body {
+      position: relative;
+      z-index: 1;
+    }
+    .ann-body p {
+      color: var(--text-dim);
+      font-size: 0.94rem;
+      line-height: 1.95;
+      margin-bottom: 1.1rem;
+    }
+    .ann-body p:last-of-type { margin-bottom: 0; }
+
+    .hl { color: var(--accent3); font-weight: 600; }
+
+    /* Feature grid */
+    .feat-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+      gap: 0.6rem;
+      margin: 1.6rem 0;
+    }
+    .feat-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.55rem 0.85rem;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.07);
+      border-radius: 10px;
+      font-size: 0.82rem;
+      color: var(--text-dim);
+      transition: all 0.28s ease;
+      cursor: default;
+    }
+    .feat-item:hover {
+      border-color: rgba(113,248,252,0.28);
+      background: rgba(113,248,252,0.06);
+      color: var(--accent);
+    }
+    .feat-ico { font-size: 1rem; flex-shrink: 0; }
+
+    /* Warning box */
+    .warn-box {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      margin-top: 1.6rem;
+      padding: 1rem 1.2rem;
+      background: rgba(255, 165, 50, 0.05);
+      border: 1px solid rgba(255, 165, 50, 0.2);
+      border-radius: 12px;
+      font-size: 0.86rem;
+      color: rgba(255,205,110,0.88);
+      line-height: 1.7;
+    }
+    .warn-ico { font-size: 1.05rem; flex-shrink: 0; margin-top: 0.1rem; }
+
+    /* ═══════════════════════════════════════════════
+       DOWNLOAD CARD
+    ═══════════════════════════════════════════════ */
+    .dl-section {
+      background: linear-gradient(180deg, transparent, rgba(113,248,252,0.025), transparent);
+      padding-top: 1.5rem;
+      padding-bottom: 3rem;
+    }
+
+    .dl-card {
+      padding: 3.5rem 2.5rem;
+      text-align: center;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
+      max-width: 520px;
+      margin: 0 auto;
+    }
+
+    /* Floating orb decoration */
+    .dl-orb {
+      position: absolute;
+      top: -60px; right: -60px;
+      width: 280px; height: 280px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(113,248,252,0.1), transparent 70%);
+      pointer-events: none;
+      animation: orbSway 9s ease-in-out infinite;
+    }
+    .dl-orb-2 {
+      position: absolute;
+      bottom: -40px; left: -40px;
+      width: 200px; height: 200px;
+      border-radius: 50%;
+      background: radial-gradient(circle, rgba(62,237,231,0.07), transparent 70%);
+      pointer-events: none;
+      animation: orbSway 13s ease-in-out infinite reverse;
+    }
+    @keyframes orbSway {
+      0%,100% { transform: translate(0,0); }
+      33%      { transform: translate(-18px, 15px); }
+      66%      { transform: translate(14px,-12px); }
+    }
+
+    /* Android icon ring */
+    .android-wrap {
+      width: 88px; height: 88px;
+      margin: 0 auto 1.6rem;
+      background: linear-gradient(135deg, rgba(113,248,252,0.1), rgba(62,237,231,0.05));
+      border: 1px solid rgba(113,248,252,0.22);
+      border-radius: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      position: relative;
+    }
+    .android-wrap::after {
+      content: '';
+      position: absolute;
+      inset: -6px;
+      border-radius: 28px;
+      border: 1px dashed rgba(113,248,252,0.18);
+      animation: spinRing 18s linear infinite;
+    }
+
+    .dl-title {
+      font-family: 'Noto Serif SC', serif;
+      font-size: clamp(1.6rem, 3.5vw, 2rem);
+      font-weight: 700;
+      margin-bottom: 0.4rem;
+    }
+    .dl-desc {
+      font-size: 0.9rem;
+      color: var(--text-dim);
+      margin-bottom: 0.6rem;
+    }
+
+    .android-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.4rem;
+      padding: 0.3rem 0.9rem;
+      background: rgba(100,220,130,0.07);
+      border: 1px solid rgba(100,220,130,0.22);
+      border-radius: 999px;
+      font-size: 0.74rem;
+      color: #82e8a0;
+      letter-spacing: 0.06em;
+      margin-bottom: 2.2rem;
+    }
+
+    .btn-dl {
+      display: inline-flex;
+      align-items: center;
+      gap: 0.85rem;
+      padding: 1.1rem 2.6rem;
+      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      border-radius: 16px;
+      color: #08090f;
+      font-size: 1.05rem;
+      font-weight: 700;
+      text-decoration: none;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.35s cubic-bezier(.16,1,.3,1);
+      box-shadow: 0 10px 28px rgba(0,0,0,0.45);
+    }
+    .btn-dl:hover {
+      transform: translateY(-4px) scale(1.03);
+      box-shadow: 0 16px 40px rgba(0,0,0,0.55);
+    }
+    .btn-dl::after {
+      content: '';
+      position: absolute;
+      top: 0; left: -100%;
+      width: 55%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent);
+      animation: none;
+      opacity: 0;
+    }
+
+    .dl-meta {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+      margin-top: 1.8rem;
+    }
+    .dl-meta-item {
+      display: flex;
+      align-items: center;
+      gap: 0.4rem;
+      font-size: 0.8rem;
+      color: var(--text-faint);
+    }
+
+    /* ═══════════════════════════════════════════════
+       DIVIDER
+    ═══════════════════════════════════════════════ */
+    .divider {
+      max-width: 860px;
+      margin: 0 auto;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(113,248,252,0.14), transparent);
+    }
+
+    /* ═══════════════════════════════════════════════
+       FOOTER
+    ═══════════════════════════════════════════════ */
+    footer {
+      padding: 2.8rem 1.5rem 3rem;
+      position: relative;
+      z-index: 10;
+    }
+    .foot-inner {
+      max-width: 860px;
+      margin: 0 auto;
+      text-align: center;
+    }
+
+    /* Logo line */
+    .foot-logo {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.6rem;
+      margin-bottom: 1.4rem;
+    }
+    .foot-logo-img {
+      width: 28px; height: 28px;
+      border-radius: 7px;
+      object-fit: cover;
+      opacity: 0.7;
+    }
+    .foot-logo-name {
+      font-family: 'Noto Serif SC', serif;
+      font-size: 0.95rem;
+      font-weight: 700;
+      color: var(--text-faint);
+      letter-spacing: 0.04em;
+    }
+
+    .foot-links {
+      display: flex;
+      justify-content: center;
+      gap: 2.2rem;
+      margin-bottom: 1.2rem;
+      flex-wrap: wrap;
+    }
+    .foot-link {
+      color: var(--text-faint);
+      text-decoration: none;
+      font-size: 0.83rem;
+      transition: color 0.28s;
+      letter-spacing: 0.03em;
+    }
+    .foot-link:hover { color: var(--accent); }
+
+    .foot-divider {
+      width: 40px; height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(113,248,252,0.25), transparent);
+      margin: 1.2rem auto;
+    }
+
+    .foot-copy {
+      font-size: 0.77rem;
+      color: var(--text-faint);
+      letter-spacing: 0.04em;
+    }
+
+    /* ═══════════════════════════════════════════════
+       KEYFRAMES
+    ═══════════════════════════════════════════════ */
+    @keyframes riseIn {
+      from { opacity: 0; transform: translateY(28px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ═══════════════════════════════════════════════
+       RESPONSIVE
+    ═══════════════════════════════════════════════ */
+    @media (max-width: 600px) {
+      .ann-card, .dl-card { padding: 1.6rem 1.2rem 2rem; }
+      .feat-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+      .dl-meta { gap: 1.2rem; }
+      .hero { padding: 5.5rem 1.2rem 4rem; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- CANVAS BACKGROUND -->
+  <canvas id="bg-canvas"></canvas>
+  <div class="grain"></div>
+  <div class="ambient ambient-1"></div>
+  <div class="ambient ambient-2"></div>
+  <div class="ambient ambient-3"></div>
+
+  <div class="wrap">
+
+    <!-- ══════════════ HERO ══════════════ -->
+    <section class="hero">
+
+      <div class="logo-wrap">
+        <img src="p/ailogo.png" alt="霜蓝AI" class="logo-img">
+        <div class="logo-ring"></div>
+        <div class="logo-ring-2"></div>
+      </div>
+
+      <div class="hero-chip">
+        <div class="chip-dot"></div>
+        公开测试版 · Public Beta
+      </div>
+
+      <h1 class="hero-title">霜蓝 AI</h1>
+
+      <p class="hero-sub">
+        智能对话，创作加速。<br>
+        正式开放公测，立即体验未来的对话方式。
+      </p>
+
+      <div class="hero-cta">
+        <a href="#download" class="btn-primary" id="hero-cta-btn">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M12 5v14M5 12l7 7 7-7"/>
+          </svg>
+          立即下载
+        </a>
+      </div>
+
+      <div class="scroll-arrow">
+        <span>了解更多</span>
+        <div class="scroll-line"></div>
+      </div>
+
+    </section>
+
+    <!-- ══════════════ ANNOUNCEMENT ══════════════ -->
+    <section class="section" id="announcement">
+      <div class="inner">
+
+        <div class="s-label" data-obs>公告 · Announcement</div>
+        <h2 class="s-title" data-obs>公测正式开启</h2>
+
+        <div class="card ann-card" data-obs>
+
+          <div class="ann-meta">
+            <span class="meta-pill meta-date">📅 2026 · 公测阶段</span>
+            <span class="meta-pill meta-version">v1.0.7 · Beta</span>
+          </div>
+
+          <div class="ann-body">
+            <p>
+              大家好，我是 <span class="hl">霜蓝</span>。历经多轮内部调试与迭代，
+              <span class="hl">霜蓝 AI</span> 终于迎来了公开测试阶段！这是一款由我个人独立开发的 AI 对话助手，
+              深度集成先进大语言模型，致力于为每位用户带来流畅、智能、有温度的对话体验。
+            </p>
+
+            <div class="feat-grid">
+              <div class="feat-item"><span class="feat-ico">💬</span>智能对话</div>
+              <div class="feat-item"><span class="feat-ico">⚡</span>流式响应</div>
+              <div class="feat-item"><span class="feat-ico">🎨</span>创作辅助</div>
+              <div class="feat-item"><span class="feat-ico">💻</span>编程助手</div>
+              <div class="feat-item"><span class="feat-ico">🌐</span>多轮对话</div>
+              <div class="feat-item"><span class="feat-ico">☁️</span>云端同步</div>
+            </div>
+
+            <p>
+              公测期间，所有用户均可<span class="hl">免费下载使用</span>。
+              我非常期待你的反馈——无论是 Bug 报告、功能建议，还是使用感受，
+              你的每一条意见都将帮助这款产品变得更好。
+            </p>
+
+            <p>
+              由于产品仍处于快速迭代中，部分功能与交互体验尚在完善，
+              敬请理解与包容。感谢每一位愿意陪伴我们一起成长的用户，
+              期待与你共同见证霜蓝 AI 的蜕变。
+            </p>
+
+            <div class="warn-box">
+              <span class="warn-ico">⚠️</span>
+              <span>
+                当前版本<strong>仅支持 Android 安卓设备</strong>，iOS 版本正在规划中，敬请期待。
+                安装时请在系统设置中允许"安装未知来源应用"，然后打开下载的 APK 文件进行安装。
+              </span>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- ══════════════ DOWNLOAD ══════════════ -->
+    <section class="section dl-section" id="download">
+      <div class="inner">
+
+        <div class="s-label" data-obs>下载 · Download</div>
+        <h2 class="s-title" data-obs>获取霜蓝 AI</h2>
+
+        <div class="card dl-card" data-obs>
+          <div class="dl-orb"></div>
+          <div class="dl-orb-2"></div>
+
+          <div class="android-wrap">
+            <!-- Android robot SVG -->
+            <svg width="46" height="46" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path fill="#71f8fc" d="M6.18 15.64a2.18 2.18 0 0 1-2.18-2.18V9.19a2.18 2.18 0 1 1 4.36 0v4.27a2.18 2.18 0 0 1-2.18 2.18M17.82 15.64a2.18 2.18 0 0 1-2.18-2.18V9.19a2.18 2.18 0 1 1 4.36 0v4.27a2.18 2.18 0 0 1-2.18 2.18M15.27 21.36a2.18 2.18 0 0 1-2.18-2.18v-2.72h-2.18v2.72a2.18 2.18 0 1 1-4.36 0v-2.72H5.09a.54.54 0 0 1-.54-.55V9.73a.54.54 0 0 1 .54-.54h13.82c.3 0 .55.24.55.54v8.18c0 .3-.25.55-.55.55h-1.46v2.72a2.18 2.18 0 0 1-2.18 2.18M8.09 3.45 6.72 1.27a.27.27 0 0 0-.38-.09.27.27 0 0 0-.09.37l1.39 2.21c-1.07.48-1.82 1.34-2 2.38h12.72c-.18-1.04-.93-1.9-2-2.38l1.39-2.21a.27.27 0 0 0-.09-.37.27.27 0 0 0-.38.09L15.91 3.45a6.43 6.43 0 0 0-7.82 0M10.36 5.09a.54.54 0 1 1 0-1.09.54.54 0 0 1 0 1.09m3.28 0a.54.54 0 1 1 0-1.09.54.54 0 0 1 0 1.09"/>
+            </svg>
+          </div>
+
+          <div class="dl-title">Android 版下载</div>
+          <div class="dl-desc">适用于 Android 5.0 (Lollipop) 及以上版本</div>
+
+          <div class="android-badge">
+            🤖&nbsp; 仅支持 Android · Android Only
+          </div>
+
+          <a href="https://download-worker.liuxizekali.workers.dev/"
+             class="btn-dl"
+             target="_blank" rel="noopener noreferrer">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+                 stroke="currentColor" stroke-width="2.4"
+                 stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 5v14M5 12l7 7 7-7"/>
+            </svg>
+            立即下载 APK
+          </a>
+
+          <div class="dl-meta">
+            <div class="dl-meta-item">📦 直链下载</div>
+            <div class="dl-meta-item">🔒 安全可信</div>
+            <div class="dl-meta-item">🆓 公测免费</div>
+            <div class="dl-meta-item">🔄 持续更新</div>
+          </div>
+
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- ══════════════ FOOTER ══════════════ -->
+    <footer>
+      <div class="foot-inner">
+
+        <div class="foot-logo">
+          <img src="p/ailogo.png" alt="" class="foot-logo-img">
+          <span class="foot-logo-name">霜蓝 AI</span>
+        </div>
+
+        <div class="foot-links">
+          <a href="privacy.html" class="foot-link">隐私政策</a>
+          <a href="xukexieyi.html" class="foot-link">许可协议</a>
+        </div>
+
+        <div class="foot-divider"></div>
+
+        <div class="foot-copy">
+          Copyright©️2024-2026 霜蓝, All Rights Reserved.
+        </div>
+
+      </div>
+    </footer>
+
+  </div><!-- .wrap -->
+
+  <script>
+  /* ══════════════════════════════════════════
+     CANVAS PARTICLE NETWORK
+  ══════════════════════════════════════════ */
+  (function () {
+    const cvs = document.getElementById('bg-canvas');
+    const ctx = cvs.getContext('2d');
+    let W, H, pts = [];
+
+    function resize() {
+      W = cvs.width  = window.innerWidth;
+      H = cvs.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    // Spawn particles
+    const N = 90;
+    for (let i = 0; i < N; i++) {
+      pts.push({
+        x: Math.random() * 1500,
+        y: Math.random() * 1000,
+        vx: (Math.random() - .5) * .38,
+        vy: (Math.random() - .5) * .38,
+        r:  Math.random() * 1.4 + .4,
+        a:  Math.random() * .45 + .08,
+        ad: Math.random() > .5 ? 1 : -1,
+        as: Math.random() * .003 + .001,
+      });
+    }
+
+    let mouse = { x: -999, y: -999 };
+    window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+
+    function frame() {
+      ctx.clearRect(0, 0, W, H);
+
+      // Deep background
+      const bg = ctx.createRadialGradient(W/2, H*.45, 0, W/2, H*.45, Math.max(W, H)*.9);
+      bg.addColorStop(0, '#141628');
+      bg.addColorStop(1, '#080a12');
+      ctx.fillStyle = bg;
+      ctx.fillRect(0, 0, W, H);
+
+      // Faint center glow
+      const cg = ctx.createRadialGradient(W/2, H*.4, 0, W/2, H*.4, 450);
+      cg.addColorStop(0, 'rgba(113,248,252,0.045)');
+      cg.addColorStop(1, 'transparent');
+      ctx.fillStyle = cg;
+      ctx.fillRect(0, 0, W, H);
+
+      // Update & draw points
+      pts.forEach(p => {
+        p.x += p.vx; p.y += p.vy;
+        if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
+        if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
+
+        p.a += p.ad * p.as;
+        if (p.a > .55 || p.a < .05) p.ad *= -1;
+
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+        ctx.fillStyle = `rgba(113,248,252,${p.a})`;
+        ctx.fill();
+      });
+
+      // Connections
+      const MAX = 130;
+      for (let i = 0; i < pts.length; i++) {
+        for (let j = i + 1; j < pts.length; j++) {
+          const dx = pts[i].x - pts[j].x;
+          const dy = pts[i].y - pts[j].y;
+          const d  = Math.sqrt(dx*dx + dy*dy);
+          if (d < MAX) {
+            ctx.beginPath();
+            ctx.moveTo(pts[i].x, pts[i].y);
+            ctx.lineTo(pts[j].x, pts[j].y);
+            ctx.strokeStyle = `rgba(113,248,252,${(1 - d/MAX) * 0.1})`;
+            ctx.lineWidth = .5;
+            ctx.stroke();
+          }
+        }
+        // Mouse repulsion glow lines
+        const mdx = pts[i].x - mouse.x;
+        const mdy = pts[i].y - mouse.y;
+        const md  = Math.sqrt(mdx*mdx + mdy*mdy);
+        if (md < 160) {
+          ctx.beginPath();
+          ctx.moveTo(pts[i].x, pts[i].y);
+          ctx.lineTo(mouse.x, mouse.y);
+          ctx.strokeStyle = `rgba(113,248,252,${(1 - md/160) * 0.18})`;
+          ctx.lineWidth = .6;
+          ctx.stroke();
+        }
+      }
+
+      requestAnimationFrame(frame);
+    }
+    frame();
+  })();
+
+  /* ══════════════════════════════════════════
+     SCROLL REVEAL (IntersectionObserver)
+  ══════════════════════════════════════════ */
+  (function () {
+    const io = new IntersectionObserver(entries => {
+      entries.forEach(e => {
+        if (e.isIntersecting) e.target.classList.add('on');
+      });
+    }, { threshold: 0.12 });
+
+    document.querySelectorAll('[data-obs]').forEach(el => io.observe(el));
+  })();
+
+  /* ══════════════════════════════════════════
+     SMOOTH SCROLL FOR CTA
+  ══════════════════════════════════════════ */
+  document.getElementById('hero-cta-btn').addEventListener('click', function(e) {
+    e.preventDefault();
+    document.getElementById('download').scrollIntoView({ behavior: 'smooth' });
+  });
+  </script>
+
+</body>
+</html>

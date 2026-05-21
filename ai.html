@@ -1134,7 +1134,7 @@ body.night #newChatBtn {
     width: 220px;
     height: 100dvh;
 
-    z-index: 400; /* 提高，避免被压 */
+    z-index: 1000; /* 保持在遮罩上方 */
   }
 
   #sidebar.open {
@@ -1163,6 +1163,9 @@ body.night #newChatBtn {
 
 /* 桌面端：聊天区和输入框为侧边栏留出空间 */
 @media (min-width: 769px) {
+  #sidebar {
+    transform: translateX(0);
+  }
 
   #sidebar.collapsed {
     transform: translateX(-100%);
@@ -1598,6 +1601,7 @@ button {
   <!-- 右边 -->
   <div class="top-actions">
     <div id="usageHint" class="ghost-btn" style="cursor:default;">今日剩余 20 次</div>
+    <button class="ghost-btn" id="downloadBtn" onclick="location.href='download.html'">下载公测版</button>
     <button class="pro-btn" id="proBtn">升级 Pro</button>
 
     <div class="avatar" id="avatarBtn"></div>
@@ -2111,8 +2115,7 @@ function startActivationPolling() {
   }, 3000);
 }
 
-function showToast(text) {
-  function showError(title, extra = {}) {
+function showError(title, extra = {}) {
   const box = document.createElement("div");
 
   const detail = `
@@ -2173,6 +2176,8 @@ function showToast(text) {
     box.remove();
   };
 }
+
+function showToast(text) {
   const toast = document.createElement("div");
   toast.innerText = text;
   toast.style.cssText = `
@@ -2242,6 +2247,10 @@ function hideGlobalLoading() {
   el.classList.remove("active");
   el.style.display = "none";
 }
+
+window.hideLoading = hideLoading;
+window.hideGlobalLoading = hideGlobalLoading;
+window.showError = showError;
 
 // ===== 统一文件处理函数 =====
 function handleFile(file) {
@@ -2474,14 +2483,7 @@ function renderChatList() {
         loadChat(c.id);
       }
 
-      // ⭐ 移动端点击后自动收起侧边栏
-      const sidebar = document.getElementById("sidebar");
-      const overlay = document.getElementById("sidebarOverlay");
-
-      if (window.innerWidth <= 768 && sidebar?.classList.contains("open")) {
-        sidebar.classList.remove("open");
-        if (overlay) overlay.classList.remove("active");
-      }
+      closeSidebarForMobile();
     };
 
     list.appendChild(div);
@@ -2666,6 +2668,75 @@ function updateModelUI() {
   });
 }, 0);
 
+var SIDEBAR_BREAKPOINT = 768;
+
+function isSidebarMobile() {
+  return window.innerWidth <= SIDEBAR_BREAKPOINT;
+}
+
+function setSidebarOpen(open) {
+  const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("sidebarOverlay");
+  if (!sidebar) return;
+
+  if (isSidebarMobile()) {
+    sidebar.classList.remove("collapsed");
+    sidebar.classList.toggle("open", open);
+    overlay?.classList.toggle("active", open);
+    return;
+  }
+
+  overlay?.classList.remove("active");
+  sidebar.classList.toggle("collapsed", !open);
+  sidebar.classList.toggle("open", open);
+}
+
+function toggleSidebar() {
+  const sidebar = document.getElementById("sidebar");
+  if (!sidebar) return;
+
+  if (isSidebarMobile()) {
+    setSidebarOpen(!sidebar.classList.contains("open"));
+  } else {
+    setSidebarOpen(sidebar.classList.contains("collapsed"));
+  }
+}
+
+function closeSidebarForMobile() {
+  if (isSidebarMobile()) {
+    setSidebarOpen(false);
+  }
+}
+
+function setupSidebarByDevice() {
+  const sidebar = document.getElementById("sidebar");
+  const overlay = document.getElementById("sidebarOverlay");
+  if (!sidebar) return;
+
+  const isMobile = isSidebarMobile();
+  const wasMobile = window.__lastIsSidebarMobile;
+
+  if (isMobile) {
+    sidebar.classList.remove("collapsed");
+
+    if (wasMobile !== true) {
+      sidebar.classList.remove("open");
+    }
+
+    overlay?.classList.toggle("active", sidebar.classList.contains("open"));
+  } else {
+    overlay?.classList.remove("active");
+    sidebar.classList.add("open");
+
+    if (wasMobile === true) {
+      sidebar.classList.remove("collapsed");
+    }
+  }
+
+  window.__lastIsSidebarMobile = isMobile;
+  document.body.classList.add("sidebar-ready");
+}
+
 // ===== 侧边栏点击关闭优化 =====
 (function () {
   const menuToggle = document.getElementById("menuToggle");
@@ -2675,29 +2746,7 @@ function updateModelUI() {
   if (menuToggle && sidebar) {
     menuToggle.onclick = (e) => {
       e.stopPropagation();
-
-      const isMobile = window.innerWidth <= 768;
-      const isOpen = sidebar.classList.contains("open");
-
-      if (isMobile) {
-        // ===== 移动端逻辑（用 open 控制）
-        if (isOpen) {
-          sidebar.classList.remove("open");
-          if (overlay) overlay.classList.remove("active");
-        } else {
-          sidebar.classList.add("open");
-          if (overlay) overlay.classList.add("active");
-        }
-      } else {
-        // ===== 桌面端逻辑（用 collapsed 控制）
-        const isCollapsed = sidebar.classList.contains("collapsed");
-
-        if (isCollapsed) {
-          sidebar.classList.remove("collapsed");
-        } else {
-          sidebar.classList.add("collapsed");
-        }
-      }
+      toggleSidebar();
     };
   }
 
@@ -2713,16 +2762,12 @@ function updateModelUI() {
     const sidebar = document.getElementById("sidebar");
     if (!sidebar) return;
 
-    const isMobile = window.innerWidth <= 768;
-    if (!isMobile) return; // ⭐ PC端禁止自动收缩
+    if (!isSidebarMobile()) return; // ⭐ PC端禁止自动收缩
 
     if (!sidebar.classList.contains("open")) return;
 
-    const overlay = document.getElementById("sidebarOverlay");
-
     if (!sidebar.contains(e.target) && e.target !== menuToggle) {
-      sidebar.classList.remove("open");
-      if (overlay) overlay.classList.remove("active");
+      setSidebarOpen(false);
     }
   });
 })();
@@ -3836,49 +3881,7 @@ setTimeout(() => {
 // 页面加载时检查登录
 await checkLogin(); // 确保 session 初始化完成再允许发送
 
-
 // ===== 设备检测控制侧边栏 =====
-function setupSidebarByDevice() {
-  const sidebar = document.getElementById("sidebar");
-  if (!sidebar) return;
-
-  // ⭐ 强制移动端首帧隐藏（覆盖一切状态）
-  if (window.innerWidth < 768) {
-    sidebar.classList.remove("open");
-  }
-
-  const width = window.innerWidth;
-  const isMobile = width < 768;
-
-  // ⭐ 首次执行必须生效（否则初始状态会错）
-  window.__lastIsMobile = isMobile;
-
-  if (isMobile) {
-    // 手机：默认关闭
-    sidebar.classList.remove("open");
-    sidebar.classList.remove("collapsed");
-  } else {
-    // 平板 / PC：默认展开（除非用户手动收起）
-    if (!sidebar.classList.contains("collapsed")) {
-      sidebar.classList.add("open");
-    }
-  }
-  // ⭐ 标记已初始化（防止移动端CSS兜底长期生效）
-  document.body.classList.add("sidebar-ready");
-
-  // ⭐ 强制再执行一次（防止某些浏览器延迟渲染）
-  if (window.innerWidth < 768) {
-    requestAnimationFrame(() => {
-      sidebar.classList.remove("open");
-    });
-  }
-  if (window.innerWidth < 768) {
-    setTimeout(() => {
-      sidebar.classList.remove("open");
-    }, 120);
-  }
-}
-//
 // 初始化执行
 
 // ⭐ 立即执行（不要等动画帧，防止移动端闪现/默认展开）
@@ -3892,19 +3895,15 @@ const sidebarEl = document.getElementById("sidebar");
 const overlayEl = document.getElementById("sidebarOverlay");
 
 if (menuToggle && sidebarEl) {
-  menuToggle.onclick = () => {
-    sidebarEl.classList.toggle("open");
-
-    if (window.innerWidth < 768 && overlayEl) {
-      overlayEl.classList.toggle("active");
-    }
+  menuToggle.onclick = (e) => {
+    e.stopPropagation();
+    toggleSidebar();
   };
 }
 
 if (overlayEl) {
   overlayEl.onclick = () => {
-    sidebarEl.classList.remove("open");
-    overlayEl.classList.remove("active");
+    setSidebarOpen(false);
   };
 }
 
@@ -4177,14 +4176,12 @@ function createNewChat() {
   chatInner.innerHTML = "";
   saveConversations();
   renderChatList();
+  closeSidebarForMobile();
 }
 
 
 function loadChat(id) {
-  // 关闭遮罩（防止挡点击）
-  const overlayEl = document.getElementById("sidebarOverlay");
-  overlayEl?.classList.remove("active");
-  document.getElementById("sidebar")?.classList.remove("open");
+  closeSidebarForMobile();
   const c = conversations.find(x => x.id === id);
   if (!c) return;
 
@@ -4448,6 +4445,7 @@ async function send() {
   window._lastSendTime = now;
   if (sendingLock) {
     console.warn("发送被锁定，跳过");
+    hideGlobalLoading();
     return;
   }
 
@@ -4460,6 +4458,7 @@ async function send() {
 
   if (moderationResult) {
     refuseModeratedInput(moderationResult);
+    hideGlobalLoading();
     return;
   }
 
@@ -4475,6 +4474,8 @@ async function send() {
     const old = document.getElementById("loginModal");
     if (old) old.remove();
     showLoginPrompt();
+    sendingLock = false;
+    hideGlobalLoading();
     return;
   }
 
@@ -4482,6 +4483,8 @@ async function send() {
     deepMode = false;
     updateDeepButton();
     showProRequiredModal();
+    sendingLock = false;
+    hideGlobalLoading();
     return;
   }
 
@@ -4489,6 +4492,7 @@ async function send() {
   if (window._lastRealSend && Date.now() - window._lastRealSend < 800) {
     showToast("操作太快了，慢一点 😅");
     sendingLock = false;
+    hideGlobalLoading();
     return;
   }
   window._lastRealSend = Date.now();
@@ -4522,6 +4526,8 @@ async function send() {
 
   // 空内容直接退出（但不锁死）
   if (!text) {
+    sendingLock = false;
+    hideGlobalLoading();
     return;
   }
 
@@ -4595,6 +4601,7 @@ isStreaming = true;
       alert("登录状态失效，请重新登录");
       showLoginPrompt();
       sendingLock = false;
+      hideGlobalLoading();
       return;
     }
 
@@ -4930,27 +4937,14 @@ if (window.innerWidth <= 768) {
 }
 
 if (toggle) {
-  toggle.onclick = () => {
-    if (window.innerWidth > 768) {
-      sidebar.classList.toggle("collapsed");
-      return;
-    }
-
-    const isOpen = sidebar.classList.contains("open");
-
-    if (isOpen) {
-      sidebar.classList.remove("open");
-      overlay.classList.remove("active");
-    } else {
-      sidebar.classList.add("open");
-      overlay.classList.add("active");
-    }
+  toggle.onclick = (e) => {
+    e.stopPropagation();
+    toggleSidebar();
   };
 }
 
 overlay.onclick = () => {
-  sidebar.classList.remove("open");
-  overlay.classList.remove("active");
+  setSidebarOpen(false);
 };
 
 // 页面初始化时确保遮罩关闭（防止残留挡住点击）
@@ -4958,12 +4952,7 @@ overlay.classList.remove("active");
 
 // 在 window resize 时自动修复（防止切换设备尺寸后异常）
 window.addEventListener("resize", () => {
-  if (window.innerWidth > 768) {
-    overlay.classList.remove("active");
-    sidebar.classList.remove("open"); // 切回桌面端时清理移动端状态
-  } else {
-    document.body.classList.remove("sidebar-collapsed"); // 切回移动端时清理桌面端状态
-  }
+  requestAnimationFrame(setupSidebarByDevice);
 });
 // ===== Scroll to Bottom Button =====
 const scrollBtn = document.getElementById("scrollBottomBtn");
@@ -5062,6 +5051,11 @@ window.addEventListener("DOMContentLoaded", () => {
 </body>
 <script>
 // === User menu avatar dropdown logic ===
+function hideLoadingFromClassic() {
+  if (typeof window.hideLoading === "function") window.hideLoading();
+  if (typeof window.hideGlobalLoading === "function") window.hideGlobalLoading();
+}
+
 const avatar = document.getElementById("avatarBtn");
 const menu = document.getElementById("userMenu");
 
@@ -5070,8 +5064,8 @@ if (avatar && menu) {
     e.stopPropagation();
     // ⭐ 更可靠：用 session 判断（避免 localStorage 不一致）
     if (!window.session || !window.session.user) {
-      if (typeof showLoginPrompt === "function") {
-        showLoginPrompt();
+      if (typeof window.showLoginPrompt === "function") {
+        window.showLoginPrompt();
       } else {
         console.error("showLoginPrompt 未定义");
       }
@@ -5094,8 +5088,8 @@ window.__cfWidgetId = window.__cfWidgetId || null;
     }
   });
 }
-window.addEventListener("error", hideLoading);
-window.addEventListener("unhandledrejection", hideLoading);
+window.addEventListener("error", hideLoadingFromClassic);
+window.addEventListener("unhandledrejection", hideLoadingFromClassic);
 </script>
 
 <script>
@@ -5119,11 +5113,8 @@ if (logoutBtn) {
     location.reload();
   };
 }
-window.addEventListener("error", hideLoading);
-window.addEventListener("unhandledrejection", hideLoading);
+window.addEventListener("error", hideLoadingFromClassic);
+window.addEventListener("unhandledrejection", hideLoadingFromClassic);
 window.addEventListener("load", () => {
   document.body.classList.remove("preload");
 });
-
-
-
