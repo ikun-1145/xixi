@@ -1527,13 +1527,14 @@ button {
 </style>
 
 <!-- CSP for Turnstile -->
-<meta http-equiv="Content-Security-Policy" content="
-  default-src 'self' https:;
+<meta http-equiv="Content-Security-Policy" content="default-src 'self' https: data: blob:;
   script-src 'self' https://challenges.cloudflare.com https://cdn.jsdelivr.net 'unsafe-inline' 'unsafe-eval';
+  script-src-elem 'self' https://challenges.cloudflare.com https://cdn.jsdelivr.net 'unsafe-inline';
   connect-src 'self' https://api.sunland.dev https://*.supabase.co https://challenges.cloudflare.com;
-  img-src 'self' data: https:;
+  img-src 'self' data: https: blob:;
   style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net;
   frame-src https://challenges.cloudflare.com;
+  child-src https://challenges.cloudflare.com;
 ">
 <!-- Turnstile -->
 <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
