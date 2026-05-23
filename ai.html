@@ -5030,7 +5030,37 @@ window.addEventListener("DOMContentLoaded", () => {
     console.warn("renderUser fallback error:", e);
   }
 });
+/* ===== 登录状态补丁（跨页面返回恢复·增强版） ===== */
 
+async function restoreLoginState() {
+  try {
+    console.log("🔄 恢复登录状态");
+
+    // ⭐ 先恢复登录
+    await checkLogin();
+
+    // ⭐ 再同步云端（避免被覆盖）
+    if (session && session.user) {
+      await syncFromCloud();
+    }
+
+    // ⭐ 最后刷新UI（确保是最终状态）
+    renderUser();
+
+  } catch (e) {
+    console.warn("恢复登录失败:", e);
+  }
+}
+
+// ⭐ focus（桌面端）
+window.addEventListener("focus", restoreLoginState);
+
+// ⭐ iOS / Safari
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "visible") {
+    restoreLoginState();
+  }
+});
 </script>
 
   
