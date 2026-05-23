@@ -51,8 +51,17 @@
   display: flex;
   align-items: center;
   gap: 8px;
+  flex-wrap: wrap;
+  max-width: 100%;
 
   /* ⭐ 不再作为定位父级，避免错位 */
+}
+
+@media (max-width: 768px) {
+  .top-actions {
+    gap: 6px;
+    right: 12px;
+  }
 }
 
 .top-actions > .avatar {
@@ -67,6 +76,21 @@
   border-radius: 10px;
   backdrop-filter: blur(10px);
   transition: all 0.2s;
+}
+
+@media (max-width: 768px) {
+  .ghost-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
+
+  #downloadBtn {
+    display: none;  /* 移动端隐藏下载按钮 */
+  }
+
+  #usageHint {
+    display: none;  /* 移动端隐藏使用提示 */
+  }
 }
 
 /* ⭐ 白天模式修复 */
@@ -91,6 +115,13 @@ body:not(.night) .ghost-btn {
   border-radius: 10px;
   cursor: pointer;
   transition: all 0.2s ease;
+}
+
+@media (max-width: 768px) {
+  .pro-btn {
+    padding: 5px 10px;
+    font-size: 11px;
+  }
 }
 
 .pro-btn:hover {
@@ -310,6 +341,38 @@ body.night::before {
   gap: 6px;
   padding-top: env(safe-area-inset-top);
   flex-shrink: 0;
+  min-height: 48px;
+}
+
+@media (max-width: 768px) {
+  .header {
+    height: 52px;
+    padding-right: 8px;
+    padding-left: 8px;
+  }
+
+  .header > div:first-child {
+    min-width: 0;
+    flex-shrink: 1;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+
+  .header > div:first-child > div:last-child {
+    font-size: 13px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    flex-shrink: 1;
+  }
+
+  #menuToggle {
+    flex-shrink: 0;
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
 }
 /* ===== Sidebar Overlay ===== */
 #sidebarOverlay {
@@ -395,6 +458,13 @@ body.night::before {
   display: flex;
   flex-direction: column;
   gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .chat-inner {
+    padding: 0 8px;
+    max-width: 100%;
+  }
 }
 html, body {
   height: 100%;
@@ -495,6 +565,12 @@ html, body {
   pointer-events: auto;
 }
 
+@media (max-width: 768px) {
+  .input-area {
+    padding: 8px 4px calc(12px + env(safe-area-inset-bottom));
+  }
+}
+
 
 .input-box {
   display: flex;
@@ -515,6 +591,13 @@ html, body {
   position: relative;
 
   z-index: 1;
+}
+
+@media (max-width: 768px) {
+  .input-box {
+    max-width: calc(100vw - 16px);
+    margin: 0 8px 8px 8px;
+  }
 }
 
 .input-top {
@@ -809,27 +892,35 @@ button:hover {
 
 @media (max-width: 768px) {
   .bubble {
-    max-width: 78%;   /* 桌面是65%，移动端适当放宽但不要撑满 */
-    font-size: 14px;
-    padding: 9px 13px;
+    max-width: 80%;   /* 移动端给更多空间 */
+    font-size: 13px;
+    padding: 8px 11px;
   }
 
   /* 用户气泡不被截断 */
   .message.user {
-    padding-right: 12px;  /* ⭐ 右侧留出间距 */
+    padding-right: 8px;  /* ⭐ 用户消息留出间距 */
+    padding-left: 0;
   }
 
   .message.ai {
-    padding-left: 12px;
+    padding-left: 8px;
+    padding-right: 0;
   }
 
   .chat-inner {
-    padding: 0 12px;  /* 左右内边距稍微收紧 */
+    padding: 0 8px;  /* 左右内边距最小化 */
+    max-width: 100%;
+    width: 100%;
   }
 
   .chat-inner {
     background: transparent !important;
     backdrop-filter: none !important;
+  }
+
+  .message {
+    padding: 0 4px;
   }
 
 }
