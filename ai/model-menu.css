@@ -1,0 +1,92 @@
+  /* ===== 模型按钮（Flash/Pro）重做 ===== */
+  #modelSelector {
+    font-size:11px;
+    height: var(--btn-size);
+    padding:0px 10px;
+    border-radius:999px;
+    background: linear-gradient(135deg, rgba(14,165,233,0.12), rgba(34,211,238,0.12));
+    color:#0284c7;
+    border:1px solid rgba(14,165,233,0.25);
+    cursor:pointer;
+    user-select:none;
+    transition: all .2s ease;
+    display:flex;
+    align-items:center;
+    gap:4px;
+  }
+button {
+  border-radius: var(--btn-radius);
+  padding: 4px 8px;
+  font-size: var(--btn-font);
+}
+  #modelSelector::before {
+    content:"⚡";
+    font-size:11px;
+    opacity:0.8;
+  }
+
+  #modelSelector:hover {
+    background: linear-gradient(135deg, rgba(14,165,233,0.18), rgba(34,211,238,0.18));
+    box-shadow:0 0 8px rgba(34,211,238,0.4);
+  }
+
+  /* ===== 夜间模式按钮 ===== */
+  body.night #modelSelector {
+    background: rgba(255,255,255,0.08) !important;
+    color: #67e8f9 !important;
+    border: 1px solid rgba(255,255,255,0.15);
+  }
+
+  /* ===== 模型弹窗（白天） ===== */
+  #modelMenu {
+    background: rgba(255,255,255,0.96) !important;
+    color:#1f2937;
+    border:1px solid rgba(0,0,0,0.08);
+    box-shadow:0 18px 40px rgba(0,0,0,0.2);
+    backdrop-filter: blur(16px);
+    display: none;
+    opacity: 0;
+    transform: translate(-50%, -100%) scale(0.95);
+    pointer-events: auto;
+    transition: all 0.2s cubic-bezier(0.34,1.56,0.64,1);
+    z-index: 99999;
+  }
+
+  #modelMenu.show {
+    display: block;
+    opacity: 1;
+    transform: translate(-50%, -110%) scale(1);
+    pointer-events: auto;
+  }
+
+  /* ===== 模型弹窗（夜间） ===== */
+  body.night #modelMenu {
+    background: rgba(10,15,25,0.96) !important;
+    color:#e5e7eb;
+    border:1px solid rgba(255,255,255,0.08);
+    box-shadow:0 20px 50px rgba(0,0,0,0.7);
+  }
+
+  /* ===== 菜单项 ===== */
+  .model-item {
+    padding:8px 10px;
+    border-radius:10px;
+    cursor:pointer;
+    font-size:13px;
+    transition: all .15s;
+  }
+
+  .model-item:hover {
+    background: rgba(0,0,0,0.05);
+  }
+
+  body.night .model-item:hover {
+    background: rgba(255,255,255,0.08);
+  }
+
+  /* Flash / Pro 颜色强化 */
+  .model-item.flash { color:#0ea5e9; }
+  .model-item.pro { color:#8b5cf6; font-weight:600; }
+
+  body.night .model-item.flash { color:#38bdf8; }
+  body.night .model-item.pro { color:#a78bfa; }

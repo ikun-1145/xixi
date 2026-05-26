@@ -1,0 +1,596 @@
+
+.message.ai .bubble {
+  background: rgba(255,255,255,0.85);
+  backdrop-filter: blur(8px);
+}
+
+.message.user .bubble {
+  background: linear-gradient(135deg,#22d3ee,#67e8f9);
+}
+
+@keyframes floatBg {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+@keyframes floatParticles {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
+}
+/* ===== AI 思考动画（呼吸圆点） ===== */
+.thinking {
+  display: inline-flex;
+  gap: 4px;
+  align-items: center;
+}
+
+  .thinking .dot {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: linear-gradient(135deg,#22d3ee,#67e8f9);
+    box-shadow: 0 0 8px rgba(34,211,238,0.8);
+    opacity: 0.3;
+    animation: thinkingFlow 1.4s infinite ease-in-out;
+  }
+
+  .thinking .dot:nth-child(2) {
+    animation-delay: 0.2s;
+  }
+
+  .thinking .dot:nth-child(3) {
+    animation-delay: 0.4s;
+  }
+
+  @keyframes thinkingFlow {
+    0% {
+      transform: translateY(0) scale(0.8);
+      opacity: 0.3;
+    }
+    30% {
+      transform: translateY(-6px) scale(1);
+      opacity: 1;
+    }
+    60% {
+      transform: translateY(0) scale(0.85);
+      opacity: 0.5;
+    }
+    100% {
+      transform: translateY(0) scale(0.8);
+      opacity: 0.3;
+    }
+  }
+
+/* ===== AI 输出渐显（逐字柔化） ===== */
+.typing {
+  display: inline;
+}
+
+.typing span {
+  opacity: 0;
+}
+
+@keyframes fadeChar {
+  from { opacity: 0; transform: translateY(2px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+
+/* ===== 打字光标 ===== */
+.cursor {
+  display: inline-block;
+  width: 2px;
+  height: 1em;
+  background: linear-gradient(180deg,#22d3ee,#67e8f9);
+  margin-left: 2px;
+  border-radius: 2px;
+  animation: blinkCursor 1.2s infinite ease-in-out;
+  opacity: 0.9;
+}
+
+@keyframes blinkCursor {
+  0%, 50%, 100% { opacity: 1; }
+  25%, 75% { opacity: 0; }
+}
+
+@keyframes bubbleUser {
+  from {
+    opacity: 0;
+    transform: translateX(10px) translateY(4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) translateY(0) scale(1);
+  }
+}
+
+@keyframes bubbleAI {
+  from {
+    opacity: 0;
+    transform: translateX(-8px) translateY(4px) scale(0.97);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0) translateY(0) scale(1);
+  }
+}
+
+@keyframes fadeInBubble {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeOutThinking {
+  from {
+    opacity: 0.8;
+    transform: translateY(0);
+  }
+  to {
+    opacity: 0;
+    transform: translateY(-6px);
+  }
+}
+.regen {
+  margin-top: 4px;
+  display: flex;
+  justify-content: flex-start;
+  align-items: center;
+  margin-top: 2px;
+}
+
+.regen-btn {
+  border: none;
+  background: transparent;
+  color: #999;
+  font-size: 10px;
+  cursor: pointer;
+  padding: 0;
+  border-radius: 4px;
+  opacity: 0.7;
+  transition: opacity .15s ease;
+}
+
+.regen-btn:hover {
+  opacity: 1;
+}
+
+.message.ai .regen {
+  opacity: 0.6;
+  transition: opacity .2s ease;
+}
+
+.message.ai .regen:hover {
+  opacity: 1;
+}
+
+button:active {
+  transform: scale(0.92);
+}
+
+
+body.thinking-mode .input-box {
+  opacity: 0.7;
+  transform: scale(0.98);
+  position: relative;   /* ⭐ 必须有 */
+  margin: 0 auto;
+max-width: 680px;
+}
+
+body.thinking-mode button {
+  filter: grayscale(0.3);
+}
+#userBox {
+  display: flex;
+  align-items: center;
+}
+
+.avatar {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  transition: transform .2s ease;
+}
+
+.avatar:hover {
+  transform: scale(1.05);
+}
+
+.login-btn {
+  font-size: 13px;
+  padding: 6px 10px;
+  border-radius: 10px;
+  background: rgba(255,255,255,0.5);
+  backdrop-filter: blur(10px);
+  cursor: pointer;
+}
+
+#userMenu div:hover {
+  background: rgba(0,0,0,0.06);
+}
+#sidebar {
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+
+  width: 220px;
+  height: 100dvh;
+
+  transform: translateX(-100%);
+  transition: transform .25s ease;
+
+  z-index: 1000; /* ⭐ 提高层级 */
+
+  background: rgba(255,255,255,0.96); /* ⭐ 提高不透明度 */
+  isolation: isolate; /* ⭐ 核心修复：隔离 blur */
+
+  /* ❌ 删除这两行 */
+  /* backdrop-filter: blur(16px); */
+  /* -webkit-backdrop-filter: blur(16px); */
+
+  border-right: 1px solid rgba(0, 0, 0, 0.06);
+  box-shadow: 4px 0 20px rgba(0, 0, 0, 0.08);
+  padding: 16px 12px;
+  box-sizing: border-box;
+}
+
+/* 打开 - 唯一展开控制 */
+#sidebar.open {
+  transform: translateX(0);
+}
+
+#newChatBtn {
+  width: 100%;
+  padding: 8px;
+  border-radius: 10px;
+  border: none;
+  margin-bottom: 10px;
+  cursor: pointer;
+
+  background: linear-gradient(135deg,#38bdf8,#22d3ee);
+  color: #00323a;              /* ⭐ 提高对比度 */
+  font-weight: 600;            /* ⭐ 更清晰 */
+  letter-spacing: 0.3px;       /* ⭐ 更易读 */
+}
+
+#chatList div {
+  padding: 8px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  color: inherit;
+}
+
+body.night #chatList div {
+  color: #cbd5e1;
+}
+
+body.night #chatList div:hover {
+  background: rgba(255,255,255,0.06);
+}
+
+body.night #newChatBtn {
+  color: #002b36;
+}
+
+#chatList div:hover {
+  background: rgba(0,0,0,0.05);
+}
+@media (max-width: 768px) {
+  #sidebar {
+    /* 默认收起 */
+
+    display: block !important; /* ⭐ 必加 */
+    position: fixed;
+
+    top: 0;   /* ❗不要48 */
+    left: 0;
+    bottom: 0;
+
+    width: 220px;
+    height: 100dvh;
+
+    z-index: 1000; /* 保持在遮罩上方 */
+  }
+
+  #sidebar.open {
+    transform: translateX(0) !important;
+  }
+
+  /* #sidebar.open 展开控制已在主样式定义 */
+
+  #menuToggle {
+    display: inline-block;
+  }
+
+  .header,
+  .chat-container,
+  .input-area {
+    margin-left: 0;
+  }
+
+  .header {
+    padding-left: 12px;
+    margin-left: 0 !important;
+    z-index: 80;
+    transition: padding-left .25s ease;
+  }
+}
+
+/* 桌面端：聊天区和输入框为侧边栏留出空间 */
+@media (min-width: 769px) {
+  #sidebar {
+    transform: translateX(0);
+  }
+
+  #sidebar.collapsed {
+    transform: translateX(-100%);
+  }
+
+  #sidebarOverlay {
+    display: none !important;     /* 桌面端禁用遮罩 */
+  }
+
+  .header,
+  .chat-container,
+  .input-area {
+    margin-left: 220px; /* align with sidebar width */
+    padding-left: 24px;
+    padding-right: 24px;
+    transition: margin-left .25s ease;
+  }
+
+  /* 当 sidebar 收起时，让内容恢复全宽 */
+  #sidebar.collapsed ~ .header,
+  #sidebar.collapsed ~ .chat-container,
+  #sidebar.collapsed ~ .input-area {
+    margin-left: 0;
+  }
+}
+#uploadPreview > div {
+  flex-shrink: 0;
+  position: relative;
+  width: 60px;
+  height: 60px;
+  border-radius: 12px;
+  overflow: hidden;
+
+  background: rgba(255,255,255,0.08);
+  border: 1px solid rgba(255,255,255,0.08);
+
+  box-shadow: 0 6px 18px rgba(0,0,0,0.25);
+  backdrop-filter: blur(10px);
+
+  transition: transform .2s ease;
+}
+#app {
+  position: fixed;
+  inset: 0;
+
+  height: 100%;
+  min-height: 100dvh;   /* ⭐ 解决 iOS 白边 */
+  padding-bottom: env(safe-area-inset-bottom);
+
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+
+  /* ⭐ 核心修复：不要再用 body 背景 */
+  background: linear-gradient(135deg,#eef2ff,#e0f2fe,#f0fdfa);
+}
+body.night #app {
+  background: linear-gradient(135deg,#020617,#0b1220,#020617);
+}
+#proBtn:hover {
+  background: linear-gradient(135deg, #6a5cff, #9f7cff);
+  transform: translateY(-1px);
+  box-shadow: 0 0 15px rgba(122,92,255,0.8);
+}
+
+#uploadPreview > div:hover {
+  transform: scale(1.08);
+}
+
+body.night #uploadPreview > div {
+  background: rgba(255,255,255,0.08) !important;
+}
+body.night #uploadPreview {
+  background: transparent;
+  border: 1px solid rgba(255,255,255,0.06);
+}
+mark {
+  background: rgba(34,211,238,0.25);
+  color: inherit;
+  border-radius: 4px;
+  padding: 0 2px;
+}
+#uploadPreview:empty {
+  display: none;
+}
+#uploadPreview {
+  display: flex;
+  flex-wrap: wrap;         /* ⭐ 多行 */
+  gap: 6px;
+
+  margin-bottom: 6px;      /* ⭐ 和输入框分开 */
+
+  max-width: 100%;
+  overflow-x: auto;
+
+  padding: 2px;
+}
+
+#uploadPreview::-webkit-scrollbar {
+  display: none;
+}
+#chatList div:hover .delete-chat {
+  opacity: 0.7;
+}
+
+#chatList div:hover .delete-chat:hover {
+  opacity: 1;
+}
+/* ===== AI 页面进入动画 ===== */
+body.ai-entering #app {
+  animation: aiEnter .6s cubic-bezier(.4,0,.2,1);
+}
+
+body.ai-entering::before {
+  content: "";
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(circle at center, rgba(113,248,252,0.35), rgba(0,0,0,0.8));
+  backdrop-filter: blur(10px);
+  animation: aiEnterFade .6s ease forwards;
+  z-index: 999;
+}
+
+.bubble,
+.modal-content,
+#scrollBottomBtn {
+  will-change: transform, opacity;
+}
+
+@keyframes aiEnter {
+  0% {
+    transform: scale(0.95);
+    opacity: 0;
+    filter: blur(12px);
+  }
+  100% {
+    transform: scale(1);
+    opacity: 1;
+    filter: blur(0);
+  }
+}
+
+@keyframes aiEnterFade {
+  0% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.activation-success {
+  position: relative;
+  overflow: hidden;
+  padding: 0.4rem 0 0.2rem;
+}
+
+.success-orb {
+  width: 82px;
+  height: 82px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: radial-gradient(circle at 35% 30%, #ffffff 0 10%, #67e8f9 22%, #22c55e 62%, #7c3aed 100%);
+  box-shadow: 0 0 0 0 rgba(34,211,238,0.35), 0 18px 42px rgba(34,211,238,0.28);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 34px;
+  animation: successPop .58s cubic-bezier(.34,1.56,.64,1), successPulse 1.3s ease-in-out infinite .5s;
+}
+
+.success-ribbon {
+  position: absolute;
+  inset: -40% -20%;
+  background: conic-gradient(from 90deg, transparent, rgba(34,211,238,0.22), transparent, rgba(167,139,250,0.2), transparent);
+  animation: successSpin 2.2s linear infinite;
+  z-index: -1;
+}
+
+.success-confetti {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  width: 7px;
+  height: 14px;
+  border-radius: 3px;
+  background: var(--accent);
+  transform: translateX(-50%);
+  animation: confettiFall .9s ease-out forwards;
+}
+
+@keyframes successPop {
+  from { opacity: 0; transform: scale(.55) rotate(-12deg); }
+  to { opacity: 1; transform: scale(1) rotate(0); }
+}
+
+@keyframes successPulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgba(34,211,238,0.35), 0 18px 42px rgba(34,211,238,0.28); }
+  50% { box-shadow: 0 0 0 12px rgba(34,211,238,0), 0 18px 42px rgba(124,58,237,0.3); }
+}
+
+@keyframes successSpin {
+  to { transform: rotate(360deg); }
+}
+
+@keyframes confettiFall {
+  0% { opacity: 1; transform: translate(-50%, 0) rotate(0); }
+  100% { opacity: 0; transform: translate(var(--x), 90px) rotate(210deg); }
+}
+@media (max-width: 768px) {
+  .header,
+  .chat-container,
+  .input-area {
+    margin-left: 0 !important;
+  }
+}
+/* ===== 发送按钮动画 ===== */
+@keyframes sendPulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 0 rgba(34,211,238,0);
+  }
+  40% {
+    transform: scale(0.9);
+  }
+  70% {
+    transform: scale(1.15);
+    box-shadow: 0 0 12px rgba(34,211,238,0.6);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+#loadingBar {
+opacity: 0;
+  pointer-events: none;
+}
+
+#loadingBar.active {
+  opacity: 1;
+  pointer-events: auto;
+}
+/* ===== 白天模式优化（关键） ===== */
+body:not(.night) #loadingBar {
+  background: rgba(255,255,255,0.65);
+  backdrop-filter: blur(12px);
+}
+
+body:not(.night) #loadingBar div {
+  color: #334155;
+}
+
+body:not(.night) #loadingBar img {
+  filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15));
+}
+.send-anim {
+  animation: sendPulse 0.35s cubic-bezier(.34,1.56,.64,1);
+}
+#loadingBar img {
+  transform: scale(0.9);
+  transition: transform .25s ease;
+}
+
+#loadingBar.active img {
+  transform: scale(1);
+}
