@@ -2433,7 +2433,7 @@ function setupRealtimeSync() {
           if (profile?.avatar_url) {
             cacheProfile(session.user.id, profile);
             currentProfile = profile;
-            renderUser();
+            scheduleRenderUser();
           }
         } catch (e) {
           console.warn('头像同步解析失败:', e);
@@ -2496,7 +2496,7 @@ function setSession(s) {
           if (profile?.avatar_url) {
             cacheProfile(session.user.id, profile);
             currentProfile = profile;
-            renderUser();
+            scheduleRenderUser();
           }
         } catch {}
       })
@@ -2650,7 +2650,7 @@ async function loadUserProfileFromCloud() {
   const cached = loadCachedProfile(session.user.id);
   if (cached?.avatar_url) {
     currentProfile = cached;
-    renderUser();
+    scheduleRenderUser();
   }
 
   try {
@@ -2665,7 +2665,7 @@ async function loadUserProfileFromCloud() {
     if (data) {
       cacheProfile(session.user.id, data);
       currentProfile = data;
-      renderUser();
+      scheduleRenderUser();
     }
 
     // ⭐ 同步 Pro 状态（避免额外请求）
@@ -3010,9 +3010,49 @@ async function checkActivation() {
     console.warn("初始化剩余次数失败:", e);
   }
 
-  renderUser(); // ⭐ 自动同步UI状态
+  scheduleRenderUser(); // ⭐ 自动同步UI状态
 }
 let sessionReady = false; // ✅ 是否已完成登录检查
+
+// ===== 登录恢复：版本号 + 渲染调度 =====
+let restoreVersion = 0;
+let checkLoginPromise = null;
+let restoreLoginPromise = null;
+let restoreLoginPromiseVersion = 0;
+let renderUserScheduled = false;
+let lastRenderedUserKey = "";
+
+function isRestoreStale(version) {
+  return version != null && version !== restoreVersion;
+}
+
+function bumpRestoreVersion() {
+  restoreVersion += 1;
+  return restoreVersion;
+}
+
+function scheduleRenderUser() {
+  if (renderUserScheduled) return;
+  renderUserScheduled = true;
+  queueMicrotask(() => {
+    renderUserScheduled = false;
+    renderUserCore();
+  });
+}
+
+function finalizeRenderUser(version) {
+  if (isRestoreStale(version)) return;
+  queueMicrotask(() => {
+    if (isRestoreStale(version)) return;
+    const key = session?.user?.id
+      ? `${session.user.id}:${session.user.email || ""}:${isActivated ? 1 : 0}`
+      : "guest";
+    if (key === lastRenderedUserKey) return;
+    lastRenderedUserKey = key;
+    renderUserCore();
+  });
+}
+
 let history = [
   
   {
@@ -3042,128 +3082,148 @@ let history = [
 `
   }
 ];
-async function checkLogin() {
-  try {
-    const token = localStorage.getItem("token");
-    // ⭐ 启动时检测过期
-    if (token) {
-      try {
-        const payload = JSON.parse(atob(token.split(".")[1]));
-        if (payload.exp && payload.exp * 1000 < Date.now()) {
-          console.warn("token 启动时已过期（交给 refresh 处理）");
-          // ❌ 不要在这里删除 token
-          // 保留 token，让后续请求自动 refresh
-        }
-      } catch (e) {
-        console.warn("token 解析失败:", e);
-      }
-    }
-    const userStr = localStorage.getItem("user");
+async function checkLogin(options = {}) {
+  const {
+    skipCloudSync = false,
+    skipChatReload = false,
+    restoreVersion: expectedVersion = null,
+  } = options;
 
-    if (token) {
-      let user = null;
+  if (checkLoginPromise) {
+    if (expectedVersion == null) return checkLoginPromise;
+    await checkLoginPromise;
+  }
 
-      // ⭐ 优先用本地 user
-      if (userStr) {
-        try {
-          user = JSON.parse(userStr);
-        } catch {}
-      }
-
-      // ⭐ 兜底：从 JWT 解析用户（防止 user 丢失）
-      if (!user || !user.id) {
+  checkLoginPromise = (async () => {
+    try {
+      const token = localStorage.getItem("token");
+      if (token) {
         try {
           const payload = JSON.parse(atob(token.split(".")[1]));
-
-console.log("JWT payload:", payload);
-
-const uid = payload.sub || payload.id || payload.user_id;
-
-if (!uid) {
-  console.warn("⚠️ token里没有user id");
-  setSession(null);
-  return;
-}
-
-user = {
-  id: uid,
-  email: payload.email || payload.user_email || payload.mail || "未知用户"
-};
-          localStorage.setItem("user", JSON.stringify(user));
+          if (payload.exp && payload.exp * 1000 < Date.now()) {
+            console.warn("token 启动时已过期（交给 refresh 处理）");
+          }
         } catch (e) {
-          console.warn("JWT解析失败:", e);
+          console.warn("token 解析失败:", e);
         }
       }
+      const userStr = localStorage.getItem("user");
 
-      if (user && user.id) {
-  setSession({ user });
-} else {
-  setSession(null);
-}
-    } else {
-      setSession(null);
-      currentProfile = null;
-    }
+      if (token) {
+        let user = null;
 
-    sessionReady = true;
+        if (userStr) {
+          try {
+            user = JSON.parse(userStr);
+          } catch {}
+        }
 
-    if (session?.user) {
-      currentProfile = loadCachedProfile(session.user.id);
-    }
-    
-    renderUser(); // ⭐ 提前刷新UI，避免后续异常导致不显示
+        if (!user || !user.id) {
+          try {
+            const payload = JSON.parse(atob(token.split(".")[1]));
+            console.log("JWT payload:", payload);
+            const uid = payload.sub || payload.id || payload.user_id;
 
-    if (session?.user) {
-      loadUserProfileFromCloud().catch(()=>{});
-      // ⭐ 先加载本地缓存
-      const local = localStorage.getItem("conversations_" + session.user.id);
+            if (!uid) {
+              console.warn("⚠️ token里没有user id");
+              if (expectedVersion == null || !isRestoreStale(expectedVersion)) {
+                setSession(null);
+              }
+              sessionReady = true;
+              if (expectedVersion == null || !isRestoreStale(expectedVersion)) {
+                scheduleRenderUser();
+              }
+              return;
+            }
 
-      if (local) {
-        try {
-          const parsed = JSON.parse(local);
-          if (Array.isArray(parsed)) {
-            conversations = parsed;
-          } else {
+            user = {
+              id: uid,
+              email: payload.email || payload.user_email || payload.mail || "未知用户"
+            };
+            localStorage.setItem("user", JSON.stringify(user));
+          } catch (e) {
+            console.warn("JWT解析失败:", e);
+          }
+        }
+
+        if (expectedVersion != null && isRestoreStale(expectedVersion)) return;
+
+        if (user && user.id) {
+          setSession({ user });
+        } else {
+          setSession(null);
+        }
+      } else {
+        setSession(null);
+        currentProfile = null;
+      }
+
+      if (expectedVersion != null && isRestoreStale(expectedVersion)) return;
+
+      sessionReady = true;
+
+      if (session?.user) {
+        currentProfile = loadCachedProfile(session.user.id);
+      }
+
+      scheduleRenderUser();
+
+      if (session?.user) {
+        loadUserProfileFromCloud().catch(() => {});
+
+        const local = localStorage.getItem("conversations_" + session.user.id);
+
+        if (local) {
+          try {
+            const parsed = JSON.parse(local);
+            conversations = Array.isArray(parsed) ? parsed : [];
+          } catch {
             conversations = [];
           }
-        } catch {
-          conversations = [];
+        }
+
+        if (!skipCloudSync) {
+          await syncFromCloud();
+          if (expectedVersion != null && isRestoreStale(expectedVersion)) return;
+        }
+        renderChatList();
+      } else {
+        conversations = [];
+        renderChatList();
+      }
+
+      checkActivation().catch(() => {});
+
+      if (expectedVersion == null || !isRestoreStale(expectedVersion)) {
+        scheduleRenderUser();
+      }
+
+      if (!skipChatReload && conversations.length) {
+        const firstId = conversations[0].id;
+        const exists = conversations.find(c => c.id === currentId);
+
+        if (!currentId || !exists) {
+          loadChat(firstId);
+        } else {
+          loadChat(currentId);
         }
       }
-
-      // ⭐ 再从云端同步（覆盖或合并）
-      await syncFromCloud();
-      renderChatList();
-    } else {
-      conversations = [];
-      renderChatList();
-    }
-
-    checkActivation().catch(()=>{}); // ⭐ 不阻塞UI
-    requestAnimationFrame(() => {
-      renderUser();
-    });
-    // ⭐ 确保一定加载历史对话（即使 currentId 已存在）
-    if (conversations.length) {
-      const firstId = conversations[0].id;
-
-      // 如果当前没有选中，或当前ID已不存在（常见于刷新/同步后）
-      const exists = conversations.find(c => c.id === currentId);
-
-      if (!currentId || !exists) {
-        loadChat(firstId);
-      } else {
-        // ⭐ 强制刷新当前对话（解决UI不显示）
-        loadChat(currentId);
+    } catch (e) {
+      console.error("登录检测异常:", e);
+      sessionReady = true;
+      if (expectedVersion == null || !isRestoreStale(expectedVersion)) {
+        setSession(null);
+        scheduleRenderUser();
       }
+    } finally {
+      checkLoginPromise = null;
     }
-  } catch (e) {
-    console.error("登录检测异常:", e);
-    sessionReady = true;
-    session = null;
-  }
+  })();
+
+  return checkLoginPromise;
 }
-function renderUser() {
+
+function renderUserCore() {
 if (!sessionReady) return; // ⭐ 防止初始化乱刷
   const avatarEl = document.getElementById("avatarBtn");
   const emailEl = document.getElementById("userEmail");
@@ -3177,6 +3237,7 @@ if (!sessionReady) return; // ⭐ 防止初始化乱刷
   avatarEl.style.backgroundImage = ""; // ⭐ 必加
   emailEl.innerText = "未登录";
   if (proBtn) proBtn.style.display = "none";
+  lastRenderedUserKey = "guest";
   return;
 }
 
@@ -3212,6 +3273,11 @@ if (user) console.log("🔥 当前 user:", user);
   if (proBtn) {
     proBtn.style.display = isActivated ? "none" : "inline-block";
   }
+  lastRenderedUserKey = `${user.id}:${user.email || ""}:${isActivated ? 1 : 0}`;
+}
+
+function renderUser() {
+  scheduleRenderUser();
 }
 
 
@@ -4016,7 +4082,7 @@ setTimeout(() => {
   }
 }, 0);
 setTimeout(() => {
-  renderUser();
+  scheduleRenderUser();
 }, 50);
 
 let controller = null;
@@ -4173,7 +4239,7 @@ function startRealtime() {
 
         const cloudData = normalizeCloudData(payload.new?.data);
         if (!cloudData) return;
-        renderUser();
+        scheduleRenderUser();
 
         const map = new Map();
 
@@ -5069,16 +5135,11 @@ scrollBtn.style.transform = "translateY(8px) scale(0.9)";
     chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
   };
 }
-// ⭐ 页面获得焦点 → 同步（最重要）
-window.addEventListener("focus", () => {
-  syncFromCloud();
-});
-
-
 // ⭐ 定时兜底同步
-setInterval(() => {
+setInterval(async () => {
   if (session && session.user) {
-    syncFromCloud();
+    await syncFromCloud();
+    scheduleRenderUser();
   }
 }, 15000);
 
@@ -5116,7 +5177,7 @@ if (window.location.hash === "#upgrade") {
 // ⭐ 再兜底一次（防止前面报错导致未执行）
 window.addEventListener("DOMContentLoaded", () => {
   try {
-    renderUser();
+    scheduleRenderUser();
   } catch (e) {
     console.warn("renderUser fallback error:", e);
   }
@@ -5124,33 +5185,54 @@ window.addEventListener("DOMContentLoaded", () => {
 /* ===== 登录状态补丁（跨页面返回恢复·增强版） ===== */
 
 async function restoreLoginState() {
-  try {
-    console.log("🔄 恢复登录状态");
+  if (restoreLoginPromise) return restoreLoginPromise;
 
-    // ⭐ 先恢复登录
-    await checkLogin();
+  const version = bumpRestoreVersion();
+  restoreLoginPromiseVersion = version;
 
-    // ⭐ 再同步云端（避免被覆盖）
-    if (session && session.user) {
-      await syncFromCloud();
+  restoreLoginPromise = (async () => {
+    try {
+      console.log("🔄 恢复登录状态", version);
+
+      await checkLogin({
+        skipCloudSync: true,
+        skipChatReload: true,
+        restoreVersion: version,
+      });
+      if (isRestoreStale(version)) return;
+
+      if (session?.user) {
+        await syncFromCloud();
+      }
+      if (isRestoreStale(version)) return;
+
+      finalizeRenderUser(version);
+    } catch (e) {
+      console.warn("恢复登录失败:", e);
+      if (!isRestoreStale(version)) {
+        sessionReady = true;
+        finalizeRenderUser(version);
+      }
+    } finally {
+      if (restoreLoginPromiseVersion === version) {
+        restoreLoginPromise = null;
+      }
     }
+  })();
 
-    // ⭐ 最后刷新UI（确保是最终状态）
-    renderUser();
-
-  } catch (e) {
-    console.warn("恢复登录失败:", e);
-  }
+  return restoreLoginPromise;
 }
 
-// ⭐ focus（桌面端）
 window.addEventListener("focus", restoreLoginState);
 
-// ⭐ iOS / Safari
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {
     restoreLoginState();
   }
+});
+
+window.addEventListener("pageshow", (e) => {
+  if (e.persisted) restoreLoginState();
 });
 </script>
 
