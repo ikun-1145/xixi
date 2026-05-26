@@ -2187,6 +2187,13 @@ function startActivationPolling() {
     if (data) {
       isActivated = true;
 
+      // ⭐ 更新 supabase 中的 pro 字段
+      await supabase.from("user_profiles").upsert({
+        user_id: session.user.id,
+        pro: true,
+        updated_at: new Date().toISOString()
+      }, { onConflict: "user_id" });
+
       // ⭐ 关键：刷新UI（隐藏Pro按钮）
       await checkActivation();
 
