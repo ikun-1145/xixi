@@ -5273,6 +5273,9 @@ const menu = document.getElementById("userMenu");
 if (avatar && menu) {
   avatar.onclick = (e) => {
     e.stopPropagation();
+    // ⭐ 全局缓存 Turnstile
+    window.__cfToken = window.__cfToken || "";
+    window.__cfWidgetId = window.__cfWidgetId || null;
     // ⭐ 更可靠：用 session 判断（避免 localStorage 不一致）
     if (!window.session || !window.session.user) {
       if (typeof window.showLoginPrompt === "function") {
@@ -5282,9 +5285,6 @@ if (avatar && menu) {
       }
       return;
     }
-    // ⭐ 全局缓存 Turnstile
-window.__cfToken = window.__cfToken || "";
-window.__cfWidgetId = window.__cfWidgetId || null;
     // ⭐ 已登录 → 打开菜单
     menu.classList.toggle("show");
   };
