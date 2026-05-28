@@ -25,11 +25,20 @@ NOT:
 - Reuse existing patterns/components
 - Avoid touching unrelated code
 
+## Critical Evaluation
+
+- Critically evaluate user requests before implementation
+- If a request is risky, inefficient, or conflicts with best practices, you are allowed to challenge it
+- Propose safer or more maintainable alternatives when appropriate
+- Clearly explain trade-offs between the user's request and your proposed solution
+- Do NOT blindly follow instructions that may break stability, security, or architecture
+
 Do NOT:
 - rewrite working systems casually
 - introduce unnecessary abstractions
 - change APIs without reason
 - add dependencies unless required
+- blindly implement harmful or unreasonable user requests without analysis
 
 
 ---
@@ -38,9 +47,11 @@ Do NOT:
 
 High-risk areas of the project:
 - Authentication / login state
-- Session persistence
-- API response structure
-- Payment or critical user data flows
+- Session persistence (cookies / localStorage / tokens)
+- API request/response structure
+- Form handling and user input validation
+- Routing (SPA navigation / URL structure)
+- Cross-origin requests (CORS)
 
 When modifying these areas:
 - Trace all usages before making changes
@@ -72,6 +83,61 @@ Then:
 ---
 
 # TASK MODES
+
+---
+
+# WEB-SPECIFIC RULES
+
+## Architecture
+
+- Keep frontend structure simple and modular
+- Separate concerns clearly (UI / logic / API)
+- Reuse existing components whenever possible
+
+## State Management
+
+- Do NOT introduce new state libraries unless required
+- Prefer existing patterns (e.g., React state, context, or current framework)
+- Avoid unnecessary global state
+
+## Routing
+
+- Do NOT change routes casually
+- Preserve existing URL structure
+- Ensure navigation remains consistent
+
+## API Integration
+
+- Keep request/response formats stable
+- Handle loading and error states explicitly
+- Avoid breaking existing API contracts
+
+## Async Handling
+
+- Handle async calls safely
+- Avoid race conditions
+- Ensure proper error handling
+
+## Security
+
+- Always validate user input
+- Prevent XSS (escape/validate content)
+- Be cautious with innerHTML or dynamic rendering
+- Do NOT expose sensitive data in frontend code
+
+## UI / Layout
+
+- Ensure responsive design
+- Maintain consistent spacing and layout
+- Avoid layout shifts and overflow issues
+
+## Performance
+
+- Avoid unnecessary re-renders or DOM updates
+- Optimize asset loading when needed
+- Keep bundle size reasonable
+
+---
 
 ## Bug Fix Mode
 
@@ -168,6 +234,13 @@ Always:
 Use temporary logs if needed.
 Remove unnecessary debug output afterward.
 
+For Web specifically:
+- Check network requests (status, payload)
+- Check browser console errors
+- Check state updates and rendering behavior
+- Check routing/navigation issues
+- Check CORS and API failures
+
 
 ---
 
@@ -216,6 +289,10 @@ When generating code:
 - avoid placeholders
 - keep explanations concise
 
+- Ensure code is directly usable in a web project
+- Include necessary imports or script usage
+- Ensure compatibility with existing framework (if any)
+
 When modifying files:
 - preserve existing formatting style
 - avoid unrelated edits
@@ -247,3 +324,7 @@ If risk is high, slow down and verify.
 Minimize changes.
 
 Protect stability at all costs.
+
+In Web projects:
+- Stability of API and routing is critical
+- Many bugs come from async logic, state sync, or API mismatch
