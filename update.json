@@ -1,7 +1,7 @@
 {
   "version": "1.0.8",
-  "build": 9,
+  "build": 10,
   "force": false,
   "url": "https://download-worker.liuxizekali.workers.dev/",
-  "desc": "bug修复"
+  "desc": "强化图片本地 OCR 识别与发送体验"
 }
