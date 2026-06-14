@@ -1,6 +1,6 @@
 {
   "version": "1.0.8",
-  "build": 12,
+  "build": 13,
   "force": false,
   "url": "https://download-worker.liuxizekali.workers.dev/",
   "desc": "bug修复"
