@@ -1606,12 +1606,30 @@ function renderUser() {
       return err.msg || err.desc || err.error_code || fallback;
     }
 
+    // 动态确保 gt4.js 已加载：不依赖 ai.html 中的 <script> 标签，
+    // 规避正式域名 HTML 被 CDN/浏览器缓存、脚本缺失导致 initGeetest4 未定义的问题。
+    function loadGeetestScript() {
+      if (typeof initGeetest4 === "function") return Promise.resolve();
+      if (window.__geetestLoading) return window.__geetestLoading;
+      window.__geetestLoading = new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "https://static.geetest.com/v4/gt4.js";
+        s.async = true;
+        s.onload = () => {
+          if (typeof initGeetest4 === "function") resolve();
+          else reject(new Error("验证脚本加载异常，请刷新重试"));
+        };
+        s.onerror = () => {
+          window.__geetestLoading = null; // 允许下次重试
+          reject(new Error("验证脚本加载失败，请检查网络或稍后重试"));
+        };
+        document.head.appendChild(s);
+      });
+      return window.__geetestLoading;
+    }
+
     function _newCaptchaPromise() {
-      return new Promise((resolve, reject) => {
-        if (typeof initGeetest4 !== "function") {
-          reject(new Error("验证脚本未加载，请刷新页面"));
-          return;
-        }
+      return loadGeetestScript().then(() => new Promise((resolve, reject) => {
         initGeetest4({
           captchaId: "ad3a8126afe716ccd4541f35d428071e",
           product: "bind"
@@ -1622,7 +1640,7 @@ function renderUser() {
             reject(new Error(_geetestErrMsg(err, "人机验证加载失败")));
           });
         });
-      });
+      }));
     }
     let _captchaPromise = _newCaptchaPromise();
     // 防止预加载阶段 promise 被拒绝时产生未捕获异常
