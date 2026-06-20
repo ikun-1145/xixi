@@ -1089,8 +1089,21 @@ async function editNickname() {
 
   const encodedId = encodeURIComponent(userId);
 
-  // ❗这里换成你的爱发电页面
-  const afdianUrl = `https://afdian.com/a/sunland?remark=${encodedId}`;
+  // 爱发电「下单页」专属链接：用 custom_order_id 携带 Supabase userId，
+  // 付款后随订单回传，afdianpay worker 据此自动开通 Pro。
+  // ⚠️ 自定义参数必须加在 /order/create 下单页；加在创作者主页 /a/sunland 上
+  //    会被 SPA 当未知 query 处理而白屏（已踩坑验证）。
+  const AFDIAN_PLAN_ID = "4c2527fc6c7411f1bbe45254001e7c00"; // 霜蓝AI ¥10 订阅方案
+  const afdianUrl = `https://afdian.com/order/create?product_type=0&plan_id=${AFDIAN_PLAN_ID}&custom_order_id=${encodedId}`;
+
+  // 付款前提示：选择「月付」即可。付款成功即自动开通永久 Pro，
+  // 与订阅月数无关，多选月份只会多付钱、不会增加权益。
+  const ok = confirm(
+    "即将前往爱发电支付。\n\n" +
+    "请选择「月付」方案（¥10 / 月）即可——付款成功后将自动开通【永久 Pro】，\n" +
+    "无需多选月份，多付不会增加权益。\n\n确认前往支付？"
+  );
+  if (!ok) return;
 
   // 打开支付页面
   window.open(afdianUrl, "_blank");
