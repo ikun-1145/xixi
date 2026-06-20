@@ -1818,21 +1818,13 @@ function renderUser() {
         return;
       }
 
-      let token;
-      try {
-        token = await runCaptcha();
-      } catch (e) {
-        msg.innerText = e.message;
-        return;
-      }
       try {
         const res = await fetch("https://api.sunland.dev/verify-code", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             email,
-            code,
-            token: token
+            code
           })
         });
 
