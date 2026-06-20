@@ -407,45 +407,28 @@ function startActivationPolling() {
   const timer = setInterval(async () => {
     count++;
 
-    // 最多轮询 60 秒
-    if (count > 20) {
+    // 最多轮询 3 分钟（覆盖爱发电 worker 的 cron 周期）
+    if (count > 60) {
       clearInterval(timer);
-      showToast("未检测到支付，请确认是否完成支付");
+      showToast("开通处理中，付款成功后约 1-2 分钟自动生效，可稍后刷新页面");
       return;
     }
 
     if (!session?.user) return;
 
-    const { data } = await supabase
-      .from("activation_codes")
-      .select("code")
-      .eq("used_by", session.user.id)
-      .maybeSingle();
+    // ⭐ 统一判定：checkActivation 以 user_profiles.pro 为准（爱发电 worker 写入），
+    //    并兼容激活码兑换。检测到即解锁 Pro 并关闭弹窗。
+    await checkActivation();
 
-    if (data) {
-      isActivated = true;
-
-      // ⭐ 更新 supabase 中的 pro 字段
-      await supabase.from("user_profiles").upsert({
-        user_id: session.user.id,
-        pro: true,
-        updated_at: new Date().toISOString()
-      }, { onConflict: "user_id" });
-
-      // ⭐ 关键：刷新UI（隐藏Pro按钮）
-      await checkActivation();
-
-      // const hintEl = document.getElementById("usageHint");
-      // if (hintEl) hintEl.innerText = "已激活 ∞";
-
+    if (isActivated) {
       showToast("支付成功 🎉");
 
       // ⭐ 自动关闭支付弹窗
       const payModal = document.getElementById("payModal");
       if (payModal) {
-  payModal.classList.add("closing");
-  setTimeout(() => payModal.remove(), 200);
-}
+        payModal.classList.add("closing");
+        setTimeout(() => payModal.remove(), 200);
+      }
 
       clearInterval(timer);
     }
@@ -1136,7 +1119,7 @@ function showProRequiredModal() {
         升级后可开启深度思考模式，并解锁无限次对话。
       </p>
       <button id="openProBtn" class="oauth-btn" style="margin-bottom:0.6rem;">
-        升级 / 输入激活码
+        升级 Pro
       </button>
       <button id="closeProTipBtn" style="
         width:100%;
@@ -1189,7 +1172,7 @@ function showProModelModal() {
       </p>
 
       <button id="openProBtn" class="oauth-btn" style="margin-bottom:0.6rem;">
-        升级 Pro / 输入激活码
+        升级 Pro
       </button>
 
       <button id="useFlashBtn" style="
@@ -1231,13 +1214,15 @@ function showProModelModal() {
 async function checkActivation() {
   if (!session?.user) return;
 
-  const { data } = await supabase
-    .from("activation_codes")
-    .select("code")
-    .eq("used_by", session.user.id)
+  // ⭐ Pro 判定唯一真值源：user_profiles.pro（爱发电付款由 afdianpay worker 回调写入）。
+  //    激活码系统已弃用；历史激活码用户的 pro 已回填，故不再查 activation_codes。
+  const { data: prof } = await supabase
+    .from("user_profiles")
+    .select("pro")
+    .eq("user_id", session.user.id)
     .maybeSingle();
 
-  isActivated = !!data;
+  isActivated = !!prof?.pro;
 
   // ⭐ 已激活直接显示∞
   if (isActivated) {
@@ -1944,18 +1929,6 @@ function showLimitModal() {
       <button id="payBtn" class="oauth-btn" style="margin-bottom:0.6rem;">
         支付 10 元（永久）
       </button>
-
-      <button id="enterCodeBtn" style="
-        width:100%;
-        border-radius:10px;
-        padding:0.7rem;
-        background:rgba(0,0,0,0.05);
-        color:#555;
-        cursor:pointer;
-        border:none;
-      ">
-        我有激活码
-      </button>
     </div>
   `;
 
@@ -1974,12 +1947,8 @@ setTimeout(() => {
   modal.onclick = e => { if (e.target === modal) closeModal(); };
 
   modal.querySelector("#payBtn").onclick = () => {
-    showPayModal();
-  };
-
-  modal.querySelector("#enterCodeBtn").onclick = () => {
     closeModal();
-    setTimeout(showActivationModal, 300);
+    setTimeout(() => showPayModal(), 250);
   };
 }
 
@@ -2023,6 +1992,11 @@ function showActivationSuccess(modal, closeModal) {
 }
 
 function showActivationModal() {
+  // 🚫 激活码系统已弃用：升级统一走爱发电支付（showPayModal）。
+  //    下方为旧的激活码兑换逻辑，已不可达，保留以便需要时回溯，可后续清理。
+  showPayModal();
+  return;
+
   if (document.getElementById("activationModal")) return;
 
   const modal = document.createElement("div");
@@ -2238,7 +2212,9 @@ await checkActivation();
 
   setTimeout(() => showPayModal(), 250); // ⭐ 补上
 };
-// ===== 搜索输入框事件绑定 =====
+}
+
+// ===== 搜索输入框事件绑定（页面加载时绑定；原先误置于已弃用的激活码弹窗内）=====
 setTimeout(() => {
   const input = document.getElementById("chatSearch");
   if (!input) return;
@@ -2248,58 +2224,33 @@ setTimeout(() => {
     renderChatList();
   });
 }, 0);
-}
 
 function showPayModal() {
-  if (document.getElementById("payModal")) return;
-
-  const modal = document.createElement("div");
-  modal.id = "payModal";
-  modal.className = "modal active";
-
-  modal.innerHTML = `
-    <div class="modal-content">
-      <span class="close">×</span>
-      <h2 style="margin-bottom:0.6rem;font-size:1.3rem;">💎 解锁 Pro · 永久使用</h2>
-      <p style="font-size:13px;color:#666;margin-bottom:0.8rem;">
-        一次付费，永久无限使用（不限次数）
-      </p>
-
-      <div style="display:flex;gap:16px;justify-content:center;margin:16px 0;">
-        <div style="text-align:center;">
-          <img src="p/ten_wx.webp" style="width:140px;border-radius:12px;">
-          <div style="font-size:12px;color:#666;margin-top:6px;">微信</div>
-        </div>
-
-        <div style="text-align:center;">
-          <img src="p/ten_zfb.webp" style="width:140px;border-radius:12px;">
-          <div style="font-size:12px;color:#666;margin-top:6px;">支付宝</div>
-        </div>
-      </div>
-
-      <p style="font-size:12px;color:#666;line-height:1.5;margin-top:8px;">
-        支付后发送截图至sunlandccc@outlook.com即可获取激活码<br>
-        <b>10元 · 永久有效</b>
-      </p>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-
-  // 改为展示二维码收款
-  const content = modal.querySelector(".modal-content");
-
-  // 重新绑定关闭事件
-  function closeModal() {
-    modal.classList.add("closing");
-
-setTimeout(() => {
-  modal.classList.remove("active");
-  modal.remove();
-}, 200);
+  // ⭐ 改为跳转爱发电「下单页」自动开通（替代旧的静态二维码 + 邮件发码手动流程）。
+  //    与 ai_settings.html 的 upgrade() 逻辑保持一致。
+  const userId = session?.user?.id;
+  if (!userId) {
+    alert("请先登录后再开通 Pro");
+    return;
   }
-  content.querySelector(".close").onclick = closeModal;
-  modal.onclick = e => { if (e.target === modal) closeModal(); };
+
+  const encodedId = encodeURIComponent(userId);
+  const AFDIAN_PLAN_ID = "4c2527fc6c7411f1bbe45254001e7c00"; // 霜蓝AI ¥10 订阅方案
+  const afdianUrl = `https://afdian.com/order/create?product_type=0&plan_id=${AFDIAN_PLAN_ID}&custom_order_id=${encodedId}`;
+
+  // 付款前提示：选择「月付」即可。付款成功即自动开通永久 Pro，
+  // 与订阅月数无关，多选月份只会多付钱、不会增加权益。
+  const ok = confirm(
+    "即将前往爱发电支付。\n\n" +
+    "请选择「月付」方案（¥10 / 月）即可——付款成功后将自动开通【永久 Pro】，\n" +
+    "无需多选月份，多付不会增加权益。\n\n确认前往支付？"
+  );
+  if (!ok) return;
+
+  // 打开爱发电下单页（custom_order_id 携带 userId，付款后随订单回传给 worker）
+  window.open(afdianUrl, "_blank");
+
+  // 付款后 afdianpay worker 约 2 分钟内自动开通 Pro；轮询激活状态以自动刷新 UI
   startActivationPolling();
 }
 

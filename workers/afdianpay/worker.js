@@ -59,18 +59,20 @@ async function checkOrders(env) {
       continue;
     }
 
-    // 🚀 更新 Supabase（永久 Pro），service_role key 绕过 RLS
+    // 🚀 写入 Supabase（永久 Pro），service_role key 绕过 RLS。
+    //    用 upsert（merge-duplicates）：用户 user_profiles 行不存在时自动创建，
+    //    避免「付款用户尚无 profile 行 → PATCH 命中 0 行 → 漏开 Pro」。
     const updateRes = await fetch(
-      `${env.SUPABASE_URL}/rest/v1/user_profiles?user_id=eq.${encodeURIComponent(userId)}`,
+      `${env.SUPABASE_URL}/rest/v1/user_profiles`,
       {
-        method: "PATCH",
+        method: "POST",
         headers: {
           "apikey": env.SUPABASE_KEY,
           "Authorization": `Bearer ${env.SUPABASE_KEY}`,
           "Content-Type": "application/json",
-          "Prefer": "return=representation"
+          "Prefer": "resolution=merge-duplicates,return=representation"
         },
-        body: JSON.stringify({ pro: true })
+        body: JSON.stringify({ user_id: userId, pro: true })
       }
     );
 

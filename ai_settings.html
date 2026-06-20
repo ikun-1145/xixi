@@ -1031,19 +1031,19 @@ async function editNickname() {
         console.warn("头像资料读取失败:", e);
       }
 
-      // 激活状态
+      // 激活状态：以 user_profiles.pro 为准（爱发电付款由 afdianpay worker 回调写入；激活码系统已弃用）
       try {
-        const { data: actData } = await supabase
-          .from("activation_codes")
-          .select("code")
-          .eq("used_by", user.id)
+        const { data: prof } = await supabase
+          .from("user_profiles")
+          .select("pro")
+          .eq("user_id", user.id)
           .maybeSingle();
 
-        if (actData) {
+        if (prof?.pro) {
           renderActivated();
           return;
         }
-      } catch (e) { console.warn("激活状态查询失败:", e); }
+      } catch (e) { console.warn("Pro 状态查询失败:", e); }
 
       // 普通用户：查次数，增强 fallback
       try {
