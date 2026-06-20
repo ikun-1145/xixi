@@ -2,46 +2,75 @@
 <html lang="zh-Hans">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>霜蓝 AI · 公测公告</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title data-i18n="pageTitle">霜蓝 AI — 重新定义智能交互</title>
   <meta name="description" content="霜蓝 AI 公测正式开启，立即下载体验智能对话助手">
+  <meta name="theme-color" content="#0c0e1a">
+  <meta name="theme-color" content="#0c0e1a" media="(prefers-color-scheme: dark)">
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Sora:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Sora:wght@300;400;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" rel="stylesheet">
   <style>
-    /* ═══════════════════════════════════════════════
+    /* ═══════════════════════════════════════════════════════════
        VARIABLES & RESET
-    ═══════════════════════════════════════════════ */
+    ═══════════════════════════════════════════════════════════ */
     :root {
-      --bg:          #0c0e1a;
-      --bg2:         #161823;
-      --bg3:         #1e2033;
-      --card:        rgba(18, 20, 32, 0.75);
-      --border:      rgba(113, 248, 252, 0.14);
-      --accent:      #71f8fc;
-      --accent2:     #3EEDE7;
-      --accent3:     #b8fffe;
-      --text:        #e8ffff;
-      --text-dim:    rgba(232,255,255,0.62);
-      --text-faint:  rgba(232,255,255,0.3);
+      --bg:            #0a0c16;
+      --bg-elevated:   #12152a;
+      --card:          rgba(18, 21, 42, 0.55);
+      --card-border:   rgba(113, 248, 252, 0.12);
+      --card-glow:     rgba(113, 248, 252, 0.06);
+      --accent:        #71f8fc;
+      --accent2:       #3EEDE7;
+      --accent3:       #a8fffe;
+      --accent-dim:    rgba(113, 248, 252, 0.45);
+      --text:          #ffffff;
+      --text-dim:      rgba(255, 255, 255, 0.82);
+      --text-faint:    rgba(255, 255, 255, 0.55);
+      --text-ghost:    rgba(255, 255, 255, 0.28);
+      --success:       #82e8a0;
+      --warning:       rgba(255, 205, 110, 0.88);
+      --font-sans:     'Sora', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei', 'Noto Sans CJK SC', sans-serif;
+      --font-serif:    'Noto Serif SC', 'Songti SC', serif;
+      --font-jp:       'Noto Sans JP', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+    }
+
+    @media (prefers-color-scheme: light) {
+      :root {
+        --bg:          #f4f7fb;
+        --bg-elevated: #ffffff;
+        --card:        rgba(255, 255, 255, 0.72);
+        --card-border: rgba(62, 237, 231, 0.22);
+        --card-glow:   rgba(62, 237, 231, 0.08);
+        --text:        #0f1525;
+        --text-dim:    rgba(15, 21, 37, 0.62);
+        --text-faint:  rgba(15, 21, 37, 0.35);
+        --text-ghost:  rgba(15, 21, 37, 0.12);
+        --accent:      #0ea5a0;
+        --accent2:     #0d9488;
+        --accent3:     #14b8a6;
+        --accent-dim:  rgba(14, 165, 160, 0.55);
+      }
+      .grain { opacity: 0.02; }
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
     html { scroll-behavior: smooth; }
 
     body {
-      font-family: 'Sora', 'PingFang SC', 'Hiragino Sans GB', 'Microsoft YaHei',
-                   'Noto Sans CJK SC', sans-serif;
+      font-family: var(--font-sans);
       background: var(--bg);
       color: var(--text);
       min-height: 100vh;
       overflow-x: hidden;
       line-height: 1.75;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
     }
 
-    /* ═══════════════════════════════════════════════
-       CANVAS BACKGROUND
-    ═══════════════════════════════════════════════ */
+    /* ═══════════════════════════════════════════════════════════
+       BACKGROUND LAYERS
+    ═══════════════════════════════════════════════════════════ */
     #bg-canvas {
       position: fixed;
       inset: 0;
@@ -49,56 +78,71 @@
       pointer-events: none;
     }
 
-    /* ═══════════════════════════════════════════════
-       GRAIN OVERLAY
-    ═══════════════════════════════════════════════ */
     .grain {
       position: fixed;
       inset: 0;
       z-index: 1;
       pointer-events: none;
-      opacity: 0.035;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.75' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
-      background-size: 300px;
+      opacity: 0.03;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='400' height='400'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)'/%3E%3C/svg%3E");
+      background-size: 250px;
     }
 
-    /* Ambient radial blobs */
     .ambient {
       position: fixed;
       pointer-events: none;
       z-index: 1;
       border-radius: 50%;
-      filter: blur(120px);
-      opacity: 0.5;
+      filter: blur(140px);
+      transition: opacity 1.2s ease;
     }
     .ambient-1 {
-      width: 500px; height: 500px;
-      top: -120px; left: -100px;
-      background: radial-gradient(circle, rgba(113,248,252,0.07), transparent 70%);
-      animation: blobDrift 20s ease-in-out infinite alternate;
+      width: 600px; height: 600px;
+      top: -180px; left: -120px;
+      background: radial-gradient(circle, rgba(113,248,252,0.08), transparent 70%);
+      animation: blobDrift 22s ease-in-out infinite alternate;
     }
     .ambient-2 {
-      width: 400px; height: 400px;
-      bottom: 100px; right: -80px;
+      width: 500px; height: 500px;
+      bottom: 80px; right: -100px;
       background: radial-gradient(circle, rgba(62,237,231,0.06), transparent 70%);
-      animation: blobDrift 16s ease-in-out infinite alternate-reverse;
+      animation: blobDrift 18s ease-in-out infinite alternate-reverse;
     }
     .ambient-3 {
-      width: 300px; height: 300px;
-      top: 40%; left: 50%;
+      width: 400px; height: 400px;
+      top: 45%; left: 50%;
       transform: translateX(-50%);
       background: radial-gradient(circle, rgba(113,248,252,0.04), transparent 70%);
-      animation: blobDrift 24s ease-in-out infinite alternate;
+      animation: blobDrift 28s ease-in-out infinite alternate;
     }
     @keyframes blobDrift {
       0%   { transform: translate(0,0) scale(1); }
-      50%  { transform: translate(30px, 20px) scale(1.1); }
-      100% { transform: translate(-20px, 40px) scale(0.95); }
+      50%  { transform: translate(40px, 30px) scale(1.12); }
+      100% { transform: translate(-30px, 50px) scale(0.92); }
     }
 
-    /* ═══════════════════════════════════════════════
+    /* ═══════════════════════════════════════════════════════════
+       CORE 3D SPHERE (HERO DECORATION)
+    ═══════════════════════════════════════════════════════════ */
+    .core-3d {
+      position: absolute;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 520px; height: 520px;
+      pointer-events: none;
+      z-index: 2;
+      opacity: 0.55;
+    }
+    #core-canvas {
+      width: 100%; height: 100%;
+    }
+    @media (max-width: 768px) {
+      .core-3d { width: 340px; height: 340px; opacity: 0.4; }
+    }
+
+    /* ═══════════════════════════════════════════════════════════
        WRAPPER
-    ═══════════════════════════════════════════════ */
+    ═══════════════════════════════════════════════════════════ */
     .wrap {
       position: relative;
       z-index: 10;
@@ -107,280 +151,573 @@
       min-height: 100vh;
     }
 
-    /* ═══════════════════════════════════════════════
+    /* ═══════════════════════════════════════════════════════════
        HERO
-    ═══════════════════════════════════════════════ */
+    ═══════════════════════════════════════════════════════════ */
     .hero {
-      min-height: 88svh;
+      min-height: 100svh;
       display: flex;
       flex-direction: column;
       align-items: center;
       justify-content: center;
-      padding: 6rem 1.5rem 5rem;
+      padding: 5rem 1.5rem 4rem;
       position: relative;
       overflow: hidden;
       text-align: center;
     }
+    .hero-content {
+      position: relative;
+      z-index: 5;
+    }
 
-    /* ── Logo ── */
+    /* Logo */
     .logo-wrap {
       position: relative;
       width: 120px;
       height: 120px;
-      margin: 0 auto 2rem;
+      margin: 0 auto 2.2rem;
       opacity: 0;
-      animation: riseIn 1s cubic-bezier(.16,1,.3,1) 0.15s forwards;
+      animation: riseIn 1.1s cubic-bezier(.16,1,.3,1) 0.2s forwards;
     }
-
     .logo-img {
-      width: 120px;
-      height: 120px;
+      width: 120px; height: 120px;
       border-radius: 28px;
       object-fit: cover;
       position: relative;
       z-index: 2;
-      animation: logoLev 7s ease-in-out infinite;
+      animation: logoLev 8s ease-in-out infinite, breatheGlow 4s ease-in-out infinite;
       box-shadow:
-        0 0 0 1px rgba(113,248,252,0.18),
-        0 12px 30px rgba(0,0,0,0.5);
+        0 0 0 1px rgba(113,248,252,0.2),
+        0 16px 40px rgba(0,0,0,0.45),
+        0 0 40px rgba(113,248,252,0.12);
     }
-
     @keyframes logoLev {
       0%,100% { transform: translateY(0px) rotate(0deg); }
-      50%      { transform: translateY(-10px) rotate(0.5deg); }
+      50%      { transform: translateY(-12px) rotate(0.5deg); }
+    }
+    @keyframes breatheGlow {
+      0%,100% { box-shadow: 0 0 0 1px rgba(113,248,252,0.2), 0 16px 40px rgba(0,0,0,0.45), 0 0 40px rgba(113,248,252,0.12); }
+      50%      { box-shadow: 0 0 0 1px rgba(113,248,252,0.35), 0 16px 40px rgba(0,0,0,0.45), 0 0 60px rgba(113,248,252,0.25); }
     }
 
-
-    /* Spinning ring */
+    /* Orbiting rings */
     .logo-ring {
       position: absolute;
-      inset: -18px;
+      inset: -22px;
       border-radius: 50%;
-      border: 1px solid rgba(113,248,252,0.18);
-      animation: spinRing 12s linear infinite;
+      border: 1px solid rgba(113,248,252,0.16);
+      animation: spinRing 14s linear infinite;
     }
     .logo-ring::before {
       content: '';
       position: absolute;
-      top: -4px; left: calc(50% - 4px);
-      width: 8px; height: 8px;
+      top: -5px; left: calc(50% - 5px);
+      width: 10px; height: 10px;
       border-radius: 50%;
       background: var(--accent);
-      box-shadow: 0 0 12px var(--accent), 0 0 24px var(--accent);
+      box-shadow: 0 0 14px var(--accent), 0 0 28px var(--accent);
     }
     .logo-ring-2 {
       position: absolute;
-      inset: -32px;
+      inset: -38px;
       border-radius: 50%;
-      border: 1px dashed rgba(113,248,252,0.08);
-      animation: spinRing 22s linear infinite reverse;
+      border: 1px dashed rgba(113,248,252,0.1);
+      animation: spinRing 26s linear infinite reverse;
     }
     @keyframes spinRing {
       from { transform: rotate(0deg); }
       to   { transform: rotate(360deg); }
     }
 
-    /* ── Chip ── */
+    /* Chip */
     .hero-chip {
       display: inline-flex;
       align-items: center;
-      gap: 0.45rem;
-      padding: 0.32rem 1rem;
-      border: 1px solid rgba(113,248,252,0.28);
+      gap: 0.5rem;
+      padding: 0.35rem 1.1rem;
+      border: 1px solid rgba(113,248,252,0.25);
       border-radius: 999px;
-      background: rgba(113,248,252,0.07);
+      background: rgba(113,248,252,0.06);
       font-size: 0.72rem;
       font-weight: 600;
       color: var(--accent);
-      letter-spacing: 0.18em;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
-      margin-bottom: 1.2rem;
+      margin-bottom: 1.4rem;
       opacity: 0;
-      animation: riseIn 0.9s cubic-bezier(.16,1,.3,1) 0.4s forwards;
+      animation: riseIn 1s cubic-bezier(.16,1,.3,1) 0.45s forwards;
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
     }
     .chip-dot {
       width: 6px; height: 6px;
       border-radius: 50%;
       background: var(--accent);
-      box-shadow: 0 0 8px var(--accent);
-      animation: dotBlink 2.2s ease-in-out infinite;
+      box-shadow: 0 0 10px var(--accent);
+      animation: dotBlink 2.4s ease-in-out infinite;
     }
     @keyframes dotBlink {
-      0%,100% { opacity: 1; }
-      50%      { opacity: 0.25; }
+      0%,100% { opacity: 1; transform: scale(1); }
+      50%      { opacity: 0.3; transform: scale(0.6); }
     }
 
-    /* ── Title ── */
+    /* Title */
     .hero-title {
-      font-family: 'Noto Serif SC', serif;
-      font-size: clamp(3rem, 9vw, 5.5rem);
+      font-family: var(--font-serif);
+      font-size: clamp(3.2rem, 10vw, 6.5rem);
       font-weight: 900;
-      line-height: 1.05;
-      letter-spacing: -0.02em;
-      background: linear-gradient(180deg, #ffffff 0%, #dffcff 100%);
+      line-height: 1.0;
+      letter-spacing: -0.03em;
+      background: linear-gradient(180deg, #ffffff 0%, var(--accent3) 100%);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
-      margin-bottom: 0.5rem;
+      margin-bottom: 0.6rem;
       opacity: 0;
-      animation: riseIn 0.9s cubic-bezier(.16,1,.3,1) 0.55s forwards;
+      animation: riseIn 1s cubic-bezier(.16,1,.3,1) 0.6s forwards;
     }
 
-    /* ── Subtitle ── */
+    /* Tagline */
+    .hero-tagline {
+      font-family: var(--font-serif);
+      font-size: clamp(1.15rem, 3vw, 1.55rem);
+      font-weight: 600;
+      color: var(--accent);
+      letter-spacing: 0.08em;
+      margin-bottom: 0.8rem;
+      opacity: 0;
+      animation: riseIn 1s cubic-bezier(.16,1,.3,1) 0.75s forwards;
+    }
+
+    /* Subtitle */
     .hero-sub {
-      font-size: clamp(1rem, 2.5vw, 1.15rem);
-      color: rgba(232,255,255,0.75);
-      max-width: 440px;
-      margin: 0 auto 2.8rem;
+      font-size: clamp(0.95rem, 2.2vw, 1.05rem);
+      color: #fff;
+      max-width: 460px;
+      margin: 0 auto 2.6rem;
+      line-height: 1.8;
       opacity: 0;
-      animation: riseIn 0.9s cubic-bezier(.16,1,.3,1) 0.7s forwards;
+      animation: riseIn 1s cubic-bezier(.16,1,.3,1) 0.9s forwards;
     }
 
-    /* ── CTA Button ── */
+    /* CTA */
     .hero-cta {
       opacity: 0;
-      animation: riseIn 0.9s cubic-bezier(.16,1,.3,1) 0.85s forwards;
+      animation: riseIn 1s cubic-bezier(.16,1,.3,1) 1.05s forwards;
     }
 
     .btn-primary {
       display: inline-flex;
       align-items: center;
       gap: 0.75rem;
-      padding: 1rem 2.2rem;
-      border-radius: 16px;
-      background: linear-gradient(135deg, rgba(113,248,252,0.14) 0%, rgba(62,237,231,0.08) 100%);
-      border: 1px solid rgba(113,248,252,0.38);
+      padding: 1.05rem 2.4rem;
+      border-radius: 18px;
+      background: linear-gradient(135deg, rgba(113,248,252,0.12) 0%, rgba(62,237,231,0.06) 100%);
+      border: 1px solid rgba(113,248,252,0.32);
       color: var(--accent);
-      font-size: 1rem;
+      font-size: 1.02rem;
       font-weight: 600;
       text-decoration: none;
       cursor: pointer;
       position: relative;
       overflow: hidden;
-      transition: all 0.35s cubic-bezier(.16,1,.3,1);
-      backdrop-filter: blur(6px);
+      transition: all 0.4s cubic-bezier(.16,1,.3,1);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      box-shadow: 0 4px 20px rgba(0,0,0,0.2);
     }
     .btn-primary:hover {
-      background: linear-gradient(135deg, rgba(113,248,252,0.24) 0%, rgba(62,237,231,0.16) 100%);
+      background: linear-gradient(135deg, rgba(113,248,252,0.22) 0%, rgba(62,237,231,0.14) 100%);
       border-color: rgba(113,248,252,0.65);
-      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
-      transform: translateY(-3px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.35), 0 0 30px rgba(113,248,252,0.18);
+      transform: translateY(-3px) scale(1.02);
       color: #fff;
     }
-
-    /* Sweep shimmer on CTA */
+    .btn-primary:active {
+      transform: translateY(-1px) scale(0.98);
+    }
     .btn-primary::after {
       content: '';
       position: absolute;
       top: 0; left: -100%;
-      width: 60%; height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.12), transparent);
-      animation: none;
-      opacity: 0;
+      width: 55%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.15), transparent);
+      transition: left 0.6s ease;
     }
-    @keyframes sweep {
-      0%   { left: -100%; }
-      100% { left: 200%; }
+    .btn-primary:hover::after {
+      left: 200%;
     }
 
-
-    /* ── Scroll arrow ── */
+    /* Scroll arrow */
     .scroll-arrow {
       position: absolute;
-      bottom: 2.2rem;
+      bottom: 2.4rem;
       left: 50%;
       transform: translateX(-50%);
       display: flex;
       flex-direction: column;
       align-items: center;
-      gap: 0.35rem;
+      gap: 0.4rem;
       opacity: 0;
-      animation: riseIn 1s ease 1.4s forwards;
-      color: var(--text-faint);
+      animation: riseIn 1s ease 1.5s forwards;
+      color: #fff;
       font-size: 0.65rem;
-      letter-spacing: 0.14em;
+      letter-spacing: 0.16em;
       text-transform: uppercase;
+      cursor: pointer;
+      transition: color 0.3s ease;
     }
+    .scroll-arrow:hover { color: var(--accent); }
     .scroll-line {
-      width: 1px; height: 44px;
+      width: 1px; height: 48px;
       background: linear-gradient(to bottom, transparent, var(--accent));
-      animation: linePulse 2.2s ease-in-out infinite;
+      animation: linePulse 2.5s ease-in-out infinite;
+      position: relative;
+    }
+    .scroll-line::after {
+      content: '';
+      position: absolute;
+      bottom: -3px; left: -2.5px;
+      width: 6px; height: 6px;
+      border-right: 1px solid var(--accent);
+      border-bottom: 1px solid var(--accent);
+      transform: rotate(45deg);
+      opacity: 0.6;
+      animation: linePulse 2.5s ease-in-out infinite;
     }
     @keyframes linePulse {
-      0%,100% { opacity: 0.3; transform: scaleY(1); }
-      50%      { opacity: 1;   transform: scaleY(1.15); }
+      0%,100% { opacity: 0.25; transform: scaleY(1); }
+      50%      { opacity: 1;   transform: scaleY(1.2); }
     }
 
-    /* ═══════════════════════════════════════════════
-       SECTION SHELL
-    ═══════════════════════════════════════════════ */
+    /* ═══════════════════════════════════════════════════════════
+       SECTIONS
+    ═══════════════════════════════════════════════════════════ */
     .section {
-      padding: 3.5rem 1.5rem;
+      padding: 5rem 1.5rem;
       position: relative;
     }
     .inner {
-      max-width: 860px;
+      max-width: 960px;
       margin: 0 auto;
     }
 
+    .section-header {
+      text-align: center;
+      margin-bottom: 3.5rem;
+    }
+    .s-eyebrow {
+      display: inline-block;
+      font-size: 0.7rem;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--accent);
+      font-weight: 700;
+      margin-bottom: 0.8rem;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.7s ease, transform 0.7s ease;
+    }
+    .s-eyebrow.on { opacity: 1; transform: none; }
+    .s-title {
+      font-family: var(--font-serif);
+      font-size: clamp(2rem, 5vw, 3.2rem);
+      font-weight: 700;
+      line-height: 1.2;
+      color: #fff;
+      margin-bottom: 0.8rem;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.7s ease 0.08s, transform 0.7s ease 0.08s;
+    }
+    .s-title.on { opacity: 1; transform: none; }
+    .s-desc {
+      font-size: 1rem;
+      color: #fff;
+      max-width: 520px;
+      margin: 0 auto;
+      line-height: 1.8;
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.7s ease 0.16s, transform 0.7s ease 0.16s;
+    }
+    .s-desc.on { opacity: 1; transform: none; }
+
+    /* ═══════════════════════════════════════════════════════════
+       FEATURE CARDS (Glassmorphism)
+    ═══════════════════════════════════════════════════════════ */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 1.2rem;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+    .feature-card {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 24px;
+      padding: 2.2rem 1.8rem;
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      position: relative;
+      overflow: hidden;
+      transition: all 0.45s cubic-bezier(.16,1,.3,1);
+      opacity: 0;
+      transform: translateY(30px) scale(0.97);
+    }
+    .feature-card.on {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    .feature-card:hover {
+      transform: translateY(-6px) scale(1.01);
+      border-color: rgba(113,248,252,0.28);
+      box-shadow: 0 20px 50px rgba(0,0,0,0.25), 0 0 40px var(--card-glow);
+    }
+    .feature-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.5;
+    }
+    .feature-card::after {
+      content: '';
+      position: absolute;
+      top: -50%; left: -50%;
+      width: 200%; height: 200%;
+      background: radial-gradient(circle at 30% 30%, rgba(113,248,252,0.04), transparent 50%);
+      pointer-events: none;
+    }
+    .feature-icon {
+      width: 52px; height: 52px;
+      border-radius: 16px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.6rem;
+      margin-bottom: 1.2rem;
+      background: linear-gradient(135deg, rgba(113,248,252,0.1), rgba(62,237,231,0.05));
+      border: 1px solid rgba(113,248,252,0.15);
+      position: relative;
+      z-index: 1;
+    }
+    .feature-title {
+      font-family: var(--font-serif);
+      font-size: 1.15rem;
+      font-weight: 700;
+      margin-bottom: 0.5rem;
+      position: relative;
+      z-index: 1;
+    }
+    .feature-desc {
+      font-size: 0.88rem;
+      color: var(--text-dim);
+      line-height: 1.7;
+      position: relative;
+      z-index: 1;
+    }
+    .feature-stat {
+      margin-top: 1.2rem;
+      font-size: 0.78rem;
+      color: var(--accent);
+      font-weight: 600;
+      letter-spacing: 0.04em;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       AI SHOWCASE (Simulated Chat)
+    ═══════════════════════════════════════════════════════════ */
+    .showcase-wrap {
+      max-width: 720px;
+      margin: 0 auto;
+      opacity: 0;
+      transform: translateY(30px) scale(0.98);
+      transition: all 0.9s cubic-bezier(.16,1,.3,1) 0.2s;
+    }
+    .showcase-wrap.on {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    .chat-window {
+      background: var(--card);
+      border: 1px solid var(--card-border);
+      border-radius: 28px;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      overflow: hidden;
+      position: relative;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.3);
+    }
+    .chat-window::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--accent), transparent);
+      opacity: 0.6;
+      z-index: 2;
+    }
+    .chat-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      padding: 1.1rem 1.6rem;
+      border-bottom: 1px solid var(--card-border);
+    }
+    .chat-header-icon {
+      width: 32px; height: 32px;
+      border-radius: 10px;
+      object-fit: cover;
+      box-shadow: 0 0 12px rgba(113,248,252,0.2);
+    }
+    .chat-header-info { flex: 1; }
+    .chat-header-name {
+      font-weight: 700;
+      font-size: 0.92rem;
+      letter-spacing: 0.02em;
+    }
+    .chat-header-status {
+      font-size: 0.72rem;
+      color: var(--accent);
+      display: flex;
+      align-items: center;
+      gap: 0.35rem;
+    }
+    .status-dot {
+      width: 6px; height: 6px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 6px var(--accent);
+      animation: dotBlink 2.4s ease-in-out infinite;
+    }
+    .chat-body {
+      padding: 1.4rem 1.6rem;
+      display: flex;
+      flex-direction: column;
+      gap: 1rem;
+      min-height: 280px;
+    }
+    .chat-msg {
+      display: flex;
+      gap: 0.75rem;
+      align-items: flex-start;
+      animation: msgAppear 0.5s cubic-bezier(.16,1,.3,1) forwards;
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    @keyframes msgAppear {
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .chat-msg.user { flex-direction: row-reverse; }
+    .chat-msg.user .chat-bubble {
+      background: linear-gradient(135deg, rgba(113,248,252,0.12), rgba(62,237,231,0.06));
+      border: 1px solid rgba(113,248,252,0.18);
+      border-radius: 18px 18px 4px 18px;
+    }
+    .chat-msg.ai .chat-bubble {
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.08);
+      border-radius: 18px 18px 18px 4px;
+    }
+    .chat-avatar {
+      width: 30px; height: 30px;
+      border-radius: 50%;
+      object-fit: cover;
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .chat-bubble {
+      padding: 0.75rem 1.1rem;
+      font-size: 0.88rem;
+      line-height: 1.65;
+      max-width: 80%;
+      color: var(--text);
+      word-break: break-word;
+    }
+    .chat-bubble .typing-cursor {
+      display: inline-block;
+      width: 2px; height: 1em;
+      background: var(--accent);
+      margin-left: 3px;
+      vertical-align: text-bottom;
+      animation: blinkCursor 0.8s step-end infinite;
+    }
+    @keyframes blinkCursor {
+      0%,100% { opacity: 1; }
+      50%      { opacity: 0; }
+    }
+    .chat-input-bar {
+      display: flex;
+      align-items: center;
+      gap: 0.6rem;
+      padding: 0.8rem 1.2rem;
+      border-top: 1px solid var(--card-border);
+      margin: 0 0.4rem 0.4rem;
+      border-radius: 16px;
+      background: rgba(255,255,255,0.02);
+    }
+    .chat-input-placeholder {
+      flex: 1;
+      font-size: 0.85rem;
+      color: var(--text-ghost);
+    }
+    .chat-send-btn {
+      width: 32px; height: 32px;
+      border-radius: 50%;
+      background: var(--accent);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .chat-send-btn:hover {
+      transform: scale(1.1);
+      box-shadow: 0 0 16px rgba(113,248,252,0.4);
+    }
+
+    /* ═══════════════════════════════════════════════════════════
+       DOWNLOAD SECTION
+    ═══════════════════════════════════════════════════════════ */
+    .dl-section {
+      background: linear-gradient(180deg, transparent, rgba(113,248,252,0.02), transparent);
+      padding-top: 2rem;
+      padding-bottom: 4rem;
+    }
     .dl-section .inner {
       display: flex;
       flex-direction: column;
       align-items: center;
       text-align: center;
     }
-
-    /* ── Section eyebrow label ── */
-    .s-label {
-      font-size: 0.68rem;
-      letter-spacing: 0.22em;
-      text-transform: uppercase;
-      color: var(--accent);
-      font-weight: 700;
-      margin-bottom: 0.65rem;
-      opacity: 0;
-      transform: translateY(18px);
-      transition: opacity 0.6s ease, transform 0.6s ease;
-      text-align: center;
-      display: block;
-    }
-    .s-label.on { opacity: 1; transform: none; }
-
-    /* ── Section title ── */
-    .s-title {
-      font-family: 'Noto Serif SC', serif;
-      font-size: clamp(1.9rem, 4.5vw, 2.8rem);
-      font-weight: 700;
-      line-height: 1.28;
-      color: var(--text);
-      margin-bottom: 2.2rem;
-      opacity: 0;
-      transform: translateY(18px);
-      transition: opacity 0.6s ease 0.08s, transform 0.6s ease 0.08s;
-      text-align: center;
-    }
-    .s-title.on { opacity: 1; transform: none; }
-
-    /* ═══════════════════════════════════════════════
-       CARD BASE
-    ═══════════════════════════════════════════════ */
-    .card {
+    .dl-card {
       background: var(--card);
-      border: 1px solid var(--border);
-      border-radius: 22px;
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
+      border: 1px solid var(--card-border);
+      border-radius: 28px;
+      padding: 3.5rem 2.5rem;
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      max-width: 520px;
+      margin: 0 auto;
       position: relative;
       overflow: hidden;
       opacity: 0;
-      transform: translateY(28px);
-      transition: opacity 0.7s cubic-bezier(.16,1,.3,1) 0.15s,
-                  transform 0.7s cubic-bezier(.16,1,.3,1) 0.15s;
+      transform: translateY(30px) scale(0.97);
+      transition: all 0.9s cubic-bezier(.16,1,.3,1) 0.15s;
+      box-shadow: 0 24px 60px rgba(0,0,0,0.25);
     }
-    .card.on { opacity: 1; transform: none; }
-
-    /* Top accent line */
-    .card::before {
+    .dl-card.on {
+      opacity: 1;
+      transform: translateY(0) scale(1);
+    }
+    .dl-card::before {
       content: '';
       position: absolute;
       top: 0; left: 0; right: 0;
@@ -388,345 +725,271 @@
       background: linear-gradient(90deg, transparent, var(--accent), transparent);
       opacity: 0.6;
     }
-
-    /* ═══════════════════════════════════════════════
-       ANNOUNCEMENT CARD
-    ═══════════════════════════════════════════════ */
-    .ann-card {
-      padding: 2.4rem 2.6rem 2.6rem;
-      max-width: 720px;
-      margin: 0 auto;
-    }
-
-    /* Ghost watermark */
-    .ann-card::after {
-      content: '公测';
-      position: absolute;
-      top: -1rem; right: -0.5rem;
-      font-family: 'Noto Serif SC', serif;
-      font-size: 9rem;
-      font-weight: 900;
-      color: rgba(255,255,255,0.02);
-      line-height: 1;
-      pointer-events: none;
-      user-select: none;
-    }
-
-    .ann-meta {
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-      flex-wrap: wrap;
-      margin-bottom: 1.6rem;
-    }
-
-    .meta-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 0.4rem;
-      padding: 0.3rem 0.85rem;
-      border-radius: 999px;
-      font-size: 0.78rem;
-      border: 1px solid;
-    }
-    .meta-date {
-      background: rgba(113,248,252,0.07);
-      border-color: rgba(113,248,252,0.2);
-      color: var(--accent2);
-    }
-    .meta-version {
-      background: rgba(255,255,255,0.04);
-      border-color: rgba(255,255,255,0.1);
-      color: var(--text-dim);
-    }
-
-    .ann-body {
-      position: relative;
-      z-index: 1;
-    }
-    .ann-body p {
-      color: var(--text-dim);
-      font-size: 0.94rem;
-      line-height: 1.95;
-      margin-bottom: 1.1rem;
-    }
-    .ann-body p:last-of-type { margin-bottom: 0; }
-
-    .hl { color: var(--accent3); font-weight: 600; }
-
-    /* Feature grid */
-    .feat-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-      gap: 0.6rem;
-      margin: 1.6rem 0;
-    }
-    .feat-item {
-      display: flex;
-      align-items: center;
-      gap: 0.5rem;
-      padding: 0.55rem 0.85rem;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.07);
-      border-radius: 10px;
-      font-size: 0.82rem;
-      color: var(--text-dim);
-      transition: all 0.28s ease;
-      cursor: default;
-    }
-    .feat-item:hover {
-      border-color: rgba(113,248,252,0.28);
-      background: rgba(113,248,252,0.06);
-      color: var(--accent);
-    }
-    .feat-ico { font-size: 1rem; flex-shrink: 0; }
-
-    /* Warning box */
-    .warn-box {
-      display: flex;
-      gap: 0.75rem;
-      align-items: flex-start;
-      margin-top: 1.6rem;
-      padding: 1rem 1.2rem;
-      background: rgba(255, 165, 50, 0.05);
-      border: 1px solid rgba(255, 165, 50, 0.2);
-      border-radius: 12px;
-      font-size: 0.86rem;
-      color: rgba(255,205,110,0.88);
-      line-height: 1.7;
-    }
-    .warn-ico { font-size: 1.05rem; flex-shrink: 0; margin-top: 0.1rem; }
-
-    /* ═══════════════════════════════════════════════
-       DOWNLOAD CARD
-    ═══════════════════════════════════════════════ */
-    .dl-section {
-      background: linear-gradient(180deg, transparent, rgba(113,248,252,0.025), transparent);
-      padding-top: 1.5rem;
-      padding-bottom: 3rem;
-    }
-
-    .dl-card {
-      padding: 3.5rem 2.5rem;
-      text-align: center;
-      box-shadow: inset 0 0 0 1px rgba(255,255,255,0.04);
-      max-width: 520px;
-      margin: 0 auto;
-    }
-
-    /* Floating orb decoration */
     .dl-orb {
       position: absolute;
-      top: -60px; right: -60px;
-      width: 280px; height: 280px;
+      top: -70px; right: -70px;
+      width: 300px; height: 300px;
       border-radius: 50%;
       background: radial-gradient(circle, rgba(113,248,252,0.1), transparent 70%);
       pointer-events: none;
-      animation: orbSway 9s ease-in-out infinite;
+      animation: orbSway 10s ease-in-out infinite;
     }
     .dl-orb-2 {
       position: absolute;
-      bottom: -40px; left: -40px;
-      width: 200px; height: 200px;
+      bottom: -50px; left: -50px;
+      width: 220px; height: 220px;
       border-radius: 50%;
-      background: radial-gradient(circle, rgba(62,237,231,0.07), transparent 70%);
+      background: radial-gradient(circle, rgba(62,237,231,0.08), transparent 70%);
       pointer-events: none;
-      animation: orbSway 13s ease-in-out infinite reverse;
+      animation: orbSway 14s ease-in-out infinite reverse;
     }
     @keyframes orbSway {
       0%,100% { transform: translate(0,0); }
-      33%      { transform: translate(-18px, 15px); }
-      66%      { transform: translate(14px,-12px); }
+      33%      { transform: translate(-20px, 18px); }
+      66%      { transform: translate(16px,-14px); }
     }
-
-    /* Android icon ring */
     .android-wrap {
-      width: 88px; height: 88px;
-      margin: 0 auto 1.6rem;
-      background: linear-gradient(135deg, rgba(113,248,252,0.1), rgba(62,237,231,0.05));
-      border: 1px solid rgba(113,248,252,0.22);
-      border-radius: 22px;
+      width: 92px; height: 92px;
+      margin: 0 auto 1.8rem;
+      background: linear-gradient(135deg, rgba(113,248,252,0.08), rgba(62,237,231,0.04));
+      border: 1px solid rgba(113,248,252,0.18);
+      border-radius: 24px;
       display: flex;
       align-items: center;
       justify-content: center;
       position: relative;
+      transition: all 0.4s ease;
+    }
+    .android-wrap:hover {
+      transform: scale(1.05);
+      border-color: rgba(113,248,252,0.35);
+      box-shadow: 0 0 30px rgba(113,248,252,0.15);
     }
     .android-wrap::after {
       content: '';
       position: absolute;
-      inset: -6px;
-      border-radius: 28px;
-      border: 1px dashed rgba(113,248,252,0.18);
-      animation: spinRing 18s linear infinite;
+      inset: -8px;
+      border-radius: 32px;
+      border: 1px dashed rgba(113,248,252,0.14);
+      animation: spinRing 20s linear infinite;
     }
-
     .dl-title {
-      font-family: 'Noto Serif SC', serif;
-      font-size: clamp(1.6rem, 3.5vw, 2rem);
+      font-family: var(--font-serif);
+      font-size: clamp(1.6rem, 3.5vw, 2.1rem);
       font-weight: 700;
-      margin-bottom: 0.4rem;
+      margin-bottom: 0.35rem;
+      position: relative;
+      z-index: 1;
     }
     .dl-desc {
       font-size: 0.9rem;
       color: var(--text-dim);
-      margin-bottom: 0.6rem;
+      margin-bottom: 0.7rem;
+      position: relative;
+      z-index: 1;
     }
-
     .android-badge {
       display: inline-flex;
       align-items: center;
-      gap: 0.4rem;
-      padding: 0.3rem 0.9rem;
-      background: rgba(100,220,130,0.07);
-      border: 1px solid rgba(100,220,130,0.22);
+      gap: 0.45rem;
+      padding: 0.35rem 1rem;
+      background: rgba(100,220,130,0.06);
+      border: 1px solid rgba(100,220,130,0.18);
       border-radius: 999px;
-      font-size: 0.74rem;
-      color: #82e8a0;
-      letter-spacing: 0.06em;
+      font-size: 0.75rem;
+      color: var(--success);
+      letter-spacing: 0.04em;
       margin-bottom: 2.2rem;
+      position: relative;
+      z-index: 1;
     }
-
     .btn-dl {
       display: inline-flex;
       align-items: center;
       gap: 0.85rem;
-      padding: 1.1rem 2.6rem;
+      padding: 1.15rem 2.8rem;
       background: linear-gradient(135deg, var(--accent), var(--accent2));
-      border-radius: 16px;
-      color: #08090f;
-      font-size: 1.05rem;
+      border-radius: 18px;
+      color: #fff;
+      font-size: 1.08rem;
       font-weight: 700;
       text-decoration: none;
       position: relative;
       overflow: hidden;
-      transition: all 0.35s cubic-bezier(.16,1,.3,1);
-      box-shadow: 0 10px 28px rgba(0,0,0,0.45);
+      transition: all 0.4s cubic-bezier(.16,1,.3,1);
+      box-shadow: 0 12px 32px rgba(0,0,0,0.4);
+      z-index: 5;
+      border: none;
+      cursor: pointer;
     }
     .btn-dl:hover {
       transform: translateY(-4px) scale(1.03);
-      box-shadow: 0 16px 40px rgba(0,0,0,0.55);
+      box-shadow: 0 18px 48px rgba(0,0,0,0.5), 0 0 40px rgba(113,248,252,0.25);
+    }
+    .btn-dl:active {
+      transform: translateY(-1px) scale(0.98);
     }
     .btn-dl::after {
       content: '';
       position: absolute;
       top: 0; left: -100%;
-      width: 55%; height: 100%;
-      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.28), transparent);
-      animation: none;
-      opacity: 0;
+      width: 50%; height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3), transparent);
+      transition: left 0.7s ease;
     }
-
+    .btn-dl:hover::after {
+      left: 200%;
+    }
+    .btn-dl.downloading {
+      pointer-events: none;
+      background: linear-gradient(135deg, var(--accent-dim), rgba(62,237,231,0.4));
+    }
+    .btn-dl.downloading .dl-spinner {
+      display: inline-block;
+      animation: spin 1s linear infinite;
+    }
+    @keyframes spin {
+      from { transform: rotate(0deg); }
+      to   { transform: rotate(360deg); }
+    }
     .dl-meta {
       display: flex;
       justify-content: center;
       gap: 2rem;
       flex-wrap: wrap;
-      margin-top: 1.8rem;
+      margin-top: 2rem;
+      position: relative;
+      z-index: 1;
     }
     .dl-meta-item {
       display: flex;
       align-items: center;
-      gap: 0.4rem;
+      gap: 0.45rem;
       font-size: 0.8rem;
       color: var(--text-faint);
     }
 
-    /* ═══════════════════════════════════════════════
+    /* ═══════════════════════════════════════════════════════════
        DIVIDER
-    ═══════════════════════════════════════════════ */
+    ═══════════════════════════════════════════════════════════ */
     .divider {
-      max-width: 860px;
+      max-width: 960px;
       margin: 0 auto;
       height: 1px;
-      background: linear-gradient(90deg, transparent, rgba(113,248,252,0.14), transparent);
+      background: linear-gradient(90deg, transparent, rgba(113,248,252,0.12), transparent);
     }
 
-    /* ═══════════════════════════════════════════════
+    /* ═══════════════════════════════════════════════════════════
        FOOTER
-    ═══════════════════════════════════════════════ */
+    ═══════════════════════════════════════════════════════════ */
     footer {
-      padding: 2.8rem 1.5rem 3rem;
+      padding: 3rem 1.5rem 3.5rem;
       position: relative;
       z-index: 10;
     }
     .foot-inner {
-      max-width: 860px;
+      max-width: 960px;
       margin: 0 auto;
       text-align: center;
     }
-
-    /* Logo line */
     .foot-logo {
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: 0.6rem;
-      margin-bottom: 1.4rem;
+      gap: 0.7rem;
+      margin-bottom: 1.6rem;
     }
     .foot-logo-img {
-      width: 28px; height: 28px;
-      border-radius: 7px;
+      width: 30px; height: 30px;
+      border-radius: 8px;
       object-fit: cover;
       opacity: 0.7;
+      transition: opacity 0.3s ease;
     }
+    .foot-logo:hover .foot-logo-img { opacity: 1; }
     .foot-logo-name {
-      font-family: 'Noto Serif SC', serif;
-      font-size: 0.95rem;
+      font-family: var(--font-serif);
+      font-size: 1rem;
       font-weight: 700;
-      color: var(--text-faint);
+      color: #fff;
       letter-spacing: 0.04em;
     }
-
     .foot-links {
       display: flex;
       justify-content: center;
-      gap: 2.2rem;
-      margin-bottom: 1.2rem;
+      gap: 2.4rem;
+      margin-bottom: 1.4rem;
       flex-wrap: wrap;
     }
     .foot-link {
-      color: var(--text-faint);
+      color: #fff;
       text-decoration: none;
-      font-size: 0.83rem;
-      transition: color 0.28s;
+      font-size: 0.84rem;
+      transition: all 0.3s ease;
       letter-spacing: 0.03em;
+      position: relative;
     }
-    .foot-link:hover { color: var(--accent); }
-
+    .foot-link::after {
+      content: '';
+      position: absolute;
+      bottom: -2px; left: 0;
+      width: 0; height: 1px;
+      background: var(--accent);
+      transition: width 0.3s ease;
+    }
+    .foot-link:hover {
+      color: var(--accent);
+    }
+    .foot-link:hover::after {
+      width: 100%;
+    }
     .foot-divider {
-      width: 40px; height: 1px;
+      width: 48px; height: 1px;
       background: linear-gradient(90deg, transparent, rgba(113,248,252,0.25), transparent);
-      margin: 1.2rem auto;
+      margin: 1.4rem auto;
     }
-
     .foot-copy {
-      font-size: 0.77rem;
-      color: var(--text-faint);
+      font-size: 0.78rem;
+      color: #fff;
       letter-spacing: 0.04em;
     }
 
-    /* ═══════════════════════════════════════════════
+    /* ═══════════════════════════════════════════════════════════
        KEYFRAMES
-    ═══════════════════════════════════════════════ */
+    ═══════════════════════════════════════════════════════════ */
     @keyframes riseIn {
-      from { opacity: 0; transform: translateY(28px); }
+      from { opacity: 0; transform: translateY(32px); }
       to   { opacity: 1; transform: translateY(0); }
     }
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to   { opacity: 1; }
+    }
 
-    /* ═══════════════════════════════════════════════
+    /* ═══════════════════════════════════════════════════════════
        RESPONSIVE
-    ═══════════════════════════════════════════════ */
-    @media (max-width: 600px) {
-      .ann-card, .dl-card { padding: 1.6rem 1.2rem 2rem; }
-      .feat-grid { grid-template-columns: repeat(auto-fill, minmax(110px, 1fr)); }
+    ═══════════════════════════════════════════════════════════ */
+    @media (max-width: 768px) {
+      .hero { padding: 4rem 1.2rem 3.5rem; }
+      .feature-grid { grid-template-columns: 1fr; gap: 1rem; }
+      .feature-card { padding: 1.8rem 1.4rem; }
+      .dl-card { padding: 2.5rem 1.6rem; }
+      .chat-body { padding: 1.1rem 1.2rem; min-height: 240px; }
       .dl-meta { gap: 1.2rem; }
-      .hero { padding: 5.5rem 1.2rem 4rem; }
+      .section { padding: 3.5rem 1.2rem; }
+    }
+    @media (max-width: 480px) {
+      .hero-title { font-size: 2.8rem; }
+      .hero-tagline { font-size: 1rem; }
+      .btn-primary { padding: 0.9rem 1.8rem; font-size: 0.95rem; }
+      .btn-dl { padding: 1rem 2rem; font-size: 1rem; }
+      .foot-links { gap: 1.4rem; }
     }
   </style>
 </head>
 <body>
 
-  <!-- CANVAS BACKGROUND -->
+  <!-- BACKGROUND LAYERS -->
   <canvas id="bg-canvas"></canvas>
   <div class="grain"></div>
   <div class="ambient ambient-1"></div>
@@ -735,234 +998,482 @@
 
   <div class="wrap">
 
-    <!-- ══════════════ HERO ══════════════ -->
-    <section class="hero">
-
-      <div class="logo-wrap">
-        <img src="p/ailogo.png" alt="霜蓝AI" class="logo-img">
-        <div class="logo-ring"></div>
-        <div class="logo-ring-2"></div>
+    <!-- ═══════════════════════ HERO ═══════════════════════ -->
+    <section class="hero" id="hero">
+      <div class="core-3d" id="core3d">
+        <canvas id="core-canvas"></canvas>
       </div>
 
-      <div class="hero-chip">
-        <div class="chip-dot"></div>
-        公开测试版 · Public Beta
+      <div class="hero-content">
+        <div class="logo-wrap">
+          <img src="p/ailogo.png" alt="霜蓝AI" class="logo-img">
+          <div class="logo-ring"></div>
+          <div class="logo-ring-2"></div>
+        </div>
+
+        <div class="hero-chip">
+          <span class="chip-dot"></span>
+          <span data-i18n="chip">Public Beta</span>
+        </div>
+
+        <h1 class="hero-title" data-i18n="title">霜蓝 AI</h1>
+        <p class="hero-tagline" data-i18n="tagline">重新定义智能交互</p>
+        <p class="hero-sub" data-i18n="subtitle">深度集成先进大语言模型，为每位用户带来流畅、智能、有温度的对话体验</p>
+
+        <div class="hero-cta">
+          <a href="#download" class="btn-primary" id="hero-cta-btn">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M12 5v14M5 12l7 7 7-7"/>
+            </svg>
+            <span data-i18n="cta">立即下载</span>
+          </a>
+        </div>
       </div>
 
-      <h1 class="hero-title">霜蓝 AI</h1>
-
-      <p class="hero-sub">
-        智能对话，创作加速。<br>
-        正式开放公测，立即体验未来的对话方式。
-      </p>
-
-      <div class="hero-cta">
-        <a href="#download" class="btn-primary" id="hero-cta-btn">
-          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M12 5v14M5 12l7 7 7-7"/>
-          </svg>
-          立即下载
-        </a>
-      </div>
-
-      <div class="scroll-arrow">
-        <span>了解更多</span>
+      <div class="scroll-arrow" id="scrollArrow">
+        <span data-i18n="scroll">探索更多</span>
         <div class="scroll-line"></div>
       </div>
-
     </section>
 
-    <!-- ══════════════ ANNOUNCEMENT ══════════════ -->
-    <section class="section" id="announcement">
+    <!-- ═══════════════════════ FEATURES ═══════════════════════ -->
+    <section class="section" id="features">
       <div class="inner">
+        <div class="section-header">
+          <div class="s-eyebrow" data-obs data-i18n="featEyebrow">核心能力</div>
+          <h2 class="s-title" data-obs data-i18n="featTitle">不止于对话</h2>
+          <p class="s-desc" data-obs data-i18n="featDesc">融合前沿 AI 技术，打造全方位智能助手</p>
+        </div>
 
-        <div class="s-label" data-obs>公告 · Announcement</div>
-        <h2 class="s-title" data-obs>公测正式开启</h2>
-
-        <div class="card ann-card" data-obs>
-
-          <div class="ann-meta">
-            <span class="meta-pill meta-date">📅 2026 · 公测阶段</span>
-            <span class="meta-pill meta-version">v1.0.7 · Beta</span>
+        <div class="feature-grid">
+          <div class="feature-card" data-obs>
+            <div class="feature-icon">💬</div>
+            <div class="feature-title" data-i18n="feat1Title">智能对话</div>
+            <div class="feature-desc" data-i18n="feat1Desc">理解上下文，感知情绪，像真人一样自然交流</div>
+            <div class="feature-stat" data-i18n="feat1Stat">多轮深度对话</div>
           </div>
-
-          <div class="ann-body">
-            <p>
-              大家好，我是 <span class="hl">霜蓝</span>。历经多轮内部调试与迭代，
-              <span class="hl">霜蓝 AI</span> 终于迎来了公开测试阶段！这是一款由我个人独立开发的 AI 对话助手，
-              深度集成先进大语言模型，致力于为每位用户带来流畅、智能、有温度的对话体验。
-            </p>
-
-            <div class="feat-grid">
-              <div class="feat-item"><span class="feat-ico">💬</span>智能对话</div>
-              <div class="feat-item"><span class="feat-ico">⚡</span>流式响应</div>
-              <div class="feat-item"><span class="feat-ico">🎨</span>创作辅助</div>
-              <div class="feat-item"><span class="feat-ico">💻</span>编程助手</div>
-              <div class="feat-item"><span class="feat-ico">🌐</span>多轮对话</div>
-              <div class="feat-item"><span class="feat-ico">☁️</span>云端同步</div>
-            </div>
-
-            <p>
-              公测期间，所有用户均可<span class="hl">免费下载使用</span>。
-              我非常期待你的反馈——无论是 Bug 报告、功能建议，还是使用感受，
-              你的每一条意见都将帮助这款产品变得更好。
-            </p>
-
-            <p>
-              由于产品仍处于快速迭代中，部分功能与交互体验尚在完善，
-              敬请理解与包容。感谢每一位愿意陪伴我们一起成长的用户，
-              期待与你共同见证霜蓝 AI 的蜕变。
-            </p>
-
-            <div class="warn-box">
-              <span class="warn-ico">⚠️</span>
-              <span>
-                当前版本<strong>仅支持 Android 安卓设备</strong>，iOS 版本正在规划中，敬请期待。
-                安装时请在系统设置中允许"安装未知来源应用"，然后打开下载的 APK 文件进行安装。
-              </span>
-            </div>
+          <div class="feature-card" data-obs>
+            <div class="feature-icon">⚡</div>
+            <div class="feature-title" data-i18n="feat2Title">极速响应</div>
+            <div class="feature-desc" data-i18n="feat2Desc">流式输出，毫秒级首字延迟，沟通零等待</div>
+            <div class="feature-stat" data-i18n="feat2Stat">&lt; 500ms 首字延迟</div>
           </div>
-
+          <div class="feature-card" data-obs>
+            <div class="feature-icon">🎨</div>
+            <div class="feature-title" data-i18n="feat3Title">深度创作</div>
+            <div class="feature-desc" data-i18n="feat3Desc">从文案撰写到创意发散，激发无限灵感</div>
+            <div class="feature-stat" data-i18n="feat3Stat">全场景创作辅助</div>
+          </div>
+          <div class="feature-card" data-obs>
+            <div class="feature-icon">💻</div>
+            <div class="feature-title" data-i18n="feat4Title">编程助手</div>
+            <div class="feature-desc" data-i18n="feat4Desc">代码生成、调试、解释，开发效率倍增</div>
+            <div class="feature-stat" data-i18n="feat4Stat">多语言代码支持</div>
+          </div>
         </div>
       </div>
     </section>
 
     <div class="divider"></div>
 
-    <!-- ══════════════ DOWNLOAD ══════════════ -->
+    <!-- ═══════════════════════ SHOWCASE ═══════════════════════ -->
+    <section class="section" id="showcase">
+      <div class="inner">
+        <div class="section-header">
+          <div class="s-eyebrow" data-obs data-i18n="showEyebrow">交互演示</div>
+          <h2 class="s-title" data-obs data-i18n="showTitle">真实的对话体验</h2>
+          <p class="s-desc" data-obs data-i18n="showDesc">沉浸式交互，让每一次对话都充满期待</p>
+        </div>
+
+        <div class="showcase-wrap" data-obs>
+          <div class="chat-window">
+            <div class="chat-header">
+              <img src="p/ailogo.png" alt="霜蓝" class="chat-header-icon">
+              <div class="chat-header-info">
+                <div class="chat-header-name">霜蓝 AI</div>
+                <div class="chat-header-status">
+                  <span class="status-dot"></span>
+                  <span data-i18n="chatStatus">在线</span>
+                </div>
+              </div>
+            </div>
+            <div class="chat-body" id="chatBody">
+              <div class="chat-msg user" style="animation-delay:0.3s">
+                <div class="chat-bubble" data-i18n="chatUserMsg">你好，霜蓝！你能帮我写一段关于科技未来的文案吗？</div>
+              </div>
+              <div class="chat-msg ai" id="aiMsg1" style="animation-delay:0.8s">
+                <img src="p/ailogo.png" alt="霜蓝" class="chat-avatar">
+                <div class="chat-bubble" id="aiBubble1">
+                  <span id="typewriter1"></span><span class="typing-cursor" id="cursor1"></span>
+                </div>
+              </div>
+            </div>
+            <div class="chat-input-bar">
+              <div class="chat-input-placeholder" data-i18n="chatPlaceholder">输入消息...</div>
+              <button class="chat-send-btn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                </svg>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <div class="divider"></div>
+
+    <!-- ═══════════════════════ DOWNLOAD ═══════════════════════ -->
     <section class="section dl-section" id="download">
       <div class="inner">
+        <div class="section-header">
+          <div class="s-eyebrow" data-obs data-i18n="dlEyebrow">下载</div>
+          <h2 class="s-title" data-obs data-i18n="dlTitle">获取霜蓝 AI</h2>
+          <p class="s-desc" data-obs data-i18n="dlDesc">开启你的智能对话之旅</p>
+        </div>
 
-        <div class="s-label" data-obs>下载 · Download</div>
-        <h2 class="s-title" data-obs>获取霜蓝 AI</h2>
-
-        <div class="card dl-card" data-obs>
+        <div class="dl-card" data-obs>
           <div class="dl-orb"></div>
           <div class="dl-orb-2"></div>
 
           <div class="android-wrap">
-            <!-- Android robot SVG -->
-            <svg width="46" height="46" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path fill="#71f8fc" d="M6.18 15.64a2.18 2.18 0 0 1-2.18-2.18V9.19a2.18 2.18 0 1 1 4.36 0v4.27a2.18 2.18 0 0 1-2.18 2.18M17.82 15.64a2.18 2.18 0 0 1-2.18-2.18V9.19a2.18 2.18 0 1 1 4.36 0v4.27a2.18 2.18 0 0 1-2.18 2.18M15.27 21.36a2.18 2.18 0 0 1-2.18-2.18v-2.72h-2.18v2.72a2.18 2.18 0 1 1-4.36 0v-2.72H5.09a.54.54 0 0 1-.54-.55V9.73a.54.54 0 0 1 .54-.54h13.82c.3 0 .55.24.55.54v8.18c0 .3-.25.55-.55.55h-1.46v2.72a2.18 2.18 0 0 1-2.18 2.18M8.09 3.45 6.72 1.27a.27.27 0 0 0-.38-.09.27.27 0 0 0-.09.37l1.39 2.21c-1.07.48-1.82 1.34-2 2.38h12.72c-.18-1.04-.93-1.9-2-2.38l1.39-2.21a.27.27 0 0 0-.09-.37.27.27 0 0 0-.38.09L15.91 3.45a6.43 6.43 0 0 0-7.82 0M10.36 5.09a.54.54 0 1 1 0-1.09.54.54 0 0 1 0 1.09m3.28 0a.54.54 0 1 1 0-1.09.54.54 0 0 1 0 1.09"/>
+            <svg width="44" height="44" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+              <path fill="var(--accent)" d="M6.18 15.64a2.18 2.18 0 0 1-2.18-2.18V9.19a2.18 2.18 0 1 1 4.36 0v4.27a2.18 2.18 0 0 1-2.18 2.18M17.82 15.64a2.18 2.18 0 0 1-2.18-2.18V9.19a2.18 2.18 0 1 1 4.36 0v4.27a2.18 2.18 0 0 1-2.18 2.18M15.27 21.36a2.18 2.18 0 0 1-2.18-2.18v-2.72h-2.18v2.72a2.18 2.18 0 1 1-4.36 0v-2.72H5.09a.54.54 0 0 1-.54-.55V9.73a.54.54 0 0 1 .54-.54h13.82c.3 0 .55.24.55.54v8.18c0 .3-.25.55-.55.55h-1.46v2.72a2.18 2.18 0 0 1-2.18 2.18M8.09 3.45 6.72 1.27a.27.27 0 0 0-.38-.09.27.27 0 0 0-.09.37l1.39 2.21c-1.07.48-1.82 1.34-2 2.38h12.72c-.18-1.04-.93-1.9-2-2.38l1.39-2.21a.27.27 0 0 0-.09-.37.27.27 0 0 0-.38.09L15.91 3.45a6.43 6.43 0 0 0-7.82 0M10.36 5.09a.54.54 0 1 1 0-1.09.54.54 0 0 1 0 1.09m3.28 0a.54.54 0 1 1 0-1.09.54.54 0 0 1 0 1.09"/>
             </svg>
           </div>
 
-          <div class="dl-title">Android 版下载</div>
-          <div class="dl-desc">适用于 Android 5.0 (Lollipop) 及以上版本</div>
+          <div class="dl-title" data-i18n="dlCardTitle">Android 版下载</div>
+          <div class="dl-desc" data-i18n="dlCardDesc">适用于 Android 5.0 (Lollipop) 及以上版本</div>
 
           <div class="android-badge">
-            🤖&nbsp; 仅支持 Android · Android Only
+            <span>🤖</span>
+            <span data-i18n="dlBadge">仅支持 Android · Android Only</span>
           </div>
 
-          <a href="https://download-worker.liuxizekali.workers.dev/"
+          <a href="/apk"
              class="btn-dl"
-             target="_blank" rel="noopener noreferrer">
-            <svg width="22" height="22" viewBox="0 0 24 24" fill="none"
+             id="downloadBtn">
+            <svg class="dl-icon" width="22" height="22" viewBox="0 0 24 24" fill="none"
                  stroke="currentColor" stroke-width="2.4"
                  stroke-linecap="round" stroke-linejoin="round">
               <path d="M12 5v14M5 12l7 7 7-7"/>
             </svg>
-            立即下载 APK
+            <span data-i18n="dlBtn">立即下载 APK</span>
           </a>
 
           <div class="dl-meta">
-            <div class="dl-meta-item">📦 直链下载</div>
-            <div class="dl-meta-item">🔒 安全可信</div>
-            <div class="dl-meta-item">🆓 公测免费</div>
-            <div class="dl-meta-item">🔄 持续更新</div>
+            <div class="dl-meta-item">📦 <span data-i18n="dlMeta1">直链下载</span></div>
+            <div class="dl-meta-item">🔒 <span data-i18n="dlMeta2">安全可信</span></div>
+            <div class="dl-meta-item">🆓 <span data-i18n="dlMeta3">公测免费</span></div>
+            <div class="dl-meta-item">🔄 <span data-i18n="dlMeta4">持续更新</span></div>
           </div>
-
         </div>
       </div>
     </section>
 
     <div class="divider"></div>
 
-    <!-- ══════════════ FOOTER ══════════════ -->
+    <!-- ═══════════════════════ FOOTER ═══════════════════════ -->
     <footer>
       <div class="foot-inner">
-
         <div class="foot-logo">
-          <img src="p/ailogo.png" alt="" class="foot-logo-img">
+          <img src="p/ailogo.png" alt="霜蓝" class="foot-logo-img">
           <span class="foot-logo-name">霜蓝 AI</span>
         </div>
 
         <div class="foot-links">
-          <a href="privacy.html" class="foot-link">隐私政策</a>
-          <a href="xukexieyi.html" class="foot-link">许可协议</a>
+          <a href="privacy.html" class="foot-link" data-i18n="footerPrivacy">隐私政策</a>
+          <a href="xukexieyi.html" class="foot-link" data-i18n="footerTerms">许可协议</a>
         </div>
 
         <div class="foot-divider"></div>
 
-        <div class="foot-copy">
-          Copyright©️2024-2026 霜蓝, All Rights Reserved.
+        <div class="foot-copy" data-i18n="footerCopy">
+          Copyright © 2024-2026 霜蓝, All Rights Reserved.
         </div>
-
       </div>
     </footer>
 
   </div><!-- .wrap -->
 
   <script>
-  /* ══════════════════════════════════════════
-     CANVAS PARTICLE NETWORK
-  ══════════════════════════════════════════ */
-  (function () {
+  /* ═══════════════════════════════════════════════════════════
+     I18N — Language sync with index.html
+  ═══════════════════════════════════════════════════════════ */
+  const i18n = {
+    zh: {
+      pageTitle: "霜蓝 AI — 重新定义智能交互",
+      chip: "公开测试版",
+      title: "霜蓝 AI",
+      tagline: "重新定义智能交互",
+      subtitle: "深度集成先进大语言模型，为每位用户带来流畅、智能、有温度的对话体验",
+      cta: "立即下载",
+      scroll: "探索更多",
+      featEyebrow: "核心能力",
+      featTitle: "不止于对话",
+      featDesc: "融合前沿 AI 技术，打造全方位智能助手",
+      feat1Title: "智能对话",
+      feat1Desc: "理解上下文，感知情绪，像真人一样自然交流",
+      feat1Stat: "多轮深度对话",
+      feat2Title: "极速响应",
+      feat2Desc: "流式输出，毫秒级首字延迟，沟通零等待",
+      feat2Stat: "< 500ms 首字延迟",
+      feat3Title: "深度创作",
+      feat3Desc: "从文案撰写到创意发散，激发无限灵感",
+      feat3Stat: "全场景创作辅助",
+      feat4Title: "编程助手",
+      feat4Desc: "代码生成、调试、解释，开发效率倍增",
+      feat4Stat: "多语言代码支持",
+      showEyebrow: "交互演示",
+      showTitle: "真实的对话体验",
+      showDesc: "沉浸式交互，让每一次对话都充满期待",
+      chatStatus: "在线",
+      chatUserMsg: "你好，霜蓝！你能帮我写一段关于科技未来的文案吗？",
+      aiResponse: "当然可以！当硅基智慧与碳基思维交织，未来的科技不再是冰冷的工具，而是懂你、伴你、成就你的伙伴。霜蓝 AI，正在这条路上前行。",
+      chatPlaceholder: "输入消息...",
+      dlEyebrow: "下载",
+      dlTitle: "获取霜蓝 AI",
+      dlDesc: "开启你的智能对话之旅",
+      dlCardTitle: "Android 版下载",
+      dlCardDesc: "适用于 Android 5.0 (Lollipop) 及以上版本",
+      dlBadge: "仅支持 Android · Android Only",
+      dlBtn: "立即下载 APK",
+      dlMeta1: "直链下载",
+      dlMeta2: "安全可信",
+      dlMeta3: "公测免费",
+      dlMeta4: "持续更新",
+      footerPrivacy: "隐私政策",
+      footerTerms: "许可协议",
+      footerCopy: "Copyright © 2024-2026 霜蓝, All Rights Reserved."
+    },
+    en: {
+      pageTitle: "FrostBlue AI — Redefining Intelligent Interaction",
+      chip: "Public Beta",
+      title: "FrostBlue AI",
+      tagline: "Redefining Intelligent Interaction",
+      subtitle: "Deeply integrated with advanced LLMs, delivering fluid, intelligent, and warm conversational experiences for everyone.",
+      cta: "Download Now",
+      scroll: "Explore More",
+      featEyebrow: "Core Capabilities",
+      featTitle: "Beyond Conversation",
+      featDesc: "Fusing cutting-edge AI technology to build an all-around intelligent assistant",
+      feat1Title: "Smart Dialogue",
+      feat1Desc: "Understands context, senses emotion, communicates as naturally as a real person",
+      feat1Stat: "Multi-turn deep dialogue",
+      feat2Title: "Lightning Fast",
+      feat2Desc: "Streaming output, sub-second first-token latency, zero wait time",
+      feat2Stat: "< 500ms first-token latency",
+      feat3Title: "Deep Creation",
+      feat3Desc: "From copywriting to creative brainstorming, sparking unlimited inspiration",
+      feat3Stat: "Full-scene creative aid",
+      feat4Title: "Coding Assistant",
+      feat4Desc: "Code generation, debugging, and explanation — double your dev efficiency",
+      feat4Stat: "Multi-language code support",
+      showEyebrow: "Live Demo",
+      showTitle: "Real Conversation Experience",
+      showDesc: "Immersive interaction that makes every conversation exciting",
+      chatStatus: "Online",
+      chatUserMsg: "Hi, FrostBlue! Can you help me write a piece about the future of technology?",
+      aiResponse: "Absolutely! When silicon intelligence intertwines with carbon-based thinking, technology of the future is no longer a cold tool, but a companion that understands you, stays with you, and empowers you. FrostBlue AI is walking this path.",
+      chatPlaceholder: "Type a message...",
+      dlEyebrow: "Download",
+      dlTitle: "Get FrostBlue AI",
+      dlDesc: "Start your intelligent conversation journey",
+      dlCardTitle: "Android Download",
+      dlCardDesc: "For Android 5.0 (Lollipop) and above",
+      dlBadge: "Android Only",
+      dlBtn: "Download APK",
+      dlMeta1: "Direct Link",
+      dlMeta2: "Safe & Trusted",
+      dlMeta3: "Free Beta",
+      dlMeta4: "Continuous Updates",
+      footerPrivacy: "Privacy Policy",
+      footerTerms: "License Agreement",
+      footerCopy: "Copyright © 2024-2026 FrostBlue. All Rights Reserved."
+    },
+    ja: {
+      pageTitle: "霜蓝 AI — インテリジェント対話を再定義",
+      chip: "公開ベータ版",
+      title: "霜蓝 AI",
+      tagline: "インテリジェントな対話を再定義する",
+      subtitle: "最先端の大規模言語モデルを深く統合し、誰にでも滑らかで、知的で、温かみのある対話体験を提供します。",
+      cta: "今すぐダウンロード",
+      scroll: "もっと見る",
+      featEyebrow: "核心能力",
+      featTitle: "対話を超えて",
+      featDesc: "最先端の AI 技術を融合し、全方位のインテリジェントアシスタントを構築",
+      feat1Title: "スマート対話",
+      feat1Desc: "文脈を理解し、感情を感じ取り、まるで人間のように自然に交流する",
+      feat1Stat: "多ターン深層対話",
+      feat2Title: "超速応答",
+      feat2Desc: "ストリーミング出力、ミリ秒級の初回応答、待ち時間ゼロ",
+      feat2Stat: "初回応答 < 500ms",
+      feat3Title: "深層創作",
+      feat3Desc: "文案作成から創意発散まで、無限のインスピレーションを引き出す",
+      feat3Stat: "全シーン創作支援",
+      feat4Title: "コーディング支援",
+      feat4Desc: "コード生成、デバッグ、解説 — 開発効率を倍増",
+      feat4Stat: "多言語コード対応",
+      showEyebrow: "インタラクションデモ",
+      showTitle: "リアルな対話体験",
+      showDesc: "没入型のインタラクションで、すべての対話を期待に満ちたものに",
+      chatStatus: "オンライン",
+      chatUserMsg: "こんにちは、霜蓝！テクノロジーの未来についての文案を書いてもらえますか？",
+      aiResponse: "もちろんです！シリコン知能と炭素系思考が交差する時、未来のテクノロジーは冷たい道具ではなく、あなたを理解し、伴い、そして成し遂げるパートナーになります。霜蓝 AI は、この道を歩んでいます。",
+      chatPlaceholder: "メッセージを入力...",
+      dlEyebrow: "ダウンロード",
+      dlTitle: "霜蓝 AI を入手",
+      dlDesc: "インテリジェントな対話の旅を始めよう",
+      dlCardTitle: "Android 版ダウンロード",
+      dlCardDesc: "Android 5.0 (Lollipop) 以降に対応",
+      dlBadge: "Android のみ対応",
+      dlBtn: "APK をダウンロード",
+      dlMeta1: "直リンク",
+      dlMeta2: "安全・信頼",
+      dlMeta3: "ベータ無料",
+      dlMeta4: "継続的アップデート",
+      footerPrivacy: "プライバシーポリシー",
+      footerTerms: "ライセンス契約",
+      footerCopy: "Copyright © 2024-2026 霜蓝. All Rights Reserved."
+    }
+  };
+
+  function applyLang(lang) {
+    const t = i18n[lang] || i18n.zh;
+    document.querySelectorAll('[data-i18n]').forEach(el => {
+      const key = el.dataset.i18n;
+      if (t[key]) {
+        if (el.tagName === 'TITLE') el.textContent = t[key];
+        else el.textContent = t[key];
+      }
+    });
+    // Store for other pages
+    localStorage.setItem('lang', lang);
+  }
+
+  // Detect language from localStorage (set by index.html) or browser
+  (function initLang() {
+    const saved = localStorage.getItem('lang');
+    if (saved && i18n[saved]) {
+      applyLang(saved);
+      document.documentElement.lang = saved === 'ja' ? 'ja' : saved === 'en' ? 'en' : 'zh-Hans';
+      return;
+    }
+    const raw = navigator.language || navigator.userLanguage || 'zh';
+    const browser = raw.toLowerCase();
+    let detected = 'zh';
+    if (browser.startsWith('zh')) detected = 'zh';
+    else if (browser.startsWith('ja')) detected = 'ja';
+    else detected = 'en';
+    applyLang(detected);
+    document.documentElement.lang = detected === 'ja' ? 'ja' : detected === 'en' ? 'en' : 'zh-Hans';
+  })();
+
+  /* ═══════════════════════════════════════════════════════════
+     BACKGROUND CANVAS — Particle Network + Core Sphere
+  ═══════════════════════════════════════════════════════════ */
+  (function() {
     const cvs = document.getElementById('bg-canvas');
     const ctx = cvs.getContext('2d');
-    let W, H, pts = [];
+    let W, H, particles = [];
 
     function resize() {
-      W = cvs.width  = window.innerWidth;
+      W = cvs.width = window.innerWidth;
       H = cvs.height = window.innerHeight;
     }
     resize();
     window.addEventListener('resize', resize);
 
-    // Spawn particles
-    const N = 90;
+    const N = 100;
     for (let i = 0; i < N; i++) {
-      pts.push({
-        x: Math.random() * 1500,
-        y: Math.random() * 1000,
-        vx: (Math.random() - .5) * .38,
-        vy: (Math.random() - .5) * .38,
-        r:  Math.random() * 1.4 + .4,
-        a:  Math.random() * .45 + .08,
-        ad: Math.random() > .5 ? 1 : -1,
-        as: Math.random() * .003 + .001,
+      particles.push({
+        x: Math.random() * W,
+        y: Math.random() * H,
+        vx: (Math.random() - 0.5) * 0.4,
+        vy: (Math.random() - 0.5) * 0.4,
+        r: Math.random() * 1.6 + 0.4,
+        a: Math.random() * 0.5 + 0.08,
+        ad: Math.random() > 0.5 ? 1 : -1,
+        as: Math.random() * 0.003 + 0.001,
       });
     }
 
-    let mouse = { x: -999, y: -999 };
-    window.addEventListener('mousemove', e => { mouse.x = e.clientX; mouse.y = e.clientY; });
+    let mouse = { x: -9999, y: -9999 };
+    let mouseParallax = { x: 0, y: 0 };
+    window.addEventListener('mousemove', e => {
+      mouse.x = e.clientX;
+      mouse.y = e.clientY;
+      mouseParallax.x = (e.clientX / W - 0.5) * 30;
+      mouseParallax.y = (e.clientY / H - 0.5) * 30;
+    });
+    window.addEventListener('mouseleave', () => {
+      mouse.x = -9999; mouse.y = -9999;
+    });
 
+    let tick = 0;
     function frame() {
+      tick++;
       ctx.clearRect(0, 0, W, H);
 
-      // Deep background
-      const bg = ctx.createRadialGradient(W/2, H*.45, 0, W/2, H*.45, Math.max(W, H)*.9);
-      bg.addColorStop(0, '#141628');
-      bg.addColorStop(1, '#080a12');
+      // Deep gradient background
+      const bg = ctx.createRadialGradient(W/2 + mouseParallax.x, H*0.42 + mouseParallax.y, 0, W/2 + mouseParallax.x, H*0.42 + mouseParallax.y, Math.max(W, H)*0.9);
+      bg.addColorStop(0, '#13182e');
+      bg.addColorStop(1, '#070914');
       ctx.fillStyle = bg;
       ctx.fillRect(0, 0, W, H);
 
-      // Faint center glow
-      const cg = ctx.createRadialGradient(W/2, H*.4, 0, W/2, H*.4, 450);
-      cg.addColorStop(0, 'rgba(113,248,252,0.045)');
+      // Center glow (subtle)
+      const cg = ctx.createRadialGradient(W/2 + mouseParallax.x, H*0.4 + mouseParallax.y, 0, W/2 + mouseParallax.x, H*0.4 + mouseParallax.y, 500);
+      cg.addColorStop(0, 'rgba(113,248,252,0.035)');
       cg.addColorStop(1, 'transparent');
       ctx.fillStyle = cg;
       ctx.fillRect(0, 0, W, H);
 
-      // Update & draw points
-      pts.forEach(p => {
-        p.x += p.vx; p.y += p.vy;
+      // Core sphere (centered, parallax)
+      const cx = W/2 + mouseParallax.x * 0.6;
+      const cy = H * 0.38 + mouseParallax.y * 0.6;
+      const radius = Math.min(W, H) * 0.18;
+      const sphereGrad = ctx.createRadialGradient(cx - radius*0.3, cy - radius*0.3, radius*0.1, cx, cy, radius);
+      sphereGrad.addColorStop(0, 'rgba(113,248,252,0.25)');
+      sphereGrad.addColorStop(0.3, 'rgba(62,237,231,0.12)');
+      sphereGrad.addColorStop(0.7, 'rgba(18,24,55,0.3)');
+      sphereGrad.addColorStop(1, 'rgba(7,9,20,0.6)');
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI*2);
+      ctx.fillStyle = sphereGrad;
+      ctx.fill();
+      // Sphere glow ring
+      const ringGrad = ctx.createRadialGradient(cx, cy, radius*0.92, cx, cy, radius*1.08);
+      ringGrad.addColorStop(0, 'rgba(113,248,252,0.15)');
+      ringGrad.addColorStop(1, 'transparent');
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius*1.08, 0, Math.PI*2);
+      ctx.fillStyle = ringGrad;
+      ctx.fill();
+
+      // Orbiting particles around core
+      const orbitCount = 28;
+      const orbitRadius = radius * 1.35;
+      for (let i = 0; i < orbitCount; i++) {
+        const angle = (tick * 0.008 + i * (Math.PI * 2 / orbitCount)) % (Math.PI * 2);
+        const tilt = Math.sin(tick * 0.003 + i * 0.7) * 0.3;
+        const ox = cx + Math.cos(angle) * orbitRadius * (1 + tilt * 0.3);
+        const oy = cy + Math.sin(angle) * orbitRadius * 0.6 * (1 + tilt * 0.2);
+        const oa = 0.25 + Math.sin(tick * 0.01 + i) * 0.15;
+        ctx.beginPath();
+        ctx.arc(ox, oy, 1.2 + Math.sin(tick * 0.02 + i) * 0.6, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(113,248,252,${oa})`;
+        ctx.fill();
+      }
+
+      // Update & draw network particles
+      particles.forEach(p => {
+        p.x += p.vx + mouseParallax.x * 0.002;
+        p.y += p.vy + mouseParallax.y * 0.002;
         if (p.x < 0) p.x = W; if (p.x > W) p.x = 0;
         if (p.y < 0) p.y = H; if (p.y > H) p.y = 0;
-
         p.a += p.ad * p.as;
-        if (p.a > .55 || p.a < .05) p.ad *= -1;
-
+        if (p.a > 0.6 || p.a < 0.06) p.ad *= -1;
         ctx.beginPath();
         ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
         ctx.fillStyle = `rgba(113,248,252,${p.a})`;
@@ -970,31 +1481,31 @@
       });
 
       // Connections
-      const MAX = 130;
-      for (let i = 0; i < pts.length; i++) {
-        for (let j = i + 1; j < pts.length; j++) {
-          const dx = pts[i].x - pts[j].x;
-          const dy = pts[i].y - pts[j].y;
-          const d  = Math.sqrt(dx*dx + dy*dy);
+      const MAX = 140;
+      for (let i = 0; i < particles.length; i++) {
+        for (let j = i + 1; j < particles.length; j++) {
+          const dx = particles[i].x - particles[j].x;
+          const dy = particles[i].y - particles[j].y;
+          const d = Math.sqrt(dx*dx + dy*dy);
           if (d < MAX) {
             ctx.beginPath();
-            ctx.moveTo(pts[i].x, pts[i].y);
-            ctx.lineTo(pts[j].x, pts[j].y);
-            ctx.strokeStyle = `rgba(113,248,252,${(1 - d/MAX) * 0.1})`;
-            ctx.lineWidth = .5;
+            ctx.moveTo(particles[i].x, particles[i].y);
+            ctx.lineTo(particles[j].x, particles[j].y);
+            ctx.strokeStyle = `rgba(113,248,252,${(1 - d/MAX) * 0.08})`;
+            ctx.lineWidth = 0.5;
             ctx.stroke();
           }
         }
-        // Mouse repulsion glow lines
-        const mdx = pts[i].x - mouse.x;
-        const mdy = pts[i].y - mouse.y;
-        const md  = Math.sqrt(mdx*mdx + mdy*mdy);
-        if (md < 160) {
+        // Mouse connections
+        const mdx = particles[i].x - mouse.x;
+        const mdy = particles[i].y - mouse.y;
+        const md = Math.sqrt(mdx*mdx + mdy*mdy);
+        if (md < 180) {
           ctx.beginPath();
-          ctx.moveTo(pts[i].x, pts[i].y);
+          ctx.moveTo(particles[i].x, particles[i].y);
           ctx.lineTo(mouse.x, mouse.y);
-          ctx.strokeStyle = `rgba(113,248,252,${(1 - md/160) * 0.18})`;
-          ctx.lineWidth = .6;
+          ctx.strokeStyle = `rgba(113,248,252,${(1 - md/180) * 0.2})`;
+          ctx.lineWidth = 0.7;
           ctx.stroke();
         }
       }
@@ -1004,26 +1515,214 @@
     frame();
   })();
 
-  /* ══════════════════════════════════════════
+  /* ═══════════════════════════════════════════════════════════
+     3D CORE SPHERE CANVAS (hero decoration)
+  ═══════════════════════════════════════════════════════════ */
+  (function() {
+    const cvs = document.getElementById('core-canvas');
+    if (!cvs) return;
+    const ctx = cvs.getContext('2d');
+    let W, H, tick = 0;
+
+    function resize() {
+      const rect = cvs.parentElement.getBoundingClientRect();
+      W = cvs.width = rect.width * window.devicePixelRatio;
+      H = cvs.height = rect.height * window.devicePixelRatio;
+      ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const particles = [];
+    const P = 60;
+    for (let i = 0; i < P; i++) {
+      const theta = Math.random() * Math.PI * 2;
+      const phi = Math.acos(2 * Math.random() - 1);
+      particles.push({
+        theta, phi,
+        vTheta: (Math.random() - 0.5) * 0.01,
+        vPhi: (Math.random() - 0.5) * 0.005,
+        r: Math.random() * 1.5 + 0.5,
+        a: Math.random() * 0.6 + 0.2,
+      });
+    }
+
+    let mouse = { x: 0, y: 0 };
+    cvs.parentElement.addEventListener('mousemove', e => {
+      const rect = cvs.parentElement.getBoundingClientRect();
+      mouse.x = (e.clientX - rect.left - rect.width/2) / rect.width;
+      mouse.y = (e.clientY - rect.top - rect.height/2) / rect.height;
+    });
+    cvs.parentElement.addEventListener('mouseleave', () => { mouse.x = 0; mouse.y = 0; });
+
+    function draw() {
+      tick++;
+      const rect = cvs.parentElement.getBoundingClientRect();
+      const w = rect.width, h = rect.height;
+      ctx.clearRect(0, 0, w, h);
+      const cx = w/2, cy = h/2;
+      const radius = Math.min(w, h) * 0.35;
+
+      // Rotation offset from mouse
+      const rotX = mouse.y * 0.4;
+      const rotY = mouse.x * 0.4;
+      const timeRot = tick * 0.003;
+
+      // Draw sphere surface glow
+      const sphereGrad = ctx.createRadialGradient(cx, cy, radius * 0.3, cx, cy, radius);
+      sphereGrad.addColorStop(0, 'rgba(113,248,252,0.06)');
+      sphereGrad.addColorStop(0.5, 'rgba(62,237,231,0.03)');
+      sphereGrad.addColorStop(1, 'rgba(7,9,20,0.15)');
+      ctx.beginPath();
+      ctx.arc(cx, cy, radius, 0, Math.PI*2);
+      ctx.fillStyle = sphereGrad;
+      ctx.fill();
+
+      // Draw orbiting particles
+      const pts = particles.map(p => {
+        p.theta += p.vTheta + timeRot * 0.1;
+        p.phi += p.vPhi;
+        const x3 = Math.sin(p.phi) * Math.cos(p.theta) * radius;
+        const y3 = Math.cos(p.phi) * radius;
+        const z3 = Math.sin(p.phi) * Math.sin(p.theta) * radius;
+        // Rotate
+        const rx = x3;
+        const ry = y3 * Math.cos(rotX) - z3 * Math.sin(rotX);
+        const rz = y3 * Math.sin(rotX) + z3 * Math.cos(rotX);
+        const rrx = rx * Math.cos(rotY) + rz * Math.sin(rotY);
+        const rry = ry;
+        const rrz = -rx * Math.sin(rotY) + rz * Math.cos(rotY);
+        return { x: cx + rrx, y: cy + rry, z: rrz, a: p.a, r: p.r };
+      }).sort((a, b) => a.z - b.z);
+
+      pts.forEach(p => {
+        const scale = 1 + p.z / radius * 0.3;
+        const alpha = p.a * (0.5 + p.z / radius * 0.5);
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, p.r * scale, 0, Math.PI*2);
+        ctx.fillStyle = `rgba(113,248,252,${Math.max(0, alpha)})`;
+        ctx.fill();
+      });
+
+      // Wireframe rings
+      const ringCount = 4;
+      for (let ri = 0; ri < ringCount; ri++) {
+        const ringRadius = radius * (0.6 + ri * 0.15);
+        const tilt = (ri + 1) * 0.35 + rotX * 0.3;
+        ctx.beginPath();
+        for (let a = 0; a <= Math.PI*2; a += 0.08) {
+          const rx = Math.cos(a + timeRot * (0.3 + ri * 0.1)) * ringRadius;
+          const ry = Math.sin(a + timeRot * (0.3 + ri * 0.1)) * ringRadius * Math.cos(tilt);
+          const rz = Math.sin(a + timeRot * (0.3 + ri * 0.1)) * ringRadius * Math.sin(tilt);
+          const rrx = rx * Math.cos(rotY) + rz * Math.sin(rotY);
+          const rry = ry;
+          if (a === 0) ctx.moveTo(cx + rrx, cy + rry);
+          else ctx.lineTo(cx + rrx, cy + rry);
+        }
+        ctx.closePath();
+        ctx.strokeStyle = `rgba(113,248,252,${0.06 + ri * 0.02})`;
+        ctx.lineWidth = 0.8;
+        ctx.stroke();
+      }
+
+      requestAnimationFrame(draw);
+    }
+    draw();
+  })();
+
+  /* ═══════════════════════════════════════════════════════════
      SCROLL REVEAL (IntersectionObserver)
-  ══════════════════════════════════════════ */
-  (function () {
+  ═══════════════════════════════════════════════════════════ */
+  (function() {
     const io = new IntersectionObserver(entries => {
       entries.forEach(e => {
         if (e.isIntersecting) e.target.classList.add('on');
       });
-    }, { threshold: 0.12 });
-
+    }, { threshold: 0.1, rootMargin: '0px 0px -40px 0px' });
     document.querySelectorAll('[data-obs]').forEach(el => io.observe(el));
   })();
 
-  /* ══════════════════════════════════════════
-     SMOOTH SCROLL FOR CTA
-  ══════════════════════════════════════════ */
+  /* ═══════════════════════════════════════════════════════════
+     SMOOTH SCROLL
+  ═══════════════════════════════════════════════════════════ */
   document.getElementById('hero-cta-btn').addEventListener('click', function(e) {
     e.preventDefault();
     document.getElementById('download').scrollIntoView({ behavior: 'smooth' });
   });
+  document.getElementById('scrollArrow').addEventListener('click', function() {
+    document.getElementById('features').scrollIntoView({ behavior: 'smooth' });
+  });
+
+  /* ═══════════════════════════════════════════════════════════
+     TYPEWRITER EFFECT (Showcase)
+  ═══════════════════════════════════════════════════════════ */
+  (function() {
+    let started = false;
+    const bubble = document.getElementById('aiBubble1');
+    const target = document.getElementById('typewriter1');
+    const cursor = document.getElementById('cursor1');
+    if (!bubble || !target) return;
+
+    const observer = new IntersectionObserver(entries => {
+      if (entries[0].isIntersecting && !started) {
+        started = true;
+        observer.disconnect();
+        // Get current language text
+        const saved = localStorage.getItem('lang') || 'zh';
+        const t = i18n[saved] || i18n.zh;
+        const text = t.aiResponse || i18n.zh.aiResponse;
+        let i = 0;
+        function type() {
+          if (i < text.length) {
+            target.textContent += text.charAt(i);
+            i++;
+            setTimeout(type, 30 + Math.random() * 40);
+          } else {
+            cursor.style.display = 'none';
+          }
+        }
+        setTimeout(type, 1200);
+      }
+    }, { threshold: 0.3 });
+    observer.observe(bubble);
+  })();
+
+  /* ═══════════════════════════════════════════════════════════
+     DOWNLOAD MICRO-INTERACTION
+  ═══════════════════════════════════════════════════════════ */
+  (function() {
+    const btn = document.getElementById('downloadBtn');
+    if (!btn) return;
+    btn.addEventListener('click', function(e) {
+      e.preventDefault();
+      // Add ripple
+      const ripple = document.createElement('span');
+      ripple.style.cssText = 'position:absolute;border-radius:50%;background:rgba(255,255,255,0.25);transform:scale(0);animation:ripple 0.6s ease-out;pointer-events:none;';
+      const rect = btn.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      ripple.style.width = ripple.style.height = size + 'px';
+      ripple.style.left = (e.clientX - rect.left - size/2) + 'px';
+      ripple.style.top = (e.clientY - rect.top - size/2) + 'px';
+      btn.appendChild(ripple);
+      setTimeout(() => ripple.remove(), 600);
+
+      // Downloading state
+      btn.classList.add('downloading');
+      const originalHTML = btn.innerHTML;
+      btn.innerHTML = '<svg class="dl-spinner" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> <span>' + (i18n[localStorage.getItem('lang')||'zh']?.dlBtn || '下载中...') + '</span>';
+      setTimeout(() => {
+        btn.classList.remove('downloading');
+        btn.innerHTML = originalHTML;
+        const url = btn.getAttribute('href');
+        if (url) window.location.href = url;
+      }, 1500);
+    });
+
+    // Add ripple keyframe
+    const style = document.createElement('style');
+    style.textContent = '@keyframes ripple { to { transform: scale(4); opacity: 0; } }';
+    document.head.appendChild(style);
+  })();
   </script>
 
 </body>
