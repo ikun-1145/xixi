@@ -1,0 +1,23 @@
+name = "afdianpay"
+main = "worker.js"
+compatibility_date = "2026-06-20"
+account_id = "5d99df0919786bd4d9de3dd5bdcbfb4d"
+
+# 每 2 分钟轮询一次爱发电对账（想更快可改成 "* * * * *"）
+[triggers]
+crons = ["*/2 * * * *"]
+
+# 非敏感变量（可入库）
+[vars]
+SUPABASE_URL = "https://klyrasrqgxijwrxuoevj.supabase.co"
+USER_ID = "e736a9426c7311f1851452540025c377"
+
+# 幂等账本 KV —— 运行 `wrangler kv namespace create ORDERS` 后把输出的 id 填到下面
+[[kv_namespaces]]
+binding = "ORDERS"
+id = "c331b9a7fe3e4589a373d46f814b3d14"
+
+# ⚠️ 敏感值不写在这里，用命令注入（见 DEPLOY.md）：
+#   SUPABASE_KEY  = Supabase service_role key
+#   TOKEN         = 爱发电 API token
+# 命令：wrangler secret put SUPABASE_KEY   /   wrangler secret put TOKEN

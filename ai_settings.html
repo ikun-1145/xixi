@@ -674,22 +674,36 @@ body:not(.night) #loadingBar img { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.1
       return JSON.parse(decodeURIComponent(escape(atob(padded))));
     }
 
-    // ===== 从 token 读取 user（和主页逻辑一致）=====
+    // ===== 从 token 读取 user（和主页 checkLogin 行为保持一致）=====
     function getUserFromToken() {
       const token = localStorage.getItem("token");
       const userStr = localStorage.getItem("user");
+
+      // 1) 优先用 localStorage.user，但必须是有效对象（至少有 id 或 email）；
+      //    若为 null / "null" / 缺 id 的脏数据，则回退到 token 重建，避免误判为未登录
       if (userStr) {
-        try { return JSON.parse(userStr); } catch {}
+        try {
+          const u = JSON.parse(userStr);
+          if (u && (u.id || u.email)) return u;
+        } catch {}
       }
+
+      // 2) 回退：从 token 解析（登录瞬间 user 尚未写入时的兜底）
       if (token) {
         try {
           const payload = decodeJwtPayload(token);
-          return {
-            id: payload.sub || payload.id || payload.user_id || payload.email || "unknown",
-            email: payload.email || payload.user_email || "未知用户"
-          };
+          if (payload) {
+            const id = payload.sub || payload.id || payload.user_id || payload.email;
+            if (id) {
+              return {
+                id,
+                email: payload.email || payload.user_email || "未知用户"
+              };
+            }
+          }
         } catch {}
       }
+
       return null;
     }
 
