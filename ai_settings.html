@@ -1065,9 +1065,22 @@ async function editNickname() {
       }
     }
 
-    function upgrade() {
-      window.location.href = "ai.html#upgrade";
-    }
+ function upgrade() {
+  const userId = document.getElementById("userId")?.innerText?.trim();
+
+  if (!userId || userId === "--") {
+    alert("请先登录后再开通 Pro");
+    return;
+  }
+
+  const encodedId = encodeURIComponent(userId);
+
+  // ❗这里换成你的爱发电页面
+  const afdianUrl = `https://afdian.com/a/sunland?remark=${encodedId}`;
+
+  // 打开支付页面
+  window.open(afdianUrl, "_blank");
+}
 
     function logout() {
       if (!confirm("确定退出登录？")) return;

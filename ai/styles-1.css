@@ -443,9 +443,10 @@ body.night::before {
 html, body {
   height: 100%;
   margin: 0;
-  overflow: hidden;
-  position: fixed;
   width: 100%;
+
+  /* ⭐ 允许弹窗/验证码正常显示 */
+  overflow-x: hidden;
   overscroll-behavior: none;
 
   background: transparent !important;
@@ -779,6 +780,13 @@ button:hover {
   background: rgba(0,0,0,0.55);
 }
 
+/* ⭐ 确保 GeeTest 人机验证弹窗显示在登录模态框(z-index:3000)之上。
+   只抬高挂在 body 下的最外层容器，内部"遮罩在下/面板在上"的层级交给 GeeTest 自身，
+   避免破坏其内部堆叠顺序导致遮罩盖住滑块、点击穿透关闭验证。 */
+body > [class*="geetest_"] {
+  z-index: 100000 !important;
+}
+
   .modal-content {
     background: linear-gradient(
       145deg,
@@ -798,7 +806,7 @@ button:hover {
       0 30px 60px rgba(0,0,0,0.35),
       inset 0 1px 0 rgba(255,255,255,0.6);
 
-    animation: modalPop .35s cubic-bezier(.4,0,.2,1);
+    animation: none !important;
     text-align: center;
   }
 
@@ -897,4 +905,11 @@ button:hover {
     padding: 0 4px;
   }
 
+}
+
+
+/* ⭐ 强制修复 GeeTest 显示问题 */
+.geetest_holder {
+  position: fixed !important;
+  z-index: 9999999 !important;
 }

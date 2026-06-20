@@ -1,5 +1,5 @@
 // ===== PWA Service Worker 注册 + 更新检测 =====
-if ('serviceWorker' in navigator) {
+if ('serviceWorker' in navigator && location.protocol === 'https:' && location.hostname !== '127.0.0.1') {
   navigator.serviceWorker.register('/sw.js')
     .then(reg => {
 
@@ -1569,9 +1569,6 @@ function renderUser() {
           发送
         </button>
       </div>
-      <div style="margin:10px 0;display:flex;justify-content:center;">
-        <div id="cf-box"></div>
-      </div>
 
       <p style="font-size:11px;color:#999;margin-bottom:6px;">
         验证码将发送至你的邮箱，仅用于登录
@@ -1603,74 +1600,80 @@ function renderUser() {
     document.body.appendChild(modal);
     document.body.style.overflow = "hidden";
 
-    // ⭐ 强制渲染 Turnstile（解决不显示问题）
-    let cfToken = "";
-    let tokenExpire = 0;
-    let widgetId = null;
-
-    function refreshTurnstile() {
-      if (window.turnstile && widgetId !== null) {
-        try {
-          turnstile.reset(widgetId);
-        } catch {}
-      }
-      cfToken = "";
-      tokenExpire = 0;
+    // ===== GeeTest 预加载（模态框打开时即初始化，减少等待）=====
+    function _geetestErrMsg(err, fallback) {
+      if (!err) return fallback;
+      return err.msg || err.desc || err.error_code || fallback;
     }
 
-    function ensureTurnstile() {
-      // ⭐ 等待脚本加载完成
-      if (!window.turnstile) {
-        setTimeout(ensureTurnstile, 100);
-        return;
-      }
-
-      // 已经渲染过就不重复
-      if (widgetId !== null) return;
-
-      // ⭐ 本地开发用测试 key
-      const SITE_KEY =
-        location.hostname === "localhost" ||
-        location.hostname === "127.0.0.1"
-          ? "1x00000000000000000000AA"
-          : "0x4AAAAAAC_W2Wj2YdkrQiMf";
-
-      widgetId = turnstile.render(
-        modal.querySelector("#cf-box"),
-        {
-          sitekey: SITE_KEY,
-          appearance: "always",
-          size: "normal",
-          callback: (token) => {
-            cfToken = token;
-            tokenExpire = Date.now() + 5 * 60 * 1000;
-            console.log("✅ Turnstile token:", token);
-          },
-          "error-callback": () => {
-            cfToken = "";
-          },
-          "expired-callback": () => {
-            cfToken = "";
-          }
+    function _newCaptchaPromise() {
+      return new Promise((resolve, reject) => {
+        if (typeof initGeetest4 !== "function") {
+          reject(new Error("验证脚本未加载，请刷新页面"));
+          return;
         }
-      );
-      window.__cfWidgetId = widgetId;
+        initGeetest4({
+          captchaId: "ad3a8126afe716ccd4541f35d428071e",
+          product: "bind"
+        }, function (obj) {
+          obj.onReady(() => resolve(obj));
+          obj.onError((err) => {
+            console.error("GeeTest 初始化失败:", err);
+            reject(new Error(_geetestErrMsg(err, "人机验证加载失败")));
+          });
+        });
+      });
     }
+    let _captchaPromise = _newCaptchaPromise();
+    // 防止预加载阶段 promise 被拒绝时产生未捕获异常
+    _captchaPromise.catch(() => {});
 
-    ensureTurnstile();
+    // ===== GeeTest 验证函数 =====
+    async function runCaptcha() {
+      const captchaObj = await _captchaPromise;
+      // ⭐ 关键修复：将验证码挂到 body，避免被 modal / transform 影响
+      if (captchaObj && typeof captchaObj.appendTo === "function") {
+        captchaObj.appendTo(document.body);
+        // 更激进的修复，确保验证码浮层完全盖住所有内容
+        setTimeout(() => {
+          const geetest = document.querySelector(".geetest_holder");
+          if (geetest) {
+            geetest.style.position = "fixed";
+            geetest.style.zIndex = "999999999"; // ⭐ 提升到极限层级
+            geetest.style.left = "50%";
+            geetest.style.top = "50%";
+            geetest.style.transform = "translate(-50%, -50%)";
 
-    async function getCfToken() {
-      if (!cfToken || Date.now() > tokenExpire) {
-        refreshTurnstile();
-        throw new Error("人机验证已过期，请重新点击验证");
+            // ⭐ 关键：脱离父层 stacking context
+            geetest.style.pointerEvents = "auto";
+
+            // ⭐ 强制插到 body 最后（盖过所有遮罩）
+            document.body.appendChild(geetest);
+          }
+
+          // ⭐ 把 modal 的遮罩压到下面
+          const modal = document.querySelector(".modal");
+          if (modal) {
+            modal.style.zIndex = "1000";
+          }
+        }, 0);
       }
-      return cfToken;
+      return new Promise((resolve, reject) => {
+        captchaObj.onSuccess(function () {
+          const result = captchaObj.getValidate();
+          _captchaPromise = _newCaptchaPromise();
+          _captchaPromise.catch(() => {});
+          resolve(JSON.stringify(result));
+        });
+        captchaObj.onError(function (err) {
+          console.error("GeeTest 验证失败:", err);
+          _captchaPromise = _newCaptchaPromise();
+          _captchaPromise.catch(() => {});
+          reject(new Error(_geetestErrMsg(err, "验证失败")));
+        });
+        captchaObj.showCaptcha();
+      });
     }
-    setTimeout(() => {
-      if (widgetId === null) {
-        console.error("Turnstile 未渲染成功");
-      }
-    }, 1500);
 
     const emailInput = modal.querySelector("#emailInput");
     const codeInput = modal.querySelector("#codeInput");
@@ -1705,13 +1708,18 @@ function renderUser() {
         return;
       }
 
+      msg.innerText = "人机验证加载中...";
+      sendBtn.disabled = true;
       let token;
       try {
-        token = await getCfToken();
+        token = await runCaptcha();
+        msg.innerText = "";
       } catch (e) {
         msg.innerText = e.message;
+        sendBtn.disabled = false;
         return;
       }
+      sendBtn.disabled = false;
 
       try {
         msg.innerText = "";
@@ -1725,7 +1733,7 @@ function renderUser() {
           },
           body: JSON.stringify({
             email,
-            cfToken: token
+            token: token
           })
         });
 
@@ -1772,7 +1780,6 @@ function renderUser() {
 });
         }
 
-        refreshTurnstile(); // ⭐ 出错也刷新，避免token卡死
         // 失败也恢复按钮
         sendBtn.disabled = false;
         sendBtn.innerText = "发送";
@@ -1795,14 +1802,9 @@ function renderUser() {
 
       let token;
       try {
-        token = await getCfToken();
+        token = await runCaptcha();
       } catch (e) {
         msg.innerText = e.message;
-        return;
-      }
-      // ⭐ 防止用户未重新验证
-      if (!cfToken) {
-        msg.innerText = "请先完成人机验证";
         return;
       }
       try {
@@ -1812,7 +1814,7 @@ function renderUser() {
           body: JSON.stringify({
             email,
             code,
-            cfToken: token
+            token: token
           })
         });
 
@@ -1862,9 +1864,6 @@ function renderUser() {
         localStorage.setItem("token", data.token);
         localStorage.setItem("user", JSON.stringify(data.user));
 
-        // ⭐ 登录后再重置（安全）
-        refreshTurnstile();
-
         msg.innerText = "登录成功";
 
         setTimeout(async () => {
@@ -1886,7 +1885,6 @@ function renderUser() {
 }, 800);
 
       } catch (e) {
-        refreshTurnstile(); // ⭐ 出错也刷新，避免token卡死
         console.error("登录异常:", e);
 
         if (e.message && e.message.includes("fetch")) {
