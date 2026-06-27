@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+
+<title>登录霜蓝AI</title>
+<link rel="manifest" href="/manifest.json">
+
+<meta name="theme-color" content="#22d3ee">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="霜蓝AI">
+<link rel="apple-touch-icon" href="/p/ailogo.png">
+<link rel="icon" type="image/png" href="p/ailogo.png">
+<link rel="shortcut icon" href="p/ailogo.png">
+
+<!-- CSP for GeeTest -->
+<meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;
+script-src * 'unsafe-inline' 'unsafe-eval';
+connect-src *;
+img-src * data: blob:;
+style-src * 'unsafe-inline';
+frame-src *;
+child-src *;
+">
+
+<!-- 已登录守卫：若本地已存在 token，则直接进入 ai.html，避免已登录用户重复登录。
+     （是否过期的判断交给 ai.html 中的 app.js 处理，过期会尝试静默刷新） -->
+<script>
+(function () {
+  try {
+    if (localStorage.getItem("token")) {
+      location.replace("ai.html");
+    }
+  } catch (e) {}
+})();
+</script>
+
+<style>
+/* ===== 主题色：与主站一致的青色 ===== */
+:root{
+  --cyan-1:#22d3ee;
+  --cyan-2:#67e8f9;
+  --cyan-3:#06b6d4;
+  --ink:#0f3a44;       /* 卡片上的深色文字（带青调） */
+  --ink-soft:#3b6a73;
+}
+
+*{box-sizing:border-box;}
+
+html,body{height:100%;margin:0;}
+
+body{
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"PingFang SC","Hiragino Sans GB","Microsoft YaHei",sans-serif;
+  /* 主站青色渐变背景（替换原蓝紫水彩，去除紫色；仍保留柔和的水彩渐变质感） */
+  background-color:#cdf4fb;
+  background-image:
+    radial-gradient(900px 680px at 16% 18%, rgba(103,232,249,0.85), rgba(103,232,249,0) 60%),
+    radial-gradient(820px 640px at 86% 14%, rgba(34,211,238,0.80), rgba(34,211,238,0) 58%),
+    radial-gradient(1000px 820px at 78% 88%, rgba(6,182,212,0.70), rgba(6,182,212,0) 60%),
+    radial-gradient(760px 640px at 14% 92%, rgba(165,243,252,0.85), rgba(165,243,252,0) 60%),
+    linear-gradient(135deg, #eafdff 0%, #c2f1fa 45%, #93e7f6 100%);
+  background-repeat:no-repeat;
+  -webkit-font-smoothing:antialiased;
+}
+
+/* ===== 漂浮玻璃光球（来自模版，染上青色）===== */
+.orbs{position:fixed;inset:0;overflow:hidden;pointer-events:none;z-index:0;}
+.orb{
+  position:absolute;border-radius:50%;
+  background:rgba(103,232,249,0.18);
+  backdrop-filter:blur(20px) saturate(180%);
+  -webkit-backdrop-filter:blur(20px) saturate(180%);
+  border:2px solid rgba(255,255,255,0.35);
+  box-shadow:0 8px 32px rgba(34,211,238,0.25), inset 0 1px 0 rgba(255,255,255,0.4);
+  animation:floaty 7s ease-in-out infinite;
+}
+.orb.o1{top:22%;left:20%;width:128px;height:128px;opacity:.5;}
+.orb.o2{top:72%;right:22%;width:96px;height:96px;opacity:.4;animation-delay:1.2s;}
+.orb.o3{top:50%;right:30%;width:64px;height:64px;opacity:.45;animation-delay:.6s;}
+@keyframes floaty{
+  0%,100%{transform:translateY(0) scale(1);}
+  50%{transform:translateY(-14px) scale(1.04);}
+}
+
+/* ===== 弹窗容器（保留 .modal 供原逻辑使用）===== */
+.modal{
+  position:fixed;inset:0;
+  display:flex;align-items:center;justify-content:center;
+  padding:16px;z-index:10;
+  opacity:0;transition:opacity .3s ease;
+}
+.modal.active{opacity:1;}
+.modal.closing{opacity:0;}
+
+/* ===== 玻璃卡片（保留模版的渐变与液态玻璃质感）===== */
+.modal-content{
+  position:relative;
+  width:100%;max-width:420px;
+  padding:34px 30px 28px;
+  border-radius:24px;
+  text-align:center;
+  /* 模版原有的玻璃渐变 */
+  background:linear-gradient(145deg, rgba(255,255,255,0.45), rgba(255,255,255,0.20));
+  backdrop-filter:blur(40px) saturate(250%);
+  -webkit-backdrop-filter:blur(40px) saturate(250%);
+  border:1px solid rgba(255,255,255,0.55);
+  box-shadow:
+    0 32px 80px rgba(0,0,0,0.22),
+    0 16px 64px rgba(34,211,238,0.18),
+    inset 0 3px 0 rgba(255,255,255,0.6),
+    inset 0 -1px 0 rgba(255,255,255,0.3);
+  animation:cardPop .45s cubic-bezier(.34,1.56,.64,1);
+}
+@keyframes cardPop{
+  0%{opacity:0;transform:translateY(18px) scale(.94);}
+  100%{opacity:1;transform:translateY(0) scale(1);}
+}
+.modal.closing .modal-content{animation:cardOut .2s ease forwards;}
+@keyframes cardOut{to{opacity:0;transform:translateY(12px) scale(.96);}}
+
+.close{
+  position:absolute;top:14px;right:18px;
+  font-size:22px;line-height:1;color:var(--ink-soft);
+  cursor:pointer;opacity:.7;transition:opacity .2s;
+}
+.close:hover{opacity:1;}
+
+/* ===== 品牌 / 标题 ===== */
+.brand{
+  width:56px;height:56px;margin:0 auto 14px;
+  border-radius:16px;overflow:hidden;
+  box-shadow:0 8px 24px rgba(34,211,238,0.35);
+  background:linear-gradient(135deg,var(--cyan-1),var(--cyan-2));
+  display:flex;align-items:center;justify-content:center;
+}
+.brand img{width:100%;height:100%;object-fit:cover;display:block;}
+
+.title{
+  margin:0 0 6px;
+  font-size:24px;font-weight:700;color:var(--ink);
+  letter-spacing:.5px;
+}
+.subtitle{
+  margin:0 0 22px;
+  font-size:13px;color:var(--ink-soft);
+}
+
+/* ===== 表单 ===== */
+.field{text-align:left;margin-bottom:16px;}
+.field > label{
+  display:block;margin-bottom:7px;
+  font-size:13px;font-weight:600;color:var(--ink);
+}
+
+.field input[type="email"],
+.field input[type="text"],
+#emailInput,#codeInput{
+  width:100%;height:46px;
+  padding:0 14px;
+  font-size:14px;color:var(--ink);
+  border-radius:13px;
+  border:1px solid rgba(255,255,255,0.6);
+  background:rgba(255,255,255,0.22);
+  outline:none;
+  transition:border-color .2s, box-shadow .2s, background .2s;
+}
+#emailInput::placeholder,#codeInput::placeholder{color:var(--ink-soft);opacity:.7;}
+#emailInput:focus,#codeInput:focus{
+  border-color:var(--cyan-1);
+  background:rgba(255,255,255,0.32);
+  box-shadow:0 0 0 3px rgba(34,211,238,0.30);
+}
+
+/* 验证码行：输入框 + 发送按钮 */
+.code-row{display:flex;gap:8px;}
+.code-row #codeInput{flex:1;}
+#sendCodeBtn{
+  flex:0 0 auto;
+  min-width:108px;height:46px;
+  padding:0 12px;
+  font-size:13px;font-weight:600;color:var(--cyan-3);
+  border-radius:13px;
+  border:1px solid rgba(34,211,238,0.55);
+  background:rgba(255,255,255,0.30);
+  cursor:pointer;
+  transition:all .2s;
+}
+#sendCodeBtn:hover{background:rgba(34,211,238,0.16);}
+#sendCodeBtn:disabled{opacity:.6;cursor:not-allowed;}
+
+/* 同意条款 */
+.agree{
+  display:flex;align-items:flex-start;gap:8px;
+  margin:4px 0 18px;
+  text-align:left;font-size:12px;color:var(--ink-soft);
+  cursor:pointer;
+}
+.agree input{margin-top:2px;width:15px;height:15px;accent-color:var(--cyan-1);cursor:pointer;}
+.agree a{color:var(--cyan-3);text-decoration:none;}
+.agree a:hover{text-decoration:underline;}
+
+/* 登录按钮 */
+#loginBtn{
+  width:100%;height:50px;
+  font-size:15px;font-weight:700;color:#003039;
+  border:none;border-radius:14px;
+  background:linear-gradient(135deg,var(--cyan-1),var(--cyan-2));
+  box-shadow:0 12px 28px rgba(34,211,238,0.40);
+  cursor:pointer;
+  transition:transform .2s ease, box-shadow .2s ease, opacity .2s;
+}
+#loginBtn:hover:not(:disabled){transform:translateY(-2px);box-shadow:0 16px 34px rgba(34,211,238,0.5);}
+#loginBtn:disabled{cursor:not-allowed;}
+
+#loginMsg{
+  min-height:18px;margin:12px 0 0;
+  font-size:12px;color:#ef4444;   /* 默认红色：错误提示 */
+}
+#loginMsg.ok{color:#10b981;}        /* 绿色：成功提示 */
+
+/* ===== 确保 GeeTest 人机验证浮层显示在卡片之上 ===== */
+body > [class*="geetest_"]{z-index:100000 !important;}
+</style>
+</head>
+<script src="https://static.geetest.com/v4/gt4.js"></script>
+
+<body>
+<div class="orbs">
+  <div class="orb o1"></div>
+  <div class="orb o2"></div>
+  <div class="orb o3"></div>
+</div>
+
+<script>
+(function () {
+  // ====== 占位函数：保持与原 app.js 调用接口一致，避免登录逻辑报错 ======
+  function showError(title, opt) {
+    const detail = opt && (opt.detail || opt.code) ? `\n${opt.detail || ""} ${opt.code || ""}`.trim() : "";
+    alert(title + (detail ? "\n" + detail : ""));
+  }
+
+  function showLoginPrompt() {
+    if (document.getElementById("loginModal")) return;
+
+    const modal = document.createElement("div");
+    modal.id = "loginModal";
+    modal.className = "modal active";
+
+    modal.innerHTML = `
+    <div class="modal-content">
+      <span class="close">×</span>
+
+      <div class="brand">
+        <img src="p/ailogo.png" alt="霜蓝AI">
+      </div>
+
+      <h2 class="title">登录霜蓝AI</h2>
+      <p class="subtitle">输入邮箱获取验证码，无需注册</p>
+
+      <div class="field">
+        <label for="emailInput">邮箱</label>
+        <input id="emailInput" type="email" placeholder="输入邮箱">
+      </div>
+
+      <div class="field">
+        <label for="codeInput">验证码</label>
+        <div class="code-row">
+          <input id="codeInput" type="text" inputmode="numeric" placeholder="输入验证码">
+          <button id="sendCodeBtn" type="button">发送验证码</button>
+        </div>
+      </div>
+
+      <label class="agree">
+        <input type="checkbox" id="agreeCheck">
+        <span>
+          我已阅读并同意
+          <a href="xukexieyi.html" target="_blank">《用户协议》</a>
+          和
+          <a href="privacy.html" target="_blank">《隐私政策》</a>
+        </span>
+      </label>
+
+      <button id="loginBtn" type="button">登录</button>
+
+      <p id="loginMsg"></p>
+    </div>
+    `;
+
+    document.body.appendChild(modal);
+    document.body.style.overflow = "hidden";
+
+    // ===== GeeTest 预加载（模态框打开时即初始化，减少等待）=====
+    function _geetestErrMsg(err, fallback) {
+      if (!err) return fallback;
+      return err.msg || err.desc || err.error_code || fallback;
+    }
+
+    // 动态确保 gt4.js 已加载：不依赖 HTML 中的 <script> 标签，
+    // 规避正式域名 HTML 被 CDN/浏览器缓存、脚本缺失导致 initGeetest4 未定义的问题。
+    function loadGeetestScript() {
+      if (typeof initGeetest4 === "function") return Promise.resolve();
+      if (window.__geetestLoading) return window.__geetestLoading;
+      window.__geetestLoading = new Promise((resolve, reject) => {
+        const s = document.createElement("script");
+        s.src = "https://static.geetest.com/v4/gt4.js";
+        s.async = true;
+        s.onload = () => {
+          if (typeof initGeetest4 === "function") resolve();
+          else reject(new Error("验证脚本加载异常，请刷新重试"));
+        };
+        s.onerror = () => {
+          window.__geetestLoading = null; // 允许下次重试
+          reject(new Error("验证脚本加载失败，请检查网络或稍后重试"));
+        };
+        document.head.appendChild(s);
+      });
+      return window.__geetestLoading;
+    }
+
+    function _newCaptchaPromise() {
+      return loadGeetestScript().then(() => new Promise((resolve, reject) => {
+        initGeetest4({
+          captchaId: "ad3a8126afe716ccd4541f35d428071e",
+          product: "bind"
+        }, function (obj) {
+          obj.onReady(() => resolve(obj));
+          obj.onError((err) => {
+            console.error("GeeTest 初始化失败:", err);
+            reject(new Error(_geetestErrMsg(err, "人机验证加载失败")));
+          });
+        });
+      }));
+    }
+    let _captchaPromise = _newCaptchaPromise();
+    // 防止预加载阶段 promise 被拒绝时产生未捕获异常
+    _captchaPromise.catch(() => {});
+
+    // ===== GeeTest 验证函数 =====
+    async function runCaptcha() {
+      const captchaObj = await _captchaPromise;
+      // ⭐ 关键修复：将验证码挂到 body，避免被 modal / transform 影响
+      if (captchaObj && typeof captchaObj.appendTo === "function") {
+        captchaObj.appendTo(document.body);
+        // 更激进的修复，确保验证码浮层完全盖住所有内容
+        setTimeout(() => {
+          const geetest = document.querySelector(".geetest_holder");
+          if (geetest) {
+            geetest.style.position = "fixed";
+            geetest.style.zIndex = "999999999"; // ⭐ 提升到极限层级
+            geetest.style.left = "50%";
+            geetest.style.top = "50%";
+            geetest.style.transform = "translate(-50%, -50%)";
+
+            // ⭐ 关键：脱离父层 stacking context
+            geetest.style.pointerEvents = "auto";
+
+            // ⭐ 强制插到 body 最后（盖过所有遮罩）
+            document.body.appendChild(geetest);
+          }
+
+          // ⭐ 把 modal 的遮罩压到下面
+          const m = document.querySelector(".modal");
+          if (m) {
+            m.style.zIndex = "1000";
+          }
+        }, 0);
+      }
+      return new Promise((resolve, reject) => {
+        captchaObj.onSuccess(function () {
+          const result = captchaObj.getValidate();
+          _captchaPromise = _newCaptchaPromise();
+          _captchaPromise.catch(() => {});
+          resolve(JSON.stringify(result));
+        });
+        captchaObj.onError(function (err) {
+          console.error("GeeTest 验证失败:", err);
+          _captchaPromise = _newCaptchaPromise();
+          _captchaPromise.catch(() => {});
+          reject(new Error(_geetestErrMsg(err, "验证失败")));
+        });
+        captchaObj.showCaptcha();
+      });
+    }
+
+    const emailInput = modal.querySelector("#emailInput");
+    const codeInput = modal.querySelector("#codeInput");
+    const sendBtn = modal.querySelector("#sendCodeBtn");
+    const loginBtn = modal.querySelector("#loginBtn");
+    const msg = modal.querySelector("#loginMsg");
+    const agreeCheck = modal.querySelector("#agreeCheck");
+    loginBtn.disabled = true;
+    loginBtn.style.opacity = "0.6";
+
+    agreeCheck.onchange = () => {
+      loginBtn.disabled = !agreeCheck.checked;
+      loginBtn.style.opacity = agreeCheck.checked ? "1" : "0.6";
+    };
+
+    let cooldown = 0;
+    let timer = null;
+
+    // ===== 发送验证码 =====
+    sendBtn.onclick = async () => {
+      if (cooldown > 0) return;
+      msg.classList.remove("ok"); // 复位为错误色，成功时再标记
+
+      const email = emailInput.value.trim();
+
+      if (!email) {
+        msg.innerText = "请输入邮箱";
+        return;
+      }
+
+      if (!/^\S+@\S+\.\S+$/.test(email)) {
+        msg.innerText = "邮箱格式错误";
+        return;
+      }
+
+      msg.innerText = "人机验证加载中...";
+      sendBtn.disabled = true;
+      let token;
+      try {
+        token = await runCaptcha();
+        msg.innerText = "";
+      } catch (e) {
+        msg.innerText = e.message;
+        sendBtn.disabled = false;
+        return;
+      }
+      sendBtn.disabled = false;
+
+      try {
+        msg.innerText = "";
+        sendBtn.disabled = true;
+        sendBtn.innerText = "发送中...";
+
+        const res = await fetch("https://api.sunland.dev/send-code", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            email,
+            token: token
+          })
+        });
+
+        const data = await res.json().catch(() => ({}));
+
+        console.log("send-code 返回:", res.status, data);
+
+        if (!res.ok) {
+          let errMsg = "服务器异常";
+          try {
+            errMsg = data.error || errMsg;
+          } catch {}
+          throw new Error(errMsg + ` (状态码 ${res.status})`);
+        }
+
+        if (data.error) {
+          throw new Error(data.error);
+        }
+
+        msg.innerText = "验证码已发送（有效期约5分钟）";
+        msg.classList.add("ok"); // 成功提示用绿色
+
+        // 开始倒计时
+        cooldown = 60;
+        sendBtn.innerText = "60s";
+
+        timer = setInterval(() => {
+          cooldown--;
+          sendBtn.innerText = cooldown + "s";
+
+          if (cooldown <= 0) {
+            clearInterval(timer);
+            sendBtn.innerText = "发送验证码";
+            sendBtn.disabled = false;
+          }
+        }, 1000);
+
+      } catch (e) {
+        console.error(e);
+        if (e.message === "Failed to fetch") {
+          msg.innerText = "网络连接失败（API不可达）";
+        } else {
+          showError("发送验证码失败", {
+            detail: e.message
+          });
+        }
+
+        // 失败也恢复按钮
+        sendBtn.disabled = false;
+        sendBtn.innerText = "发送验证码";
+      }
+    };
+
+    // ===== 登录 =====
+    loginBtn.onclick = async () => {
+      msg.classList.remove("ok"); // 复位为错误色，成功时再标记
+      if (!agreeCheck.checked) {
+        msg.innerText = "请先同意用户协议";
+        return;
+      }
+      const email = emailInput.value.trim();
+      const code = codeInput.value.trim();
+
+      if (!/^\d{6}$/.test(code)) {
+        msg.innerText = "验证码格式错误";
+        return;
+      }
+
+      try {
+        const res = await fetch("https://api.sunland.dev/verify-code", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            email,
+            code
+          })
+        });
+
+        let data;
+        try {
+          data = await res.json();
+        } catch (e) {
+          console.error("JSON解析失败:", e);
+          showError("服务器返回异常", {
+            detail: "接口未返回JSON"
+          });
+          return;
+        }
+
+        console.log("verify-code 返回:", res.status, data);
+
+        if (!res.ok) {
+          let errMsg = data?.error || "服务器异常";
+
+          if (res.status === 400) {
+            msg.innerText = "请求错误：" + errMsg;
+          } else if (res.status === 401) {
+            showError("验证码错误或已过期", {
+              code: res.status,
+              detail: data?.error
+            });
+          } else if (res.status === 429) {
+            msg.innerText = "请求过于频繁，请稍后再试";
+          } else if (res.status >= 500) {
+            showError("服务器开小差了", {
+              code: res.status,
+              detail: data?.error
+            });
+          } else {
+            msg.innerText = errMsg + ` (${res.status})`;
+          }
+
+          console.error("登录接口错误:", res.status, data);
+          return;
+        }
+
+        if (!data.token) {
+          msg.innerText = data.error || "验证码错误或已过期";
+          return;
+        }
+
+        localStorage.setItem("token", data.token);
+        localStorage.setItem("user", JSON.stringify(data.user));
+
+        msg.innerText = "登录成功";
+        msg.classList.add("ok"); // 成功提示用绿色
+
+        // 独立页面：登录成功后回到 AI 页面，由 app.js 完成会话恢复与云端同步
+        setTimeout(() => {
+          modal.remove();
+          location.href = "ai.html";
+        }, 800);
+
+      } catch (e) {
+        console.error("登录异常:", e);
+
+        if (e.message && e.message.includes("fetch")) {
+          msg.innerText = "网络异常（可能被拦截或断网）";
+        } else if (e.message && e.message.includes("验证")) {
+          msg.innerText = "人机验证失效，请重新验证";
+        } else if (e.message && e.message.includes("timeout")) {
+          msg.innerText = "请求超时，请重试";
+        } else {
+          showError("登录异常", {
+            detail: e.message
+          });
+        }
+      }
+    };
+
+    function closeModal() {
+      modal.classList.add("closing");
+      document.body.style.overflow = "";
+      // 独立登录页：关闭后返回首页（避免留下空白页面）
+      setTimeout(() => { location.href = "index.html"; }, 200);
+    }
+
+    modal.querySelector(".close").onclick = closeModal;
+  }
+
+  window.showLoginPrompt = showLoginPrompt;
+
+  // 进入页面即展示登录窗口
+  showLoginPrompt();
+})();
+</script>
+</body>
+</html>

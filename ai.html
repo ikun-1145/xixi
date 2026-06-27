@@ -37,6 +37,22 @@ style-src * 'unsafe-inline';
 frame-src *;
 child-src *;
 ">
+<!-- 登录状态守卫：进入 ai.html 时若未登录则跳转 login.html -->
+<script>
+(function () {
+  try {
+    // 仅以 token 是否存在作为是否登录的判断依据。
+    // ⚠️ 不在此处判断 token 是否过期：app.js 对过期 token 会尝试静默刷新
+    //    （即使过期也尝试刷新，不提前删除），过期不等于未登录。
+    var token = localStorage.getItem("token");
+    if (!token) {
+      location.replace("login.html");
+    }
+  } catch (e) {
+    location.replace("login.html");
+  }
+})();
+</script>
 </head>
 <script src="https://static.geetest.com/v4/gt4.js"></script>
 
