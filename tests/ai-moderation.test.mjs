@@ -2,14 +2,14 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-const aiHtml = fs.readFileSync(new URL('../ai.html', import.meta.url), 'utf8');
-const start = aiHtml.indexOf('const MODERATION_REFUSAL_TEXT');
-const end = aiHtml.indexOf('async function send()', start);
+const aiApp = fs.readFileSync(new URL('../ai/app.js', import.meta.url), 'utf8');
+const start = aiApp.indexOf('const MODERATION_REFUSAL_TEXT');
+const end = aiApp.indexOf('async function send()', start);
 
-assert.notEqual(start, -1, 'ai.html should define moderation rules');
-assert.notEqual(end, -1, 'ai.html should define send() after moderation rules');
+assert.notEqual(start, -1, 'ai/app.js should define moderation rules');
+assert.notEqual(end, -1, 'ai/app.js should define send() after moderation rules');
 
-const moderationBlock = aiHtml.slice(start, end);
+const moderationBlock = aiApp.slice(start, end);
 const { checkInputModeration, normalizeModerationText } = new Function(
   `${moderationBlock}; return { checkInputModeration, normalizeModerationText };`
 )();
