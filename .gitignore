@@ -1,0 +1,81 @@
+# Markdown docs: keep only the public README.
+*.md
+!Readme.md
+
+# Local environment and secrets.
+.env
+.env.*
+!.env.example
+*.local
+*.secret
+*.secrets
+*.key
+*.pem
+*.p12
+*.pfx
+
+# Dependency folders.
+node_modules/
+
+# Build and generated output.
+dist/
+build/
+out/
+.next/
+.nuxt/
+.svelte-kit/
+coverage/
+*.tsbuildinfo
+
+# Logs and debug output.
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+debug.log
+
+# Cloud / deployment local state.
+.wrangler/
+**/.wrangler/
+.vercel/
+.netlify/
+.pages/
+.firebase/
+.supabase/
+supabase/.branches/
+supabase/.temp/
+
+# IDE and editor state.
+.vscode/
+.idea/
+*.code-workspace
+*.swp
+*.swo
+*~
+
+# OS metadata.
+.DS_Store
+._*
+Thumbs.db
+
+# Archives and binary reference documents.
+*.zip
+*.tar
+*.tar.gz
+*.tgz
+*.rar
+*.7z
+*.pdf
+
+# App packages and large release artifacts.
+*.apk
+*.ipa
+*.dmg
+
+# Test/runtime caches.
+.cache/
+.parcel-cache/
+.eslintcache
+.pytest_cache/
+__pycache__/

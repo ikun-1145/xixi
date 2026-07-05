@@ -6,6 +6,8 @@ You MUST read this file before doing anything.
 Always follow the rules and context in this file.
 
 Do NOT proceed without applying these rules.
+
+📌 每次接手项目之前，请先阅读 `docs/project_overview.md`（项目全局说明/长期记忆）、`CLAUDE.md`、`AGENTS.md` 这几个文件，建立起对项目结构、数据流、登录体系与高危区域的完整认知，再开始任何修改。
 ## ROLE
 
 You are an AI coding assistant working inside an existing production project.
