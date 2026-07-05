@@ -1,105 +1,79 @@
 // internet_context.ts
-// 中国互联网评论区语境知识库（可持续扩展：往各数组追加条目即可，无需改动 SYSTEM_PROMPT）
-// 用途：让模型理解评论的“真实语义/意图”，而非仅字面意思。
+// 中国互联网评论区语境知识库 —— 数据全部存放在同目录的 slang-dictionary.json 里，
+// 本文件只负责“读取 JSON + 拼装成一段供模型参考的文字”，不再写死任何黑话内容。
+// 想给 AI 增加新的黑话/梗/攻击方式：直接编辑 slang-dictionary.json，无需改动这个文件。
+// 用途：让模型理解评论的“真实语义/意图”，而非仅字面意思，从而给出更聪明、更高情商的回复建议。
 
-export interface Term { t: string; m: string; }
-
-// 1. 网络黑话 / 烂梗
-export const SLANG: Term[] = [
-  { t: "急了 / 你急了 / 急", m: "暗示对方情绪失控，多为挑衅、扣帽子、转移话题，并非真的关心" },
-  { t: "破防了", m: "嘲讽对方心态崩了、被戳痛处" },
-  { t: "就这？", m: "轻蔑、看不起的挑衅式贬低" },
-  { t: "不会吧不会吧", m: "阴阳怪气地表示难以置信、嘲讽" },
-  { t: "真有人 / 还真有人……", m: "以反问嘲讽某种人或行为" },
-  { t: "典 / 典中典 / 太典了", m: "讽刺某言论很‘典型’（贬义），表达不屑" },
-  { t: "乐 / 绷不住了 / 蚌埠住了", m: "嘲讽式发笑，看对方笑话" },
-  { t: "6 / 666", m: "可褒可贬；争论语境里多为反讽‘真行啊’" },
-  { t: "哈哈哈 / 2333", m: "可能真笑，也可能敷衍或嘲讽，需看上下文" },
-  { t: "😂 / 🤣 / 💀", m: "争论里常表示嘲讽、‘笑死’、看热闹，未必友好" },
-  { t: "孝 / 孝死了", m: "谐音‘笑’，反讽" },
-  { t: "好好好", m: "阴阳，‘行行行你说得对’式的不耐烦" },
-  { t: "赢麻了", m: "反讽对方明明输了还自我安慰" },
-  { t: "红温了 / 急眼了", m: "钓鱼挑衅，引导话题转向对方情绪" },
-];
-
-// 2. 谐音 / 改字 / 错字攻击
-export const HOMOPHONE_ATTACKS: Term[] = [
-  { t: "烧福瑞 / 建议烧 / 骁福瑞", m: "煽动‘焚烧’兽圈群体，属暴力威胁与群体仇恨" },
-  { t: "腐肉圈 / 腐瑞", m: "‘福瑞圈’的恶意谐音贬称" },
-  { t: "福蕊 / 福蕤 / 复瑞", m: "‘福瑞’的改字，可中性可阴阳，需看语境" },
-  { t: "兽畜 / 福畜 / 畜圈", m: "把兽圈成员贬为‘畜’，侮辱性蔑称" },
-  { t: "电疗 / 送电疗 / 杨永信", m: "影射电击‘矫正’，恶意建议‘治疗’，属攻击" },
-  { t: "物理超度 / 超度 / 送走", m: "暗示让对方去死，暴力威胁的隐晦说法" },
-];
-
-// 3. 群体攻击句式
-export const GROUP_ATTACK_PATTERNS: string[] = [
-  "XX都是…… / 玩XX的都……（以偏概全地给整个群体贴标签）",
-  "你们这种人 / 这帮人……（制造群体对立）",
-  "建议烧 / 建议电疗 / 建议送精神病院 / 建议火化 / 建议物理超度（仇恨煽动、暴力威胁）",
-  "人均XX / 没一个好东西（群体污名化）",
-];
-
-// 4. 图片梗 / Meme
-export const IMAGE_MEMES: string[] = [
-  "嘲讽图 / 表情包：用图片表达不屑、看笑话，重点在‘态度’而非画面",
-  "狗图 / 猴图：常用来内涵、贬低对方（如回兽圈‘你是狗/猴’）",
-  "魔改图 / 鬼图 / 阴间图：恶搞、丑化对方或其兽设",
-  "错位嘲讽：如评论‘我是一只狐狸’却配普通狗图，用图反讽对方的自我认同",
-  "钓鱼图 / 引战图：故意贴争议图挑事",
-];
-
-// 5. 兽圈语境——圈内正常交流
-export const FURRY_NORMAL: Term[] = [
-  { t: "福瑞 / Furry / 兽圈 / 兽迷", m: "拟人化动物爱好者群体，圈内中性自称" },
-  { t: "兽设 / OC / Fursona", m: "个人原创的拟人化动物角色，正常创作" },
-  { t: "兽装 / Fursuit / 毛毛", m: "毛绒兽形服装，正常爱好" },
-  { t: "返图 / 约稿 / 稿件 / 线稿", m: "委托画师创作并收图，正常交易与交流" },
-  { t: "团长 / Maker / 头基", m: "兽装制作者/部件，正常称呼" },
-];
-export const FURRY_MALICIOUS: Term[] = [
-  { t: "兽圈都是变态 / 恋兽 / 兽交", m: "把兽圈整体污名化为性癖或违法，群体偏见+人身攻击" },
-  { t: "烧 / 电 / 火化 / 超度 兽圈", m: "仇恨煽动、暴力威胁" },
-  { t: "腐肉 / 兽畜 / 福畜", m: "侮辱性蔑称" },
-];
-
-// 6. 评论者意图类型
-export const INTENT_TYPES: string[] = [
-  "真诚讨论", "善意玩梗", "引战", "Troll（钓鱼引战）", "钓鱼", "情绪宣泄", "群体攻击", "单纯恶搞",
-];
-
-function renderTerms(list: Term[]): string {
-  return list.map((x) => `  · ${x.t} —— ${x.m}`).join("\n");
+export interface Entry {
+  term: string;    // 黑话/梗/攻击句式的名字或说法
+  meaning: string;  // 对应的人话解释（真实含义、使用场景或攻击性质）
 }
-function renderList(list: string[]): string {
-  return list.map((x) => `  · ${x}`).join("\n");
+
+export interface Category {
+  id: string;
+  title: string;
+  description?: string;
+  entries: Entry[];
+}
+
+export interface SlangDictionary {
+  categories: Category[];
+  intentTypes: { description: string; options: string[] };
+}
+
+const EMPTY_DICT: SlangDictionary = { categories: [], intentTypes: { description: "", options: [] } };
+
+// 从同目录读取 JSON 数据（仅在模块初次加载/初始脚本求值阶段调用，允许使用同步文件 API）。
+// 读取失败时（例如文件缺失/格式错误）优雅降级为空知识库，不影响 Edge Function 正常启动与其余功能。
+function loadDictionary(): SlangDictionary {
+  try {
+    const url = new URL("./slang-dictionary.json", import.meta.url);
+    const raw = Deno.readTextFileSync(url);
+    const data = JSON.parse(raw);
+    const categories = Array.isArray(data?.categories) ? data.categories : [];
+    const intentTypes = data?.intentTypes && Array.isArray(data.intentTypes.options)
+      ? data.intentTypes
+      : EMPTY_DICT.intentTypes;
+    return { categories, intentTypes };
+  } catch (e) {
+    console.error("加载 slang-dictionary.json 失败，将不带互联网黑话语境知识运行：", e);
+    return EMPTY_DICT;
+  }
+}
+
+const DICTIONARY: SlangDictionary = loadDictionary();
+
+// 中文数字（分类数量在合理范围内足够用；超出范围回退为阿拉伯数字，不影响可读性）
+const CHINESE_NUMERALS = ["一", "二", "三", "四", "五", "六", "七", "八", "九", "十", "十一", "十二", "十三", "十四", "十五"];
+function numeral(n: number): string {
+  return CHINESE_NUMERALS[n - 1] ?? String(n);
+}
+
+function renderEntries(entries: Entry[]): string {
+  return entries.map((x) => `  · ${x.term} —— ${x.meaning}`).join("\n");
 }
 
 // 动态渲染为一段供模型参考的中文语境知识（SYSTEM_PROMPT 通过拼接引用本块，自身不写死这些内容）
 export function buildContextBlock(): string {
-  return [
+  const lines: string[] = [
     "【中国互联网评论区语境补充知识】",
     "（用于更准确理解评论的真实语义与意图，尤其抖音/快手/B站/小红书/微博评论区；很多话不能只看字面。请把以下知识用于‘分析’与‘意图判断’；是否回复/如何回复仍遵循前述系统规则与所选语气。）",
     "",
-    "一、网络黑话 / 烂梗（多含阴阳、嘲讽、引战或终结讨论之意，需结合上下文）：",
-    renderTerms(SLANG),
-    "",
-    "二、谐音 / 改字 / 错字攻击（识别被规避的真实攻击词，别按字面理解）：",
-    renderTerms(HOMOPHONE_ATTACKS),
-    "",
-    "三、群体攻击句式（针对群体、而非就事论事）：",
-    renderList(GROUP_ATTACK_PATTERNS),
-    "",
-    "四、图片梗 / Meme（结合图片用途判断，而非只描述画面）：",
-    renderList(IMAGE_MEMES),
-    "",
-    "五、兽圈语境——圈内正常交流：",
-    renderTerms(FURRY_NORMAL),
-    "  兽圈语境——恶意标签 / 群体偏见：",
-    renderTerms(FURRY_MALICIOUS),
-    "",
-    "六、意图判断：请结合上述知识推测评论者真实意图，从【" + INTENT_TYPES.join(" / ") + "】中选最贴切的，并给出可信度（高/中/低），写入分析(detail)。",
-    "",
-    "提醒：以上仅为帮助理解语境的背景知识；不要因此降低判断标准、也不要无中生有；信息不足时请在分析中说明。",
-  ].join("\n");
+  ];
+
+  DICTIONARY.categories.forEach((cat, idx) => {
+    const head = cat.description ? `${cat.title}（${cat.description}）` : cat.title;
+    lines.push(`${numeral(idx + 1)}、${head}：`);
+    lines.push(renderEntries(cat.entries || []));
+    lines.push("");
+  });
+
+  if (DICTIONARY.intentTypes.options.length) {
+    const n = numeral(DICTIONARY.categories.length + 1);
+    lines.push(`${n}、意图判断：${DICTIONARY.intentTypes.description || "请结合上述知识推测评论者真实意图"}，从【${DICTIONARY.intentTypes.options.join(" / ")}】中选最贴切的。`);
+    lines.push("");
+  }
+
+  lines.push("提醒：以上仅为帮助理解语境的背景知识；不要因此降低判断标准、也不要无中生有；信息不足时请在分析中说明。");
+  return lines.join("\n");
 }
