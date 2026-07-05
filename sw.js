@@ -1,4 +1,5 @@
 const CACHE_NAME = "ai-app-v1";
+// 这是一个由Agent测试添加的注释
 
 // 安装时缓存核心文件
 self.addEventListener("install", (e) => {

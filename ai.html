@@ -208,20 +208,34 @@ z-index:999;
 
   
 </div>
-<div id="loadingBar" style="
-  position:fixed;
-  inset:0;
-  display:none;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  background:rgba(0,0,0,0.6);
-  z-index:99999;
-  transition:opacity .25s ease;
-">
-  <img src="p/load.gif" style="width:90px;">
-  <div style="margin-top:12px;color:#fff;">加载中</div>
-</div>
+<style>
+/* 顶部细进度条（替代全屏加载遮罩，兼容 app.js 的 display 切换逻辑） */
+#loadingBar {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: 2px;
+  z-index: 99999;
+  overflow: hidden;
+  pointer-events: none;
+  display: none;
+  opacity: 0;
+  transition: opacity .15s ease;
+}
+#loadingBar.active { opacity: 1; }
+#loadingBar .bar {
+  display: block;
+  height: 100%;
+  width: 30%;
+  border-radius: 999px;
+  background: #22d3ee;
+  animation: loading-slide 1.1s linear infinite;
+}
+@keyframes loading-slide {
+  from { transform: translateX(-110%); }
+  to   { transform: translateX(440%); }
+}
+</style>
+<div id="loadingBar" aria-hidden="true"><span class="bar"></span></div>
 </body>
 <script src="ai/user-menu.js"></script>
 <script src="ai/account-menu.js"></script>

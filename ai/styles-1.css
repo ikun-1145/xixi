@@ -75,14 +75,14 @@ body:not(.night) .ghost-btn {
 }
 
 .ghost-btn:hover {
-  background: linear-gradient(135deg, #00e5ff, #7a5cff);
+  background: linear-gradient(135deg, #22d3ee, #0e9aa7);
   color: white;
   border-color: transparent;
   box-shadow: 0 0 12px rgba(0,229,255,0.5);
 }
 
 .pro-btn {
-  background: linear-gradient(135deg, #6a5cff, #9f7cff);
+  background: linear-gradient(135deg, #0e9aa7, #22d3ee);
   color: white;
   border: none;
   padding: 6px 14px;
@@ -99,15 +99,15 @@ body:not(.night) .ghost-btn {
 }
 
 .pro-btn:hover {
-  background: linear-gradient(135deg, #6a5cff, #9f7cff);
-  box-shadow: 0 0 15px rgba(122,92,255,0.8);
+  background: linear-gradient(135deg, #0e9aa7, #22d3ee);
+  box-shadow: 0 4px 14px rgba(34,211,238,0.35);
   color: white;
 }
 .avatar {
   width: 36px;
   height: 36px;
   border-radius: 50%;
-  background: linear-gradient(135deg, #00e5ff, #7a5cff);
+  background: linear-gradient(135deg, #22d3ee, #0e9aa7);
   color: white;
   display: flex;
   align-items: center;

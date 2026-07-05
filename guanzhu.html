@@ -4,82 +4,76 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>关注我们 - 霜蓝</title>
-
+  <meta name="theme-color" content="#f7f9fa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#13151e" media="(prefers-color-scheme: dark)">
+  <link rel="stylesheet" href="p/css/tokens.css">
+  <link rel="stylesheet" href="p/css/base.css">
   <style>
-    :root {
-      --bg-main: linear-gradient(135deg, #e0faff, #ffffff);
-      --card-bg: rgba(255,255,255,0.5);
-      --text-main: #1A1A1A;
-      --accent: #71f8fc;
-    }
-
-    body.night {
-      --bg-main: #161823;
-      --card-bg: rgba(22,24,35,0.9);
-      --text-main: #E8FFFF;
-      --accent: #3EEDE7;
-    }
-
     body.preload { opacity: 0; }
 
-    * { box-sizing: border-box; }
-
     body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-                   "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
-                   "Noto Sans CJK SC", "Source Han Sans SC",
-                   Arial, sans-serif;
-      background: var(--bg-main);
       display: flex;
       flex-direction: column;
       align-items: center;
       min-height: 100vh;
-      color: var(--text-main);
+      overflow-x: hidden;
     }
 
-    .container {
-      margin-top: 2rem;
-      padding: 2rem;
-      width: 90%;
-      max-width: 800px;
-      background: var(--card-bg);
-      backdrop-filter: blur(10px);
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    .page-card {
+      width: min(100% - var(--space-8), 720px);
+      margin-top: var(--space-16);
+      padding: var(--space-8) var(--space-6) var(--space-12);
       text-align: center;
-      animation: fadeInUp 1s ease-out;
+      animation: fade-in-up var(--dur-slow) var(--ease) both;
     }
 
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
+    h1 {
+      font-size: var(--title-md);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: var(--space-4);
     }
 
-    h1 { font-size: 2rem; margin-bottom: 1rem; }
-    p { font-size: 1.1rem; }
+    p {
+      margin: 0 auto;
+      max-width: 56ch;
+      font-size: var(--text-base);
+      color: var(--text-2);
+    }
 
     .logos {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
-      gap: 1.2rem;
-      margin-top: 2rem;
+      grid-template-columns: repeat(auto-fit, minmax(110px, 1fr));
+      gap: var(--space-3);
+      margin-top: var(--space-8);
     }
 
     .logo-item {
-      text-align: center;
-      font-size: 0.9rem;
+      padding: var(--space-4) var(--space-2);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+      background: var(--surface-2);
+      font-size: var(--text-sm);
+      color: var(--text-2);
+      transition: transform var(--dur-fast) var(--ease),
+                  border-color var(--dur-fast) var(--ease),
+                  box-shadow var(--dur-fast) var(--ease);
+    }
+
+    .logo-item:hover {
+      transform: translateY(-2px);
+      border-color: var(--brand);
+      box-shadow: var(--shadow-sm);
     }
 
     /* 统一图标展示盒 */
     .logo-box {
-      width: 72px;
-      height: 72px;
-      margin: 0 auto 0.6rem;
+      width: 56px;
+      height: 56px;
+      margin: 0 auto var(--space-2);
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: transform 0.25s ease;
     }
 
     .logo-box img {
@@ -89,85 +83,43 @@
     }
 
     /* 横向图标视觉补偿 */
-    .logo-wide img {
-      transform: scale(1.15);
-    }
+    .logo-wide img { transform: scale(1.15); }
 
-    /* hover 轻微浮起 */
-    .logo-box:hover {
-      transform: translateY(-4px);
-    }
+    .back { margin-top: var(--space-8); }
 
-    .back {
-      margin-top: 2rem;
-      display: inline-block;
-      padding: 0.8rem 1.5rem;
-      background: linear-gradient(to right, var(--accent), #a0fff8);
-      border-radius: 30px;
-      text-decoration: none;
-      color: black;
-      font-weight: bold;
-      font-size: 1.1rem;
-      transition: transform 0.3s ease;
-    }
-
-    .back:hover { transform: translateY(-3px); }
-
-    footer {
-      margin: 2rem 0 1rem;
-      font-size: 0.9rem;
-      color: #000;
+    @media (max-width: 480px) {
+      .page-card { margin-top: var(--space-12); }
+      .logos { grid-template-columns: repeat(2, 1fr); }
     }
 
     #loading {
       position: fixed;
       inset: 0;
-      z-index: 9999;
+      z-index: 9998;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: opacity 0.6s ease;
-      background: radial-gradient(circle at center,
-        rgba(113,248,252,0.18),
-        #ffffff 65%);
+      background: var(--bg);
+      transition: opacity var(--dur-slow) ease;
     }
 
-    body.night #loading {
-      background: radial-gradient(circle at center,
-        rgba(62,237,231,0.14),
-        rgba(22,24,35,0.96) 65%);
-    }
-
-    .loader {
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      border: 6px solid rgba(0,0,0,0.08);
-      border-top-color: var(--accent);
-      animation: spin 1s linear infinite;
-    }
-
-    body.night .loader {
-      border: 6px solid rgba(255,255,255,0.14);
-    }
-
-    @keyframes spin { to { transform: rotate(360deg); } }
-
-    body.fade-in { animation: fadeBody 0.8s ease; }
-    @keyframes fadeBody { from { opacity: 0; } to { opacity: 1; } }
-
-    body.fade-out { animation: fadeOut 0.6s ease forwards; }
-    @keyframes fadeOut { to { opacity: 0; } }
-
-  
-#loadingBar { opacity: 0; pointer-events: none; display: none; }  #loadingBar.active {   opacity: 1;   pointer-events: auto; }  #loadingBar img {   transform: scale(0.9);   transition: transform .25s ease; }  #loadingBar.active img {   transform: scale(1); } body:not(.night) #loadingBar { background: rgba(255,255,255,0.65); backdrop-filter: blur(12px); } body:not(.night) #loadingBar div { color: #334155; } body:not(.night) #loadingBar img { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15)); }
-</style>
+    body.fade-in { animation: fade-body var(--dur-slow) ease; }
+    @keyframes fade-body { from { opacity: 0; } to { opacity: 1; } }
+  </style>
 </head>
 
 <body>
-  <div id="loading"><div class="loader"></div></div>
+  <script>
+    /* 首帧前应用夜间主题，避免闪色 */
+    (function () {
+      var hour = new Date().getHours();
+      if (hour >= 18 || hour < 6) document.body.classList.add('night');
+    })();
+  </script>
 
-  <div class="container">
+  <div id="loading" aria-label="页面加载中"><div class="spinner" aria-hidden="true"></div></div>
+
+  <main class="page-shell page-card card">
     <h1 id="titleText"></h1>
     <p id="descText"></p>
 
@@ -189,7 +141,7 @@
       </div>
 
       <div class="logo-item">
-        <div class="logo-box"><img src="p/ks.png"></div>
+        <div class="logo-box"><img src="p/ks.png" alt="快手"></div>
         <div>快手</div>
       </div>
 
@@ -204,21 +156,21 @@
       </div>
 
       <div class="logo-item">
-        <div class="logo-box logo-wide"><img src="p/ithome.png"></div>
+        <div class="logo-box logo-wide"><img src="p/ithome.png" alt="IT之家"></div>
         <div>IT之家</div>
       </div>
 
       <div class="logo-item">
-        <div class="logo-box logo-wide"><img src="p/youtube.png"></div>
+        <div class="logo-box logo-wide"><img src="p/youtube.png" alt="YouTube"></div>
         <div>YouTube</div>
       </div>
 
     </div>
 
-    <a href="index.html" class="back" id="backBtn"></a>
-  </div>
+    <a href="index.html" class="back btn btn-secondary" id="backBtn"></a>
+  </main>
 
-  <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
+  <footer class="site-footer">© 2024–2026 霜蓝 · All Rights Reserved.</footer>
 
   <script>
     document.body.classList.add('preload');
@@ -253,7 +205,7 @@
       document.body.classList.add('fade-in');
       const loader = document.getElementById('loading');
       loader.style.opacity = '0';
-      setTimeout(() => loader.remove(), 600);
+      setTimeout(() => loader.remove(), 400);
     });
 
     document.addEventListener("DOMContentLoaded", () => {
@@ -264,33 +216,33 @@
           link.addEventListener("click", (e) => {
             e.preventDefault();
             document.body.classList.add("fade-out");
-            setTimeout(() => window.location.href = href, 600);
+            setTimeout(() => window.location.href = href, 250);
           });
         }
       });
     });
-  
-function showGlobalLoading() {
-  const el = document.getElementById("loadingBar");
-  if (!el) return;
-  el.style.display = "flex";
-  requestAnimationFrame(() => el.classList.add("active"));
-}
-function hideGlobalLoading() {
-  const el = document.getElementById("loadingBar");
-  if (!el) return;
-  el.classList.remove("active");
-  setTimeout(() => { el.style.display = "none"; }, 250);
-}
 
-// 🔥 页面进入立即关闭 loading（防止跨页面残留）
-document.addEventListener("DOMContentLoaded", () => {
-  hideGlobalLoading();
-});
+    function showGlobalLoading() {
+      const el = document.getElementById("loadingBar");
+      if (el) el.classList.add("active");
+    }
+    function hideGlobalLoading() {
+      const el = document.getElementById("loadingBar");
+      if (el) el.classList.remove("active");
+    }
 
-document.querySelectorAll("a").forEach(a => {   a.addEventListener("click", () => {     showGlobalLoading();   }); });
-</script>
+    // 页面进入立即关闭 loading（防止跨页面残留）
+    document.addEventListener("DOMContentLoaded", () => {
+      hideGlobalLoading();
+    });
 
-<div id="loadingBar" style="   display:none;      transition:opacity .25s ease;    position:fixed;   inset:0;   background:rgba(0,0,0,0.45);   backdrop-filter:blur(6px);   z-index:9999;    align-items:center;   justify-content:center;   flex-direction:column; ">   <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">   <div style="color:#fff;font-size:18px;opacity:0.9;font-weight:500;letter-spacing:0.5px;">     加载中   </div> </div>
+    document.querySelectorAll("a").forEach(a => {
+      a.addEventListener("click", () => {
+        showGlobalLoading();
+      });
+    });
+  </script>
+
+  <div id="loadingBar" aria-hidden="true"><span class="bar"></span></div>
 </body>
 </html>

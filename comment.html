@@ -5,179 +5,94 @@
   <meta http-equiv="x-dns-prefetch-control" content="off">
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title id="pageTitle">评论留言 - 霜蓝</title>
+  <meta name="theme-color" content="#f7f9fa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#13151e" media="(prefers-color-scheme: dark)">
+  <link rel="stylesheet" href="p/css/tokens.css">
+  <link rel="stylesheet" href="p/css/base.css">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      /* 日间主题 */
-      --bg-main: linear-gradient(135deg, #e0faff, #ffffff), url('p/bg.png') center / cover no-repeat;
-      --card-bg: rgba(255,255,255,0.55);
-      --text-main: #1A1A1A;
-      --accent: #71f8fc;
-    }
-
-    /* 夜间主题（donate 同款） */
-    body.night {
-      --bg-main: #161823;
-      --card-bg: rgba(22,24,35,0.9);
-      --text-main: #E8FFFF;
-      --accent: #3EEDE7;
-    }
-
     /* preload 阶段页面不可见 */
-    body.preload {
-      opacity: 0;
-    }
+    body.preload { opacity: 0; }
 
     body {
-      margin: 0;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-                   "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
-                   "Noto Sans CJK SC", "Source Han Sans SC",
-                   Arial, sans-serif;
-      background: var(--bg-main);
       display: flex;
       flex-direction: column;
       align-items: center;
       min-height: 100vh;
-      color: var(--text-main);
+      overflow-x: hidden;
     }
 
-    .container {
-      margin-top: 2rem;
-      padding: 2rem;
-      width: 90%;
-      max-width: 720px;
-      background: var(--card-bg);
-      backdrop-filter: blur(10px);
-      border-radius: 16px;
-      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    .page-card {
+      width: min(100% - var(--space-8), 720px);
+      margin-top: var(--space-16);
+      padding: var(--space-8) var(--space-6) var(--space-12);
       text-align: center;
-      animation: fadeInUp 1s ease-out;
-    }
-
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
+      animation: fade-in-up var(--dur-slow) var(--ease) both;
     }
 
     h1 {
-      font-size: 2rem;
-      margin-bottom: 1rem;
+      font-size: var(--title-md);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: var(--space-6);
     }
 
-    .back {
-      display: inline-block;
-      margin-top: 1.5rem;
-      padding: 0.8rem 1.5rem;
-      background: linear-gradient(to right, var(--accent), #a0fff8);
-      border-radius: 30px;
-      text-decoration: none;
-      color: black;
-      font-weight: bold;
-      font-size: 1.1rem;
-      transition: transform 0.3s ease;
+    #giscus {
+      text-align: left;
+      margin-top: var(--space-4);
     }
 
-    .back:hover {
-      transform: translateY(-3px);
+    .back { margin-top: var(--space-8); }
+
+    @media (max-width: 480px) {
+      .page-card { margin-top: var(--space-12); }
     }
 
-    footer {
-      margin: 2rem 0 1rem;
-      font-size: 0.9rem;
-      color: #000;
-      text-align: center;
-    }
-
-    /* 加载动画样式 */
+    /* 页面加载指示 */
     #loading {
       position: fixed;
       inset: 0;
-      z-index: 9999;
+      z-index: 9998;
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: opacity 0.6s ease;
-      background: radial-gradient(
-        circle at center,
-        rgba(113,248,252,0.18),
-        #ffffff 65%
-      );
+      background: var(--bg);
+      transition: opacity var(--dur-slow) ease;
     }
 
-    body.night #loading {
-      background: radial-gradient(
-        circle at center,
-        rgba(62,237,231,0.14),
-        rgba(22,24,35,0.96) 65%
-      );
-    }
-
-    .loader {
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      border: 6px solid rgba(0,0,0,0.08);
-      border-top-color: var(--accent);
-      animation: spin 1s linear infinite;
-      box-shadow: 0 0 20px rgba(113,248,252,0.45);
-    }
-
-    body.night .loader {
-      border: 6px solid rgba(255,255,255,0.14);
-      box-shadow: 0 0 24px rgba(62,237,231,0.55);
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    body.fade-in {
-      animation: fadeBody 0.8s ease;
-    }
-
-    @keyframes fadeBody {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    body.fade-out {
-      animation: fadeOut 0.6s ease forwards;
-    }
-
-    @keyframes fadeOut {
-      to { opacity: 0; }
-    }
-  
-#loadingBar {
-  opacity: 0;
-  pointer-events: none;
-  display: none;
-}
-#loadingBar.active {
-  opacity: 1;
-  pointer-events: auto;
-  display: flex;
-}
+    body.fade-in { animation: fade-body var(--dur-slow) ease; }
+    @keyframes fade-body { from { opacity: 0; } to { opacity: 1; } }
   </style>
 </head>
 <body>
+  <script>
+    /* 首帧前应用夜间主题，避免闪色 */
+    (function () {
+      var hour = new Date().getHours();
+      if (hour >= 18 || hour < 6) document.body.classList.add('night');
+    })();
+  </script>
+
   <!-- 加载动画 -->
-  <div id="loading">
-    <div class="loader"></div>
+  <div id="loading" aria-label="页面加载中">
+    <div class="spinner" aria-hidden="true"></div>
   </div>
 
-  <div class="container">
+  <div id="langSwitcher" class="lang-switcher" role="navigation" aria-label="语言切换">
+    <button data-lang="zh">中文</button>
+    <button data-lang="en">EN</button>
+    <button data-lang="ja">日本語</button>
+  </div>
+
+  <main class="page-shell page-card card">
     <h1 id="titleText"></h1>
 
     <!-- Giscus 评论系统 -->
     <div id="giscus"></div>
 
-    <a href="index.html" class="back" id="backBtn"></a>
-  </div>
+    <a href="index.html" class="back btn btn-secondary" id="backBtn"></a>
+  </main>
 
-  <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
+  <footer class="site-footer">© 2024–2026 霜蓝 · All Rights Reserved.</footer>
 
   <!-- 淡入淡出 + 跳转逻辑 -->
   <script>
@@ -245,7 +160,18 @@
       document.getElementById("backBtn").textContent = t.back;
 
       loadGiscus(t.giscusLang);
+
+      document.querySelectorAll("#langSwitcher button").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.lang === lang);
+      });
     }
+
+    document.querySelectorAll("#langSwitcher button").forEach(btn => {
+      btn.onclick = () => {
+        localStorage.setItem("lang", btn.dataset.lang);
+        applyLang();
+      };
+    });
 
     window.addEventListener('load', () => {
       applyLang();
@@ -257,7 +183,7 @@
       const loader = document.getElementById('loading');
       if (loader) {
         loader.style.opacity = '0';
-        setTimeout(() => loader.remove(), 600);
+        setTimeout(() => loader.remove(), 400);
       }
     });
 
@@ -269,40 +195,34 @@
           link.addEventListener("click", (e) => {
             e.preventDefault();
             document.body.classList.add("fade-out");
-            setTimeout(() => window.location.href = href, 600);
+            setTimeout(() => window.location.href = href, 250);
           });
         }
       });
     });
-  
-function showGlobalLoading() {
-  const el = document.getElementById("loadingBar");
-  if (!el) return;
-  el.style.display = "flex";
-  requestAnimationFrame(() => el.classList.add("active"));
-}
 
-function hideGlobalLoading() {
-  const el = document.getElementById("loadingBar");
-  if (!el) return;
-  el.classList.remove("active");
-  setTimeout(() => {
-    el.style.display = "none";
-  }, 250);
-}
+    function showGlobalLoading() {
+      const el = document.getElementById("loadingBar");
+      if (el) el.classList.add("active");
+    }
 
-// 页面进入立即关闭 loading（防止跨页面残留）
-document.addEventListener("DOMContentLoaded", () => {
-  hideGlobalLoading();
-});
+    function hideGlobalLoading() {
+      const el = document.getElementById("loadingBar");
+      if (el) el.classList.remove("active");
+    }
 
-document.querySelectorAll("a").forEach(a => {
-  a.addEventListener("click", () => {
-    showGlobalLoading();
-  });
-});
-</script>
+    // 页面进入立即关闭 loading（防止跨页面残留）
+    document.addEventListener("DOMContentLoaded", () => {
+      hideGlobalLoading();
+    });
 
-<div id="loadingBar" style="   display:none;      transition:opacity .25s ease;    position:fixed;   inset:0;   background:rgba(0,0,0,0.45);   backdrop-filter:blur(6px);   z-index:9999;    align-items:center;   justify-content:center;   flex-direction:column; ">   <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">   <div style="color:#fff;font-size:18px;opacity:0.9;font-weight:500;letter-spacing:0.5px;">     加载中   </div> </div>
+    document.querySelectorAll("a").forEach(a => {
+      a.addEventListener("click", () => {
+        showGlobalLoading();
+      });
+    });
+  </script>
+
+  <div id="loadingBar" aria-hidden="true"><span class="bar"></span></div>
 </body>
 </html>

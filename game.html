@@ -10,38 +10,13 @@
 <link rel="preload" as="image" href="p/chengshi.png">
 <link rel="preload" as="image" href="p/bird.png">
 
+<link rel="stylesheet" href="p/css/tokens.css">
+<link rel="stylesheet" href="p/css/base.css">
 <style>
-/* ================= CSS 变量（主页同款）================= */
-:root {
-  --bg-main: linear-gradient(135deg, #dcefff, #f8fdff), url('p/chengshi.png') center / cover no-repeat;
-  --card-bg: rgba(255,255,255,0.5);
-  --text-main: #1A1A1A;
-  --accent: #71f8fc;
-}
-
-body.night {
-  --bg-main: #161823;
-  --card-bg: rgba(22,24,35,0.95);
-  --text-main: #E8FFFF;
-  --accent: #3EEDE7;
-}
-
-/* ================= 基础样式 ================= */
-* {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
-
-body.preload {
-  opacity: 0;
-}
+/* ================= 游戏页面样式（依赖 tokens.css / base.css） ================= */
+body.preload { opacity: 0; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
-               "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC",
-               "Source Han Sans SC", Arial, sans-serif;
-  background: var(--bg-main);
   min-height: 100vh;
   min-height: 100svh;
   display: flex;
@@ -49,43 +24,19 @@ body {
   align-items: flex-start;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-  color: var(--text-main);
-  transition: opacity 0.8s ease;
+  /* 画布透明，城市背景即游戏场景 */
+  background: var(--bg) url('p/chengshi.png') center / cover no-repeat fixed;
+  transition: opacity var(--dur-slow) ease;
 }
 
 @supports (background-image: url("p/chengshi.webp")) {
-  :root {
-    --bg-main: linear-gradient(135deg, #dcefff, #f8fdff), url('p/chengshi.webp') center / cover no-repeat;
+  body {
+    background-image: url('p/chengshi.webp');
   }
 }
 
-/* 主页同款粒子动画背景 */
-body::before {
-  content: "";
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background:
-    radial-gradient(circle at 20% 30%, rgba(255,255,255,0.45) 0, rgba(255,255,255,0) 60%),
-    radial-gradient(circle at 80% 70%, rgba(255,255,255,0.38) 0, rgba(255,255,255,0) 60%),
-    radial-gradient(circle at 40% 80%, rgba(255,255,255,0.42) 0, rgba(255,255,255,0) 60%);
-  background-size: 120% 120%;
-  animation: floatParticles 18s ease-in-out infinite alternate;
-  pointer-events: none;
-  z-index: -1;
-}
-
-body.night::before {
-  background:
-    radial-gradient(circle at 30% 30%, rgba(62,237,231,0.12), transparent 60%),
-    radial-gradient(circle at 70% 70%, rgba(62,237,231,0.08), transparent 60%);
-}
-
-@keyframes floatParticles {
-  0% { background-position: 0% 0%; }
-  100% { background-position: 100% 100%; }
+body.night {
+  background-image: none;
 }
 
 /* ================= 游戏容器 ================= */
@@ -94,36 +45,16 @@ body.night::before {
   margin: 2vh auto;
   display: flex;
   justify-content: center;
-  animation: fadeInUp 1s ease-out;
-}
-
-@keyframes fadeInUp {
-  from {
-    opacity: 0;
-    transform: translateY(30px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  animation: fade-in-up var(--dur-slow) var(--ease) both;
 }
 
 canvas {
-  border-radius: 16px;
-  box-shadow: 0 20px 50px rgba(80, 140, 200, 0.25), 
-              inset 0 0 40px rgba(200, 240, 255, 0.4), 
-              0 10px 30px rgba(0,0,0,0.08);
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
   touch-action: none;
-  animation: float 6s ease-in-out infinite;
 }
 
-@keyframes float {
-  0% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
-  100% { transform: translateY(0); }
-}
-
-/* ================= 游戏结束遮罩（主页同款毛玻璃）================= */
+/* ================= 游戏结束遮罩 ================= */
 .overlay {
   position: absolute;
   inset: 0;
@@ -131,187 +62,107 @@ canvas {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: 20px;
-  background: var(--card-bg);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
-  border-radius: 16px;
+  gap: var(--space-4);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  border-radius: var(--r-lg);
 }
 
 /* 兼容性兜底 */
 @supports not ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
-  .overlay {
-    background: rgba(255,255,255,0.9);
-  }
-  body.night .overlay {
-    background: rgba(22,24,35,0.95);
-  }
+  .overlay { background: var(--surface); }
 }
 
 .overlay h1 {
-  color: var(--text-main);
-  font-size: 48px;
-  text-shadow: 0 0 20px rgba(113, 248, 252, 0.3);
-  animation: modalPop 0.5s ease;
-}
-
-@keyframes modalPop {
-  from {
-    opacity: 0;
-    transform: scale(0.8);
-  }
-  to {
-    opacity: 1;
-    transform: scale(1);
-  }
-}
-
-/* ================= 按钮样式（主页同款）================= */
-.overlay button {
-  padding: 0.8rem 2.2rem;
-  font-size: 1.2rem;
+  color: var(--text);
+  font-size: var(--title-lg);
   font-weight: 700;
-  border-radius: 30px;
-  border: none;
-  background: var(--accent);
-  color: #000;
-  cursor: pointer;
-  transition: transform 0.3s, box-shadow 0.3s, filter 0.3s;
-  animation: breatheGlow 3s ease-in-out infinite;
-  box-shadow: 0 0 12px rgba(113, 248, 252, 0.35);
+  letter-spacing: -0.01em;
+  animation: modal-pop var(--dur-base) var(--ease);
 }
 
-@keyframes breatheGlow {
-  0% { box-shadow: 0 0 12px rgba(113, 248, 252, 0.35); }
-  50% { box-shadow: 0 0 22px rgba(113, 248, 252, 0.55); }
-  100% { box-shadow: 0 0 12px rgba(113, 248, 252, 0.35); }
+@keyframes modal-pop {
+  from { opacity: 0; transform: scale(0.96); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+/* ================= 重开按钮 ================= */
+.overlay button {
+  height: 44px;
+  padding: 0 var(--space-8);
+  font-family: inherit;
+  font-size: var(--text-base);
+  font-weight: 600;
+  border-radius: var(--r-md);
+  border: none;
+  background: var(--brand);
+  color: var(--on-brand);
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease),
+              box-shadow var(--dur-fast) var(--ease),
+              background var(--dur-fast) var(--ease);
 }
 
 .overlay button:hover {
-  transform: translateY(-3px);
-  box-shadow: 0 12px 28px rgba(80, 160, 255, 0.35);
-  filter: brightness(1.08);
-}
-
-.overlay button:active {
+  background: var(--brand-strong);
   transform: translateY(-1px);
+  box-shadow: var(--shadow-md);
 }
 
-/* ================= 加载动画（主页同款）================= */
+.overlay button:active { transform: none; }
+
+/* ================= 加载指示 ================= */
 #loading {
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  z-index: 9998;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 1rem;
-  transition: opacity 0.6s ease;
-  background: radial-gradient(
-    circle at center,
-    rgba(113,248,252,0.18),
-    #ffffff 65%
-  );
-}
-
-body.night #loading {
-  background: radial-gradient(
-    circle at center,
-    rgba(62,237,231,0.14),
-    rgba(22,24,35,0.96) 65%
-  );
-}
-
-.loader {
-  width: 56px;
-  height: 56px;
-  border-radius: 50%;
-  border: 6px solid rgba(0,0,0,0.08);
-  border-top-color: var(--accent);
-  animation: spin 1s linear infinite;
-  box-shadow: 0 0 20px rgba(113,248,252,0.45);
-}
-
-body.night .loader {
-  border: 6px solid rgba(255,255,255,0.14);
-  box-shadow: 0 0 24px rgba(62,237,231,0.55);
-}
-
-@keyframes spin {
-  to { transform: rotate(360deg); }
+  gap: var(--space-4);
+  background: var(--bg);
+  transition: opacity var(--dur-slow) ease;
 }
 
 #loading p {
-  color: var(--text-main);
-  font-size: 0.9rem;
-  opacity: 0.8;
+  margin: 0;
+  color: var(--text-2);
+  font-size: var(--text-sm);
 }
 
 /* ================= 横屏适配 ================= */
 @media (orientation: landscape) and (max-width: 900px) {
-  #gameWrapper {
-    align-items: center;
-  }
+  #gameWrapper { align-items: center; }
 
   .overlay {
     flex-direction: row;
     justify-content: center;
-    gap: 24px;
+    gap: var(--space-6);
   }
 
-  .overlay h1 {
-    font-size: 36px;
-  }
-
-  .overlay button {
-    font-size: 1.1rem;
-    padding: 0.7rem 1.8rem;
-  }
+  .overlay h1 { font-size: var(--title-md); }
 }
 
 /* ================= iOS 安全区 ================= */
 @supports (padding: env(safe-area-inset-bottom)) {
-  body {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
-
-  .overlay {
-    padding-bottom: env(safe-area-inset-bottom);
-  }
+  body { padding-bottom: env(safe-area-inset-bottom); }
+  .overlay { padding-bottom: env(safe-area-inset-bottom); }
 }
 
 /* ================= 移动端适配 ================= */
 @media (max-width: 480px) {
-  .overlay h1 {
-    font-size: 36px;
-  }
-
-  .overlay button {
-    font-size: 1rem;
-    padding: 0.7rem 1.8rem;
-  }
+  .overlay h1 { font-size: var(--title-md); }
 }
-
-#loadingBar {
-  opacity: 0;
-  pointer-events: none;
-  display: none;
-}
-#loadingBar.active {
-  opacity: 1;
-  pointer-events: auto;
-  display: flex;
-}
-#loadingBar img {   transform: scale(0.9);   transition: transform .25s ease; }  #loadingBar.active img {   transform: scale(1); } body:not(.night) #loadingBar { background: rgba(255,255,255,0.65); backdrop-filter: blur(12px); } body:not(.night) #loadingBar div { color: #334155; } body:not(.night) #loadingBar img { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15)); }
 </style>
 
 </head>
 
 <body class="preload">
 <!-- 加载动画（主页同款）-->
-<div id="loading">
-  <div class="loader"></div>
+<div id="loading" aria-label="加载中">
+  <div class="spinner" aria-hidden="true"></div>
   <p id="loadingText">加载中...</p>
 </div>
 
@@ -742,7 +593,7 @@ window.addEventListener('load', async function() {
 
     // 隐藏加载画面（主页同款动画）
     loadingEl.style.opacity = '0';
-    setTimeout(() => loadingEl.remove(), 600);
+    setTimeout(() => loadingEl.remove(), 400);
 
     // 启动游戏
     resetGame();
@@ -753,25 +604,19 @@ window.addEventListener('load', async function() {
     // 即使出错也隐藏加载画面并启动游戏
     document.body.classList.remove('preload');
     loadingEl.style.opacity = '0';
-    setTimeout(() => loadingEl.remove(), 600);
+    setTimeout(() => loadingEl.remove(), 400);
     resetGame();
   }
 });
 
 function showGlobalLoading() {
   const el = document.getElementById("loadingBar");
-  if (!el) return;
-  el.style.display = "flex";
-  requestAnimationFrame(() => el.classList.add("active"));
+  if (el) el.classList.add("active");
 }
 
 function hideGlobalLoading() {
   const el = document.getElementById("loadingBar");
-  if (!el) return;
-  el.classList.remove("active");
-  setTimeout(() => {
-    el.style.display = "none";
-  }, 250);
+  if (el) el.classList.remove("active");
 }
 
 // 页面进入立即关闭 loading（防止跨页面残留）
@@ -787,6 +632,6 @@ document.querySelectorAll("a").forEach(a => {
 </script>
 
 
-<div id="loadingBar" style="   display:none;      transition:opacity .25s ease;    position:fixed;   inset:0;   background:rgba(0,0,0,0.45);   backdrop-filter:blur(6px);   z-index:9999;    align-items:center;   justify-content:center;   flex-direction:column; ">   <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">   <div style="color:#fff;font-size:18px;opacity:0.9;font-weight:500;letter-spacing:0.5px;">     加载中   </div> </div>
+<div id="loadingBar" aria-hidden="true"><span class="bar"></span></div>
 </body>
 </html>

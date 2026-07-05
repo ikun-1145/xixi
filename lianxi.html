@@ -4,372 +4,194 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title id="pageTitle">联系我们 - 霜蓝</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Playfair+Display:wght@500;600&display=swap" rel="stylesheet">
+  <meta name="theme-color" content="#f7f9fa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#13151e" media="(prefers-color-scheme: dark)">
+  <link rel="stylesheet" href="p/css/tokens.css">
+  <link rel="stylesheet" href="p/css/base.css">
   <style>
-    :root {
-      --bg-main: linear-gradient(160deg,#eef9fb,#f7fcfd);
-      --card-bg: rgba(255,255,255,0.18);
-      --text-main: #1a1a1a;
-      --accent: #71f8fc;
-      --border-soft: rgba(0,0,0,0.06);
-      --shadow-soft: 0 20px 50px rgba(0,0,0,0.08);
-    }
-
-    /* 夜间主题（donate 同款） */
-    body.night {
-      --bg-main:
-        linear-gradient(rgba(12,16,24,0.78), rgba(12,16,24,0.92)),
-        url('p/background.png') center / cover no-repeat fixed;
-      --card-bg: rgba(22,24,35,0.85);
-      --text-main: #E8FFFF;
-      --accent: #3EEDE7;
-      --border-soft: rgba(255,255,255,0.08);
-      --shadow-soft: 0 20px 60px rgba(0,0,0,0.35);
-      background-blend-mode: overlay;
-    }
-
     /* preload 阶段隐藏页面 */
-    body.preload {
-      opacity: 0;
-    }
-
-    * { box-sizing: border-box; }
+    body.preload { opacity: 0; }
 
     body {
-      margin: 0;
-      font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: var(--bg-main);
-      background-attachment: fixed;
       display: flex;
       flex-direction: column;
       align-items: center;
       min-height: 100vh;
-      color: var(--text-main);
+      overflow-x: hidden;
     }
 
-    .container {
-      margin-top: 7rem;
-      padding: 3rem 2.8rem;
-      padding-bottom: 3.2rem;
-      width: 92%;
-      max-width: 560px;
-      background: var(--card-bg);
-      backdrop-filter: blur(14px);
-      -webkit-backdrop-filter: blur(14px);
-      border-radius: 20px;
-      border: 1px solid var(--border-soft);
-      box-shadow: var(--shadow-soft);
+    .page-card {
+      width: min(100% - var(--space-8), 560px);
+      margin-top: var(--space-16);
+      padding: var(--space-8) var(--space-6) var(--space-12);
       text-align: center;
-      animation: fadeInUp 0.8s cubic-bezier(.4,0,.2,1);
-    }
-
-    .contact-card {
-      position: relative;
-      margin-top: 1.8rem;
-      padding: 1.6rem 1.4rem;
-      border-radius: 16px;
-      background: linear-gradient(145deg, rgba(255,255,255,0.18), rgba(255,255,255,0.08));
-      border: 1px solid var(--border-soft);
-      transition: transform .25s ease, box-shadow .25s ease, background .25s ease;
-    }
-
-    .contact-card + .contact-card {
-      margin-top: 2.4rem;
-    }
-
-    body.night .contact-card {
-      background: linear-gradient(145deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
-    }
-
-    .contact-card:hover {
-      transform: translateY(-4px);
-      box-shadow: 0 14px 30px rgba(0,0,0,0.12);
-    }
-
-    .contact-label {
-      font-size: 0.72rem;
-      letter-spacing: 0.25em;
-      opacity: 0.55;
-      text-transform: uppercase;
-      margin-bottom: 0.8rem;
-    }
-
-    .social-hint {
-      font-size: 0.75rem;
-      letter-spacing: 0.18em;
-      text-transform: uppercase;
-      opacity: 0.5;
-      margin-bottom: 1rem;
-    }
-
-    .social-grid {
-      padding-top: 1.6rem;
-      border-top: 1px solid var(--border-soft);
-      display: grid;
-      grid-template-columns: repeat(5, 1fr);
-      gap: 14px;
-      align-items: stretch;
-      margin-top: 1.5rem;
-    }
-
-    @media (max-width: 600px) {
-      .social-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    .social-item {
-      position: relative;
-      padding: 1.1rem 0.8rem 1rem;
-      border-radius: 16px;
-      background: linear-gradient(145deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06));
-      border: 1px solid var(--border-soft);
-      cursor: pointer;
-      user-select: none;
-      text-decoration: none;
-      color: var(--text-main);
-      font-size: 0.85rem;
-      font-weight: 500;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 10px;
-      overflow: hidden;
-      transition: transform .35s cubic-bezier(.2,.8,.2,1),
-                  box-shadow .35s cubic-bezier(.2,.8,.2,1),
-                  border-color .35s ease,
-                  background .25s ease;
-      will-change: transform;
-      transform-style: preserve-3d;
-      perspective: 800px;
-      box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-    }
-    .social-item:active {
-      transform: scale(0.97);
-      box-shadow: 0 8px 18px rgba(0,0,0,0.18);
-    }
-    .social-item .hover-light {
-      position: absolute;
-      inset: 0;
-      pointer-events: none;
-      background: radial-gradient(circle at var(--mx,50%) var(--my,50%), rgba(113,248,252,0.35), transparent 60%);
-      opacity: 0;
-      transition: opacity .25s ease;
-    }
-
-    .social-item.active-light .hover-light {
-      opacity: 1;
-    }
-
-
-    .social-item::after {
-      content: '';
-      position: absolute;
-      width: 120%;
-      height: 120%;
-      top: -10%;
-      left: -10%;
-      background: radial-gradient(circle at center, rgba(113,248,252,0.18), transparent 60%);
-      opacity: 0.08;
-      transform: scale(0.8);
-      transition: opacity .4s ease, transform .4s ease;
-    }
-
-    body.night .social-item {
-      background: linear-gradient(145deg, rgba(255,255,255,0.08), rgba(255,255,255,0.02));
-    }
-
-    .social-item:hover {
-      transform: translateY(-3px);
-      box-shadow: 0 10px 24px rgba(0,0,0,0.12);
-    }
-
-
-    .social-item:hover::after {
-      opacity: 1;
-      transform: scale(1);
-    }
-
-    .social-icon {
-      width: 42px;
-      height: 42px;
-      border-radius: 10px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1rem;
-      background: rgba(0,0,0,0.04);
-      transition: background .25s ease, transform .25s ease;
-      overflow: hidden;
-    }
-
-    .social-item:hover .social-icon {
-      background: rgba(113,248,252,0.28);
-      box-shadow: 0 8px 20px rgba(113,248,252,0.35);
-      transform: translateY(-2px);
-    }
-
-    .social-name {
-      font-size: 0.8rem;
-      font-weight: 600;
-      letter-spacing: 0.05em;
-      transition: transform .25s ease;
-    }
-
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(30px); }
-      to { opacity: 1; transform: translateY(0); }
+      animation: fade-in-up var(--dur-slow) var(--ease) both;
     }
 
     h1 {
-      font-family: 'Playfair Display', serif;
-      font-size: 2.2rem;
-      font-weight: 600;
-      letter-spacing: 0.02em;
-      margin-bottom: 0.6rem;
+      font-size: var(--title-md);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: var(--space-6);
+    }
+
+    .contact-card {
+      margin-top: var(--space-4);
+      padding: var(--space-6) var(--space-4);
+      border-radius: var(--r-md);
+      border: 1px solid var(--border);
+      background: var(--surface-2);
+    }
+
+    .contact-card + .contact-card { margin-top: var(--space-4); }
+
+    .contact-label,
+    .social-hint {
+      font-size: var(--text-xs);
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: var(--space-3);
     }
 
     .email {
-      font-size: 1.55rem;
+      font-size: var(--text-lg);
       font-weight: 600;
-      margin: 1.4rem 0 1.2rem;
-      letter-spacing: 0.04em;
+      margin: var(--space-2) 0 var(--space-4);
+      letter-spacing: 0.02em;
       word-break: break-all;
-      font-family: 'Inter', sans-serif;
       font-variant-numeric: tabular-nums;
     }
 
     .copy-btn {
-      display: inline-block;
-      padding: 0.55rem 1.3rem;
-      border-radius: 999px;
-      border: 1px solid var(--border-soft);
-      background: transparent;
-      backdrop-filter: blur(8px);
-      color: var(--text-main);
-      font-weight: 500;
-      font-size: 0.85rem;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      height: 36px;
+      padding: 0 var(--space-4);
+      border-radius: var(--r-md);
+      border: 1px solid var(--border-strong);
+      background: var(--surface);
+      color: var(--text);
+      font-weight: 600;
+      font-size: var(--text-sm);
       cursor: pointer;
-      transition: background .25s ease, transform .2s ease;
-      margin-bottom: 1.2rem;
+      user-select: none;
+      transition: border-color var(--dur-fast) var(--ease),
+                  transform var(--dur-fast) var(--ease),
+                  box-shadow var(--dur-fast) var(--ease);
     }
 
     .copy-btn:hover {
-      background: rgba(0,0,0,0.05);
-      transform: translateY(-2px);
-    }
-
-    .back {
-      margin-top: 2.4rem;
-      display: inline-block;
-      padding: 0.65rem 1.4rem;
-      border-radius: 999px;
-      border: 1px solid var(--border-soft);
-      backdrop-filter: blur(6px);
-      text-decoration: none;
-      color: var(--text-main);
-      font-weight: 500;
-      font-size: 0.9rem;
-      letter-spacing: 0.04em;
-      transition: all 0.25s ease;
-    }
-
-    .back:hover {
-      background: rgba(0,0,0,0.04);
+      border-color: var(--brand);
       transform: translateY(-1px);
-      box-shadow: 0 8px 18px rgba(0,0,0,0.08);
+      box-shadow: var(--shadow-sm);
     }
 
-    footer {
-      margin: 3rem 0 1.2rem;
-      font-size: 0.85rem;
-      opacity: 0.7;
-      text-align: center;
+    .social-grid {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: var(--space-2);
+      margin-top: var(--space-4);
     }
 
-    /* 加载动画样式 */
-    #loading {
-      position: fixed;
-      inset: 0;
-      z-index: 9999;
+    @media (max-width: 600px) {
+      .social-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    .social-item {
+      padding: var(--space-4) var(--space-2);
+      border-radius: var(--r-md);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      cursor: pointer;
+      user-select: none;
+      text-decoration: none;
+      color: var(--text);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      transition: transform var(--dur-fast) var(--ease),
+                  border-color var(--dur-fast) var(--ease),
+                  box-shadow var(--dur-fast) var(--ease);
+    }
+
+    .social-item:hover {
+      transform: translateY(-2px);
+      border-color: var(--brand);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .social-item:active { transform: none; }
+
+    .social-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: var(--r-sm);
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: opacity 0.6s ease;
-      background: var(--bg-main);
+      background: var(--surface-2);
+      overflow: hidden;
     }
 
-    body.night #loading {
-      background: radial-gradient(
-        circle at center,
-        rgba(62,237,231,0.14),
-        rgba(22,24,35,0.96) 65%
-      );
+    .social-name {
+      font-size: var(--text-xs);
+      font-weight: 600;
+      letter-spacing: 0.03em;
+      color: var(--text-2);
     }
 
-    .loader {
-      width: 56px;
-      height: 56px;
-      border-radius: 50%;
-      border: 6px solid rgba(0,0,0,0.08);
-      border-top-color: var(--accent);
-      animation: spin 1s linear infinite;
+    .back { margin-top: var(--space-8); }
+
+    @media (max-width: 480px) {
+      .page-card { margin-top: var(--space-12); }
     }
 
-    body.night .loader {
-      border: 6px solid rgba(255,255,255,0.14);
-      box-shadow: 0 0 24px rgba(62,237,231,0.55);
+    /* 页面加载指示 */
+    #loading {
+      position: fixed;
+      inset: 0;
+      z-index: 9998;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      transition: opacity var(--dur-slow) ease;
     }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    body.fade-in {
-      animation: fadeBody 0.8s ease;
-    }
-
-    @keyframes fadeBody {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    body.fade-out {
-      animation: fadeOut 0.6s ease forwards;
-    }
-
-    @keyframes fadeOut {
-      to { opacity: 0; }
-    }
-  
-#loadingBar {
-  opacity: 0;
-  pointer-events: none;
-  display: none;
-}
-#loadingBar.active {
-  opacity: 1;
-  pointer-events: auto;
-  display: flex;
-}
-#loadingBar img {   transform: scale(0.9);   transition: transform .25s ease; }  #loadingBar.active img {   transform: scale(1); } body:not(.night) #loadingBar { background: rgba(255,255,255,0.65); backdrop-filter: blur(12px); } body:not(.night) #loadingBar div { color: #334155; } body:not(.night) #loadingBar img { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15)); }
-</style>
+    body.fade-in { animation: fade-body var(--dur-slow) ease; }
+    @keyframes fade-body { from { opacity: 0; } to { opacity: 1; } }
+  </style>
 </head>
 <body>
+  <script>
+    /* 首帧前应用夜间主题，避免闪色 */
+    (function () {
+      var hour = new Date().getHours();
+      if (hour >= 18 || hour < 6) document.body.classList.add('night');
+    })();
+  </script>
+
   <!-- 加载动画 -->
-  <div id="loading">
-    <div class="loader"></div>
+  <div id="loading" aria-label="页面加载中">
+    <div class="spinner" aria-hidden="true"></div>
   </div>
 
-  <div class="container">
+  <div id="langSwitcher" class="lang-switcher" role="navigation" aria-label="语言切换">
+    <button data-lang="zh">中文</button>
+    <button data-lang="en">EN</button>
+    <button data-lang="ja">日本語</button>
+  </div>
+
+  <main class="page-shell page-card card">
     <h1 id="titleText"></h1>
     <div class="contact-card">
-      <div class="contact-label">
-        Primary Contact
-      </div>
+      <div class="contact-label">Primary Contact</div>
       <div class="email" id="emailText">sunlandccc@outlook.com</div>
-      <div class="copy-btn" id="copyBtn">复制邮箱</div>
+      <div class="copy-btn" id="copyBtn" role="button" tabindex="0">复制邮箱</div>
     </div>
     <div class="contact-card">
       <div class="social-hint">点击图标访问我的社交平台</div>
@@ -379,7 +201,6 @@
             <img src="p/github.svg" alt="GitHub" style="width:22px;height:22px;">
           </div>
           <div class="social-name">GitHub</div>
-          <div class="hover-light"></div>
         </a>
 
         <a href="https://space.bilibili.com/3537110472592282?spm_id_from=333.337.0.0" target="_blank" class="social-item">
@@ -387,7 +208,6 @@
             <img src="p/bilibili.svg" alt="Bilibili" style="width:22px;height:22px;">
           </div>
           <div class="social-name">Bilibili</div>
-          <div class="hover-light"></div>
         </a>
 
         <a href="https://www.douyin.com/user/MS4wLjABAAAAhltnZRm9HGKJhr2GANY0gEeaNgdto05Dw4fmj0VHu4w?from_tab_name=main" target="_blank" class="social-item">
@@ -395,7 +215,6 @@
             <img src="p/dy.svg" alt="Douyin" style="width:22px;height:22px;">
           </div>
           <div class="social-name">抖音</div>
-          <div class="hover-light"></div>
         </a>
 
         <a href="https://x.com/" target="_blank" class="social-item">
@@ -403,7 +222,6 @@
             <img src="p/x.svg" alt="X" style="width:22px;height:22px;">
           </div>
           <div class="social-name">X</div>
-          <div class="hover-light"></div>
         </a>
 
         <a href="https://www.xiaohongshu.com/user/profile/6724bcd9000000001c01ae54?xsec_token=ABRwvfNwkP7DMdMVvZ8SQforCoXBlVi3Un2eR7cOZ56UE%3D&xsec_source=pc_search" target="_blank" class="social-item">
@@ -411,13 +229,12 @@
             <img src="p/xhs.svg" alt="小红书" style="width:22px;height:22px;">
           </div>
           <div class="social-name">小红书</div>
-          <div class="hover-light"></div>
         </a>
       </div>
     </div>
-    <a href="index.html" class="back" id="backBtn"></a>
-  </div>
-  <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
+    <a href="index.html" class="back btn btn-secondary" id="backBtn"></a>
+  </main>
+  <footer class="site-footer">© 2024–2026 霜蓝 · All Rights Reserved.</footer>
 
   <script>
     document.body.classList.add('preload');
@@ -456,7 +273,18 @@
       document.title = t.pageTitle;
       document.getElementById("titleText").textContent = t.title;
       document.getElementById("backBtn").textContent = t.back;
+
+      document.querySelectorAll("#langSwitcher button").forEach(btn => {
+        btn.classList.toggle("active", btn.dataset.lang === lang);
+      });
     }
+
+    document.querySelectorAll("#langSwitcher button").forEach(btn => {
+      btn.onclick = () => {
+        localStorage.setItem("lang", btn.dataset.lang);
+        applyLang();
+      };
+    });
 
     function setupCopyButton() {
       const btn = document.getElementById("copyBtn");
@@ -484,7 +312,7 @@
       const loader = document.getElementById('loading');
       if (loader) {
         loader.style.opacity = '0';
-        setTimeout(() => loader.remove(), 600);
+        setTimeout(() => loader.remove(), 400);
       }
     });
 
@@ -497,40 +325,34 @@
           link.addEventListener("click", (e) => {
             e.preventDefault();
             document.body.classList.add("fade-out");
-            setTimeout(() => window.location.href = href, 600);
+            setTimeout(() => window.location.href = href, 250);
           });
         }
       });
     });
-  
-function showGlobalLoading() {
-  const el = document.getElementById("loadingBar");
-  if (!el) return;
-  el.style.display = "flex";
-  requestAnimationFrame(() => el.classList.add("active"));
-}
 
-function hideGlobalLoading() {
-  const el = document.getElementById("loadingBar");
-  if (!el) return;
-  el.classList.remove("active");
-  setTimeout(() => {
-    el.style.display = "none";
-  }, 250);
-}
+    function showGlobalLoading() {
+      const el = document.getElementById("loadingBar");
+      if (el) el.classList.add("active");
+    }
 
-// 页面进入立即关闭 loading（防止跨页面残留）
-document.addEventListener("DOMContentLoaded", () => {
-  hideGlobalLoading();
-});
+    function hideGlobalLoading() {
+      const el = document.getElementById("loadingBar");
+      if (el) el.classList.remove("active");
+    }
 
-document.querySelectorAll("a").forEach(a => {
-  a.addEventListener("click", () => {
-    showGlobalLoading();
-  });
-});
-</script>
+    // 页面进入立即关闭 loading（防止跨页面残留）
+    document.addEventListener("DOMContentLoaded", () => {
+      hideGlobalLoading();
+    });
 
-<div id="loadingBar" style="   display:none;      transition:opacity .25s ease;    position:fixed;   inset:0;   background:rgba(0,0,0,0.45);   backdrop-filter:blur(6px);   z-index:9999;    align-items:center;   justify-content:center;   flex-direction:column; ">   <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">   <div style="color:#fff;font-size:18px;opacity:0.9;font-weight:500;letter-spacing:0.5px;">     加载中   </div> </div>
+    document.querySelectorAll("a").forEach(a => {
+      a.addEventListener("click", () => {
+        showGlobalLoading();
+      });
+    });
+  </script>
+
+  <div id="loadingBar" aria-hidden="true"><span class="bar"></span></div>
 </body>
 </html>

@@ -4,11 +4,38 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>登录处理中…</title>
-<style>
-#loadingBar {   opacity: 0; pointer-events: none; }  #loadingBar.active {   opacity: 1;   pointer-events: auto; }  #loadingBar img {   transform: scale(0.9);   transition: transform .25s ease; }  #loadingBar.active img {   transform: scale(1); } body:not(.night) #loadingBar { background: rgba(255,255,255,0.65); backdrop-filter: blur(12px); } body:not(.night) #loadingBar div { color: #334155; } body:not(.night) #loadingBar img { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15)); }
-</style>
+  <meta name="theme-color" content="#f7f9fa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#13151e" media="(prefers-color-scheme: dark)">
+  <link rel="stylesheet" href="p/css/tokens.css">
+  <link rel="stylesheet" href="p/css/base.css">
+  <style>
+    body {
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-4);
+    }
+    .status-text {
+      font-size: var(--text-sm);
+      color: var(--text-2);
+      letter-spacing: 0.02em;
+    }
+  </style>
 </head>
 <body>
+  <script>
+    /* 首帧前应用夜间主题，避免闪色 */
+    (function () {
+      var hour = new Date().getHours();
+      if (hour >= 18 || hour < 6) document.body.classList.add('night');
+    })();
+  </script>
+
+  <div class="spinner" aria-hidden="true"></div>
+  <div class="status-text">登录处理中…</div>
+
   <script type="module">
     import { supabase } from './p/js/supabaseClient.js';
 
@@ -32,7 +59,16 @@
     const params = new URLSearchParams(location.search);
     const redirect = params.get('redirect');
 
-    if (redirect === 'ai') {
+    // ⭐ 站内来源页（如评论副驾驶 copilot.html 等）：登录后回到该页面。
+    //    loginReturnTo 在 localStorage 中可跨 OAuth 往返保留；只放行站内 .html 文件名。
+    let loginReturnTo = '';
+    try { loginReturnTo = (localStorage.getItem('loginReturnTo') || '').trim(); } catch (e) {}
+    try { localStorage.removeItem('loginReturnTo'); } catch (e) {}
+    const safeReturn = /^[A-Za-z0-9_\-]+\.html$/.test(loginReturnTo) ? loginReturnTo : '';
+
+    if (safeReturn) {
+      location.replace('/' + safeReturn);
+    } else if (redirect === 'ai') {
       location.replace('/ai.html');
     } else {
       // 兼容旧逻辑（fallback）
@@ -52,12 +88,26 @@
 
     // ⭐ 清理 URL（避免重复触发）
     history.replaceState(null, '', location.pathname);
-  
-function showGlobalLoading() {   const el = document.getElementById("loadingBar");   if (el) el.classList.add("active"); }  function hideGlobalLoading() {   const el = document.getElementById("loadingBar");   if (el) el.classList.remove("active"); }
-window.addEventListener("load", () => {   showGlobalLoading();   setTimeout(hideGlobalLoading, 400); });
-document.querySelectorAll("a").forEach(a => {   a.addEventListener("click", () => {     showGlobalLoading();   }); });
-</script>
 
-<div id="loadingBar" style="   display:flex;      transition:opacity .25s ease;    position:fixed;   inset:0;   background:rgba(0,0,0,0.45);   backdrop-filter:blur(6px);   z-index:9999;    align-items:center;   justify-content:center;   flex-direction:column; ">   <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">   <div style="color:#fff;font-size:18px;opacity:0.9;font-weight:500;letter-spacing:0.5px;">     加载中   </div> </div>
+    function showGlobalLoading() {
+      const el = document.getElementById("loadingBar");
+      if (el) el.classList.add("active");
+    }
+    function hideGlobalLoading() {
+      const el = document.getElementById("loadingBar");
+      if (el) el.classList.remove("active");
+    }
+    window.addEventListener("load", () => {
+      showGlobalLoading();
+      setTimeout(hideGlobalLoading, 400);
+    });
+    document.querySelectorAll("a").forEach(a => {
+      a.addEventListener("click", () => {
+        showGlobalLoading();
+      });
+    });
+  </script>
+
+  <div id="loadingBar" aria-hidden="true"><span class="bar"></span></div>
 </body>
 </html>

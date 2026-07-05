@@ -5,279 +5,247 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Project 2028 · 留学规划</title>
 
+<link rel="stylesheet" href="p/css/tokens.css">
+<link rel="stylesheet" href="p/css/base.css">
 <style>
-:root {
-  --bg-main: #0f141a;
-  --card-bg: rgba(22,24,35,0.85);
-  --text-main: #e8ffff;
-  --accent: #3EEDE7;
-  --border: rgba(255,255,255,0.08);
-}
-
-* { margin:0; padding:0; box-sizing:border-box; }
+/* Project 2028 · 常驻暗色叙事页（body 固定 .night，取用暗色 token） */
 
 body {
-  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI","PingFang SC","Microsoft YaHei",sans-serif;
-  background:var(--bg-main);
-  color:var(--text-main);
-  line-height:1.8;
-
-  
+  line-height: 1.8;
   transform: translateY(16px);
   transition: opacity .8s ease, transform .8s ease;
 }
 
 body.page-ready {
-  opacity:1;
+  opacity: 1;
   transform: translateY(0);
 }
 
 .hero {
-  height:70vh;
+  height: 70vh;
   background:
     linear-gradient(to bottom, rgba(0,0,0,0.5), rgba(0,0,0,0.85)),
     url("p/fujisan.png") center/cover no-repeat;
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-  text-align:center;
-  position:relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  position: relative;
 }
 
 .hero::after {
-  content:"";
-  position:absolute;
-  bottom:-1px;
-  left:0;
-  right:0;
-  height:140px;
-  background: linear-gradient(to bottom, rgba(15,20,26,0) 0%, #0f141a 100%);
-  pointer-events:none;
+  content: "";
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 140px;
+  background: linear-gradient(to bottom, transparent 0%, var(--bg) 100%);
+  pointer-events: none;
 }
 
 .hero h1 {
-  font-size:3rem;
-  letter-spacing:2px;
+  font-size: var(--title-lg);
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #f4f8fa;
 }
 
-
 .hero p {
-  margin-top:12px;
-  opacity:0.8;
+  margin-top: var(--space-3);
+  color: rgba(244, 248, 250, 0.8);
 }
 
 .hero-slogan {
-  margin-top:18px;
-  font-size:1rem;
-  opacity:0.65;
-  letter-spacing:1px;
+  margin-top: var(--space-4);
+  font-size: var(--text-base);
+  color: rgba(244, 248, 250, 0.65);
+  letter-spacing: 0.06em;
 }
 
 .hero-identity {
-  margin-top:8px;
-  font-size:0.85rem;
-  opacity:0.5;
-  letter-spacing:1px;
+  margin-top: var(--space-2);
+  font-size: var(--text-sm);
+  color: rgba(244, 248, 250, 0.5);
+  letter-spacing: 0.06em;
 }
 
 .jp-quote {
-  text-align:center;
-  margin-top:-40px;
-  margin-bottom:60px;
-  opacity:0.75;
+  text-align: center;
+  margin-top: -40px;
+  margin-bottom: var(--space-16);
+  color: var(--text-2);
 }
 
 .jp-text {
-  font-size:1.2rem;
-  letter-spacing:3px;
+  font-size: var(--text-lg);
+  letter-spacing: 0.2em;
 }
 
 .jp-translation {
-  margin-top:6px;
-  font-size:0.85rem;
-  opacity:0.6;
+  margin-top: var(--space-1);
+  font-size: var(--text-sm);
+  color: var(--text-3);
 }
 
 .section-label {
-  font-size:0.75rem;
-  letter-spacing:2px;
-  opacity:0.4;
-  margin-bottom:12px;
+  font-size: var(--text-xs);
+  letter-spacing: 0.18em;
+  color: var(--text-3);
+  margin-bottom: var(--space-3);
 }
 
 section {
-  max-width:900px;
-  margin:100px auto;
-  padding:0 20px;
+  max-width: 900px;
+  margin: var(--space-24) auto;
+  padding: 0 var(--space-6);
 }
 
 h2 {
-  margin-bottom:50px;
-  border-left:4px solid var(--accent);
-  padding-left:12px;
+  margin-bottom: var(--space-12);
+  font-size: var(--title-md);
+  border-left: 3px solid var(--brand);
+  padding-left: var(--space-3);
 }
 
 .timeline {
-  position:relative;
-  padding-left:40px;
+  position: relative;
+  padding-left: 40px;
 }
 
 .timeline::before {
-  content:"";
-  position:absolute;
-  left:12px;
-  top:0;
-  bottom:0;
-  width:2px;
-  background:var(--accent);
+  content: "";
+  position: absolute;
+  left: 12px;
+  top: 0;
+  bottom: 0;
+  width: 2px;
   background: linear-gradient(
-  to bottom,
-  transparent 0%,
-  var(--accent) 10%,
-  var(--accent) 90%,
-  transparent 100%
-);
-opacity:0.25;
+    to bottom,
+    transparent 0%,
+    var(--brand) 10%,
+    var(--brand) 90%,
+    transparent 100%
+  );
+  opacity: 0.25;
 }
 
 .timeline-item {
-  position:relative;
-  margin-bottom:90px;
-  
+  position: relative;
+  margin-bottom: var(--space-16);
   transform: translateY(30px);
   transition: opacity .8s ease, transform .8s ease;
 }
 
 .timeline-item.visible {
-  opacity:1;
+  opacity: 1;
   transform: translateY(0);
 }
 
 .timeline-item::before {
-  content:"";
-  position:absolute;
+  content: "";
+  position: absolute;
   /* 竖线在 left:12px，圆点半径7px，timeline padding-left:40px
      计算：13px(竖线中心) - 7px(半径) - 40px(内容偏移) ≈ -34px */
-  left:-34px;
+  left: -34px;
   /* 使用相对字体基线计算更稳定的垂直居中 */
-  top:calc(1em - 7px);
-  width:14px;
-  height:14px;
-  border-radius:50%;
-  background:var(--accent);
-  box-shadow:0 0 10px var(--accent);
+  top: calc(1em - 7px);
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: var(--brand);
+  border: 3px solid var(--bg);
 }
 
 .timeline-item.key::before {
-  width:18px;
-  height:18px;
-  left:-36px;
-  top:calc(1em - 9px);
-  box-shadow:0 0 14px var(--accent);
+  width: 18px;
+  height: 18px;
+  left: -36px;
+  top: calc(1em - 9px);
+  box-shadow: 0 0 0 3px var(--brand-soft);
 }
 
 .card {
-  background: rgba(255,255,255,0.02);
-  border: 1px solid rgba(255,255,255,0.06);
-  padding: 24px 26px;
-  border-radius: 10px;
-  transition: border-color .25s ease, background .25s ease;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  padding: var(--space-6);
+  border-radius: var(--r-lg);
+  box-shadow: none;
+  transition: border-color var(--dur-base) var(--ease),
+              background var(--dur-base) var(--ease);
 }
-
 
 .card:hover {
-  border-color: rgba(62,237,231,0.6);
-  background: rgba(255,255,255,0.035);
+  border-color: var(--brand);
+  background: var(--surface-2);
 }
 
+.card h3 {
+  margin-bottom: var(--space-2);
+  font-size: var(--text-lg);
+}
 
-.card h3 { margin-bottom:10px; }
+.card p { margin: 0; }
 
 .note {
-  margin-top:8px;
-  font-size:0.9rem;
-  opacity:0.55;
+  margin-top: var(--space-2) !important;
+  font-size: var(--text-sm);
+  color: var(--text-3);
 }
 
 .completed .card {
-  border-color: rgba(62,237,231,0.25);
-  background: rgba(62,237,231,0.04);
-}
-
-.completed .timeline-item::before {
-  box-shadow:0 0 6px var(--accent);
-  opacity:0.7;
+  border-color: rgba(62, 237, 231, 0.22);
+  background: rgba(62, 237, 231, 0.04);
 }
 
 .status-done {
-  margin-top:10px;
-  font-size:0.8rem;
-  letter-spacing:1px;
-  opacity:0.6;
-  color:var(--accent);
+  margin-top: var(--space-2) !important;
+  font-size: var(--text-xs);
+  letter-spacing: 0.08em;
+  color: var(--brand);
 }
 
-  .footer-note {
-    text-align:center;
-    padding:80px 20px;
-    opacity:0.6;
-  }
-
-  .back-link {
-    display:inline-block;
-    margin-top:12px;
-    font-size:0.85rem;
-    color:var(--text-main);
-    opacity:0.5;
-    text-decoration:none;
-    transition:opacity .2s ease;
-  }
-
-  .back-link:hover {
-    opacity:0.8;
-  }
-
-  .timeline-intro {
-    max-width:640px;
-    margin-bottom:60px;
-    opacity:0.7;
-    line-height:1.9;
-  }
-
-  .timeline-intro p {
-    margin-bottom:10px;
-  }
-
-  @media (max-width:768px) {
-    .hero h1 {
-      font-size:2.2rem;
-    }
-
-    .timeline {
-      padding-left:28px;
-    }
-
-    .timeline::before {
-      left:8px;
-    }
-  }
-
-#loadingBar {
-  opacity: 0;
-  pointer-events: none;
-  display: none;
+.footer-note {
+  text-align: center;
+  padding: var(--space-16) var(--space-6);
+  color: var(--text-3);
+  font-size: var(--text-sm);
 }
-#loadingBar.active {
-  opacity: 1;
-  pointer-events: auto;
-  display: flex;
+
+.back-link {
+  display: inline-block;
+  margin-top: var(--space-3);
+  font-size: var(--text-sm);
+  color: var(--text-2);
+  text-decoration: none;
+  transition: color var(--dur-fast) ease;
+}
+
+.back-link:hover { color: var(--text); }
+
+.timeline-intro {
+  max-width: 640px;
+  margin-bottom: var(--space-16);
+  color: var(--text-2);
+  line-height: 1.9;
+}
+
+.timeline-intro p {
+  margin: 0 0 var(--space-2);
+}
+
+@media (max-width: 768px) {
+  .hero h1 { font-size: var(--title-md); }
+  .timeline { padding-left: 28px; }
+  .timeline::before { left: 8px; }
+  .timeline-item::before { left: -22px; }
+  .timeline-item.key::before { left: -24px; }
 }
 </style>
 </head>
 
-<body>
-
+<body class="night">
 
 <div class="hero">
   <h1>PROJECT 2028</h1>
@@ -374,7 +342,7 @@ opacity:0.25;
 
 <div class="footer-note">
   <span id="footerText">这不是誓言，而是当前最优假设。</span><br>
-  Copyright © 2024-2026 霜蓝
+  © 2024–2026 霜蓝 · All Rights Reserved.
 <br><a href="index.html" class="back-link">← 返回首页</a>
 </div>
 
@@ -485,18 +453,12 @@ window.addEventListener("load", () => {
 
 function showGlobalLoading() {
   const el = document.getElementById("loadingBar");
-  if (!el) return;
-  el.style.display = "flex";
-  requestAnimationFrame(() => el.classList.add("active"));
+  if (el) el.classList.add("active");
 }
 
 function hideGlobalLoading() {
   const el = document.getElementById("loadingBar");
-  if (!el) return;
-  el.classList.remove("active");
-  setTimeout(() => {
-    el.style.display = "none";
-  }, 250);
+  if (el) el.classList.remove("active");
 }
 
 // 页面进入立即关闭 loading（防止跨页面残留）
@@ -512,6 +474,6 @@ document.querySelectorAll("a").forEach(a => {
 </script>
 
 
-<div id="loadingBar" style="   display:none;      transition:opacity .25s ease;    position:fixed;   inset:0;   background:rgba(0,0,0,0.45);   backdrop-filter:blur(6px);   z-index:9999;    align-items:center;   justify-content:center;   flex-direction:column; ">   <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">   <div style="color:#fff;font-size:18px;opacity:0.9;font-weight:500;letter-spacing:0.5px;">     加载中   </div> </div>
+<div id="loadingBar" aria-hidden="true"><span class="bar"></span></div>
 </body>
 </html>

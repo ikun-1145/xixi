@@ -7,55 +7,55 @@
   <!-- 网站 favicon -->
   <link rel="icon" type="image/png" href="p/ailogo.png">
   <link rel="shortcut icon" href="p/ailogo.png">
-  <style>
+  <meta name="theme-color" content="#f7f9fa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#13151e" media="(prefers-color-scheme: dark)">
+  <link rel="stylesheet" href="p/css/tokens.css">
+<link rel="stylesheet" href="p/css/base.css">
+<style>
+    /* 法务文档页（依赖 tokens.css / base.css） */
     body {
-      margin: 0;
-      padding: 20px;
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
-      background: #0f172a;
-      color: #e5e7eb;
-      line-height: 1.7;
+      padding: var(--space-8) var(--space-6) var(--space-16);
     }
     .container {
-      max-width: 800px;
+      max-width: 720px;
       margin: auto;
     }
     h1 {
-      font-size: 28px;
-      margin-bottom: 10px;
+      font-size: var(--title-md);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin-bottom: var(--space-2);
     }
     h2 {
-      margin-top: 24px;
-      font-size: 20px;
+      margin-top: var(--space-8);
+      margin-bottom: var(--space-3);
+      font-size: var(--text-lg);
+      font-weight: 600;
     }
     p {
-      opacity: 0.9;
+      margin: 0 0 var(--space-2);
+      color: var(--text-2);
     }
+    b { color: var(--text); }
+    a { color: var(--brand-strong); }
     .tip {
-      background: rgba(113,248,252,0.1);
-      padding: 12px;
-      border-radius: 10px;
-      margin: 16px 0;
-      border: 1px solid rgba(113,248,252,0.2);
+      background: var(--brand-soft);
+      padding: var(--space-3) var(--space-4);
+      border-radius: var(--r-md);
+      margin: var(--space-4) 0;
+      border: 1px solid var(--border);
+      color: var(--text);
     }
-    a {
-      color: #71f8fc;
-    }
-  
-#loadingBar {
-  opacity: 0;
-  pointer-events: none;
-  display: none;
-}
-#loadingBar.active {
-  opacity: 1;
-  pointer-events: auto;
-  display: flex;
-}
-body:not(.night) #loadingBar { background: rgba(255,255,255,0.65); backdrop-filter: blur(12px); } body:not(.night) #loadingBar div { color: #334155; } body:not(.night) #loadingBar img { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15)); }
 </style>
 </head>
 <body>
+  <script>
+    /* 首帧前应用夜间主题，避免闪色 */
+    (function () {
+      var hour = new Date().getHours();
+      if (hour >= 18 || hour < 6) document.body.classList.add('night');
+    })();
+  </script>
   <div class="container">
 
     <h1>霜蓝AI 用户服务协议</h1>
@@ -138,22 +138,16 @@ body:not(.night) #loadingBar { background: rgba(255,255,255,0.65); backdrop-filt
 
   </div>
 
-<div id="loadingBar" style="   display:none;      transition:opacity .25s ease;    position:fixed;   inset:0;   background:rgba(0,0,0,0.45);   backdrop-filter:blur(6px);   z-index:9999;    align-items:center;   justify-content:center;   flex-direction:column; ">   <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">   <div style="color:#fff;font-size:18px;opacity:0.9;font-weight:500;letter-spacing:0.5px;">     加载中   </div> </div>
+<div id="loadingBar" aria-hidden="true"><span class="bar"></span></div>
 <script>
 function showGlobalLoading() {
   const el = document.getElementById("loadingBar");
-  if (!el) return;
-  el.style.display = "flex";
-  requestAnimationFrame(() => el.classList.add("active"));
+  if (el) el.classList.add("active");
 }
 
 function hideGlobalLoading() {
   const el = document.getElementById("loadingBar");
-  if (!el) return;
-  el.classList.remove("active");
-  setTimeout(() => {
-    el.style.display = "none";
-  }, 250);
+  if (el) el.classList.remove("active");
 }
 
 // 页面进入立即关闭 loading（防止跨页面残留）

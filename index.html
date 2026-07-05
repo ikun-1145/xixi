@@ -5,8 +5,8 @@
   <meta http-equiv="x-dns-prefetch-control" content="on">
   <meta name="baidu-site-verification" content="codeva-ZHYrUXwN49" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <meta name="theme-color" content="#71f8fc">
-  <meta name="theme-color" content="#3EEDE7" media="(prefers-color-scheme: dark)">
+  <meta name="theme-color" content="#f7f9fa">
+  <meta name="theme-color" content="#13151e" media="(prefers-color-scheme: dark)">
   <meta property="og:title" content="霜蓝的个人主页">
   <meta property="og:description" content="霜蓝的创作空间与技术实验室">
   <meta property="og:image" content="https://sunland.dev/p/preview.png">
@@ -23,122 +23,328 @@
   <link rel="icon" sizes="192x192" href="/icon-192.png">
   <link rel="apple-touch-icon" href="/apple-touch-icon.png">
   <link rel="preload" href="p/tx.jpeg" as="image">
-  <link rel="preload" href="p/bj.png" as="image">
   <meta name="keywords" content="霜蓝,霜蓝CCC,福瑞,furry" />
   <meta name="description" content="霜蓝的个人主页，展示我的作品、联系方式和动态，欢迎访问与交流。">
-<style>
-    /* ===== AI 进入动画 ===== */
-    body.ai-leaving {
-      overflow: hidden;
+
+  <link rel="stylesheet" href="p/css/tokens.css">
+  <link rel="stylesheet" href="p/css/base.css">
+
+  <style>
+    /* ===== 页面布局 ===== */
+    body {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+      transition: opacity var(--dur-base) ease;
     }
 
+    /* 顶部极浅的品牌色晕染（静态，无动画） */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      background: radial-gradient(640px 320px at 50% -120px, var(--brand-soft), transparent 70%);
+      pointer-events: none;
+      z-index: -1;
+    }
+
+    /* ===== 主容器 ===== */
+    .container {
+      width: calc(100% - var(--space-8));
+      max-width: 680px;
+      margin: var(--space-16) auto 0;
+      padding: var(--space-12) var(--space-8);
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-xl);
+      box-shadow: var(--shadow-md);
+      text-align: center;
+
+      /* 初始隐藏，等待 splash 结束 */
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity var(--dur-slow) var(--ease),
+                  transform var(--dur-slow) var(--ease);
+    }
+
+    body.ready .container {
+      opacity: 1;
+      transform: none;
+    }
+
+    /* ===== 头像 ===== */
+    .avatar {
+      width: 112px;
+      height: 112px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 3px solid var(--surface);
+      box-shadow: 0 0 0 1px var(--border-strong), var(--shadow-md);
+      margin-bottom: var(--space-4);
+      cursor: pointer;
+    }
+
+    /* ===== 问候语（打字机） ===== */
+    #greeting {
+      display: block;
+      margin: var(--space-2) auto var(--space-1);
+      font-size: var(--title-lg);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      white-space: nowrap;
+      min-height: 1.3em;
+      border-right: 2px solid var(--brand);
+      animation: caret-blink 0.9s step-end infinite;
+    }
+
+    @keyframes caret-blink {
+      from, to { border-color: transparent; }
+      50%      { border-color: var(--brand); }
+    }
+
+    #greeting.finished {
+      border-right: none;
+      animation: none;
+    }
+
+    .intro {
+      margin: 0 auto;
+      max-width: 44ch;
+      font-size: var(--text-base);
+      color: var(--text-2);
+    }
+
+    /* ===== 导航网格 ===== */
+    .buttons {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-3);
+      margin-top: var(--space-8);
+    }
+
+    @media (min-width: 560px) {
+      .buttons { grid-template-columns: repeat(4, 1fr); }
+    }
+
+    .buttons a {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      min-height: 56px;
+      padding: var(--space-3) var(--space-2);
+      border: 1px solid var(--border-strong);
+      border-radius: var(--r-md);
+      color: var(--text);
+      font-size: var(--text-sm);
+      font-weight: 600;
+      text-decoration: none;
+      transition: border-color var(--dur-fast) var(--ease),
+                  color var(--dur-fast) var(--ease),
+                  transform var(--dur-fast) var(--ease),
+                  box-shadow var(--dur-fast) var(--ease);
+    }
+
+    .buttons a:hover {
+      border-color: var(--brand);
+      color: var(--brand-strong);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
+    }
+
+    /* ===== 捐赠区（页面唯一品牌色 CTA） ===== */
+    .donate-section {
+      margin-top: var(--space-8);
+      padding-top: var(--space-6);
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-3);
+    }
+
+    .donate-caption {
+      font-size: var(--text-sm);
+      color: var(--text-3);
+    }
+
+    #donateBtn { min-width: 200px; }
+
+    /* ===== 登录弹窗内容 ===== */
+    .modal-content h2 {
+      font-size: var(--title-sm);
+      margin: 0 0 var(--space-6);
+    }
+
+    .oauth-btn {
+      width: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      height: 46px;
+      border-radius: var(--r-md);
+      background: var(--surface);
+      border: 1px solid var(--border-strong);
+      color: var(--text);
+      font-family: inherit;
+      font-size: var(--text-sm);
+      font-weight: 600;
+      cursor: pointer;
+      transition: border-color var(--dur-fast) var(--ease),
+                  transform var(--dur-fast) var(--ease),
+                  box-shadow var(--dur-fast) var(--ease);
+    }
+
+    .oauth-btn:hover {
+      border-color: var(--brand);
+      transform: translateY(-1px);
+      box-shadow: var(--shadow-sm);
+    }
+
+    .oauth-btn + .oauth-btn { margin-top: var(--space-3); }
+
+    .oauth-btn img {
+      width: 20px;
+      height: 20px;
+    }
+
+    /* ===== Splash ===== */
+    #loading {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg);
+      transition: opacity var(--dur-slow) ease, visibility var(--dur-slow) ease;
+    }
+
+    #loading.fade {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    .loading-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: var(--space-4);
+    }
+
+    #loadingText {
+      font-size: var(--text-sm);
+      color: var(--text-3);
+    }
+
+    /* ===== AI 入口 ===== */
+    .ai-entry-group {
+      cursor: grab;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+
+    .ai-entry-group.dragging {
+      cursor: grabbing;
+      transition: none !important;
+    }
+
+    .ai-entry {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px 8px 8px;
+      border-radius: var(--r-full);
+      background: var(--glass-bg);
+      border: 1px solid var(--border);
+      -webkit-backdrop-filter: blur(12px);
+      backdrop-filter: blur(12px);
+      box-shadow: var(--shadow-md);
+      cursor: pointer;
+      transition: transform var(--dur-fast) var(--ease),
+                  box-shadow var(--dur-fast) var(--ease),
+                  border-color var(--dur-fast) var(--ease);
+    }
+
+    .ai-entry:hover {
+      transform: translateY(-2px);
+      border-color: var(--brand);
+      box-shadow: var(--shadow-md);
+    }
+
+    .ai-entry-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--brand-soft);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex: none;
+    }
+
+    .ai-entry-icon img {
+      width: 20px;
+      height: 20px;
+      object-fit: contain;
+    }
+
+    .ai-entry-text {
+      display: flex;
+      flex-direction: column;
+      line-height: 1.3;
+      text-align: left;
+    }
+
+    .ai-entry-title {
+      font-size: var(--text-sm);
+      font-weight: 600;
+      color: var(--text);
+    }
+
+    .ai-entry-desc {
+      font-size: 11px;
+      color: var(--text-3);
+    }
+
+    @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+      .ai-entry { background: var(--surface); }
+    }
+
+    /* ===== AI 进入过渡 ===== */
+    body.ai-leaving { overflow: hidden; }
+
     body.ai-leaving .container {
-      animation: aiZoomOut .6s cubic-bezier(.4,0,.2,1) forwards;
+      animation: aiZoomOut 0.5s var(--ease) forwards;
     }
 
     body.ai-leaving::after {
       content: "";
       position: fixed;
       inset: 0;
-      background: radial-gradient(circle at center, rgba(113,248,252,0.3), rgba(0,0,0,0.8));
-      backdrop-filter: blur(8px);
+      background: var(--scrim);
       opacity: 0;
-      animation: aiFade .6s ease forwards;
+      animation: aiFade 0.5s ease forwards;
       z-index: 999;
     }
 
     @keyframes aiZoomOut {
-      0% { transform: scale(1); opacity: 1; filter: blur(0px); }
-      100% { transform: scale(1.1); opacity: 0; filter: blur(12px); }
+      to { opacity: 0; transform: translateY(-6px) scale(0.98); }
     }
 
     @keyframes aiFade {
-      0% { opacity: 0; }
-      100% { opacity: 1; }
-    }
-    :root {
-      /* Day theme (default) */
-      --bg-main: linear-gradient(135deg, #dcefff, #f8fdff), url('p/bj.png') center / cover no-repeat fixed;
-      --card-bg: rgba(255,255,255,0.5);
-      --text-main: #1A1A1A;
-      --accent: #71f8fc;
+      to { opacity: 1; }
     }
 
-    /* Night theme (donate style) */
-    body.night {
-      --bg-main: #161823;
-      --card-bg: rgba(22,24,35,0.95);
-      --text-main: #E8FFFF;
-      --accent: #3EEDE7;
-    }
-
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    /* ===== 强制加载动画兜底（防止异常白屏） ===== */
-
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
-                   "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC",
-                   "Source Han Sans SC", Arial, sans-serif;
-      background: var(--bg-main);
-      display: flex; flex-direction: column; align-items: center; justify-content: center;
-      min-height: 100vh; color: var(--text-main);
-      line-height: 1.7;
-      transition: opacity 0.8s ease;
-    }
-    body::before {
-      content: "";
-      position: fixed;
-      top: 0; left: 0; right: 0; bottom: 0;
-      background:
-        radial-gradient(circle at 20% 30%, rgba(255,255,255,0.45) 0, rgba(255,255,255,0) 60%),
-        radial-gradient(circle at 80% 70%, rgba(255,255,255,0.38) 0, rgba(255,255,255,0) 60%),
-        radial-gradient(circle at 40% 80%, rgba(255,255,255,0.42) 0, rgba(255,255,255,0) 60%);
-      background-size: 120% 120%;
-      animation: floatParticles 18s ease-in-out infinite alternate;
-      pointer-events: none;
-      z-index: -1;
-    }
-
-    body.night::before {
-      background:
-        radial-gradient(circle at 30% 30%, rgba(62,237,231,0.12), transparent 60%),
-        radial-gradient(circle at 70% 70%, rgba(62,237,231,0.08), transparent 60%);
-    }
-
-    @keyframes float {
-      0% { transform: translateY(0); }
-      50% { transform: translateY(-4px); }
-      100% { transform: translateY(0); }
-    }
-    @keyframes avatarGlow {
-      0% { box-shadow: 0 0 25px rgba(120, 190, 255, 0.3); }
-      50% { box-shadow: 0 0 40px rgba(120, 190, 255, 0.6); }
-      100% { box-shadow: 0 0 25px rgba(120, 190, 255, 0.3); }
-    }
-
-    @keyframes floatParticles {
-      0% { background-position: 0% 0%; }
-      100% { background-position: 100% 100%; }
-    }
-
-    @keyframes fadeInUp { from { transform:translateY(30px);} to {opacity:1; transform:translateY(0);} }
-    @keyframes breatheGlow {
-      0% { box-shadow: 0 0 12px rgba(113, 248, 252, 0.35); }
-      50% { box-shadow: 0 0 22px rgba(113, 248, 252, 0.55); }
-      100% { box-shadow: 0 0 12px rgba(113, 248, 252, 0.35); }
-    }
-
-    /* ===== Easter Egg 溶解动画 ===== */
+    /* ===== Easter Egg 溶解动画（彩蛋叙事，保留原样） ===== */
     @keyframes dissolveOut {
       0% {
         opacity: 1;
         filter: blur(0px) contrast(1) hue-rotate(0deg);
         transform: scale(1) rotate(0deg);
       }
-      20% {
-        filter: blur(6px) contrast(1.3) hue-rotate(10deg);
-      }
+      20% { filter: blur(6px) contrast(1.3) hue-rotate(10deg); }
       35% {
         filter: blur(14px) contrast(1.6) hue-rotate(-15deg);
         transform: scale(1.02) rotate(0.5deg);
@@ -206,6 +412,7 @@
       );
       opacity: 0;
       animation: whiteFlash 2.4s ease forwards;
+      z-index: 1;
     }
 
     @keyframes whiteFlash {
@@ -215,42 +422,8 @@
       100% { opacity: 0; }
     }
 
-    .container {
-      margin-top: 2rem;
-      padding: 2rem;
-      width: 90%;
-      max-width: 720px;
-      background: var(--card-bg);
-      backdrop-filter: blur(10px);
-      -webkit-backdrop-filter: blur(10px);
-      border-radius: 16px;
-      box-shadow:
-        0 20px 50px rgba(80, 140, 200, 0.25),
-        inset 0 0 40px rgba(200, 240, 255, 0.4),
-        0 10px 30px rgba(0,0,0,0.08);
-      text-align: center;
-
-      /* 初始隐藏，等待 splash 结束 */
-      opacity: 0;
-      transform: translateY(12px);
-      transition: opacity 0.6s ease, transform 0.6s ease;
-
-      animation: float 6s ease-in-out infinite;
-    }
-
-    body.ready .container {
-      opacity: 1;
-      transform: translateY(0);
-    }
-
-    .avatar { width:150px; height:150px; border-radius:50%; object-fit:cover; margin-bottom:0.5rem; box-shadow: 0 0 25px var(--accent); 
-    animation: float 5s ease-in-out infinite, avatarGlow 5s ease-in-out infinite;
-    }
     .avatar.egg-burst {
-      animation:
-        float 5s ease-in-out infinite,
-        avatarGlow 5s ease-in-out infinite,
-        avatarBurst 2.4s ease forwards;
+      animation: avatarBurst 2.4s ease forwards;
     }
 
     @keyframes avatarBurst {
@@ -259,502 +432,53 @@
       70% { filter: brightness(3.2) saturate(2); }
       100% { filter: brightness(0); opacity: 0; }
     }
-    .intro {
-      font-size: 1.05rem;
-      margin-top: 0.4rem;
-      opacity: 0.9;
-    }
-    h1 { font-size:2rem; margin-bottom:1rem; }
 
-    #greeting {
-      display: block;
-      margin: 0.6rem auto 0.2rem;
-      font-size: 2rem;
-      line-height: 1.2;
-      text-align: center;
-      white-space: nowrap;
-      border-right: 3px solid var(--accent);
-
-      opacity: 0;
-      transform: translateY(8px) scale(0.96);
-
-      animation:
-        blink 0.8s step-end infinite,
-        greetFadeBounce 0.7s cubic-bezier(.18,.89,.32,1.28) forwards,
-        greetGlow 1.6s ease-out forwards;
-
-      min-height: 2.6rem;
-    }
-
-    /* 光标闪烁（更稳定版本） */
-    @keyframes blink {
-      from, to   { border-color: transparent }
-      50%        { border-color: var(--accent); }
-    }
-
-    @keyframes greetFadeBounce {
-      0%   { opacity: 0; transform: translateY(10px) scale(0.95); }
-      60%  { opacity: 1; transform: translateY(-2px) scale(1.02); }
-      100% { opacity: 1; transform: translateY(0) scale(1); }
-    }
-
-    @keyframes greetGlow {
-      0%   { text-shadow: 0 0 0 rgba(113,248,252,0); }
-      40%  { text-shadow: 0 0 12px rgba(113,248,252,0.6); }
-      100% { text-shadow: 0 0 0 rgba(113,248,252,0); }
-    }
-
-    #greeting.finished {
-      border-right: none;
-      animation: none;
-      opacity: 1;
-      transform: translateY(0) scale(1);
-      text-shadow: none;
-    }
-    .buttons {
-      display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: 1rem; margin-top: 1.5rem;
-    }
-
-    .donate-section {
-      margin-top: 1.8rem;
-      padding-top: 1.6rem;
-      border-top: 1px solid rgba(255,255,255,0.08);
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 0.8rem;
-    }
-
-    body.night .donate-section {
-      border-top: 1px solid rgba(255,255,255,0.06);
-    }
-
-    .donate-section .donate-button {
-      min-width: 180px;
-    }
-
-    .buttons a {
-      animation: breatheGlow 3s ease-in-out infinite;
-      display:inline-block; padding:0.8rem 1.5rem;
-      background: var(--accent); border-radius:30px;
-      text-decoration:none; color:black; font-weight:bold; font-size:1.1rem;
-      transition: transform .3s, box-shadow .3s, filter .3s; text-align:center;
-    }
-
-    .buttons a:hover { transform:translateY(-3px); box-shadow: 0 12px 28px rgba(80, 160, 255, 0.35); filter: brightness(1.08); }
-
-.donate-outline {
-  display:inline-block;
-  padding:0.75rem 1.6rem;
-  border-radius:30px;
-  background: transparent;
-  border: 1.5px solid var(--accent);
-  color: var(--text-main);
-  font-weight: 600;
-  font-size: 1rem;
-  transition: transform .25s ease, background .25s ease, color .25s ease;
-}
-.oauth-btn {
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-
-  padding: 0.75rem 1rem;
-  border-radius: 14px;
-
-  background: rgba(255,255,255,0.9);
-  color: #000;
-
-  font-weight: 600;
-  font-size: 0.95rem;
-  border: none;
-
-  transition: transform .2s ease, box-shadow .2s ease;
-}
-
-.oauth-btn:hover {
-  transform: translateY(-2px);
-  box-shadow: 0 12px 25px rgba(0,0,0,0.25);
-}
-
-body.night .oauth-btn {
-  background: rgba(255,255,255,0.08);
-  color: var(--text-main);
-}
-
-.donate-outline:hover {
-  background: var(--accent);
-  color: #000;
-  transform: translateY(-2px);
-}
-    .donate-caption {
-      font-size: 0.85rem;
-      opacity: 0.55;
-      letter-spacing: 1px;
-    }
-
-    footer { margin:2rem 0 1rem; font-size:.9rem; text-align:center; }
-
-    #loading {
-      --loading-primary: #71f8fc;
-      --loading-bg1: #060b17;
-      --loading-bg2: #071a2f;
-      --loading-bg3: #02272c;
-      position: fixed;
-      inset: 0;
-      z-index: 9999;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      gap: 1.2rem;
-      overflow: hidden;
-      background:
-        radial-gradient(circle at 10% 20%, rgba(113,248,252,0.13), transparent 42%),
-        radial-gradient(circle at 90% 80%, rgba(113,248,252,0.11), transparent 48%),
-        linear-gradient(135deg, var(--loading-bg1) 0%, var(--loading-bg2) 52%, var(--loading-bg3) 100%);
-    }
-
-    #loading.fade {
-      opacity: 0;
-      visibility: hidden;
-      transition: opacity 0.8s ease, visibility 0.8s ease;
-    }
-
-    #loading::before,
-    #loading::after {
-      content: "";
-      position: absolute;
-      width: 46vmax;
-      height: 46vmax;
-      border-radius: 50%;
-      filter: blur(48px);
-      opacity: 0.45;
-      pointer-events: none;
-      animation: loadingFlow 14s ease-in-out infinite alternate;
-    }
-
-    #loading::before {
-      top: -16vmax;
-      left: -8vmax;
-      background: radial-gradient(circle, rgba(113,248,252,0.42), rgba(113,248,252,0));
-    }
-
-    #loading::after {
-      right: -14vmax;
-      bottom: -18vmax;
-      background: radial-gradient(circle, rgba(113,248,252,0.38), rgba(113,248,252,0));
-      animation-duration: 18s;
-      animation-direction: alternate-reverse;
-    }
-
-
-
-  .modal {
-    display: none;
-    position: fixed;
-    inset: 0;
-    background: rgba(0,0,0,0);
-    backdrop-filter: blur(0px);
-    -webkit-backdrop-filter: blur(0px);
-    opacity: 0;
-    transition:
-      opacity .3s ease,
-      background .3s ease,
-      backdrop-filter .3s ease,
-      -webkit-backdrop-filter .3s ease;
-    z-index: 1000;
-    align-items: center;
-    justify-content: center;
-  }
-
-  .modal.active {
-    display: flex;
-    opacity: 1;
-    background: rgba(0,0,0,0.55);
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-  }
-    .modal-content {
-  background: linear-gradient(
-    145deg,
-    rgba(255,255,255,0.85),
-    rgba(255,255,255,0.65)
-  );
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-
-  padding: 2rem 1.6rem;
-  width: 92%;
-  max-width: 420px;
-
-  border-radius: 20px;
-
-  box-shadow:
-    0 30px 60px rgba(0,0,0,0.35),
-    inset 0 1px 0 rgba(255,255,255,0.6);
-
-  animation: modalPop .35s cubic-bezier(.4,0,.2,1);
-  text-align: center;
-}
-body.night .modal-content {
-  background: linear-gradient(
-    145deg,
-    rgba(22,24,35,0.95),
-    rgba(22,24,35,0.85)
-  );
-  box-shadow: 0 30px 60px rgba(0,0,0,0.6);
-}
-    /* 兼容性兜底：不支持 backdrop-filter 的浏览器使用更实的背景 */
-    @supports not ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
-      .container {
-        background: rgba(255,255,255,0.9);
-      }
-      body.night .container {
-        background: rgba(22,24,35,0.95);
-      }
-      .modal-content {
-        background: rgba(255,255,255,0.95);
-      }
-      body.night .modal-content {
-        background: rgba(22,24,35,0.95);
-      }
-    }
-    @keyframes modalPop {
-  0% {
-    opacity: 0;
-    transform: translateY(16px) scale(0.92);
-  }
-  60% {
-    opacity: 1;
-    transform: translateY(-4px) scale(1.02);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-}
-
-    @keyframes modalPopOut {
-      0% {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-      }
-      100% {
-        opacity: 0;
-        transform: translateY(12px) scale(0.95);
-      }
-    }
-    .close { float:right; font-size:1.5rem; cursor:pointer; line-height: 1; }
-
-    .modal.closing .modal-content {
-      animation: modalPopOut .25s ease forwards;
-    }
-
-    /* ===== 干净玻璃语言切换 ===== */
-    .lang-switcher {
-      position: fixed;
-      top: 14px;
-      right: 14px;
-      display: flex;
-      gap: 6px;
-      padding: 6px;
-      border-radius: 999px;
-
-      background: rgba(255,255,255,0.55);
-      backdrop-filter: blur(12px);
-      -webkit-backdrop-filter: blur(12px);
-
-      box-shadow:
-        0 10px 30px rgba(0,0,0,0.15),
-        inset 0 1px 0 rgba(255,255,255,0.6);
-
-      z-index: 20;
-    }
-
-    body.night .lang-switcher {
-      background: rgba(22,24,35,0.9);
-    }
-
-    /* 普通按钮高亮 */
-    .lang-switcher button {
-      border: none;
-      background: transparent;
-      padding: 6px 14px;
-      border-radius: 999px;
-      font-weight: 600;
-      font-size: 0.9rem;
-      cursor: pointer;
-      color: var(--text-main);
-      transition: background .25s ease, color .25s ease;
-    }
-
-    .lang-switcher button.active {
-      background: var(--accent);
-      color: #000;
-    }
-
-    /* 移动端适配 */
+    /* ===== 移动端 ===== */
     @media (max-width: 480px) {
-      .lang-switcher {
-        top: 8px;
-        right: 8px;
-        padding: 4px;
-      }
-      
-      .lang-switcher button {
-        padding: 4px 10px;
-        font-size: 0.9rem;
-      }
-      
-      .oauth-btn img {
-        width: 18px !important;
-        height: 18px !important;
-      }
-      
-      h1, #greeting {
-        font-size: 1.6rem;
-      }
-
       .container {
-        padding: 1.5rem;
-        margin-top: 1rem;
+        width: calc(100% - var(--space-6));
+        margin-top: var(--space-12);
+        padding: var(--space-8) var(--space-4);
       }
 
       .avatar {
-        width: 120px;
-        height: 120px;
+        width: 96px;
+        height: 96px;
       }
 
-      .buttons {
-        grid-template-columns: 1fr;
-      }
+      .ai-entry-desc { display: none; }
     }
-/* ===== AI 入口（升级版）===== */
-/* ===== AI 入口（升级版）===== */
-.ai-entry {
-  position: fixed;
-  right: 20px;
-  bottom: 20px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-
-  padding: 10px 14px;
-  border-radius: 999px;
-
-  background: linear-gradient(135deg, var(--accent), #9ffcff);
-  color: #000;
-
-  font-weight: 600;
-  font-size: 0.85rem;
-
-  box-shadow:
-    0 15px 40px rgba(0,0,0,0.25),
-    0 0 20px rgba(113,248,252,0.35);
-
-  cursor: pointer;
-  z-index: 999;
-
-  transition: transform .25s ease, box-shadow .25s ease;
-}
-
-.ai-entry:hover {
-  transform: translateY(-4px) scale(1.03);
-  box-shadow:
-    0 25px 60px rgba(0,0,0,0.35),
-    0 0 30px rgba(113,248,252,0.6);
-}
-
-.ai-entry-icon {
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: rgba(255,255,255,0.8);
-
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
-  font-size: 16px;
-}
-
-.ai-entry-icon img {
-  width: 18px;
-  height: 18px;
-  object-fit: contain;
-}
-
-.ai-entry-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.1;
-}
-
-.ai-entry-title {
-  font-size: 0.85rem;
-  font-weight: 700;
-}
-
-.ai-entry-desc {
-  font-size: 0.65rem;
-  opacity: 0.7;
-}
-
-body.night .ai-entry {
-  background: linear-gradient(135deg, #3EEDE7, #1fbecf);
-  color: #000;
-}
-
-/* ===== AI入口组可拖拽 ===== */
-.ai-entry-group {
-  cursor: grab;
-  user-select: none;
-}
-.ai-entry-group.dragging {
-  cursor: grabbing;
-  transition: none !important;
-}
-
-#loadingBar {
-  opacity: 0;
-  pointer-events: none;
-  display: none;
-}
-
-#loadingBar.active {
-  opacity: 1;
-  pointer-events: auto;
-  display: flex;
-}
-#loadingBar img {   transform: scale(0.9);   transition: transform .25s ease; }  #loadingBar.active img {   transform: scale(1); } body:not(.night) #loadingBar { background: rgba(255,255,255,0.65); backdrop-filter: blur(12px); } body:not(.night) #loadingBar div { color: #334155; } body:not(.night) #loadingBar img { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15)); }
-</style>
+  </style>
 </head>
 
 <body>
+  <script>
+    /* 首帧前应用日夜主题，避免 splash 闪色（与模块内 applyAutoTheme 一致且幂等） */
+    (function () {
+      var hour = new Date().getHours();
+      if (hour >= 18 || hour < 6) document.body.classList.add('night');
+    })();
+  </script>
+
   <div id="langSwitcher" class="lang-switcher" role="navigation" aria-label="语言切换">
     <button data-lang="zh">中文</button>
     <button data-lang="en">EN</button>
     <button data-lang="ja">日本語</button>
   </div>
+
   <div id="loading" aria-live="polite" aria-label="页面加载中">
-    <div style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;">
-      <img src="p/load.gif" style="width:110px;height:110px;opacity:0.95;">
-      <div id="loadingText" style="color:var(--accent);font-size:1rem;opacity:0.85;">
-        加载中...
-      </div>
+    <div class="loading-inner">
+      <div class="spinner" aria-hidden="true"></div>
+      <div id="loadingText">加载中...</div>
     </div>
   </div>
 
-  <div class="container">
+  <main class="container">
     <img src="p/tx.jpeg" alt="霜蓝的头像" class="avatar">
     <h1 id="greeting"></h1>
     <p class="intro" id="introText"></p>
 
-    <div class="buttons">
+    <nav class="buttons" aria-label="站内导航">
       <a href="shoushe.html"><span id="btnShoushe"></span></a>
       <a href="banquan.html"><span id="btnBanquan"></span></a>
       <a href="guanzhu.html"><span id="btnGuanzhu"></span></a>
@@ -763,34 +487,35 @@ body.night .ai-entry {
       <a href="fans.html"><span id="btnFans"></span></a>
       <a href="game.html"><span id="btnGame"></span></a>
       <a href="ryugaku.html"><span id="btnPlan"></span></a>
-    </div>
+    </nav>
 
     <div class="donate-section">
       <div class="donate-caption">如果你愿意支持我的创作</div>
-      <button id="donateBtn" class="donate-button donate-outline" disabled style="opacity:.6; cursor:not-allowed;">
+      <button id="donateBtn" class="btn btn-primary donate-button" disabled style="opacity:.6; cursor:not-allowed;">
         <span id="btnDonate"></span>
       </button>
     </div>
-  </div>
+  </main>
 
   <div id="loginModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
     <div class="modal-content">
       <span class="close" aria-label="关闭对话框">×</span>
 
-      <h2 id="modalTitle" style="margin-bottom:1rem; font-size: 1.3rem;">请先登录后继续</h2>
-<button id="githubLoginBtn" class="oauth-btn" style="margin-bottom:0.6rem;">
-        <img src="p/github.svg" alt="" style="width:22px; height:22px;" aria-hidden="true">
+      <h2 id="modalTitle">请先登录后继续</h2>
+
+      <button id="githubLoginBtn" class="oauth-btn">
+        <img src="p/github.svg" alt="" aria-hidden="true">
         使用 GitHub 登录
       </button>
 
       <button id="googleLoginBtn" class="oauth-btn">
-        <img src="p/IMG_3879.png" alt="" style="width:22px; height:22px;" aria-hidden="true">
+        <img src="p/IMG_3879.png" alt="" aria-hidden="true">
         使用 Google 登录
       </button>
     </div>
   </div>
 
-  <footer>Copyright © 2024-2026 霜蓝, All Rights Reserved.</footer>
+  <footer class="site-footer">© 2024–2026 霜蓝 · All Rights Reserved.</footer>
 
   <script type="module">
     import { supabase } from './p/js/supabaseClient.js';
@@ -814,7 +539,7 @@ body.night .ai-entry {
       return sessionCache;
     }
 
-    // 新增：根据 session 刷新“捐赠支持”按钮视觉反馈
+    // 根据 session 刷新“捐赠支持”按钮视觉反馈
     function updateDonateButtonBySession(session) {
       const donateBtn = document.getElementById("donateBtn");
       const donateText = document.getElementById("btnDonate");
@@ -826,9 +551,6 @@ body.night .ai-entry {
       donateBtn.style.cursor = "pointer";
       donateText.textContent = "捐赠支持";
     }
-
-
-
 
     document.addEventListener('DOMContentLoaded', async () => {
       // 🔥 进入页面立即关闭全局 loading（防止跨页面残留）
@@ -857,7 +579,7 @@ body.night .ai-entry {
 
           setTimeout(() => {
             document.body.style.opacity = '0';
-            setTimeout(() => location.href = "donate.html", 600);
+            setTimeout(() => location.href = "donate.html", 250);
           }, 300);
         }
       } catch(e){
@@ -866,7 +588,7 @@ body.night .ai-entry {
 
       // 页面首次加载时确保不显示登录弹窗
       document.getElementById("loginModal").classList.remove("active");
-      // Apple Liquid Glass 语言切换渐现
+      // 语言切换渐现
       requestAnimationFrame(() => {
         document.querySelector('.lang-switcher')?.classList.add('show');
       });
@@ -890,8 +612,8 @@ body.night .ai-entry {
     });
 
     document.querySelector(".close").onclick = closeModal;
-    document.getElementById("loginModal").onclick = (e)=>{ 
-      if(e.target===e.currentTarget) closeModal(); 
+    document.getElementById("loginModal").onclick = (e)=>{
+      if(e.target===e.currentTarget) closeModal();
     };
 
     document.getElementById("donateBtn").onclick = async () => {
@@ -903,7 +625,7 @@ body.night .ai-entry {
         sessionStorage.setItem("skipSplash", "1");
 
         document.body.style.opacity = '0';
-        setTimeout(() => location.href = "donate.html", 600);
+        setTimeout(() => location.href = "donate.html", 250);
       } else {
         document.getElementById("loginModal").classList.add("active");
       }
@@ -924,7 +646,8 @@ body.night .ai-entry {
         options:{ redirectTo: location.origin + '/oauth-callback.html' }
       });
     };
-    // Splash 完全交给 CSS 控制，JS 只在动画结束后启动页面
+
+    /* ===== 稳定版 Splash 控制（支持返回不重播） ===== */
 
     // 站内跳转时标记，返回首页不重播 Splash
     document.querySelectorAll('.buttons a').forEach(link => {
@@ -932,8 +655,6 @@ body.night .ai-entry {
         sessionStorage.setItem("skipSplash", "1");
       });
     });
-
-    /* ===== 稳定版 Splash 控制（支持返回不重播） ===== */
 
     const navEntry = performance.getEntriesByType("navigation")[0];
 
@@ -979,11 +700,11 @@ body.night .ai-entry {
           splash.remove();
           document.body.classList.add('ready');
           document.dispatchEvent(new Event('app-ready'));
-        }, 500);
+        }, 400);
       }
 
-      // 纯 GIF 加载：固定时间结束（更稳定）
-      setTimeout(finishSplash, 1800);
+      // 固定时间结束（更稳定）
+      setTimeout(finishSplash, 900);
     });
 </script>
 
@@ -998,9 +719,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
     setTimeout(() => {
       location.href = 'ai.html';
-    }, 550);
+    }, 450);
   });
 });
+
   let typingToken = 0;
   const i18n = {
     zh: {
@@ -1142,6 +864,7 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     });
   });
+
   document.addEventListener("app-ready", () => {
     // 浏览器语言检测（增强版）
     const rawLang = navigator.language || navigator.userLanguage || "en";
@@ -1176,7 +899,6 @@ document.addEventListener('DOMContentLoaded', () => {
       };
     });
   });
-
   </script>
 
 <script>
@@ -1295,13 +1017,12 @@ document.querySelectorAll("a").forEach(a => {
     showGlobalLoading();
   });
 });
-
-// 页面离开前关闭 loading（解决 BFCache 返回残留问题）
 </script>
-  <div class="ai-entry-group" style="position:fixed;right:20px;bottom:20px;z-index:999;">
+
+  <div class="ai-entry-group" style="position:fixed;right:20px;bottom:20px;z-index:900;">
     <div class="ai-entry" id="aiEntry">
       <div class="ai-entry-icon">
-        <img src="p/ailogo.png" alt="AI" class="ai-icon-img" style="width:18px;height:18px;">
+        <img src="p/ailogo.png" alt="AI" class="ai-icon-img">
       </div>
       <div class="ai-entry-text">
         <div class="ai-entry-title">AI 助手</div>
@@ -1310,7 +1031,6 @@ document.querySelectorAll("a").forEach(a => {
     </div>
   </div>
 
-
-<div id="loadingBar" style="transition:opacity .25s ease; position:fixed; inset:0; background:rgba(0,0,0,0.45); backdrop-filter:blur(6px); z-index:9999; align-items:center; justify-content:center; flex-direction:column; display:none;">   <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">   <div style="color:#fff;font-size:18px;opacity:0.9;font-weight:500;letter-spacing:0.5px;">     加载中   </div> </div>
+  <div id="loadingBar" aria-hidden="true"><span class="bar"></span></div>
 </body>
 </html>

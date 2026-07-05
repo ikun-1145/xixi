@@ -391,9 +391,9 @@ body.night #app {
   background: linear-gradient(135deg,#020617,#0b1220,#020617);
 }
 #proBtn:hover {
-  background: linear-gradient(135deg, #6a5cff, #9f7cff);
+  background: linear-gradient(135deg, #0e9aa7, #22d3ee);
   transform: translateY(-1px);
-  box-shadow: 0 0 15px rgba(122,92,255,0.8);
+  box-shadow: 0 4px 14px rgba(34,211,238,0.35);
 }
 
 #uploadPreview > div:hover {
@@ -489,7 +489,7 @@ body.ai-entering::before {
   height: 82px;
   margin: 0 auto 14px;
   border-radius: 50%;
-  background: radial-gradient(circle at 35% 30%, #ffffff 0 10%, #67e8f9 22%, #22c55e 62%, #7c3aed 100%);
+  background: radial-gradient(circle at 35% 30%, #ffffff 0 10%, #67e8f9 22%, #22c55e 62%, #0e9aa7 100%);
   box-shadow: 0 0 0 0 rgba(34,211,238,0.35), 0 18px 42px rgba(34,211,238,0.28);
   display: flex;
   align-items: center;

@@ -11,232 +11,91 @@
       }
     })();
   </script>
-  <link rel="preload" as="image" href="p/fans.png">
   <title id="pageTitle">实时粉丝数 - 霜蓝</title>
+  <meta name="theme-color" content="#f7f9fa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#13151e" media="(prefers-color-scheme: dark)">
+  <link rel="stylesheet" href="p/css/tokens.css">
+  <link rel="stylesheet" href="p/css/base.css">
   <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-
-    :root {
-      /* 日间主题 */
-      --bg-main: none;
-      --card-bg: rgba(255,255,255,0.5);
-      --text-main: #1A1A1A;
-      --accent: #71f8fc;
-    }
-
-    /* 夜间主题（donate 同款） */
-    html.night body {
-      background-color: #0f1822; /* 夜间基础色，防止首帧闪亮 */
-      --bg-main: #161823;
-      --card-bg: rgba(22,24,35,0.9);
-      --text-main: #E8FFFF;
-      --accent: #3EEDE7;
-      background:
-        linear-gradient(
-          to bottom,
-          rgba(10,15,25,0.65),
-          rgba(10,15,25,0.85)
-        ),
-        url('p/fans.png') center / cover no-repeat;
-    }
-
-
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI",
-                   "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei",
-                   "Noto Sans CJK SC", "Source Han Sans SC",
-                   Arial, sans-serif;
-      background: #f0f6f8 url('p/fans.png') center / cover no-repeat fixed;
       display: flex;
       flex-direction: column;
       align-items: center;
-      height: 100vh;
-      color: var(--text-main);
+      justify-content: center;
+      min-height: 100vh;
       overflow: hidden;
-      perspective: 1200px;
-      transition: filter 0.6s ease;
-      opacity: 1;
     }
 
+    /* 静态品牌色微晕染（与首页一致） */
+    body::before {
+      content: "";
+      position: fixed;
+      inset: 0;
+      z-index: -1;
+      background:
+        radial-gradient(640px 420px at 50% 0%, var(--brand-soft), transparent 70%);
+      pointer-events: none;
+    }
 
     .container {
-      margin-top: 8vh;
-      padding: 0;
       width: 100%;
-      max-width: none;
-      background: none;
-      backdrop-filter: none;
-      border-radius: 0;
-      box-shadow: none;
-      text-align: center;
       padding: 0 5vw;
-      transform-style: preserve-3d;
+      text-align: center;
+      animation: stat-reveal 0.9s var(--ease) both;
     }
 
-    @keyframes settleScale {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.015); }
-      100% { transform: scale(1); }
+    @keyframes stat-reveal {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: none; }
     }
-
-    @keyframes glowPulse {
-      0% {
-        text-shadow:
-          0 25px 60px rgba(0,0,0,0.35),
-          0 8px 18px rgba(0,0,0,0.25);
-      }
-      50% {
-        text-shadow:
-          0 28px 70px rgba(0,0,0,0.4),
-          0 10px 22px rgba(0,0,0,0.3);
-      }
-      100% {
-        text-shadow:
-          0 25px 60px rgba(0,0,0,0.35),
-          0 8px 18px rgba(0,0,0,0.25);
-      }
-    }
-
-    @keyframes monumentReveal {
-      0% {
-        opacity: 0;
-        transform: translateY(40px) scale(0.92);
-        filter: blur(8px);
-      }
-      100% {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-        filter: blur(0);
-      }
-    }
-
-    @keyframes flashPeak {
-      0% { filter: brightness(1); }
-      40% { filter: brightness(1.35); }
-      100% { filter: brightness(1); }
-    }
-
-    html.night .digit {
-      box-shadow: 0 0 18px rgba(62,237,231,0.6);
-    }
-
 
     h1 {
-      font-size: clamp(1.4rem, 4.5vw, 2rem);
-      margin-bottom: 1.5rem;
-      font-weight: 500;
-      letter-spacing: 0.12em;
-      opacity: 0.75;
+      font-size: var(--text-sm);
+      font-weight: 600;
+      letter-spacing: 0.22em;
+      text-transform: uppercase;
+      color: var(--text-3);
+      margin-bottom: var(--space-6);
     }
 
     .fan-count {
       display: block;
-      text-align: center;
-      font-size: clamp(4rem, 16vw, 12rem);
-      font-weight: 900;
+      font-size: clamp(56px, 15vw, 140px);
+      font-weight: 800;
+      letter-spacing: -0.02em;
+      line-height: 1;
+      color: var(--text);
+      font-variant-numeric: tabular-nums;
       font-feature-settings: "tnum" 1;
-      letter-spacing: 0.05em;
-      transform: translateY(0) scale(1);
-      filter: blur(0px);
+      word-break: break-all;
+      margin-bottom: var(--space-6);
       transform-origin: center bottom;
       transition: transform 0.8s cubic-bezier(0.22, 1, 0.36, 1);
-      animation: monumentReveal 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
-      margin-bottom: 1.8rem;
-      line-height: 1;
-      word-break: break-all;
-      font-variant-numeric: tabular-nums;
-      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC", Arial, sans-serif;
-      color: #f8f6f2;
-      text-shadow:
-        0 28px 55px rgba(0,0,0,0.38),
-        0 8px 18px rgba(0,0,0,0.28);
-      position: relative;
-      isolation: isolate;
     }
 
-    .fan-count.settle {
-      transform: scale(1.06);
-    }
-
-
-    html.night .fan-count {
-      color: #cfffff;
-      text-shadow:
-        0 0 25px rgba(62,237,231,0.45),
-        0 35px 90px rgba(0,0,0,0.7);
-    }
-
+    .fan-count.settle { transform: scale(1.03); }
 
     .update-time {
-      font-size: 0.85rem;
-      color: rgba(0,0,0,0.5);
-      margin-bottom: 1rem;
+      margin: 0 0 var(--space-2);
+      font-size: var(--text-xs);
       letter-spacing: 0.05em;
+      color: var(--text-3);
     }
 
     .thanks {
-      font-size: 1rem;
-      margin-bottom: 1.5rem;
-      opacity: 0.85;
-    }
-
-    .back {
-      display: inline-block;
-      padding: 0.8rem 1.5rem;
-      background: linear-gradient(to right, var(--accent), #a0fff8);
-      border-radius: 30px;
-      text-decoration: none;
-      color: black;
-      font-weight: bold;
-      font-size: 1.1rem;
-      transition: transform 0.3s ease;
-    }
-
-    .back:hover {
-      transform: translateY(-3px);
+      margin: 0 0 var(--space-8);
+      font-size: var(--text-base);
+      color: var(--text-2);
     }
 
     footer {
       position: fixed;
-      bottom: 1rem;
+      bottom: var(--space-4);
       left: 0;
       width: 100%;
-      text-align: center;
-      font-size: 0.9rem;
-      color: #000;
+      margin: 0;
     }
-
-
-    /* iPad / Tablet 优化 */
-    @media (max-width: 1024px) {
-      .fan-count {
-        margin-bottom: 2rem;
-      }
-
-      .back {
-        font-size: 1rem;
-        padding: 0.7rem 1.3rem;
-      }
-
-      footer {
-        font-size: 0.8rem;
-        padding: 0 4vw;
-        text-align: center;
-      }
-    }
-  
-#loadingBar {
-  opacity: 0;
-  pointer-events: none;
-  display: none;
-}
-#loadingBar.active {
-  opacity: 1;
-  pointer-events: auto;
-  display: flex;
-}
-body:not(.night) #loadingBar { background: rgba(255,255,255,0.65); backdrop-filter: blur(12px); } body:not(.night) #loadingBar div { color: #334155; } body:not(.night) #loadingBar img { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15)); }
-</style>
+  </style>
 </head>
 <body>
 
@@ -245,16 +104,13 @@ body:not(.night) #loadingBar { background: rgba(255,255,255,0.65); backdrop-filt
     <div class="fan-count" id="fanCount"></div>
     <p class="update-time" id="updateTime"></p>
     <p class="thanks" id="thanksText"></p>
-    <a href="index.html" class="back" id="backBtn"></a>
+    <a href="index.html" class="back btn btn-secondary" id="backBtn"></a>
   </div>
 
-  <footer>Copyright©️2024-2026霜蓝, All Rights Reserved.</footer>
+  <footer class="site-footer">© 2024–2026 霜蓝 · All Rights Reserved.</footer>
 
   <!-- 动效脚本 -->
   <script>
-    
-
-
     /* --------- i18n --------- */
     const i18n = {
       zh: {
@@ -283,6 +139,7 @@ body:not(.night) #loadingBar { background: rgba(255,255,255,0.65); backdrop-filt
     const currentLang = localStorage.getItem("lang") || "zh";
     const t = i18n[currentLang] || i18n.zh;
 
+    document.title = t.pageTitle;
     document.getElementById("titleText").textContent = t.title;
     document.getElementById("thanksText").textContent = t.thanks;
     document.getElementById("backBtn").textContent = t.back;
@@ -293,68 +150,62 @@ body:not(.night) #loadingBar { background: rgba(255,255,255,0.65); backdrop-filt
     // 更新时间
     document.getElementById('updateTime').textContent = `${t.updatePrefix}${updateTime}`;
 
-const fanCountContainer = document.getElementById('fanCount');
-const end = fanCount;
+    const fanCountContainer = document.getElementById('fanCount');
+    const end = fanCount;
 
-// 数字滚动动画（双 RAF 启动版）
-fanCountContainer.textContent = '0';
+    // 数字滚动动画（双 RAF 启动版）
+    fanCountContainer.textContent = '0';
 
-const duration = 1600;
+    const duration = 1600;
 
-requestAnimationFrame(() => {
-  requestAnimationFrame(() => {
-    const startTime = performance.now();
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        const startTime = performance.now();
 
-    function animateCount(now) {
-      const progress = Math.min((now - startTime) / duration, 1);
-      const eased = 1 - Math.pow(1 - progress, 3);
-      const current = Math.floor(eased * end);
+        function animateCount(now) {
+          const progress = Math.min((now - startTime) / duration, 1);
+          const eased = 1 - Math.pow(1 - progress, 3);
+          const current = Math.floor(eased * end);
 
-      if (progress < 1) {
-        fanCountContainer.textContent = current.toLocaleString();
+          if (progress < 1) {
+            fanCountContainer.textContent = current.toLocaleString();
+            requestAnimationFrame(animateCount);
+          } else {
+            fanCountContainer.textContent = end.toLocaleString();
+            fanCountContainer.classList.add('settle');
+
+            setTimeout(() => {
+              fanCountContainer.classList.remove('settle');
+            }, 600);
+          }
+        }
+
         requestAnimationFrame(animateCount);
-      } else {
-        fanCountContainer.classList.add('settle');
+      });
+    });
 
-        setTimeout(() => {
-          fanCountContainer.classList.remove('settle');
-        }, 600);
-      }
+    function showGlobalLoading() {
+      const el = document.getElementById("loadingBar");
+      if (el) el.classList.add("active");
     }
 
-    requestAnimationFrame(animateCount);
-  });
-});
+    function hideGlobalLoading() {
+      const el = document.getElementById("loadingBar");
+      if (el) el.classList.remove("active");
+    }
 
-  
-function showGlobalLoading() {
-  const el = document.getElementById("loadingBar");
-  if (!el) return;
-  el.style.display = "flex";
-  requestAnimationFrame(() => el.classList.add("active"));
-}
+    // 页面进入立即关闭 loading（防止跨页面残留）
+    document.addEventListener("DOMContentLoaded", () => {
+      hideGlobalLoading();
+    });
 
-function hideGlobalLoading() {
-  const el = document.getElementById("loadingBar");
-  if (!el) return;
-  el.classList.remove("active");
-  setTimeout(() => {
-    el.style.display = "none";
-  }, 250);
-}
+    document.querySelectorAll("a").forEach(a => {
+      a.addEventListener("click", () => {
+        showGlobalLoading();
+      });
+    });
+  </script>
 
-// 页面进入立即关闭 loading（防止跨页面残留）
-document.addEventListener("DOMContentLoaded", () => {
-  hideGlobalLoading();
-});
-
-document.querySelectorAll("a").forEach(a => {
-  a.addEventListener("click", () => {
-    showGlobalLoading();
-  });
-});
-</script>
-
-<div id="loadingBar" style="   display:none;      transition:opacity .25s ease;    position:fixed;   inset:0;   background:rgba(0,0,0,0.45);   backdrop-filter:blur(6px);   z-index:9999;    align-items:center;   justify-content:center;   flex-direction:column; ">   <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">   <div style="color:#fff;font-size:18px;opacity:0.9;font-weight:500;letter-spacing:0.5px;">     加载中   </div> </div>
+  <div id="loadingBar" aria-hidden="true"><span class="bar"></span></div>
 </body>
 </html>

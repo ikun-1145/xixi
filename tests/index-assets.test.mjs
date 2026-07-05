@@ -10,7 +10,8 @@ const getAssetPaths = () => {
 };
 
 test('index page background and preload assets should exist', () => {
-  const requiredAssets = ['p/bj.png', 'p/tx.jpeg'];
+  // 视觉重构（2026-07）：首页移除 bj.png 背景插画，仅保留头像资源
+  const requiredAssets = ['p/tx.jpeg'];
   const usedAssets = getAssetPaths();
 
   for (const asset of requiredAssets) {

@@ -1,0 +1,102 @@
+/* ============================================================
+   Sunland Design System · Tokens
+   全站唯一的设计变量来源（颜色 / 字体 / 间距 / 圆角 / 阴影 / 动效）。
+   所有页面必须先引入本文件，再引入 base.css。
+   ============================================================ */
+
+:root {
+  /* ---------- Brand ---------- */
+  --brand:        #14c8d4;               /* 霜蓝主色 · 浅色底上可读 */
+  --brand-strong: #0e9aa7;               /* hover / 强调文字，对比度 ≥ 4.5:1 */
+  --brand-soft:   rgba(20, 200, 212, 0.10);
+  --brand-glow:   #71f8fc;               /* 原品牌色：仅限 Logo / 夜间高亮 / 装饰 */
+  --on-brand:     #062a2e;               /* 品牌色底上的文字 */
+
+  /* ---------- Neutral · Light ---------- */
+  --bg:            #f7f9fa;
+  --surface:       #ffffff;
+  --surface-2:     #f1f4f6;
+  --text:          #16181d;
+  --text-2:        #5a6472;
+  --text-3:        #8a94a2;
+  --border:        rgba(22, 24, 29, 0.08);
+  --border-strong: rgba(22, 24, 29, 0.14);
+
+  /* ---------- Typography ---------- */
+  --font-sans: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+               "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC",
+               "Source Han Sans SC", Arial, sans-serif;
+  --text-xs:   12px;
+  --text-sm:   13px;
+  --text-base: 15px;
+  --text-lg:   17px;
+  --title-sm:  20px;
+  --title-md:  clamp(24px, 4vw, 28px);
+  --title-lg:  clamp(30px, 6vw, 38px);
+  --display:   clamp(40px, 9vw, 64px);
+  --leading-body:  1.7;
+  --leading-title: 1.25;
+
+  /* ---------- Spacing ---------- */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-12: 48px;
+  --space-16: 64px;
+  --space-24: 96px;
+
+  /* ---------- Radius ---------- */
+  --r-sm:   8px;     /* 小控件 / 标签 */
+  --r-md:   12px;    /* 按钮 / 输入框 */
+  --r-lg:   16px;    /* 卡片 / 弹窗 */
+  --r-xl:   24px;    /* 页面主容器 */
+  --r-full: 999px;   /* 胶囊 */
+
+  /* ---------- Shadow（三档，无色、无发光） ---------- */
+  --shadow-sm: 0 1px 2px rgba(16, 24, 40, 0.06);
+  --shadow-md: 0 4px 16px rgba(16, 24, 40, 0.08);
+  --shadow-lg: 0 24px 48px -12px rgba(16, 24, 40, 0.18);
+
+  /* ---------- Motion ---------- */
+  --dur-fast: 150ms;
+  --dur-base: 250ms;
+  --dur-slow: 400ms;
+  --ease:     cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ---------- Glass（仅导航层 / 浮层使用） ---------- */
+  --glass-bg:     rgba(255, 255, 255, 0.72);
+  --glass-border: rgba(255, 255, 255, 0.60);
+
+  /* ---------- Overlay ---------- */
+  --scrim: rgba(10, 12, 16, 0.40);
+}
+
+/* ---------- Dark（body.night / html.night） ---------- */
+body.night,
+html.night body {
+  --brand:        #3eede7;
+  --brand-strong: #6ff3ee;
+  --brand-soft:   rgba(62, 237, 231, 0.10);
+  --on-brand:     #06282b;
+
+  --bg:            #13151e;
+  --surface:       #1b1e2a;
+  --surface-2:     #222636;
+  --text:          #eef2f6;
+  --text-2:        #9aa4b2;
+  --text-3:        #6b7484;
+  --border:        rgba(255, 255, 255, 0.09);
+  --border-strong: rgba(255, 255, 255, 0.16);
+
+  --shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.30);
+  --shadow-md: 0 4px 16px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 24px 48px -12px rgba(0, 0, 0, 0.55);
+
+  --glass-bg:     rgba(27, 30, 42, 0.78);
+  --glass-border: rgba(255, 255, 255, 0.08);
+
+  --scrim: rgba(4, 6, 10, 0.55);
+}

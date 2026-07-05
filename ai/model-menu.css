@@ -86,7 +86,7 @@ button {
 
   /* Flash / Pro 颜色强化 */
   .model-item.flash { color:#0ea5e9; }
-  .model-item.pro { color:#8b5cf6; font-weight:600; }
+  .model-item.pro { color:#0e9aa7; font-weight:600; }
 
   body.night .model-item.flash { color:#38bdf8; }
-  body.night .model-item.pro { color:#a78bfa; }
+  body.night .model-item.pro { color:#3eede7; }

@@ -2,24 +2,38 @@
 <html lang="zh-cn">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>登录中...</title>
+  <meta name="theme-color" content="#f7f9fa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#13151e" media="(prefers-color-scheme: dark)">
+  <link rel="stylesheet" href="p/css/tokens.css">
+  <link rel="stylesheet" href="p/css/base.css">
   <style>
     body {
-      margin: 0;
-      height: 100vh;
+      min-height: 100vh;
       display: flex;
+      flex-direction: column;
       align-items: center;
       justify-content: center;
-      background: #0f172a;
-      color: #fff;
-      font-size: 18px;
-      font-family: -apple-system, BlinkMacSystemFont;
+      gap: var(--space-4);
     }
-  
-##loadingBar {   opacity: 0; pointer-events: none; }  #loadingBar.active {   opacity: 1;   pointer-events: auto; }  #loadingBar img {   transform: scale(0.9);   transition: transform .25s ease; }  #loadingBar.active img {   transform: scale(1); } body:not(.night) #loadingBar { background: rgba(255,255,255,0.65); backdrop-filter: blur(12px); } body:not(.night) #loadingBar div { color: #334155; } body:not(.night) #loadingBar img { filter: drop-shadow(0 4px 12px rgba(0,0,0,0.15)); }
-</style>
+    #app {
+      font-size: var(--text-sm);
+      color: var(--text-2);
+      letter-spacing: 0.02em;
+    }
+  </style>
 </head>
 <body>
+  <script>
+    /* 首帧前应用夜间主题，避免闪色 */
+    (function () {
+      var hour = new Date().getHours();
+      if (hour >= 18 || hour < 6) document.body.classList.add('night');
+    })();
+  </script>
+
+  <div class="spinner" aria-hidden="true"></div>
   <div id="app">初始化中...</div>
 
 <script>
@@ -80,12 +94,25 @@ window.addEventListener("DOMContentLoaded", async () => {
   }
 });
 
-function showGlobalLoading() {   const el = document.getElementById("loadingBar");   if (el) el.classList.add("active"); }  function hideGlobalLoading() {   const el = document.getElementById("loadingBar");   if (el) el.classList.remove("active"); }
-window.addEventListener("load", () => {   showGlobalLoading();   setTimeout(hideGlobalLoading, 400); });
-document.querySelectorAll("a").forEach(a => {   a.addEventListener("click", () => {     showGlobalLoading();   }); });
+function showGlobalLoading() {
+  const el = document.getElementById("loadingBar");
+  if (el) el.classList.add("active");
+}
+function hideGlobalLoading() {
+  const el = document.getElementById("loadingBar");
+  if (el) el.classList.remove("active");
+}
+window.addEventListener("load", () => {
+  showGlobalLoading();
+  setTimeout(hideGlobalLoading, 400);
+});
+document.querySelectorAll("a").forEach(a => {
+  a.addEventListener("click", () => {
+    showGlobalLoading();
+  });
+});
 </script>
 
-
-<div id="loadingBar" style="   display:flex;      transition:opacity .25s ease;    position:fixed;   inset:0;   background:rgba(0,0,0,0.45);   backdrop-filter:blur(6px);   z-index:9999;    align-items:center;   justify-content:center;   flex-direction:column; ">   <img src="p/load.gif" style="width:96px;height:96px;opacity:0.95;margin-bottom:14px;">   <div style="color:#fff;font-size:18px;opacity:0.9;font-weight:500;letter-spacing:0.5px;">     加载中   </div> </div>
+  <div id="loadingBar" aria-hidden="true"><span class="bar"></span></div>
 </body>
 </html>

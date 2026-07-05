@@ -1963,7 +1963,7 @@ function showActivationSuccess(modal, closeModal) {
         height:64px;
         margin:0 auto 12px;
         border-radius:50%;
-        background:linear-gradient(135deg,#22d3ee,#7c3aed);
+        background:linear-gradient(135deg,#22d3ee,#0e9aa7);
         display:flex;
         align-items:center;
         justify-content:center;
