@@ -12,8 +12,11 @@
 //     - model：MODEL_POOL 中的逻辑别名（如 "sonnet" | "grok"），不直接写死具体模型 ID。
 //     - temperature：可选，不同人格的发挥空间不同；不设置则不下发该参数（兼容不支持的模型）。
 //     - prompt：该 tone 独立的人格 Prompt，与 BASE_PROMPT 拼接后作为 instructions。
-//   MODEL_POOL_DEFAULTS：逻辑别名 → 实际模型 ID 的默认值，可被环境变量/secrets 覆盖，
+//   MODEL_POOL_DEFAULTS：逻辑别名 → 实际模型 ID，仅作代码兜底占位，正式模型 ID 请通过
+//     环境变量 OPENAI_MODEL_SONNET / OPENAI_MODEL_GROK 或 comment_copilot_secrets 表的
+//     openai_model_sonnet / openai_model_grok 配置（以 PackyCode 网关实际模型 ID 为准）。
 //     新增第三个模型时只需在此加一行别名，然后在某个 tone.model 里引用即可。
+//   已移除旧版单模型 OPENAI_MODEL / openai_model 的兼容兜底逻辑。
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildContextBlock } from "./internet_context.ts";
@@ -209,16 +212,14 @@ async function loadRuntime(admin: any) {
 }
 
 // 逻辑别名 → 实际模型 ID。覆盖优先级：
-//   环境变量 OPENAI_MODEL_<ALIAS> > secrets 表 openai_model_<alias> > 旧版 OPENAI_MODEL 兜底 > 池默认值
+//   环境变量 OPENAI_MODEL_<ALIAS> > secrets 表 openai_model_<alias> > 池默认值
 // 新增第三个模型时，只需在 MODEL_POOL_DEFAULTS 里加一行别名，此函数无需改动。
 function resolveModelPool(sec: Record<string, string>): Record<string, string> {
-  const legacy = (Deno.env.get("OPENAI_MODEL") || sec["openai_model"] || "").trim();
   const pool: Record<string, string> = {};
   for (const [alias, def] of Object.entries(MODEL_POOL_DEFAULTS)) {
     pool[alias] = (
       Deno.env.get(`OPENAI_MODEL_${alias.toUpperCase()}`) ||
       sec[`openai_model_${alias}`] ||
-      legacy ||
       def
     ).trim();
   }
