@@ -1,7 +1,7 @@
 {
-  "version": "1.1.11",
-  "build": 24,
+  "version": "1.1.12",
+  "build": 25,
   "force": false,
   "url": "https://download-worker.liuxizekali.workers.dev/",
-  "desc": "修复了发送照片时闪退的问题"
+  "desc": "修复新用户无法登录的问题"
 }
