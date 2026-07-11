@@ -44,12 +44,29 @@ function getPostLoginTarget() {
   } catch (e) { return def; }
 }
 
-// 已登录守卫：若本地已存在 token，直接进入目标页，避免已登录用户重复登录。
-// （是否过期的判断交给目标页中的 app.js 处理，过期会尝试静默刷新）
+// 已登录守卫：若本地已存在【未过期】的 token，直接进入目标页，避免已登录用户重复登录。
+// 注意：这里必须先校验 token 是否过期/合法，否则当业务页（如 copilot.html）持有一个
+// 已失效且刷新失败的旧 token 时，用户点击“去登录”会被本守卫立刻弹回原页面，
+// 表现为“点了去登录却停在原地”（该问题在部分浏览器下更容易复现）。
+function isTokenUsable(tk) {
+  if (!tk) return false;
+  try {
+    const payload = JSON.parse(atob(tk.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
+    if (!payload || !payload.exp) return true; // 无 exp 字段则视为长期有效，交由后端判定
+    return payload.exp * 1000 > Date.now() + 5000;
+  } catch (e) {
+    return false; // 解析失败视为无效 token
+  }
+}
 (function () {
   try {
-    if (localStorage.getItem("token")) {
+    const tk = localStorage.getItem("token");
+    if (tk && isTokenUsable(tk)) {
       location.replace(getPostLoginTarget());
+    } else if (tk) {
+      // 存在但已过期/损坏的 token：清理掉，避免后续任何守卫逻辑再次误判为已登录
+      try { localStorage.removeItem("token"); } catch (e) {}
+      try { localStorage.removeItem("user"); } catch (e) {}
     }
   } catch (e) {}
 })();

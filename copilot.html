@@ -712,7 +712,17 @@ async function getFreshToken(){
   if(!t) return null;
   if(isExpired(t)){
     const n = await refreshToken();
-    if(n) t = n;
+    if(n){
+      t = n;
+    }else{
+      // 刷新失败：说明本地这枚 token 已彻底失效，必须清掉。
+      // 否则它会一直留在 localStorage 里，导致后续点击“去登录”跳转到
+      // login.html 时，被那边的“已登录守卫”误判为已登录并立即弹回本页，
+      // 表现为“点了去登录却又回到当前页面”。
+      try{ localStorage.removeItem('token'); }catch{}
+      try{ localStorage.removeItem('user'); }catch{}
+      return null;
+    }
   }
   return t;
 }
@@ -735,6 +745,10 @@ async function callFn(body, _retried = false){
   if(res.status === 401 && !_retried){
     const n = await refreshToken();
     if(n) return callFn(body, true);
+    // 刷新失败，token 已彻底失效，清掉本地残留，避免 login.html 的
+    // “已登录守卫”把它当成有效登录状态而把用户直接弹回本页。
+    try{ localStorage.removeItem('token'); }catch{}
+    try{ localStorage.removeItem('user'); }catch{}
     showLogin();
     throw new Error('unauthorized');
   }
