@@ -230,6 +230,7 @@ textarea#comment::placeholder{color:var(--ink-faint);}
 .tone-meta{display:flex;flex-direction:column;gap:3px;min-width:0;}
 .tone-name{font-size:17px;font-weight:800;color:var(--ink);letter-spacing:.3px;}
 .tone-desc{font-size:13px;color:var(--ink-soft);}
+.tone-model{font-size:11px;color:var(--ink-soft);opacity:.72;letter-spacing:.2px;}
 
 .cc-slider{position:relative;height:34px;margin:4px 0 2px;touch-action:none;cursor:pointer;outline:none;}
 .cc-inner{position:absolute;left:18px;right:18px;top:50%;transform:translateY(-50%);height:9px;}
@@ -330,6 +331,7 @@ textarea#comment::placeholder{color:var(--ink-faint);}
 .tone-panel.fullfire .panel-title .dot{background:#d8b4fe;box-shadow:0 0 0 4px rgba(168,85,247,0.3);}
 .tone-panel.fullfire .tone-desc,
 .tone-panel.fullfire .cc-scale{color:rgba(233,213,255,0.92);}
+.tone-panel.fullfire .tone-model{color:rgba(233,213,255,0.78);}
 
 @keyframes ccShock{
   0%{transform:translate(-50%,-50%) scale(0.15);opacity:0;}
@@ -606,6 +608,7 @@ textarea#comment::placeholder{color:var(--ink-faint);}
       <div class="tone-meta">
         <span class="tone-name" id="toneName">理性</span>
         <span class="tone-desc" id="toneDesc">就事论事，冷静讲道理</span>
+        <span class="tone-model" id="toneModel">当前调用模型：Claude</span>
       </div>
     </div>
     <div class="cc-slider" id="ccSlider" tabindex="0" role="slider"
@@ -773,6 +776,7 @@ const removeImg = $('removeImg');
 const toneEmoji = $('toneEmoji');
 const toneName = $('toneName');
 const toneDesc = $('toneDesc');
+const toneModel = $('toneModel');
 const ccSlider = $('ccSlider');
 const ccInner = $('ccInner');
 const ccVeil = $('ccVeil');
@@ -794,14 +798,15 @@ let busy = false;
 /* ---------- 语气滑块（7 档可拖动，弱 → 强）---------- */
 /* 顺序按「对抗强度」从弱到强排列，与渐变色条语义一致 */
 const TONES = [
-  { key:'reconcile', emoji:'🤝', label:'和解',     desc:'主动示好，化解矛盾',     color:'#22d3ee' },
-  { key:'polite',    emoji:'😊', label:'礼貌',     desc:'客气得体，给彼此留面子', color:'#2dd4bf' },
-  { key:'rational',  emoji:'🧐', label:'理性',     desc:'就事论事，冷静讲道理',   color:'#4ade80' },
-  { key:'humor',     emoji:'😂', label:'幽默',     desc:'轻松调侃，一笑而过',     color:'#a3e635' },
-  { key:'sarcasm',   emoji:'😏', label:'阴阳',     desc:'绵里藏针，阴阳怪气',     color:'#facc15' },
-  { key:'savage',    emoji:'😈', label:'毒舌',     desc:'犀利反击，一针见血',     color:'#fb6f3c' },
-  { key:'fullfire',  emoji:'💀', label:'火力全开', desc:'火力拉满，绝不退让',     color:'#a855f7' },
+  { key:'reconcile', emoji:'🤝', label:'和解',     desc:'主动示好，化解矛盾',     color:'#22d3ee', model:'sonnet' },
+  { key:'polite',    emoji:'😊', label:'礼貌',     desc:'客气得体，给彼此留面子', color:'#2dd4bf', model:'sonnet' },
+  { key:'rational',  emoji:'🧐', label:'理性',     desc:'就事论事，冷静讲道理',   color:'#4ade80', model:'sonnet' },
+  { key:'humor',     emoji:'😂', label:'幽默',     desc:'轻松调侃，一笑而过',     color:'#a3e635', model:'grok' },
+  { key:'sarcasm',   emoji:'😏', label:'阴阳',     desc:'绵里藏针，阴阳怪气',     color:'#facc15', model:'sonnet' },
+  { key:'savage',    emoji:'😈', label:'毒舌',     desc:'犀利反击，一针见血',     color:'#fb6f3c', model:'grok' },
+  { key:'fullfire',  emoji:'💀', label:'火力全开', desc:'火力拉满，绝不退让',     color:'#a855f7', model:'grok' },
 ];
+const MODEL_LABELS = { sonnet: 'Claude', grok: 'Grok' };
 const TONE_MAX = TONES.length - 1;
 let toneIndex = TONES.findIndex(t => t.key === selectedTone);
 if(toneIndex < 0) toneIndex = 2;
@@ -850,6 +855,7 @@ function setTone(i){
   toneEmoji.style.boxShadow = '0 8px 20px ' + hexA(accent,0.26) + ', inset 0 1px 0 rgba(255,255,255,0.55)';
   toneName.textContent = t.label;
   toneDesc.textContent = t.desc;
+  toneModel.textContent = '当前调用模型：' + (MODEL_LABELS[t.model] || t.model);
   [...ccTicks.children].forEach((c, idx) => c.classList.toggle('active', idx <= i));
   [...ccLabels.children].forEach((c, idx) => c.classList.toggle('active', idx === i));
   ccSlider.setAttribute('aria-valuenow', i);
