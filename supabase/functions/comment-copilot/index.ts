@@ -415,12 +415,13 @@ Deno.serve(async (req: Request) => {
     if (r.ok && !r.text) continue;
     if ((r.status === 400 || r.status === 404) && useFormatTry) { useFormatTry = false; continue; }
     if (r.status === 400 && typeof temperatureTry === "number") { temperatureTry = undefined; continue; }
-    console.error("AI provider error:", r.status, r.err.slice(0, 300));
+    console.error("AI provider error:", r.status, "model=", model, r.err.slice(0, 500));
     await refund();
     const hint = r.status === 401 ? "（密钥被拒绝，请核对 OPENAI_API_KEY）" : "";
-    return json({ error: `AI 服务返回异常 (${r.status})${hint}` }, 502);
+    // detail：透出上游（PackyCode）返回的原始错误体，便于定位是“模型不存在/端点不支持/过载”等
+    return json({ error: `AI 服务返回异常 (${r.status})${hint}`, code: "provider_error", provider_status: r.status, model, detail: (r.err || "").slice(0, 500) }, 502);
   }
-  if (!rawText) { await refund(); return json({ error: "AI 暂时未返回内容，请重试一次" }, 502); }
+  if (!rawText) { await refund(); return json({ error: "AI 暂时未返回内容，请重试一次", code: "empty", model }, 502); }
 
   const parsed = parseJsonLoose(rawText) ?? {
     analysis: { attack_level: 0, types: [], detail: rawText },
