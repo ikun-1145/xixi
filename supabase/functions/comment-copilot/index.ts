@@ -1,6 +1,8 @@
 // Comment Copilot 后端 Edge Function
 // 配置优先级：环境变量(Secrets) > comment_copilot_secrets > 默认值
-//   OPENAI_API_KEY / OPENAI_BASE_URL(例 https://www.packyapi.com/v1)
+//   OPENAI_BASE_URL(例 https://www.packyapi.com/v1) 为共享网关地址。
+//   API Key 按模型区分（PackyCode 不同模型属于不同分组，密钥不通用）：
+//     Claude/sonnet → CLAUDE_API_KEY，Grok → GROK_API_KEY，兜底 → OPENAI_API_KEY。
 //   模型改为按 tone 分派的"双模型策略"，见 MODEL_POOL_DEFAULTS / TONES。
 // 要点：PackyCode 非流式返回常丢内容，改用 stream:true 聚合 SSE；不支持 previous_response_id，
 //   改为自存 transcript 按 input 数组重发历史（滑动窗口）；text.format 不支持默认不发。
@@ -32,10 +34,13 @@ const DEFAULT_MAX_CONTEXT_TURNS = 10;
 const DEFAULT_BASE_URL = "https://api.openai.com/v1";
 const MAX_AI_ATTEMPTS = 4; // 预留 useFormat / temperature 两级降级重试的余量
 
-// 逻辑模型别名 → 实际模型 ID 默认值（可被 OPENAI_MODEL_<ALIAS> 环境变量 / secrets 表覆盖）
-const MODEL_POOL_DEFAULTS: Record<string, string> = {
-  sonnet: "claude-sonnet-5",
-  grok: "grok-4.5",
+// 逻辑模型别名 → { 模型 ID 默认值, 该模型使用的 API Key 来源 }
+// PackyCode 按「分组」区分密钥：不同模型属于不同分组，必须用对应的 Key，否则报“无可用渠道”。
+//   - 模型 ID：可被 OPENAI_MODEL_<ALIAS> 环境变量 / secrets 表 openai_model_<alias> 覆盖。
+//   - API Key：优先取各自环境变量(keyEnv) > secrets 表(keySecret) > 兜底 OPENAI_API_KEY / openai_api_key。
+const MODEL_POOL_DEFAULTS: Record<string, { model: string; keyEnv: string; keySecret: string }> = {
+  sonnet: { model: "claude-sonnet-5", keyEnv: "CLAUDE_API_KEY", keySecret: "claude_api_key" },
+  grok:   { model: "grok-4.5",        keyEnv: "GROK_API_KEY",   keySecret: "grok_api_key" },
 };
 
 type ToneConfig = {
@@ -205,23 +210,31 @@ async function loadRuntime(admin: any) {
     const { data } = await admin.from("comment_copilot_secrets").select("key, value");
     if (Array.isArray(data)) for (const row of data) if (row.value) sec[row.key] = String(row.value);
   } catch (_e) { /* ignore */ }
-  const apiKey = (Deno.env.get("OPENAI_API_KEY") || sec["openai_api_key"] || "").trim();
   const baseUrl = (Deno.env.get("OPENAI_BASE_URL") || sec["openai_base_url"] || DEFAULT_BASE_URL).trim().replace(/\/+$/, "");
   const modelPool = resolveModelPool(sec);
-  return { dailyLimit, maxTurns, useFormat, apiKey, baseUrl, modelPool };
+  const configured = Object.values(modelPool).some((m) => !!m.apiKey);
+  return { dailyLimit, maxTurns, useFormat, baseUrl, modelPool, configured };
 }
 
-// 逻辑别名 → 实际模型 ID。覆盖优先级：
-//   环境变量 OPENAI_MODEL_<ALIAS> > secrets 表 openai_model_<alias> > 池默认值
-// 新增第三个模型时，只需在 MODEL_POOL_DEFAULTS 里加一行别名，此函数无需改动。
-function resolveModelPool(sec: Record<string, string>): Record<string, string> {
-  const pool: Record<string, string> = {};
+// 逻辑别名 → { 实际模型 ID, 对应 API Key }。覆盖优先级：
+//   模型 ID：环境变量 OPENAI_MODEL_<ALIAS> > secrets 表 openai_model_<alias> > 池默认值
+//   API Key：环境变量 keyEnv > secrets 表 keySecret > 兜底 OPENAI_API_KEY / openai_api_key
+// 新增第三个模型时，只需在 MODEL_POOL_DEFAULTS 里加一行别名（含其 Key 来源），此函数无需改动。
+function resolveModelPool(sec: Record<string, string>): Record<string, { model: string; apiKey: string }> {
+  const genericKey = (Deno.env.get("OPENAI_API_KEY") || sec["openai_api_key"] || "").trim();
+  const pool: Record<string, { model: string; apiKey: string }> = {};
   for (const [alias, def] of Object.entries(MODEL_POOL_DEFAULTS)) {
-    pool[alias] = (
+    const model = (
       Deno.env.get(`OPENAI_MODEL_${alias.toUpperCase()}`) ||
       sec[`openai_model_${alias}`] ||
-      def
+      def.model
     ).trim();
+    const apiKey = (
+      Deno.env.get(def.keyEnv) ||
+      sec[def.keySecret] ||
+      genericKey
+    ).trim();
+    pool[alias] = { model, apiKey };
   }
   return pool;
 }
@@ -337,7 +350,7 @@ Deno.serve(async (req: Request) => {
   const action = payload.action || "generate";
 
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
-  const { dailyLimit, maxTurns, useFormat, apiKey, baseUrl, modelPool } = await loadRuntime(admin);
+  const { dailyLimit, maxTurns, useFormat, baseUrl, modelPool, configured } = await loadRuntime(admin);
 
   let isPro = false;
   try {
@@ -358,7 +371,7 @@ Deno.serve(async (req: Request) => {
     }
     const { data: ctx } = await admin.from("comment_copilot_context").select("transcript, turns").eq("user_id", userId).maybeSingle();
     const tlen = Array.isArray(ctx?.transcript) ? ctx.transcript.length : 0;
-    return json({ configured: !!apiKey, isPro, limit: dailyLimit, remaining, hasContext: tlen > 0, turns: ctx?.turns ?? 0, maxTurns });
+    return json({ configured, isPro, limit: dailyLimit, remaining, hasContext: tlen > 0, turns: ctx?.turns ?? 0, maxTurns });
   }
 
   if (action !== "generate") return json({ error: "未知操作" }, 400);
@@ -366,6 +379,13 @@ Deno.serve(async (req: Request) => {
   const comment = (payload.comment || "").trim();
   const image = typeof payload.image === "string" && payload.image.startsWith("data:") ? payload.image : "";
   if (!comment && !image) return json({ error: "请输入对方评论，或上传一张图片" }, 400);
+
+  // 按 tone 选模型，并取该模型对应的 API Key（不同模型属于 PackyCode 不同分组，密钥不通用）
+  const toneKey = (typeof payload.tone === "string" && TONES[payload.tone]) ? payload.tone : "rational";
+  const tone = TONES[toneKey];
+  const picked = modelPool[tone.model] ?? modelPool["sonnet"];
+  const model = picked.model;
+  const apiKey = picked.apiKey;
   if (!apiKey) return json({ error: "AI 服务尚未配置，请稍后再试", code: "not_configured" }, 503);
 
   let remaining = -1;
@@ -382,9 +402,6 @@ Deno.serve(async (req: Request) => {
   const prevTurns: number = ctxRow?.turns ?? 0;
   const histWindow = maxTurns > 1 ? transcript.slice(-(maxTurns - 1)) : [];
 
-  const toneKey = (typeof payload.tone === "string" && TONES[payload.tone]) ? payload.tone : "rational";
-  const tone = TONES[toneKey];
-  const model = modelPool[tone.model] ?? modelPool["sonnet"];
   const instructions = buildInstructions(tone);
   let textBlock = `【本轮回复语气】${tone.label}：${tone.guide}\n\n`;
   textBlock += comment ? `【对方评论】\n${comment}` : `【对方评论】\n（内容见所附图片）`;
