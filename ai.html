@@ -68,6 +68,14 @@ child-src *;
     }
 
     if (user && user.id) return true;
+    if (user && !user.id) {
+      user.id = user.user_id || user.userId || user.uid || user.sub || user.email || user.user_email || user.mail;
+      if (user.id) {
+        user.email = user.email || user.user_email || user.mail || "未知用户";
+        localStorage.setItem("user", JSON.stringify(user));
+        return true;
+      }
+    }
 
     // 如果 token 是 JWT，则在 app.js 执行前先用 payload 兜底恢复 user，
     // 避免登录成功后只有 token、没有 user 时被后续逻辑误判为未登录。
@@ -79,7 +87,7 @@ child-src *;
         return false;
       }
 
-      var uid = payload.sub || payload.id || payload.user_id;
+      var uid = payload.sub || payload.id || payload.user_id || payload.userId || payload.uid || payload.email || payload.user_email || payload.mail;
       if (uid) {
         localStorage.setItem("user", JSON.stringify({
           id: uid,

@@ -213,6 +213,47 @@ function decodeJwtPayload(tk) {
   }
 }
 
+function getIdentityFromJwtPayload(payload) {
+  if (!payload) return null;
+  return payload.sub ||
+    payload.id ||
+    payload.user_id ||
+    payload.userId ||
+    payload.uid ||
+    payload.email ||
+    payload.user_email ||
+    payload.mail ||
+    null;
+}
+
+function normalizeStoredUser(user, payload) {
+  if (!user || typeof user !== "object") user = {};
+
+  const id = user.id ||
+    user.user_id ||
+    user.userId ||
+    user.uid ||
+    user.sub ||
+    getIdentityFromJwtPayload(payload);
+
+  const email = user.email ||
+    user.user_email ||
+    user.mail ||
+    payload?.email ||
+    payload?.user_email ||
+    payload?.mail ||
+    (typeof id === "string" && id.includes("@") ? id : "") ||
+    "未知用户";
+
+  if (!id) return null;
+
+  return {
+    ...user,
+    id,
+    email
+  };
+}
+
 // ===== ⭐ 登录跳转：统一改为独立登录页 login.html（携带来源页，登录后自动返回）=====
 function goToLogin() {
   // ⭐ 关键修复：跳转前必须清掉本地残留的 token/user。
@@ -269,8 +310,10 @@ async function apiFetch(body, _retried = false) {
       const data = await res.json().catch(() => ({}));
       if (data?.token) {
         localStorage.setItem("token", data.token);
-        if (data.user) {
-          localStorage.setItem("user", JSON.stringify(data.user));
+        const payload = decodeJwtPayload(data.token);
+        const refreshedUser = normalizeStoredUser(data.user, payload);
+        if (refreshedUser) {
+          localStorage.setItem("user", JSON.stringify(refreshedUser));
         }
         window.__refreshing = false;
         return data.token;
@@ -677,7 +720,6 @@ item.style.borderRadius = "12px";
 
 }
 
-import { supabase } from '../p/js/supabaseClient.js';
 // ⭐ Sunland AI Provider 框架（Stage 3.5-3.7）：ai.html 只通过 providerRegistry
 // 统一接口与各 Provider 通信；DeepSeek 现有逻辑保持不变，只有新增的 Sunland
 // 分支会用到这个 registry。
@@ -687,6 +729,54 @@ import { migrateLegacyConversation } from './providers/conversation.js';
 // `apiFetch` is a hoisted function declaration (defined below), so it's
 // already safely referenceable here at module-eval time.
 const providerRegistry = createProviderRegistry({ sendRequest: apiFetch });
+
+function createOfflineSupabaseClient() {
+  const offlineResult = () => Promise.resolve({ data: null, error: null });
+  const createQuery = () => {
+    const query = {
+      select: () => query,
+      eq: () => query,
+      is: () => query,
+      limit: () => query,
+      order: () => query,
+      update: () => query,
+      upsert: () => query,
+      maybeSingle: offlineResult,
+      single: offlineResult,
+      then: (resolve, reject) => offlineResult().then(resolve, reject),
+      catch: (reject) => offlineResult().catch(reject)
+    };
+    return query;
+  };
+
+  return {
+    __offline: true,
+    from: () => createQuery(),
+    channel: () => {
+      const channel = {
+        on: () => channel,
+        subscribe: () => channel
+      };
+      return channel;
+    },
+    removeChannel: () => {}
+  };
+}
+
+let supabase = createOfflineSupabaseClient();
+
+import('../p/js/supabaseClient.js')
+  .then((module) => {
+    if (module?.supabase) {
+      supabase = module.supabase;
+      if (session?.user) {
+        restoreLoginState().catch(() => {});
+      }
+    }
+  })
+  .catch((error) => {
+    console.warn("Supabase 客户端加载失败，已启用本地离线模式:", error);
+  });
 
 let session = null;
 const PROFILE_META_ID = "__xixi_user_profile__";
@@ -1445,9 +1535,9 @@ async function checkLogin(options = {}) {
           const payload = decodeJwtPayload(token);
           if (payload) {
             console.log("JWT payload:", payload);
-            const uid = payload.sub || payload.id || payload.user_id;
+            user = normalizeStoredUser(user, payload);
 
-            if (!uid) {
+            if (!user?.id) {
               console.warn("⚠️ token里没有user id");
               if (expectedVersion == null || !isRestoreStale(expectedVersion)) {
                 setSession(null);
@@ -1459,14 +1549,14 @@ async function checkLogin(options = {}) {
               return;
             }
 
-            user = {
-              id: uid,
-              email: payload.email || payload.user_email || payload.mail || (user && user.email) || "未知用户"
-            };
             localStorage.setItem("user", JSON.stringify(user));
           } else {
             console.warn("JWT解析失败（base64url 解码不通过）");
           }
+        } else {
+          const payload = decodeJwtPayload(token);
+          user = normalizeStoredUser(user, payload) || user;
+          localStorage.setItem("user", JSON.stringify(user));
         }
 
         if (expectedVersion != null && isRestoreStale(expectedVersion)) return;
@@ -1572,9 +1662,8 @@ if (!user.id) {
   try {
     const token = localStorage.getItem("token");
     const payload = token ? decodeJwtPayload(token) : null;
-    if (payload) {
-      user.id = payload.sub || payload.id || payload.user_id;
-    }
+    const normalizedUser = normalizeStoredUser(user, payload);
+    if (normalizedUser) Object.assign(user, normalizedUser);
   } catch {}
 }
 
