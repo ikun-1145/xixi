@@ -197,20 +197,51 @@ if (isIOS && isSafariBrowser && window.navigator.standalone !== true && !hideTip
   });
 }
 // ⚠️ VDS 登录需要配合 /vds-callback.html 页面处理回调
+
+// ===== ⭐ JWT 解码（base64url 安全版）=====
+// JWT 的 payload 是 base64url 编码（用 - _ 替代 + /，且不带 = 补位），
+// 直接丢给 atob() 大概率抛异常。login.html 的“已登录守卫”一直做了转换，
+// 但这里此前没做——导致登录后回到 ai.html 时 checkLogin() 解析不出 user.id，
+// 被误判为未登录。所有 JWT 解析统一走这个函数。
+function decodeJwtPayload(tk) {
+  try {
+    let b64 = tk.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
+    while (b64.length % 4) b64 += "=";
+    return JSON.parse(atob(b64));
+  } catch (e) {
+    return null;
+  }
+}
+
+// ===== ⭐ 登录跳转：统一改为独立登录页 login.html（携带来源页，登录后自动返回）=====
+function goToLogin() {
+  // ⭐ 关键修复：跳转前必须清掉本地残留的 token/user。
+  //    login.html 头部有一个“已登录守卫”——只要 localStorage 里存在一个
+  //    未过期的 token，就会立即把用户弹回来源页（return 参数指向的页面）。
+  //    如果这里不清掉，就会出现“点击登录却又被弹回 ai.html 原地”的现象。
+  //    我们能走到这里，说明本地会话在 ai.html 侧已经被判定为不可用，
+  //    所以直接清空是安全的，能保证真正进入登录表单。
+  try {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+  } catch (e) {}
+  location.href = "login.html?return=ai.html";
+}
+window.goToLogin = goToLogin;
+// 兼容旧调用点（如 ai/user-menu.js）：showLoginPrompt 现在直接跳转到 login.html
+window.showLoginPrompt = goToLogin;
+
 // ===== ⭐ 全局API封装（使用本地token）=====
 async function apiFetch(body, _retried = false) {
   let token = localStorage.getItem("token");
 
-  // ⭐ 过期检测 + 自动续期
+  // ⭐ 过期检测 + 自动续期（base64url 安全解析）
   function isExpired(tk) {
-    try {
-      const payload = JSON.parse(atob(tk.split(".")[1]));
-      if (!payload.exp) return false;
-      // 仅提前5秒判断过期，避免误杀
-      return payload.exp * 1000 < Date.now() + 5000;
-    } catch {
-      return true;
-    }
+    const payload = decodeJwtPayload(tk);
+    if (!payload) return true;
+    if (!payload.exp) return false;
+    // 仅提前5秒判断过期，避免误杀
+    return payload.exp * 1000 < Date.now() + 5000;
   }
 
   async function refreshToken() {
@@ -280,7 +311,7 @@ async function apiFetch(body, _retried = false) {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     alert("登录已过期，请重新登录");
-    showLoginPrompt();
+    goToLogin();
     return null;
   }
 
@@ -289,7 +320,7 @@ async function apiFetch(body, _retried = false) {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     alert("登录已过期，请重新登录");
-    showLoginPrompt();
+    goToLogin();
     return null;
   }
 
@@ -580,9 +611,7 @@ async function requireLoginForAction() {
 
   if (session && session.user) return true;
 
-  const old = document.getElementById("loginModal");
-  if (old) old.remove();
-  showLoginPrompt();
+  goToLogin();
   return false;
 }
 
@@ -649,6 +678,15 @@ item.style.borderRadius = "12px";
 }
 
 import { supabase } from '../p/js/supabaseClient.js';
+// ⭐ Sunland AI Provider 框架（Stage 3.5-3.7）：ai.html 只通过 providerRegistry
+// 统一接口与各 Provider 通信；DeepSeek 现有逻辑保持不变，只有新增的 Sunland
+// 分支会用到这个 registry。
+import { createProviderRegistry } from './providers/registry.js';
+import { migrateLegacyConversation } from './providers/conversation.js';
+
+// `apiFetch` is a hoisted function declaration (defined below), so it's
+// already safely referenceable here at module-eval time.
+const providerRegistry = createProviderRegistry({ sendRequest: apiFetch });
 
 let session = null;
 const PROFILE_META_ID = "__xixi_user_profile__";
@@ -943,6 +981,15 @@ function updateModelUI() {
   const el = document.getElementById("modelSelector");
   if (!el) return;
 
+  // ⭐ Sunland AI: Provider 一旦绑定即锁定显示，不再跟随 currentModel。
+  const c = conversations.find(x => x.id === currentId);
+  if (c && c.provider === "sunland") {
+    el.innerHTML = '<img src="p/studio.png" style="width:20px;height:20px;border-radius:5px;flex-shrink:0;">Sunland';
+    el.classList.add("locked");
+    return;
+  }
+  el.classList.remove("locked");
+
   if (currentModel === "deepseek-v4-pro") {
     el.innerText = "Pro";
   } else {
@@ -978,8 +1025,35 @@ function updateModelUI() {
   document.querySelectorAll(".model-item").forEach(item => {
     item.onclick = () => {
       const model = item.dataset.model;
+      const c = conversations.find(x => x.id === currentId);
+      // ⭐ Provider 一旦有过对话（history.length > 1）即锁定，禁止切换，
+      // 与现有 "history[0] 是 system 消息，真正对话从 length>1 开始" 的
+      // 约定一致。
+      const hasStarted = !!(c && c.history && c.history.length > 1);
 
-      // ⭐ Pro权限
+      // ⭐ Sunland AI（新增分支，完全独立于下面 DeepSeek 的现有逻辑）
+      if (model === "sunland") {
+        if (hasStarted && c.provider !== "sunland") {
+          showToast("对话已开始，无法切换 AI，请新建对话");
+          modelMenu.classList.remove("show");
+          return;
+        }
+        if (c) {
+          c.provider = "sunland";
+          c.model = "frost";
+          saveConversations();
+        }
+        updateModelUI();
+        modelMenu.classList.remove("show");
+        return;
+      }
+      if (hasStarted && c.provider === "sunland") {
+        showToast("当前对话使用的是 Sunland AI，无法切换，请新建对话");
+        modelMenu.classList.remove("show");
+        return;
+      }
+
+      // ⭐ Pro权限（DeepSeek 现有逻辑，不变）
       if (model === "pro" && !isActivated) {
         showProModelModal();
         return;
@@ -989,6 +1063,13 @@ function updateModelUI() {
         model === "pro"
           ? "deepseek-v4-pro"
           : "deepseek-v4-flash";
+
+      // 🆕 记录这条对话使用的 provider/model（不影响任何既有行为，仅补充字段）
+      if (c) {
+        c.provider = "deepseek";
+        c.model = currentModel;
+        saveConversations();
+      }
 
       updateModelUI();
       modelMenu.classList.remove("show");
@@ -1342,13 +1423,11 @@ async function checkLogin(options = {}) {
     try {
       const token = localStorage.getItem("token");
       if (token) {
-        try {
-          const payload = JSON.parse(atob(token.split(".")[1]));
-          if (payload.exp && payload.exp * 1000 < Date.now()) {
-            console.warn("token 启动时已过期（交给 refresh 处理）");
-          }
-        } catch (e) {
-          console.warn("token 解析失败:", e);
+        const payload = decodeJwtPayload(token);
+        if (!payload) {
+          console.warn("token 解析失败（非法或损坏的 JWT）");
+        } else if (payload.exp && payload.exp * 1000 < Date.now()) {
+          console.warn("token 启动时已过期（交给 refresh 处理）");
         }
       }
       const userStr = localStorage.getItem("user");
@@ -1363,8 +1442,8 @@ async function checkLogin(options = {}) {
         }
 
         if (!user || !user.id) {
-          try {
-            const payload = JSON.parse(atob(token.split(".")[1]));
+          const payload = decodeJwtPayload(token);
+          if (payload) {
             console.log("JWT payload:", payload);
             const uid = payload.sub || payload.id || payload.user_id;
 
@@ -1382,11 +1461,11 @@ async function checkLogin(options = {}) {
 
             user = {
               id: uid,
-              email: payload.email || payload.user_email || payload.mail || "未知用户"
+              email: payload.email || payload.user_email || payload.mail || (user && user.email) || "未知用户"
             };
             localStorage.setItem("user", JSON.stringify(user));
-          } catch (e) {
-            console.warn("JWT解析失败:", e);
+          } else {
+            console.warn("JWT解析失败（base64url 解码不通过）");
           }
         }
 
@@ -1420,7 +1499,9 @@ async function checkLogin(options = {}) {
         if (local) {
           try {
             const parsed = JSON.parse(local);
-            conversations = Array.isArray(parsed) ? parsed : [];
+            // 🆕 迁移旧数据：老会话没有 provider 字段，统一补齐为 "deepseek"
+            // （在 Stage 3.6 之前，这本来就是唯一存在过的 provider）。
+            conversations = (Array.isArray(parsed) ? parsed : []).map(migrateLegacyConversation);
           } catch {
             conversations = [];
           }
@@ -1486,12 +1567,12 @@ if (!sessionReady) return; // ⭐ 防止初始化乱刷
 }
 
   const user = session.user;
-  // ⭐ 兜底修复 user.id 丢失问题
+  // ⭐ 兜底修复 user.id 丢失问题（base64url 安全解析）
 if (!user.id) {
   try {
     const token = localStorage.getItem("token");
-    if (token) {
-      const payload = JSON.parse(atob(token.split(".")[1]));
+    const payload = token ? decodeJwtPayload(token) : null;
+    if (payload) {
       user.id = payload.sub || payload.id || payload.user_id;
     }
   } catch {}
@@ -1523,392 +1604,6 @@ if (user) console.log("🔥 当前 user:", user);
 function renderUser() {
   scheduleRenderUser();
 }
-
-
-  function showLoginPrompt() {
-    if (document.getElementById("loginModal")) return;
-
-    const modal = document.createElement("div");
-    modal.id = "loginModal";
-    modal.className = "modal active";
-
-    modal.innerHTML = `
-    <div class="modal-content">
-      <span class="close">×</span>
-      <h2 style="margin-bottom:0.5rem;">登录霜蓝 AI</h2>
-      <p style="font-size:12px;color:#666;margin-bottom:10px;">
-        输入邮箱获取验证码，无需注册
-      </p>
-
-      <input id="emailInput" placeholder="输入邮箱" style="
-        width:100%;padding:0.7rem;border-radius:12px;
-        border:1px solid rgba(0,0,0,0.12);margin-bottom:8px;
-      ">
-
-      <div style="display:flex;gap:6px;margin-bottom:8px;">
-        <input id="codeInput" placeholder="验证码" style="
-          flex:1;padding:0.7rem;border-radius:12px;
-          border:1px solid rgba(0,0,0,0.12);
-        ">
-        <button id="sendCodeBtn" style="width:110px;">
-          发送
-        </button>
-      </div>
-
-      <p style="font-size:11px;color:#999;margin-bottom:6px;">
-        验证码将发送至你的邮箱，仅用于登录
-      </p>
-
-      <div style="display:flex;align-items:flex-start;gap:6px;margin:8px 0 6px;text-align:left;font-size:11px;color:#666;">
-        <input type="checkbox" id="agreeCheck" style="margin-top:2px;cursor:pointer;">
-        <div>
-          我已阅读并同意
-          <a href="xukexieyi.html" target="_blank" style="color:#22d3ee;">《用户协议》</a>
-          和
-          <a href="privacy.html" target="_blank" style="color:#22d3ee;">《隐私政策》</a>
-        </div>
-      </div>
-      <button id="loginBtn" class="oauth-btn">登录</button>
-      <p style="font-size:11px;color:#999;margin-top:10px;line-height:1.5;">
-        登录即代表您同意
-        <a href="xukexieyi.html" target="_blank" style="color:#22d3ee;">《用户协议》</a>
-        和
-        <a href="privacy.html" target="_blank" style="color:#22d3ee;">《隐私政策》</a>
-      </p>
-
-      <p id="loginMsg" style="
-        font-size:12px;color:#ef4444;height:16px;margin-top:6px;
-      "></p>
-    </div>
-    `;
-
-    document.body.appendChild(modal);
-    document.body.style.overflow = "hidden";
-
-    // ===== GeeTest 预加载（模态框打开时即初始化，减少等待）=====
-    function _geetestErrMsg(err, fallback) {
-      if (!err) return fallback;
-      return err.msg || err.desc || err.error_code || fallback;
-    }
-
-    // 动态确保 gt4.js 已加载：不依赖 ai.html 中的 <script> 标签，
-    // 规避正式域名 HTML 被 CDN/浏览器缓存、脚本缺失导致 initGeetest4 未定义的问题。
-    function loadGeetestScript() {
-      if (typeof initGeetest4 === "function") return Promise.resolve();
-      if (window.__geetestLoading) return window.__geetestLoading;
-      window.__geetestLoading = new Promise((resolve, reject) => {
-        const s = document.createElement("script");
-        s.src = "https://static.geetest.com/v4/gt4.js";
-        s.async = true;
-        s.onload = () => {
-          if (typeof initGeetest4 === "function") resolve();
-          else reject(new Error("验证脚本加载异常，请刷新重试"));
-        };
-        s.onerror = () => {
-          window.__geetestLoading = null; // 允许下次重试
-          reject(new Error("验证脚本加载失败，请检查网络或稍后重试"));
-        };
-        document.head.appendChild(s);
-      });
-      return window.__geetestLoading;
-    }
-
-    function _newCaptchaPromise() {
-      return loadGeetestScript().then(() => new Promise((resolve, reject) => {
-        initGeetest4({
-          captchaId: "ad3a8126afe716ccd4541f35d428071e",
-          product: "bind"
-        }, function (obj) {
-          obj.onReady(() => resolve(obj));
-          obj.onError((err) => {
-            console.error("GeeTest 初始化失败:", err);
-            reject(new Error(_geetestErrMsg(err, "人机验证加载失败")));
-          });
-        });
-      }));
-    }
-    let _captchaPromise = _newCaptchaPromise();
-    // 防止预加载阶段 promise 被拒绝时产生未捕获异常
-    _captchaPromise.catch(() => {});
-
-    // ===== GeeTest 验证函数 =====
-    async function runCaptcha() {
-      const captchaObj = await _captchaPromise;
-      // ⭐ 关键修复：将验证码挂到 body，避免被 modal / transform 影响
-      if (captchaObj && typeof captchaObj.appendTo === "function") {
-        captchaObj.appendTo(document.body);
-        // 更激进的修复，确保验证码浮层完全盖住所有内容
-        setTimeout(() => {
-          const geetest = document.querySelector(".geetest_holder");
-          if (geetest) {
-            geetest.style.position = "fixed";
-            geetest.style.zIndex = "999999999"; // ⭐ 提升到极限层级
-            geetest.style.left = "50%";
-            geetest.style.top = "50%";
-            geetest.style.transform = "translate(-50%, -50%)";
-
-            // ⭐ 关键：脱离父层 stacking context
-            geetest.style.pointerEvents = "auto";
-
-            // ⭐ 强制插到 body 最后（盖过所有遮罩）
-            document.body.appendChild(geetest);
-          }
-
-          // ⭐ 把 modal 的遮罩压到下面
-          const modal = document.querySelector(".modal");
-          if (modal) {
-            modal.style.zIndex = "1000";
-          }
-        }, 0);
-      }
-      return new Promise((resolve, reject) => {
-        captchaObj.onSuccess(function () {
-          const result = captchaObj.getValidate();
-          _captchaPromise = _newCaptchaPromise();
-          _captchaPromise.catch(() => {});
-          resolve(JSON.stringify(result));
-        });
-        captchaObj.onError(function (err) {
-          console.error("GeeTest 验证失败:", err);
-          _captchaPromise = _newCaptchaPromise();
-          _captchaPromise.catch(() => {});
-          reject(new Error(_geetestErrMsg(err, "验证失败")));
-        });
-        captchaObj.showCaptcha();
-      });
-    }
-
-    const emailInput = modal.querySelector("#emailInput");
-    const codeInput = modal.querySelector("#codeInput");
-    const sendBtn = modal.querySelector("#sendCodeBtn");
-    const loginBtn = modal.querySelector("#loginBtn");
-    const msg = modal.querySelector("#loginMsg");
-    const agreeCheck = modal.querySelector("#agreeCheck");
-    loginBtn.disabled = true;
-    loginBtn.style.opacity = "0.6";
-
-    agreeCheck.onchange = () => {
-      loginBtn.disabled = !agreeCheck.checked;
-      loginBtn.style.opacity = agreeCheck.checked ? "1" : "0.6";
-    };
-
-    let cooldown = 0;
-    let timer = null;
-
-    // ===== 发送验证码 =====
-    sendBtn.onclick = async () => {
-      if (cooldown > 0) return;
-
-      const email = emailInput.value.trim();
-
-      if (!email) {
-        msg.innerText = "请输入邮箱";
-        return;
-      }
-
-      if (!/^\S+@\S+\.\S+$/.test(email)) {
-        msg.innerText = "邮箱格式错误";
-        return;
-      }
-
-      msg.innerText = "人机验证加载中...";
-      sendBtn.disabled = true;
-      let token;
-      try {
-        token = await runCaptcha();
-        msg.innerText = "";
-      } catch (e) {
-        msg.innerText = e.message;
-        sendBtn.disabled = false;
-        return;
-      }
-      sendBtn.disabled = false;
-
-      try {
-        msg.innerText = "";
-        sendBtn.disabled = true;
-        sendBtn.innerText = "发送中...";
-
-        const res = await fetch("https://api.sunland.dev/send-code", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json"
-          },
-          body: JSON.stringify({
-            email,
-            token: token
-          })
-        });
-
-        const data = await res.json().catch(() => ({}));
-
-        console.log("send-code 返回:", res.status, data);
-
-        if (!res.ok) {
-          let errMsg = "服务器异常";
-          try {
-            errMsg = data.error || errMsg;
-          } catch {}
-          throw new Error(errMsg + ` (状态码 ${res.status})`);
-        }
-
-        if (data.error) {
-          throw new Error(data.error);
-        }
-
-        msg.innerText = "验证码已发送（有效期约5分钟）";
-
-        // 开始倒计时
-        cooldown = 60;
-        sendBtn.innerText = "60s";
-
-        timer = setInterval(() => {
-          cooldown--;
-          sendBtn.innerText = cooldown + "s";
-
-          if (cooldown <= 0) {
-            clearInterval(timer);
-            sendBtn.innerText = "发送";
-            sendBtn.disabled = false;
-          }
-        }, 1000);
-
-      } catch (e) {
-        console.error(e);
-        if (e.message === "Failed to fetch") {
-          msg.innerText = "网络连接失败（API不可达）";
-        } else {
-          showError("发送验证码失败", {
-  detail: e.message
-});
-        }
-
-        // 失败也恢复按钮
-        sendBtn.disabled = false;
-        sendBtn.innerText = "发送";
-      }
-    };
-
-    // ===== 登录 =====
-    loginBtn.onclick = async () => {
-      if (!agreeCheck.checked) {
-        msg.innerText = "请先同意用户协议";
-        return;
-      }
-      const email = emailInput.value.trim();
-      const code = codeInput.value.trim();
-
-      if (!/^\d{6}$/.test(code)) {
-        msg.innerText = "验证码格式错误";
-        return;
-      }
-
-      try {
-        const res = await fetch("https://api.sunland.dev/verify-code", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email,
-            code
-          })
-        });
-
-        let data;
-        try {
-          data = await res.json();
-        } catch (e) {
-          console.error("JSON解析失败:", e);
-          showError("服务器返回异常", {
-  detail: "接口未返回JSON"
-});
-          return;
-        }
-
-        console.log("verify-code 返回:", res.status, data);
-
-        if (!res.ok) {
-          let errMsg = data?.error || "服务器异常";
-
-          if (res.status === 400) {
-            msg.innerText = "请求错误：" + errMsg;
-          } else if (res.status === 401) {
-            showError("验证码错误或已过期", {
-  code: res.status,
-  detail: data?.error
-});
-          } else if (res.status === 429) {
-            msg.innerText = "请求过于频繁，请稍后再试";
-          } else if (res.status >= 500) {
-            showError("服务器开小差了", {
-  code: res.status,
-  detail: data?.error
-});
-          } else {
-            msg.innerText = errMsg + ` (${res.status})`;
-          }
-
-          console.error("登录接口错误:", res.status, data);
-          return;
-        }
-
-        if (!data.token) {
-          msg.innerText = data.error || "验证码错误或已过期";
-          return;
-        }
-
-        localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
-
-        msg.innerText = "登录成功";
-
-        setTimeout(async () => {
-  modal.remove();
-  try {
-    const token = localStorage.getItem("token");
-    const user = JSON.parse(localStorage.getItem("user") || "null");
-    if (token && user) {
-      setSession({ user });
-      renderUser();
-      await syncFromCloud();
-      if (conversations.length) loadChat(conversations[0].id);
-      else createNewChat();
-      checkActivation().catch(() => {});
-    }
-  } catch(e) {
-    console.error("登录初始化失败:", e);
-  }
-}, 800);
-
-      } catch (e) {
-        console.error("登录异常:", e);
-
-        if (e.message && e.message.includes("fetch")) {
-          msg.innerText = "网络异常（可能被拦截或断网）";
-        } else if (e.message && e.message.includes("验证")) {
-          msg.innerText = "人机验证失效，请重新验证";
-        } else if (e.message && e.message.includes("timeout")) {
-          msg.innerText = "请求超时，请重试";
-        } else {
-          showError("登录异常", {
-  detail: e.message
-});
-        }
-      }
-    };
-
-    function closeModal() {
-  modal.classList.add("closing");
-  document.body.style.overflow = "";
-  setTimeout(() => modal.remove(), 200);
-}
-
-    modal.querySelector(".close").onclick = closeModal;
-    modal.onclick = (e) => {
-      if (e.target === modal) closeModal();
-    };
-  }
-
-window.showLoginPrompt = showLoginPrompt;
 
 function showLimitModal() {
   if (document.getElementById("limitModal")) return;
@@ -2349,7 +2044,7 @@ async function syncFromCloud() {
     }
 
     if (data && data.data) {
-      const cloudConversations = normalizeCloudData(data.data);
+      const cloudConversations = normalizeCloudData(data.data).map(migrateLegacyConversation);
 // ⭐兼容旧数据（没有updatedAt）
 conversations.forEach(c => {
   if (!c.updatedAt) c.updatedAt = c.id;
@@ -2455,7 +2150,7 @@ function startRealtime() {
       (payload) => {
         console.log("Realtime:", payload);
 
-        const cloudData = normalizeCloudData(payload.new?.data);
+        const cloudData = normalizeCloudData(payload.new?.data)?.map(migrateLegacyConversation);
         if (!cloudData) return;
         scheduleRenderUser();
 
@@ -2538,8 +2233,15 @@ function createNewChat() {
 
   const newChat = {
     id,
+    // 🆕 默认绑定 DeepSeek（与改造前完全一致的默认行为）；用户可以在对话
+    // 还是空的时候，通过右下角模型选择器切到 Sunland AI —— 一旦发出第一
+    // 条消息，provider 就锁定，需要新建对话才能更换。
+    provider: "deepseek",
+    model: currentModel,
+    userId: session?.user?.id ?? null,
     title: "新对话",
     history: [history[0]],
+    createdAt: Date.now(),
     updatedAt: Date.now()
   };
 
@@ -2552,6 +2254,7 @@ function createNewChat() {
   chatInner.innerHTML = "";
   saveConversations();
   renderChatList();
+  updateModelUI();
   closeSidebarForMobile();
 }
 
@@ -2592,6 +2295,7 @@ function loadChat(id) {
 
   // ⭐ 重新渲染侧边栏（更新选中高亮）
   renderChatList();
+  updateModelUI();
 }
 input.addEventListener("input", () => {
   input.style.height = "auto";
@@ -2809,6 +2513,44 @@ function refuseModeratedInput(result) {
   if (!window._isMobile) input.focus();
 }
 
+/**
+ * Sunland AI 的发送路径：完全在浏览器本地运行（符号推理，无 LLM、无网络
+ * 请求），通过统一的 providerRegistry 调用，不复用/不触碰 DeepSeek 的
+ * apiFetch/SSE 逻辑。`history`（本对话的聊天记录）与 Sunland 的知识图谱
+ * （跨对话共享的"大脑"）是两回事：这里只把最新一句用户输入交给引擎。
+ */
+async function sendSunlandMessage({ bubble, conversation }) {
+  try {
+    if (bubble) bubble.innerHTML = "";
+    const provider = providerRegistry.get("sunland");
+    const result = await provider.send({
+      conversation,
+      messages: history,
+      onDelta: (text) => {
+        if (bubble) bubble.innerHTML = marked.parse(text);
+      },
+    });
+
+    history.push({ role: "assistant", content: result.content });
+
+    if (currentId) {
+      const c = conversations.find(x => x.id === currentId);
+      if (c) {
+        c.history = [...history];
+        c.updatedAt = Date.now();
+        conversations.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      }
+      saveConversations();
+      renderChatList();
+    }
+  } catch (err) {
+    console.error("Sunland AI 出错:", err);
+    if (bubble) {
+      bubble.innerHTML = '<small style="color:#999;">Sunland AI 暂时出了点问题，请稍后重试</small>';
+    }
+  }
+}
+
 async function send() {
   if (pendingFiles.length > 0) {
   showGlobalLoading(); // ⭐ 上传才显示
@@ -2930,6 +2672,19 @@ async function send() {
   const lastMsg = chatInner.lastElementChild;
   const bubble = lastMsg ? lastMsg.querySelector(".bubble") : null;
 
+  // ⭐ Sunland AI：完全独立的最小路径，浏览器本地运行，不进入下面 DeepSeek
+  // 的 apiFetch/SSE 逻辑，两者互不影响。
+  const activeConversation = conversations.find(x => x.id === currentId);
+  if (activeConversation && activeConversation.provider === "sunland") {
+    await sendSunlandMessage({ bubble, conversation: activeConversation });
+    sendingLock = false;
+    hideGlobalLoading();
+    document.body.classList.remove("thinking-mode");
+    input.readOnly = false;
+    if (!window._isMobile) input.focus();
+    return;
+  }
+
   // ⭐ 确保思考动画至少显示一段时间（避免瞬间跳结果）
   const minThinkingTime = 500; // ms
   const thinkingStart = Date.now();
@@ -2965,7 +2720,7 @@ isStreaming = true;
     const token = localStorage.getItem("token");
     if (!token) {
       alert("登录状态失效，请重新登录");
-      showLoginPrompt();
+      goToLogin();
       sendingLock = false;
       hideGlobalLoading();
       return;

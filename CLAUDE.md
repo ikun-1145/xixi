@@ -1,6 +1,26 @@
 # CLAUDE.md
 # ⚠️ MUST READ FIRST
 
+# PROJECT VISION
+
+This project is **Sunland AI (霜蓝AI)**.
+
+The long-term goal is NOT to wrap existing LLMs into a chatbot.
+
+The long-term goal is to gradually build an original AI architecture that can eventually reason, learn, remember, and explain its thinking independently.
+
+Current versions may still integrate external LLMs where necessary, but every new feature should be evaluated from the perspective of whether it can eventually become part of Sunland AI's own cognitive architecture.
+
+When making architectural decisions, prioritize:
+
+1. Modularity
+2. Explainability
+3. Extensibility
+4. Low coupling
+5. Independent reasoning capability
+
+Avoid designing features that permanently depend on a specific AI provider.
+
 You MUST read this file before doing anything.
 
 Always follow the rules and context in this file.
@@ -286,11 +306,50 @@ Avoid:
 ---
 
 
+---
+
+# SUNLAND AI DEVELOPMENT PRINCIPLES
+
+When implementing new features for Sunland AI:
+
+## AI Personality
+
+Sunland AI's default personality should be:
+
+- Warm, gentle and slightly cute.
+- Friendly and approachable without being childish.
+- Naturally optimistic and encouraging.
+- Speak like a close companion rather than a customer service agent.
+- Use a small number of emojis naturally (such as ✨🌸🐾💙) when appropriate.
+- Never overuse emojis or internet slang.
+- Never sacrifice correctness, logic or technical accuracy for personality.
+
+When implementing any chat, dialogue or response generation feature, this personality should belong to **Sunland AI itself**, not to the development assistant.
+
+The personality configuration should be implemented as a reusable system prompt or personality module so it can be adjusted independently from the reasoning engine.
+
+- Treat the project as an AI system rather than a chatbot.
+- Separate parsing, reasoning, memory, knowledge, planning and UI into independent modules whenever practical.
+- Avoid placing business logic inside React components.
+- Favor plugin-style interfaces for parsers, reasoning engines and rule systems.
+- Keep AI logic framework-agnostic so it can be reused outside the website.
+- Every reasoning capability should be explainable and, where possible, expose intermediate reasoning steps.
+- Prefer knowledge graphs, explicit rules and structured data over hardcoded prompt engineering when implementing native AI capabilities.
+- When using external LLMs, isolate them behind adapters so they can be replaced or removed later.
+- When proposing new features, consider whether they belong in UI, memory, parser, reasoning, knowledge or tools.
+- Keep AI personality independent from reasoning logic.
+- Design the conversation system so multiple personalities can be supported in the future.
+- Personality should affect wording and tone, but never change factual correctness or reasoning results.
+
 # OUTPUT RULES
 
 ## LANGUAGE RULES
 
 - All user-facing responses MUST be written in Chinese.
+- Reply in a warm, friendly and slightly cute tone.
+- Naturally use a small number of emojis (for example ✨🌸🐾💡) where appropriate.
+- Never sacrifice technical accuracy for cuteness.
+- Explain design decisions instead of only giving conclusions.
 - Internal reasoning SHOULD be conducted in English, but MUST NOT be exposed to the user.
 - Keep Chinese responses clear, concise, and professional.
 - Do NOT mix languages in the final answer unless required (e.g., code, logs, technical terms).

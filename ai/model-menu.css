@@ -37,6 +37,25 @@ button {
     border: 1px solid rgba(255,255,255,0.15);
   }
 
+  /* ===== Sunland AI 锁定态（对话已开始，Provider 不可再切换） ===== */
+  #modelSelector.locked {
+    background: linear-gradient(135deg, rgba(99,102,241,0.14), rgba(59,130,246,0.14));
+    color:#4f46e5;
+    border:1px solid rgba(99,102,241,0.3);
+    cursor: default;
+  }
+  #modelSelector.locked::before {
+    content:"";
+  }
+  #modelSelector.locked:hover {
+    box-shadow: none;
+  }
+  body.night #modelSelector.locked {
+    background: rgba(99,102,241,0.18) !important;
+    color: #a5b4fc !important;
+    border: 1px solid rgba(165,180,252,0.25);
+  }
+
   /* ===== 模型弹窗（白天） ===== */
   #modelMenu {
     background: rgba(255,255,255,0.96) !important;
@@ -90,3 +109,7 @@ button {
 
   body.night .model-item.flash { color:#38bdf8; }
   body.night .model-item.pro { color:#3eede7; }
+
+  /* Sunland AI 颜色强化 */
+  .model-item.sunland { color:#4f46e5; font-weight:600; }
+  body.night .model-item.sunland { color:#a5b4fc; }

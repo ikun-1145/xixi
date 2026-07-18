@@ -15,10 +15,11 @@ if (avatar && menu) {
     window.__cfWidgetId = window.__cfWidgetId || null;
     // ⭐ 更可靠：用 session 判断（避免 localStorage 不一致）
     if (!window.session || !window.session.user) {
-      if (typeof window.showLoginPrompt === "function") {
-        window.showLoginPrompt();
+      if (typeof window.goToLogin === "function") {
+        window.goToLogin();
       } else {
-        console.error("showLoginPrompt 未定义");
+        // 兜底：直接跳转登录页并携带来源页
+        location.href = "login.html?return=ai.html";
       }
       return;
     }
@@ -27,11 +28,7 @@ if (avatar && menu) {
   };
 
   document.addEventListener("click", (e) => {
-    if (
-      !avatar.contains(e.target) &&
-      !menu.contains(e.target) &&
-      !document.getElementById("loginModal")
-    ) {
+    if (!avatar.contains(e.target) && !menu.contains(e.target)) {
       menu.classList.remove("show");
     }
   });

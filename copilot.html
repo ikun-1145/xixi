@@ -685,12 +685,22 @@ const FN_URL = SUPABASE_URL + '/functions/v1/comment-copilot';
 const REFRESH_URL = 'https://api.sunland.dev/refresh';
 
 /* ---------- 登录 token 处理（镜像 ai/app.js 的逻辑）---------- */
-function isExpired(tk){
+// JWT payload 是 base64url 编码（用 - _ 替代 + /，且无 = 补位），
+// 直接 atob() 遇到这些字符会抛异常。之前捕获后 fallback 为“已过期”，
+// 触发一次多余的 refresh 请求。这里改为与 ai/app.js / login.html 一致的
+// base64url 安全解析。
+function decodeJwtPayload(tk){
   try{
-    const p = JSON.parse(atob(tk.split('.')[1]));
-    if(!p.exp) return false;
-    return p.exp * 1000 < Date.now() + 5000;
-  }catch{ return true; }
+    let b64 = tk.split('.')[1].replace(/-/g, '+').replace(/_/g, '/');
+    while (b64.length % 4) b64 += '=';
+    return JSON.parse(atob(b64));
+  }catch{ return null; }
+}
+function isExpired(tk){
+  const p = decodeJwtPayload(tk);
+  if(!p) return true;
+  if(!p.exp) return false;
+  return p.exp * 1000 < Date.now() + 5000;
 }
 async function refreshToken(){
   const old = localStorage.getItem('token');

@@ -51,17 +51,47 @@ function getPostLoginTarget() {
 function isTokenUsable(tk) {
   if (!tk) return false;
   try {
-    const payload = JSON.parse(atob(tk.split(".")[1].replace(/-/g, "+").replace(/_/g, "/")));
-    if (!payload || !payload.exp) return true; // 无 exp 字段则视为长期有效，交由后端判定
+    const payload = decodeJwtPayload(tk);
+    if (!payload) return String(tk).indexOf(".") === -1; // 非 JWT token 交由后端判定；损坏 JWT 视为无效
+    if (!payload.exp) return true; // 无 exp 字段则视为长期有效，交由后端判定
     return payload.exp * 1000 > Date.now() + 5000;
   } catch (e) {
     return false; // 解析失败视为无效 token
   }
 }
+
+function decodeJwtPayload(tk) {
+  try {
+    let b64 = String(tk || "").split(".")[1];
+    if (!b64) return null;
+    b64 = b64.replace(/-/g, "+").replace(/_/g, "/");
+    while (b64.length % 4) b64 += "=";
+    return JSON.parse(atob(b64));
+  } catch (e) {
+    return null;
+  }
+}
+
+function normalizeLoginUser(data, fallbackEmail) {
+  const raw = data && typeof data.user === "object" && data.user !== null ? data.user : {};
+  const payload = data?.token ? decodeJwtPayload(data.token) : null;
+  const user = { ...raw };
+
+  const id = user.id || user.user_id || user.sub || payload?.sub || payload?.id || payload?.user_id;
+  const email = user.email || user.user_email || user.mail || payload?.email || payload?.user_email || payload?.mail || fallbackEmail;
+
+  if (id) user.id = id;
+  if (email) user.email = email;
+
+  return Object.keys(user).length ? user : null;
+}
+
 (function () {
   try {
     const tk = localStorage.getItem("token");
     if (tk && isTokenUsable(tk)) {
+      const user = normalizeLoginUser({ token: tk }, "");
+      if (user?.id) localStorage.setItem("user", JSON.stringify(user));
       location.replace(getPostLoginTarget());
     } else if (tk) {
       // 存在但已过期/损坏的 token：清理掉，避免后续任何守卫逻辑再次误判为已登录
@@ -623,7 +653,12 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
         }
 
         localStorage.setItem("token", data.token);
-        localStorage.setItem("user", JSON.stringify(data.user));
+        const loginUser = normalizeLoginUser(data, email);
+        if (loginUser) {
+          localStorage.setItem("user", JSON.stringify(loginUser));
+        } else {
+          localStorage.removeItem("user");
+        }
 
         msg.innerText = "登录成功";
         msg.classList.add("ok"); // 成功提示用绿色

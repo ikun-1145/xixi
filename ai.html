@@ -40,16 +40,69 @@ child-src *;
 <!-- 登录状态守卫：进入 ai.html 时若未登录则跳转 login.html -->
 <script>
 (function () {
+  window.__SUNLAND_AI_AUTH_OK__ = false;
+
+  function redirectToLogin() {
+    location.replace("login.html?return=ai.html");
+  }
+
+  function decodeJwtPayload(tk) {
+    try {
+      var part = String(tk || "").split(".")[1];
+      if (!part) return null;
+      var b64 = part.replace(/-/g, "+").replace(/_/g, "/");
+      while (b64.length % 4) b64 += "=";
+      return JSON.parse(atob(b64));
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function restoreUserFromToken(token) {
+    var user = null;
+
+    try {
+      user = JSON.parse(localStorage.getItem("user") || "null");
+    } catch (e) {
+      try { localStorage.removeItem("user"); } catch (_) {}
+    }
+
+    if (user && user.id) return true;
+
+    // 如果 token 是 JWT，则在 app.js 执行前先用 payload 兜底恢复 user，
+    // 避免登录成功后只有 token、没有 user 时被后续逻辑误判为未登录。
+    if (String(token).indexOf(".") !== -1) {
+      var payload = decodeJwtPayload(token);
+      if (!payload) {
+        try { localStorage.removeItem("token"); } catch (_) {}
+        try { localStorage.removeItem("user"); } catch (_) {}
+        return false;
+      }
+
+      var uid = payload.sub || payload.id || payload.user_id;
+      if (uid) {
+        localStorage.setItem("user", JSON.stringify({
+          id: uid,
+          email: payload.email || payload.user_email || payload.mail || (user && user.email) || "未知用户"
+        }));
+      }
+    }
+
+    return true;
+  }
+
   try {
-    // 仅以 token 是否存在作为是否登录的判断依据。
+    // 以 token 是否存在作为入口判断依据，并在 app.js 加载前尽量恢复 user。
     // ⚠️ 不在此处判断 token 是否过期：app.js 对过期 token 会尝试静默刷新
     //    （即使过期也尝试刷新，不提前删除），过期不等于未登录。
     var token = localStorage.getItem("token");
-    if (!token) {
-      location.replace("login.html");
+    if (!token || !restoreUserFromToken(token)) {
+      redirectToLogin();
+      return;
     }
+    window.__SUNLAND_AI_AUTH_OK__ = true;
   } catch (e) {
-    location.replace("login.html");
+    redirectToLogin();
   }
 })();
 </script>
@@ -185,7 +238,7 @@ child-src *;
 position:absolute;
 left:50%;
 transform:translateX(-50%);
-width:160px;
+width:194px;
 background:rgba(255,255,255,0.95);
 color:#1f2937;
 backdrop-filter:blur(12px);
@@ -202,9 +255,21 @@ z-index:999;
     <img src="p/deepseek.png" style="width:14px;height:14px;margin-right:6px;vertical-align:-2px;">
     DeepSeek V4 Pro
   </div>
+  <div style="height:1px;background:rgba(0,0,0,0.08);margin:6px 2px;"></div>
+  <div class="model-item sunland" data-model="sunland" style="display:flex;align-items:center;">
+    <img src="p/studio.png" style="width:24px;height:24px;margin-right:7px;border-radius:6px;flex-shrink:0;">
+    Sunland
+  </div>
 </div>
 
-<script type="module" src="ai/app.js"></script>
+<script>
+if (window.__SUNLAND_AI_AUTH_OK__) {
+  const appScript = document.createElement("script");
+  appScript.type = "module";
+  appScript.src = "ai/app.js";
+  document.currentScript.after(appScript);
+}
+</script>
 
   
 </div>
