@@ -2096,9 +2096,17 @@ let realtimeSub = null;
 const sendBtn = document.getElementById("sendBtn");
 sendBtn.type = "button"; // 防止被当成提交按钮
 sendBtn.innerText = "↑";
-sendBtn.onclick = (e) => {
-  e.preventDefault();
+let suppressNextSendClick = false;
 
+function handleSendButtonIntent(e, source) {
+  if (e) {
+    e.preventDefault();
+  }
+
+  if (source === "click" && suppressNextSendClick) {
+    suppressNextSendClick = false;
+    return;
+  }
   if (sendingLock) return;
 
   if (window.anime) {
@@ -2111,7 +2119,26 @@ sendBtn.onclick = (e) => {
   }
 
   send();
-};
+}
+
+if (window.PointerEvent) {
+  sendBtn.addEventListener("pointerdown", (e) => {
+    if (e.isPrimary === false) return;
+    if (e.pointerType !== "touch" && e.pointerType !== "pen") return;
+
+    suppressNextSendClick = true;
+    handleSendButtonIntent(e, "pointer");
+  });
+} else {
+  sendBtn.addEventListener("touchstart", (e) => {
+    suppressNextSendClick = true;
+    handleSendButtonIntent(e, "touch");
+  }, { passive: false });
+}
+
+sendBtn.addEventListener("click", (e) => {
+  handleSendButtonIntent(e, "click");
+});
 let lastUserMessage = null;
 
 
