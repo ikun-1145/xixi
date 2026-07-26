@@ -28,6 +28,7 @@
  * never re-derive facts, inspect `Inference.confidence` itself, or decide
  * whether to show Evidence — those decisions have already been made here.
  */
+import type { Relation } from "./knowledge";
 import type { ReasoningResult } from "./reasoning";
 
 /**
@@ -53,6 +54,65 @@ export interface ResponsePlan {
   readonly explanation: string;
 }
 
+export type ClarificationKind =
+  | "ambiguous-intent"
+  | "missing-subject"
+  | "missing-relation"
+  | "missing-object"
+  | "uncertain-name"
+  | "uncertain-teaching"
+  | "conflicting-candidates";
+
+export type ClarificationSlot =
+  | "subject"
+  | "relation"
+  | "object"
+  | "name"
+  | "intent";
+
+export type ClarificationCandidateLabel =
+  | "greeting"
+  | "thanks"
+  | "farewell"
+  | "identity"
+  | "recall-name"
+  | "query"
+  | "remember-name"
+  | "teaching"
+  | "unknown";
+
+export type ClarificationReasonCategory =
+  | "missing-information"
+  | "ambiguous"
+  | "uncertain";
+
+/**
+ * Privacy-safe hand-off from Semantic Understanding to Response Planner.
+ *
+ * It deliberately excludes candidate ids, raw input, confidence, producer,
+ * diagnostics and semantic reason codes. Those are useful for internal
+ * comparison only and must never become Personality input.
+ */
+export interface ClarificationContext {
+  readonly clarificationKind: ClarificationKind;
+  readonly missingSlots: readonly ClarificationSlot[];
+  readonly candidateLabels: readonly ClarificationCandidateLabel[];
+  readonly reasonCategory: ClarificationReasonCategory;
+  /** Canonical relation only; never a user-provided subject or object. */
+  readonly relation?: Relation;
+  /** Bounded entity labels from structured context, never raw history. */
+  readonly contextLabels?: readonly string[];
+}
+
+export interface ClarificationPlan {
+  readonly clarificationKind: ClarificationKind;
+  readonly focus: ClarificationSlot;
+  readonly candidateLabels: readonly ClarificationCandidateLabel[];
+  readonly reasonCategory: ClarificationReasonCategory;
+  readonly relation?: Relation;
+  readonly contextLabels?: readonly string[];
+}
+
 /**
  * A pluggable answer-strategy planner (Strategy pattern, same shape as
  * `Reasoner`/`PersonalityProfile` elsewhere in this codebase). Only one
@@ -63,4 +123,5 @@ export interface ResponsePlan {
 export interface ResponsePlanner {
   readonly id: string;
   plan(result: ReasoningResult): ResponsePlan;
+  planClarification(context: ClarificationContext): ClarificationPlan;
 }

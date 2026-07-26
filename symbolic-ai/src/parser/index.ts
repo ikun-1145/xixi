@@ -16,6 +16,7 @@ import type { Parser } from "@/types";
 import { RegexParser } from "./parser";
 
 export * from "./normalize";
+export * from "./sideEffectSafety";
 export * from "./patterns";
 export * from "./registry";
 export * from "./intents";

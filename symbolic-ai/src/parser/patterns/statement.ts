@@ -12,29 +12,56 @@
  */
 import type { GrammarPattern, Relation } from "@/types";
 import { escapeRegExp } from "@/utils";
+import {
+  hasUnsafeLegacySideEffectStructure,
+  normalizeCapturedValue,
+} from "../sideEffectSafety";
 
-export function createStatementPattern(relation: Relation): GrammarPattern {
-  const relationPattern = escapeRegExp(relation);
+function whitespaceTolerantLiteral(value: string): string {
+  return [...value]
+    .map((character) => escapeRegExp(character))
+    .join("\\s*");
+}
+
+export function createStatementPattern(
+  relation: Relation,
+  aliases: readonly string[] = [relation],
+): GrammarPattern {
+  const relationPattern = [...aliases]
+    .sort((left, right) => right.length - left.length)
+    .map(whitespaceTolerantLiteral)
+    .join("|");
   // group 1: subject (non-greedy)   group 2: optional negation "不"
-  // group 3: object (greedy, consumes the remainder)
-  const pattern = new RegExp(`^(.+?)(不)?${relationPattern}(.+)$`, "u");
+  // group 3: object. Matching raw input preserves meaningful entity spaces.
+  const pattern = new RegExp(
+    `^\\s*(.+?)\\s*(不|没)?\\s*(?:${relationPattern})\\s*(.+?)\\s*[。.!！]*\\s*$`,
+    "u",
+  );
 
   return {
     name: `statement:${relation}`,
-    match(normalizedInput) {
-      const matched = pattern.exec(normalizedInput);
+    match(normalizedInput, rawInput) {
+      const input = rawInput ?? normalizedInput;
+      if (hasUnsafeLegacySideEffectStructure(input)) {
+        return null;
+      }
+
+      const matched = pattern.exec(input);
       if (!matched) return null;
 
       const [, subject, negationMarker, object] = matched;
       if (!subject || !object) return null;
+      const cleanSubject = normalizeCapturedValue(subject);
+      const cleanObject = normalizeCapturedValue(object);
+      if (!cleanSubject || !cleanObject) return null;
 
       return {
         type: "statement",
-        subject,
+        subject: cleanSubject,
         relation,
-        object,
-        negated: negationMarker === "不",
-        raw: normalizedInput,
+        object: cleanObject,
+        negated: negationMarker === "不" || negationMarker === "没",
+        raw: input,
       };
     },
   };

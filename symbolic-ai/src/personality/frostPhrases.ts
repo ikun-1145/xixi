@@ -70,13 +70,13 @@ export const LEARNED_CLOSERS: readonly string[] = [
 ];
 
 export const UNKNOWN_INPUT_OPENERS: readonly string[] = [
-  "抱歉，我还没太理解这句话。",
-  "唔，这个说法我暂时解析不出来。",
+  "这个问题我暂时还没理解清楚。",
+  "唔，我暂时还没弄明白你想问什么。",
 ];
 
 export const UNKNOWN_INPUT_CLOSERS: readonly string[] = [
-  "可以试试类似「猫属于哺乳动物」「猫属于什么」这样的说法。",
-  "换一种更直接的表达方式，我应该就能理解了。",
+  "你可以换一种说法，或者再告诉我一点相关信息。",
+  "可以再多说一点，或者换个方式告诉我。",
 ];
 
 export const GREETING_LINES: readonly string[] = [

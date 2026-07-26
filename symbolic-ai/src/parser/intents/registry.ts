@@ -30,7 +30,7 @@ export const defaultIntentMatchers: readonly IntentMatcher[] = [
   createGreetingIntentMatcher(),
   createThanksIntentMatcher(),
   createFarewellIntentMatcher(),
-  createIdentityIntentMatcher(),
   createRecallNameIntentMatcher(),
+  createIdentityIntentMatcher(),
   createRememberNameIntentMatcher(),
 ];

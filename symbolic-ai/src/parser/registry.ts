@@ -57,10 +57,18 @@ const RELATIONS_WITH_FULL_GRAMMAR: readonly Relation[] = [
   CoreRelations.LocatedIn,
 ];
 
+const ADDITIONAL_STATEMENT_PATTERNS: readonly GrammarPattern[] = [
+  createStatementPattern("意思是", ["指的是", "意思是"]),
+  createStatementPattern("有"),
+];
+
 export const defaultPatterns: readonly GrammarPattern[] = [
   createLocatePattern(),
   ...RELATIONS_WITH_FULL_GRAMMAR.map(createWhyPattern),
   ...RELATIONS_WITH_FULL_GRAMMAR.map(createVerifyPattern),
   ...RELATIONS_WITH_FULL_GRAMMAR.map(createObjectOfPattern),
-  ...RELATIONS_WITH_FULL_GRAMMAR.map(createStatementPattern),
+  ...ADDITIONAL_STATEMENT_PATTERNS,
+  ...RELATIONS_WITH_FULL_GRAMMAR.map((relation) =>
+    createStatementPattern(relation),
+  ),
 ];

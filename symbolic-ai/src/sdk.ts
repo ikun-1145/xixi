@@ -16,7 +16,13 @@
  */
 export * from "./engine";
 export * from "./knowledge";
+export * from "./observation";
 export * from "./parser";
 export * from "./personality";
+export {
+  applySemanticContextUpdate,
+  createEmptySemanticContext,
+  normalizeSemanticContext,
+} from "./semantic/context";
 export * from "./storage";
 export type * from "./types";

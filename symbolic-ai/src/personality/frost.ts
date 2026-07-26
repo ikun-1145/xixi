@@ -6,13 +6,14 @@
  * accurate; only the FRAMING around it (opener/closer, at most one emoji)
  * carries Frost's voice.
  *
- * CRITICAL INVARIANT: every render function below embeds the incoming
- * factual fields (`result.explanation`, `record.subject/relation/object`,
- * `failure.reason`) VERBATIM. Frost never regenerates or edits that content
- * — it only wraps it. (Enforced by tests in frost.test.ts and, jointly with
- * PlainPersonality, in boundary.test.ts.)
+ * CRITICAL INVARIANT: every factual render function below embeds the incoming
+ * factual fields (`result.explanation`, `record.subject/relation/object`)
+ * VERBATIM. Parse failures are different: `failure.reason` remains internal
+ * diagnostic data and is intentionally converted into a natural fallback
+ * before anything reaches the user.
  */
 import type {
+  ClarificationPlan,
   IdentityAspect,
   KnowledgeRecord,
   MemoryKey,
@@ -96,11 +97,16 @@ function renderLearned(record: KnowledgeRecord): string {
 }
 
 function renderUnknownInput(failure: ParseFailure): string {
-  const seed = failure.raw;
+  const normalizedInput = failure.raw.trim();
+  if (!normalizedInput) {
+    return withEmoji("好像还没有输入内容呢，可以跟我说点什么。", "empty-input");
+  }
+
+  const seed = normalizedInput;
   const opener = pickBySeed(UNKNOWN_INPUT_OPENERS, seed);
   const closer = pickBySeed(UNKNOWN_INPUT_CLOSERS, `${seed}:closer`);
 
-  return withEmoji(compose(opener, `（${failure.reason}）`, closer), seed);
+  return withEmoji(compose(opener, closer), seed);
 }
 
 function renderGreeting(raw?: string): string {
@@ -119,6 +125,73 @@ function renderFarewell(raw?: string): string {
   const seed = raw && raw.length > 0 ? raw : "farewell";
   const line = pickBySeed(FAREWELL_LINES, seed);
   return withEmoji(line, seed);
+}
+
+function renderClarification(plan: ClarificationPlan): string {
+  const labels = new Set(plan.candidateLabels);
+  const seed = [
+    plan.clarificationKind,
+    plan.focus,
+    plan.relation ?? "",
+    ...plan.candidateLabels,
+  ].join(":");
+
+  if (labels.has("identity") && labels.has("query")) {
+    return withEmoji(
+      "这个问题里像是同时问了我的名字和能力，可以分开问我哦。",
+      seed,
+    );
+  }
+
+  if (
+    plan.focus === "subject" &&
+    (plan.contextLabels?.length ?? 0) >= 2
+  ) {
+    const contextLabels = plan.contextLabels ?? [];
+    const alternatives = [
+      contextLabels.slice(0, -1).join("、"),
+      contextLabels.at(-1),
+    ].join("还是");
+    return withEmoji(
+      `你指的是${alternatives}呢？可以再告诉我一下哦。`,
+      seed,
+    );
+  }
+
+  if (plan.focus === "object" && plan.relation === "会") {
+    return withEmoji("你想问我会做什么呢？可以再具体一点点哦。", seed);
+  }
+
+  if (plan.focus === "object") {
+    return withEmoji(
+      "这里好像还缺少要说明的内容，可以再告诉我它是什么吗？",
+      seed,
+    );
+  }
+
+  if (plan.focus === "subject") {
+    return withEmoji("你想问的是谁或什么呢？可以再告诉我一点点。", seed);
+  }
+
+  if (plan.focus === "relation") {
+    return withEmoji("你想了解它哪一方面呢？可以再说具体一点点。", seed);
+  }
+
+  if (plan.focus === "name") {
+    return withEmoji("你是在问名字，还是想告诉我你的名字呢？", seed);
+  }
+
+  if (labels.has("teaching")) {
+    return withEmoji(
+      "这个知识好像还没说完整，可以再告诉我对象和它们的关系吗？",
+      seed,
+    );
+  }
+
+  return withEmoji(
+    "我好像看到了不止一种意思，可以换一种更具体的说法吗？",
+    seed,
+  );
 }
 
 /**
@@ -208,10 +281,10 @@ function renderRecalled(key: MemoryKey, value: string | null, raw?: string): str
   return withEmoji(value, seed);
 }
 
-function renderError(message: string): string {
-  // Deliberately undecorated: technical/error content stays professional and
-  // clear, per the persona spec — no emoji here.
-  return `抱歉，出了点问题：${message}`;
+function renderError(_message: string): string {
+  // Internal error details stay available to the caller/logs, but never cross
+  // the final user-visible Personality boundary.
+  return "抱歉，我现在遇到了一点问题，请稍后再试一次。";
 }
 
 export const FrostPersonality: PersonalityProfile = {
@@ -224,6 +297,8 @@ export const FrostPersonality: PersonalityProfile = {
     switch (context.kind) {
       case "reasoning-result":
         return renderReasoningResult(context.result, context.plan);
+      case "clarification":
+        return renderClarification(context.plan);
       case "learned":
         return renderLearned(context.record);
       case "unknown-input":

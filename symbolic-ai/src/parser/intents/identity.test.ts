@@ -9,16 +9,16 @@ describe("createIdentityIntentMatcher", () => {
   });
 
   it.each<[string, string, string]>([
-    ["你是谁", "Sunland AI", "identity"],
-    ["你叫什么", "Sunland AI", "identity"],
-    ["你叫什么名字", "Sunland AI", "identity"],
-    ["Sunland AI是什么", "Sunland AI", "identity"],
+    ["你是谁", "Sunland AI · Beta", "identity"],
+    ["你叫什么", "Sunland AI · Beta", "identity"],
+    ["你叫什么名字", "Sunland AI · Beta", "identity"],
+    ["Sunland AI是什么", "Sunland AI · Beta", "identity"],
     ["霜蓝是谁", "霜蓝", "identity"],
     ["frost是谁", "霜蓝", "identity"],
-    ["你能做什么", "Sunland AI", "capability"],
-    ["你会做什么", "Sunland AI", "capability"],
-    ["是谁开发了你", "Sunland AI", "creator"],
-    ["谁做的你", "Sunland AI", "creator"],
+    ["你能做什么", "Sunland AI · Beta", "capability"],
+    ["你会做什么", "Sunland AI · Beta", "capability"],
+    ["是谁开发了你", "Sunland AI · Beta", "creator"],
+    ["谁做的你", "Sunland AI · Beta", "creator"],
   ])("recognizes '%s' as subject=%s, aspect=%s", (input, subject, aspect) => {
     const match = matcher.match(input);
     expect(match).not.toBeNull();

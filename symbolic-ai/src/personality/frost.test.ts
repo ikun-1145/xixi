@@ -140,14 +140,60 @@ describe("FrostPersonality", () => {
   describe("unknown-input", () => {
     const failure = makeParseFailure();
 
-    it("surfaces the parser's reason for transparency", () => {
+    it("keeps parser diagnostics out of the user-visible reply", () => {
       const reply = FrostPersonality.respond({ kind: "unknown-input", failure });
-      expect(reply).toContain(failure.reason);
+      expect(reply).not.toContain(failure.reason);
+      expect(reply).not.toMatch(/parser|intent|syntax|语法规则|no match/i);
     });
 
-    it("suggests a supported sentence pattern", () => {
+    it("asks naturally for a rephrase or more context", () => {
       const reply = FrostPersonality.respond({ kind: "unknown-input", failure });
-      expect(reply).toMatch(/属于|例如|试试/);
+      expect(reply).toMatch(/换一种说法|多说一点|相关信息/);
+    });
+
+    it("uses a distinct direct prompt for empty input", () => {
+      const reply = FrostPersonality.respond({
+        kind: "unknown-input",
+        failure: makeParseFailure({ raw: "   ", reason: "输入为空" }),
+      });
+      expect(reply).toContain("还没有输入内容");
+      expect(reply).not.toContain("输入为空");
+    });
+  });
+
+  describe("clarification", () => {
+    it("renders a warm missing-object question without internal metadata", () => {
+      const reply = FrostPersonality.respond({
+        kind: "clarification",
+        plan: {
+          clarificationKind: "missing-object",
+          focus: "object",
+          candidateLabels: ["query"],
+          reasonCategory: "missing-information",
+          relation: "会",
+        },
+      });
+
+      expect(reply).toContain("会做什么");
+      expect(reply).not.toMatch(
+        /parser|intent|candidate|confidence|reasonCodes|diagnostics|语法规则/i,
+      );
+      expect(countPaletteEmoji(reply)).toBeLessThanOrEqual(1);
+    });
+
+    it("renders bounded compound identity/capability clarification naturally", () => {
+      const reply = FrostPersonality.respond({
+        kind: "clarification",
+        plan: {
+          clarificationKind: "ambiguous-intent",
+          focus: "intent",
+          candidateLabels: ["identity", "query"],
+          reasonCategory: "ambiguous",
+          relation: "会",
+        },
+      });
+
+      expect(reply).toMatch(/名字.*能力|能力.*名字/);
     });
   });
 
@@ -297,9 +343,10 @@ describe("FrostPersonality", () => {
   });
 
   describe("error", () => {
-    it("stays plain and professional, embedding the message verbatim", () => {
+    it("stays plain and professional without exposing the internal message", () => {
       const reply = FrostPersonality.respond({ kind: "error", message: "数据库连接失败" });
-      expect(reply).toBe("抱歉，出了点问题：数据库连接失败");
+      expect(reply).toBe("抱歉，我现在遇到了一点问题，请稍后再试一次。");
+      expect(reply).not.toContain("数据库连接失败");
     });
 
     it("never decorates errors with emoji (clarity over charm)", () => {

@@ -134,7 +134,7 @@ export type ParseResult = ParsedStatement | ParsedQuery | ParsedIntent | ParseFa
 export interface GrammarPattern {
   readonly name: string;
   /** Attempt to interpret the (normalized) input. Return null to skip. */
-  match(normalizedInput: string): ParseResult | null;
+  match(normalizedInput: string, rawInput?: string): ParseResult | null;
 }
 
 /** What an `IntentMatcher` reports when it recognizes its intent. */
@@ -153,7 +153,7 @@ export interface IntentMatch {
 export interface IntentMatcher {
   readonly intent: IntentName;
   /** Attempt to recognize this matcher's intent. Return null to skip. */
-  match(normalizedInput: string): IntentMatch | null;
+  match(normalizedInput: string, rawInput?: string): IntentMatch | null;
 }
 
 /** The parser facade consumed by the UI / reasoning pipeline. */

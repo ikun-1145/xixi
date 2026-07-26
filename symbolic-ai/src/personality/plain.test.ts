@@ -24,11 +24,37 @@ describe("PlainPersonality (baseline, no styling)", () => {
     expect([...reply].some((char) => (FROST_EMOJI as readonly string[]).includes(char))).toBe(false);
   });
 
-  it("surfaces raw input and reason for unknown input", () => {
+  it("keeps raw parser diagnostics out of unknown-input replies", () => {
     const failure = makeParseFailure();
     const reply = PlainPersonality.respond({ kind: "unknown-input", failure });
-    expect(reply).toContain(failure.raw);
-    expect(reply).toContain(failure.reason);
+    expect(reply).not.toContain(failure.raw);
+    expect(reply).not.toContain(failure.reason);
+    expect(reply).toContain("换一种说法");
+  });
+
+  it("uses a distinct prompt for empty input", () => {
+    const failure = makeParseFailure({ raw: "  ", reason: "输入为空" });
+    const reply = PlainPersonality.respond({ kind: "unknown-input", failure });
+    expect(reply).toContain("还没有输入内容");
+    expect(reply).not.toContain(failure.reason);
+  });
+
+  it("renders a structured clarification without semantic diagnostics", () => {
+    const reply = PlainPersonality.respond({
+      kind: "clarification",
+      plan: {
+        clarificationKind: "missing-object",
+        focus: "object",
+        candidateLabels: ["query"],
+        reasonCategory: "missing-information",
+        relation: "会",
+      },
+    });
+
+    expect(reply).toBe("你想问会做什么？请再具体一点。");
+    expect(reply).not.toMatch(
+      /parser|intent|candidate|confidence|reasonCodes|diagnostics/i,
+    );
   });
 
   it("returns a fixed, undecorated greeting", () => {

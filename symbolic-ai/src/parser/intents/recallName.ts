@@ -19,7 +19,10 @@ export const RECALL_NAME_PHRASES: readonly string[] = [
   "我叫什么",
   "我叫什么名字",
   "你知道我的名字吗",
+  "你记得我叫什么吗",
   "你记得我的名字吗",
+  "你还记得我的名字吗",
+  "还记得我是谁吗",
 ];
 
 export function createRecallNameIntentMatcher(): IntentMatcher {

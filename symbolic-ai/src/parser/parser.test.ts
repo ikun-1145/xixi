@@ -31,6 +31,28 @@ describe("RegexParser (default grammar)", () => {
       expect(spaced.raw).toBe("猫 属于 哺乳动物");
       expect({ ...spaced, raw: "" }).toEqual({ ...unspaced, raw: "" });
     });
+
+    it.each<[string, Partial<ParsedStatement>]>([
+      ["鸟有翅膀", { subject: "鸟", relation: "有", object: "翅膀" }],
+      [
+        "霜蓝指的是我的角色名",
+        { subject: "霜蓝", relation: "意思是", object: "我的角色名" },
+      ],
+    ])("supports bounded positive teaching '%s'", (input, expected) => {
+      expect(parser.parse(input)).toMatchObject({
+        type: "statement",
+        negated: false,
+        ...expected,
+      });
+    });
+
+    it.each([
+      "猫会飞还是会游泳",
+      "鸟有没有翅膀",
+      "猫会飞，鸟会游泳",
+    ])("does not parse unsafe teaching '%s' as a statement", (input) => {
+      expect(parser.parse(input).type).not.toBe("statement");
+    });
   });
 
   describe("object-of queries", () => {
@@ -135,11 +157,11 @@ describe("RegexParser (default grammar)", () => {
     });
 
     it.each<[string, string, string]>([
-      ["你是谁", "Sunland AI", "identity"],
-      ["Sunland AI是什么", "Sunland AI", "identity"],
+      ["你是谁", "Sunland AI · Beta", "identity"],
+      ["Sunland AI是什么", "Sunland AI · Beta", "identity"],
       ["霜蓝是谁", "霜蓝", "identity"],
-      ["你能做什么", "Sunland AI", "capability"],
-      ["是谁开发了你", "Sunland AI", "creator"],
+      ["你能做什么", "Sunland AI · Beta", "capability"],
+      ["是谁开发了你", "Sunland AI · Beta", "creator"],
     ])("recognizes '%s' as Identity intent with entities [%s, %s]", (input, subject, aspect) => {
       const result = parser.parse(input);
       expect(result.type).toBe("intent");
@@ -151,6 +173,9 @@ describe("RegexParser (default grammar)", () => {
       ["我叫刘锡泽", "刘锡泽"],
       ["我的名字是刘锡泽", "刘锡泽"],
       ["叫我锡泽", "锡泽"],
+      ["你可以叫我霜蓝", "霜蓝"],
+      ["我的名字是 Alice Chen", "Alice Chen"],
+      ["你好，我叫小明", "小明"],
     ])("recognizes '%s' as RememberName intent with name entity [%s]", (input, name) => {
       const result = parser.parse(input);
       expect(result.type).toBe("intent");
@@ -158,7 +183,15 @@ describe("RegexParser (default grammar)", () => {
       expect((result as ParsedIntent).entities).toEqual([name]);
     });
 
-    it.each<string>(["我叫什么", "我叫什么名字", "你知道我的名字吗", "你记得我的名字吗"])(
+    it.each<string>([
+      "我叫什么",
+      "我叫什么名字",
+      "你知道我的名字吗",
+      "你记得我叫什么吗",
+      "你记得我的名字吗",
+      "你还记得我的名字吗",
+      "还记得我是谁吗",
+    ])(
       "recognizes '%s' as RecallName intent with no entities",
       (input) => {
         const result = parser.parse(input);
@@ -167,6 +200,20 @@ describe("RegexParser (default grammar)", () => {
         expect((result as ParsedIntent).entities).toEqual([]);
       },
     );
+
+    it.each([
+      "名字",
+      "名字小明",
+      "我不是小明",
+      "不要记住我叫小明",
+      "我叫小明，猫属于动物",
+    ])("does not parse unsafe name input '%s' as RememberName", (input) => {
+      const result = parser.parse(input);
+      expect(
+        result.type === "intent" &&
+          result.intent === "RememberName",
+      ).toBe(false);
+    });
 
     it("does not let intents shadow the existing statement/query grammar", () => {
       // Sanity check that adding intent-matching first doesn't regress the

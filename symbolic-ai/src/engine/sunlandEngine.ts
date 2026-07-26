@@ -26,6 +26,7 @@
  * core later).
  */
 import type {
+  ClarificationContext,
   IdentityAspect,
   KnowledgeStore,
   MemoryManager,
@@ -52,6 +53,68 @@ import { createParser } from "@/parser";
 import { getPersonality } from "@/personality";
 import { defaultResponsePlanner } from "@/planner";
 import { graphReasoner } from "@/reasoners";
+import {
+  createObservationSummary,
+  sanitizeObservationSummary,
+  type ObservationClarificationKind,
+  type ObservationMode,
+  type ObservationReasonCategory,
+  type ObservationRelationCategory,
+  type ObservationResultCategory,
+  type ObservationSummary,
+  type ObservationSummaryInput,
+  type RelationAlignmentResult,
+} from "@/observation";
+import {
+  adaptUnderstandingDecision,
+  analyzeSemanticInput,
+  createEmptySemanticContext,
+  createSemanticContextUpdate,
+  createSemanticErrorShadowDiagnostic,
+  createSemanticShadowDiagnostic,
+  isLegacySideEffectResult,
+  normalizeSemanticContext,
+  planUnderstanding,
+  type SemanticAdoptionResult,
+  type SemanticAnalysis,
+  type SemanticCandidate,
+  type SemanticContext,
+  type SemanticContextMode,
+  type SemanticContextUpdate,
+  type SemanticMode,
+  type SemanticShadowDiagnostic,
+  type UnderstandingDecision,
+  type UnderstandingPolicy,
+} from "@/semantic";
+
+export type {
+  SemanticContextMode,
+  SemanticMode,
+  SemanticShadowDiagnostic,
+} from "@/semantic";
+export type {
+  ObservationMode,
+  ObservationSummary,
+} from "@/observation";
+
+export interface SemanticRuntime {
+  analyze(input: string, context?: SemanticContext): SemanticAnalysis;
+  plan(
+    analysis: SemanticAnalysis,
+    policy?: UnderstandingPolicy,
+  ): UnderstandingDecision;
+}
+
+export interface ObservationRuntime {
+  /** Monotonic clock seam. Exact values never leave the summary builder. */
+  now(): number | null;
+  /**
+   * Testable finalization seam. It receives only an already bucketed,
+   * whitelist-safe summary, never precise measurements or engine objects.
+   * Its result is validated again before it can leave Core.
+   */
+  finalizeSummary(summary: ObservationSummary): unknown;
+}
 
 export interface SunlandEngineOptions {
   /** Shared knowledge store; created fresh if omitted. */
@@ -77,15 +140,75 @@ export interface SunlandEngineOptions {
    * has facts in it (either passed in directly, or restored from storage).
    */
   readonly seedDemoData?: boolean;
+  /**
+   * Stage 8.5A rollout mode. `passive` adopts only read-only intents/queries
+   * and structured clarification; all writes remain on the legacy path.
+   */
+  readonly semanticMode?: SemanticMode;
+  /**
+   * Retain only the latest privacy-safe Shadow comparison in memory so tests
+   * and local diagnostics can inspect it. Disabled by default; never logs or
+   * persists anything.
+   */
+  readonly semanticDebug?: boolean;
+  /**
+   * Stage 8.6 rollout flag. Disabled by default until a host explicitly owns
+   * per-user, per-conversation persistence and optimistic update handling.
+   */
+  readonly semanticContextMode?: SemanticContextMode;
+  /** Optional pure runtime seam for deterministic tests/custom policy hosts. */
+  readonly semanticRuntime?: Partial<SemanticRuntime>;
+  /** Optional centrally-defined Planner policy. */
+  readonly understandingPolicy?: UnderstandingPolicy;
+  /**
+   * Optional observation seam for deterministic/error-isolation tests.
+   * It is never called unless a process() call explicitly requests summary.
+   */
+  readonly observationRuntime?: Partial<ObservationRuntime>;
+}
+
+export interface SunlandProcessOptions {
+  /** Host-owned, serializable context snapshot. Damaged values fail closed. */
+  readonly semanticContext?: unknown;
+  /** Stable host request/turn id; a deterministic local id is used if omitted. */
+  readonly turnId?: string;
+  /**
+   * Evaluated after response execution. Hosts can bind this to request
+   * activity/abort/identity checks without importing browser APIs into Core.
+   */
+  readonly canCommitSemanticContext?: () => boolean;
+  /**
+   * Privacy-safe, per-request summary only. Off by default; Core never stores
+   * or aggregates summaries and never infers whether a user consented.
+   */
+  readonly observationMode?: ObservationMode;
+}
+
+export interface SunlandProcessResult {
+  readonly response: string;
+  readonly semanticContextUpdate: SemanticContextUpdate;
+  readonly observationSummary?: ObservationSummary;
 }
 
 export interface SunlandEngine {
   /** Parse + route + render a single conversational turn. Never throws. */
   respond(input: string): string;
+  /**
+   * Context-aware equivalent of respond(). It never stores context itself;
+   * the host must apply the optimistic update to the originating conversation.
+   */
+  process(
+    input: string,
+    options?: SunlandProcessOptions,
+  ): SunlandProcessResult;
   /** The shared brain backing this engine instance (e.g. for visualization). */
   readonly knowledgeStore: KnowledgeStore;
   /** Facts remembered ABOUT the user (name today; age/preferences later). */
   readonly memory: MemoryManager;
+  readonly semanticMode: SemanticMode;
+  readonly semanticContextMode: SemanticContextMode;
+  /** Returns null unless semanticDebug was explicitly enabled. */
+  getLastSemanticShadow(): SemanticShadowDiagnostic | null;
 }
 
 const IDENTITY_ASPECT_RELATION: Record<IdentityAspect, Relation> = {
@@ -96,6 +219,138 @@ const IDENTITY_ASPECT_RELATION: Record<IdentityAspect, Relation> = {
 
 function isIdentityAspect(value: string | undefined): value is IdentityAspect {
   return value === "identity" || value === "capability" || value === "creator";
+}
+
+interface ObservationTurnState {
+  readonly startedAt: number | null;
+  resultCategory: ObservationResultCategory;
+  reasonCategory: ObservationReasonCategory;
+  relationCategory: ObservationRelationCategory;
+  semanticAdopted: boolean;
+  legacyFallback: boolean;
+  contextUsed: boolean;
+  clarificationKind: ObservationClarificationKind;
+  reasonerPathLength: number | null;
+  semanticDurationMs: number | null;
+  reasonerDurationMs: number | null;
+  queriedRelation: ObservationRelationCategory;
+  alternativeKnownRelation: ObservationRelationCategory;
+  alignmentResult: RelationAlignmentResult;
+  classificationLocked: boolean;
+}
+
+const OBSERVABLE_RELATIONS: ReadonlySet<ObservationRelationCategory> =
+  new Set([
+    "属于",
+    "是",
+    "会",
+    "喜欢",
+    "在",
+    "有",
+    "意思是",
+    "开发者",
+    "none",
+    "unknown",
+  ]);
+
+function observableRelation(
+  relation: string | undefined,
+): ObservationRelationCategory {
+  if (relation === undefined || relation.length === 0) return "none";
+  return OBSERVABLE_RELATIONS.has(
+    relation as ObservationRelationCategory,
+  )
+    ? (relation as ObservationRelationCategory)
+    : "unknown";
+}
+
+function monotonicNow(): number | null {
+  try {
+    const now = globalThis.performance?.now();
+    return typeof now === "number" && Number.isFinite(now)
+      ? now
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+function elapsedMilliseconds(
+  startedAt: number | null,
+  endedAt: number | null,
+): number | null {
+  if (
+    startedAt === null ||
+    endedAt === null ||
+    !Number.isFinite(startedAt) ||
+    !Number.isFinite(endedAt) ||
+    endedAt < startedAt
+  ) {
+    return null;
+  }
+  return endedAt - startedAt;
+}
+
+function decisionCandidates(
+  decision: UnderstandingDecision,
+): readonly SemanticCandidate[] {
+  switch (decision.kind) {
+    case "accept":
+      return [
+        decision.selectedCandidate,
+        ...decision.secondaryCandidates,
+      ];
+    case "clarify":
+      return decision.candidateOptions;
+    case "reject-side-effect":
+      return [decision.rejectedCandidate];
+    case "no-understanding":
+      return [];
+  }
+}
+
+function clarificationReason(
+  kind: ObservationClarificationKind,
+): ObservationReasonCategory {
+  switch (kind) {
+    case "missing-subject":
+      return "missing-subject";
+    case "missing-relation":
+      return "missing-relation";
+    case "missing-object":
+      return "missing-object";
+    case "ambiguous-intent":
+      return "ambiguous-intent";
+    case "conflicting-candidates":
+      return "conflicting-candidates";
+    case "uncertain-name":
+    case "uncertain-teaching":
+      return "insufficient-evidence";
+    case "none":
+      return "unclassified";
+  }
+}
+
+function createObservationTurnState(
+  startedAt: number | null,
+): ObservationTurnState {
+  return {
+    startedAt,
+    resultCategory: "safe-fallback",
+    reasonCategory: "unclassified",
+    relationCategory: "none",
+    semanticAdopted: false,
+    legacyFallback: false,
+    contextUsed: false,
+    clarificationKind: "none",
+    reasonerPathLength: 0,
+    semanticDurationMs: null,
+    reasonerDurationMs: null,
+    queriedRelation: "none",
+    alternativeKnownRelation: "none",
+    alignmentResult: "unavailable",
+    classificationLocked: false,
+  };
 }
 
 /**
@@ -177,6 +432,19 @@ export function createSunlandEngine(options: SunlandEngineOptions = {}): Sunland
   const personality: PersonalityProfile = getPersonality(options.personalityId);
   const parser: Parser = options.parser ?? createParser();
   const storage = options.storage;
+  const semanticMode = options.semanticMode ?? "passive";
+  const semanticContextMode = options.semanticContextMode ?? "off";
+  const semanticDebug = options.semanticDebug === true;
+  const semanticAnalyze =
+    options.semanticRuntime?.analyze ?? analyzeSemanticInput;
+  const semanticPlan =
+    options.semanticRuntime?.plan ?? planUnderstanding;
+  const observationNow =
+    options.observationRuntime?.now ?? monotonicNow;
+  const observationFinalizeSummary =
+    options.observationRuntime?.finalizeSummary ??
+    ((summary: ObservationSummary): ObservationSummary => summary);
+  let lastSemanticShadow: SemanticShadowDiagnostic | null = null;
   // Facts about Sunland AI itself (Identity intent) -- always present, never
   // part of the user's own (persisted) `store` above. See file-level doc
   // comment on `knowledge/selfKnowledge.ts` for why these are kept separate.
@@ -205,42 +473,436 @@ export function createSunlandEngine(options: SunlandEngineOptions = {}): Sunland
     if (storage && memoryStorageKey) saveMemoryManager(memory, storage.adapter, memoryStorageKey);
   }
 
+  function safeObservationNow(): number | null {
+    try {
+      const value = observationNow();
+      return typeof value === "number" && Number.isFinite(value)
+        ? value
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
+  function observeParsedResult(
+    parsed: ParseResult,
+    observation: ObservationTurnState,
+  ): void {
+    if (parsed.type === "query" || parsed.type === "statement") {
+      observation.relationCategory = observableRelation(
+        parsed.relation,
+      );
+    }
+    if (parsed.type === "query") {
+      observation.queriedRelation = observableRelation(
+        parsed.relation,
+      );
+    }
+    if (observation.classificationLocked) return;
+
+    if (parsed.type === "unknown") {
+      observation.resultCategory = "no-understanding";
+      observation.reasonCategory = "unknown-safe-fallback";
+      return;
+    }
+    observation.resultCategory = "understood";
+    observation.reasonCategory = observation.semanticAdopted
+      ? "complete-passive-understanding"
+      : "unclassified";
+  }
+
+  function observeSemanticAdaptation(
+    observation: ObservationTurnState,
+    decision: UnderstandingDecision,
+    adaptation: SemanticAdoptionResult,
+  ): void {
+    observation.semanticAdopted =
+      semanticMode === "passive" &&
+      adaptation.kind !== "fallback-legacy";
+    observation.legacyFallback =
+      semanticMode === "shadow" ||
+      adaptation.kind === "fallback-legacy";
+    observation.contextUsed =
+      adaptation.kind !== "fallback-legacy" &&
+      decisionCandidates(decision).some(
+        ({ producer }) => producer === "context",
+      );
+
+    if (adaptation.kind === "clarification") {
+      observation.clarificationKind =
+        adaptation.context.clarificationKind;
+      if (
+        adaptation.context.clarificationKind ===
+          "missing-subject" &&
+        observation.contextUsed
+      ) {
+        observation.resultCategory = "context-unresolved";
+        observation.reasonCategory = "unresolved-context";
+      } else {
+        observation.resultCategory = "clarification";
+        observation.reasonCategory = clarificationReason(
+          adaptation.context.clarificationKind,
+        );
+      }
+      observation.classificationLocked = true;
+      return;
+    }
+
+    if (adaptation.kind === "no-understanding") {
+      if (
+        adaptation.failure.reason.startsWith(
+          "legacy-side-effect-blocked:",
+        ) ||
+        adaptation.failure.reason.startsWith(
+          "legacy-side-effect-rejected:",
+        ) ||
+        adaptation.failure.reason ===
+          "semantic-side-effect-rejected"
+      ) {
+        observation.resultCategory = "side-effect-blocked";
+        observation.reasonCategory = "blocked-side-effect";
+      } else {
+        observation.resultCategory = "no-understanding";
+        observation.reasonCategory = "unknown-safe-fallback";
+      }
+      observation.classificationLocked = true;
+    }
+  }
+
+  function observeReasoningResult(
+    parsed: Extract<ParseResult, { readonly type: "query" }>,
+    answers: readonly {
+      readonly path: readonly string[];
+    }[],
+    observation: ObservationTurnState,
+  ): void {
+    observation.relationCategory = observableRelation(
+      parsed.relation,
+    );
+    observation.queriedRelation = observation.relationCategory;
+
+    if (answers.length === 0) {
+      observation.reasonerPathLength = 0;
+      if (!observation.classificationLocked) {
+        observation.resultCategory = "missing-knowledge";
+        observation.reasonCategory = "missing-knowledge";
+      }
+      observation.alignmentResult = "unavailable";
+      return;
+    }
+
+    observation.reasonerPathLength = answers.reduce(
+      (maximum, answer) =>
+        Math.max(maximum, Math.max(1, answer.path.length - 1)),
+      1,
+    );
+    observation.alignmentResult = "aligned";
+  }
+
+  function respondToParseResult(
+    parsed: ParseResult,
+    observation?: ObservationTurnState,
+  ): string {
+    if (observation !== undefined) {
+      observeParsedResult(parsed, observation);
+    }
+    switch (parsed.type) {
+      case "statement": {
+        const record = store.add(
+          { subject: parsed.subject, relation: parsed.relation, object: parsed.object, negated: parsed.negated },
+          { source: "user" },
+        );
+        persist();
+        return personality.respond({ kind: "learned", record });
+      }
+      case "query": {
+        // Reasoner -> Response Planner -> Personality, in that order. The
+        // semantic Adapter only supplies a Parser-compatible query; it does
+        // not inspect raw input or add any reasoning rule.
+        const queryStore =
+          parsed.subject.trim().toLocaleLowerCase("und") ===
+          SUNLAND_SUBJECT.toLocaleLowerCase("und")
+            ? selfKnowledgeStore
+            : store;
+        const reasonerStartedAt =
+          observation === undefined ? null : safeObservationNow();
+        const result = graphReasoner.answer(parsed, queryStore);
+        if (observation !== undefined) {
+          observation.reasonerDurationMs = elapsedMilliseconds(
+            reasonerStartedAt,
+            safeObservationNow(),
+          );
+          observeReasoningResult(
+            parsed,
+            result.answers,
+            observation,
+          );
+        }
+        const plan = defaultResponsePlanner.plan(result);
+        return personality.respond({ kind: "reasoning-result", result, plan });
+      }
+      case "intent": {
+        const context = intentToResponseContext(parsed, selfKnowledgeStore, memory);
+        if (parsed.intent === "RememberName") persistMemory();
+        return personality.respond(context);
+      }
+      case "unknown":
+        return personality.respond({ kind: "unknown-input", failure: parsed });
+      default: {
+        const exhaustiveCheck: never = parsed;
+        throw new Error(`createSunlandEngine: unhandled parse result ${JSON.stringify(exhaustiveCheck)}`);
+      }
+    }
+  }
+
+  function respondToClarification(context: ClarificationContext): string {
+    const plan = defaultResponsePlanner.planClarification(context);
+    return personality.respond({ kind: "clarification", plan });
+  }
+
+  function process(
+    input: string,
+    processOptions: SunlandProcessOptions = {},
+  ): SunlandProcessResult {
+    const observation =
+      processOptions.observationMode === "summary"
+        ? createObservationTurnState(safeObservationNow())
+        : undefined;
+    const semanticContext =
+      semanticContextMode === "enabled"
+        ? normalizeSemanticContext(processOptions.semanticContext)
+        : normalizeSemanticContext(
+            processOptions.semanticContext ?? createEmptySemanticContext(),
+          );
+    const noContextUpdate = (): SemanticContextUpdate =>
+      Object.freeze({
+        kind: "none",
+        baseVersion: semanticContext.version,
+      });
+    const finishWithObservation = (
+      result: SunlandProcessResult,
+    ): SunlandProcessResult => {
+      if (observation === undefined) return result;
+
+      try {
+        let knowledgeCount: number | null = null;
+        try {
+          const count = store.all().length;
+          knowledgeCount =
+            Number.isSafeInteger(count) && count >= 0
+              ? count
+              : null;
+        } catch {
+          knowledgeCount = null;
+        }
+
+        const summaryInput: ObservationSummaryInput = {
+          resultCategory: observation.resultCategory,
+          reasonCategory: observation.reasonCategory,
+          relationCategory: observation.relationCategory,
+          semanticAdopted: observation.semanticAdopted,
+          legacyFallback: observation.legacyFallback,
+          contextUsed: observation.contextUsed,
+          clarificationKind: observation.clarificationKind,
+          reasonerPathLength: observation.reasonerPathLength,
+          knowledgeCount,
+          totalDurationMs: elapsedMilliseconds(
+            observation.startedAt,
+            safeObservationNow(),
+          ),
+          semanticDurationMs: observation.semanticDurationMs,
+          reasonerDurationMs: observation.reasonerDurationMs,
+          queriedRelation: observation.queriedRelation,
+          alternativeKnownRelation:
+            observation.alternativeKnownRelation,
+          alignmentResult: observation.alignmentResult,
+        };
+        const summary = createObservationSummary(summaryInput);
+        const sanitized = sanitizeObservationSummary(
+          observationFinalizeSummary(summary),
+        );
+        if (sanitized === null) return result;
+
+        return Object.freeze({
+          response: result.response,
+          semanticContextUpdate: result.semanticContextUpdate,
+          observationSummary: sanitized,
+        });
+      } catch {
+        // Observation is strictly best-effort and must never affect a turn.
+        return result;
+      }
+    };
+    const resultWithoutContext = (
+      response: string,
+    ): SunlandProcessResult =>
+      finishWithObservation(
+        Object.freeze({
+          response,
+          semanticContextUpdate: noContextUpdate(),
+        }),
+      );
+    const resultWithAcceptedContext = (
+      response: string,
+      decision: UnderstandingDecision,
+      executedResult: ParseResult | null,
+    ): SunlandProcessResult => {
+      let canCommit = semanticContextMode === "enabled";
+      if (canCommit && processOptions.canCommitSemanticContext !== undefined) {
+        try {
+          canCommit = processOptions.canCommitSemanticContext();
+        } catch {
+          canCommit = false;
+        }
+      }
+      const semanticContextUpdate =
+        semanticMode === "passive"
+          ? createSemanticContextUpdate({
+              context: semanticContext,
+              decision,
+              executedResult,
+              turnId:
+                processOptions.turnId ??
+                `turn-${semanticContext.version + 1}`,
+              executionSucceeded: true,
+              canCommit,
+            })
+          : noContextUpdate();
+      return finishWithObservation(
+        Object.freeze({ response, semanticContextUpdate }),
+      );
+    };
+
+    const legacyResult: ParseResult = parser.parse(input);
+    lastSemanticShadow = null;
+
+    if (semanticMode === "off") {
+      if (observation !== undefined) {
+        observation.legacyFallback = true;
+      }
+      return resultWithoutContext(
+        respondToParseResult(legacyResult, observation),
+      );
+    }
+
+    let analysis: SemanticAnalysis;
+    let decision: UnderstandingDecision;
+    let adaptation: SemanticAdoptionResult;
+    const semanticStartedAt =
+      observation === undefined ? null : safeObservationNow();
+    try {
+      analysis = semanticAnalyze(
+        input,
+        semanticContextMode === "enabled"
+          ? semanticContext
+          : undefined,
+      );
+      decision = semanticPlan(
+        analysis,
+        options.understandingPolicy,
+      );
+      adaptation = adaptUnderstandingDecision(
+        decision,
+        legacyResult,
+        analysis,
+      );
+      if (observation !== undefined) {
+        observation.semanticDurationMs = elapsedMilliseconds(
+          semanticStartedAt,
+          safeObservationNow(),
+        );
+        observeSemanticAdaptation(
+          observation,
+          decision,
+          adaptation,
+        );
+      }
+
+      if (semanticDebug) {
+        lastSemanticShadow = createSemanticShadowDiagnostic(
+          semanticMode,
+          legacyResult,
+          decision,
+          adaptation,
+        );
+      }
+    } catch {
+      if (observation !== undefined) {
+        observation.semanticDurationMs = elapsedMilliseconds(
+          semanticStartedAt,
+          safeObservationNow(),
+        );
+        observation.semanticAdopted = false;
+        observation.legacyFallback = true;
+      }
+      if (semanticDebug) {
+        lastSemanticShadow = createSemanticErrorShadowDiagnostic(
+          semanticMode,
+          legacyResult,
+        );
+      }
+      const response = isLegacySideEffectResult(legacyResult)
+        ? respondToParseResult({
+            type: "unknown",
+            raw: legacyResult.raw,
+            reason: "semantic-side-effect-validation-unavailable",
+          }, observation)
+        : respondToParseResult(legacyResult, observation);
+      if (observation !== undefined) {
+        observation.resultCategory = "safe-fallback";
+        observation.reasonCategory = "semantic-runtime";
+        observation.classificationLocked = true;
+      }
+      return resultWithoutContext(response);
+    }
+
+    if (semanticMode === "shadow") {
+      return resultWithoutContext(
+        respondToParseResult(legacyResult, observation),
+      );
+    }
+
+    switch (adaptation.kind) {
+      case "adopt":
+        return resultWithAcceptedContext(
+          respondToParseResult(adaptation.result, observation),
+          decision,
+          adaptation.result,
+        );
+      case "clarification":
+        return resultWithoutContext(
+          respondToClarification(adaptation.context),
+        );
+      case "no-understanding":
+        return resultWithoutContext(
+          respondToParseResult(adaptation.failure, observation),
+        );
+      case "fallback-legacy":
+        return resultWithAcceptedContext(
+          respondToParseResult(adaptation.result, observation),
+          decision,
+          adaptation.result,
+        );
+      default: {
+        const exhaustiveCheck: never = adaptation;
+        throw new Error(
+          `createSunlandEngine: unhandled semantic adaptation ${JSON.stringify(exhaustiveCheck)}`,
+        );
+      }
+    }
+  }
+
   return {
     knowledgeStore: store,
     memory,
-    respond(input: string): string {
-      const parsed: ParseResult = parser.parse(input);
-      switch (parsed.type) {
-        case "statement": {
-          const record = store.add(
-            { subject: parsed.subject, relation: parsed.relation, object: parsed.object, negated: parsed.negated },
-            { source: "user" },
-          );
-          persist();
-          return personality.respond({ kind: "learned", record });
-        }
-        case "query": {
-          // Reasoner -> Response Planner -> Personality, in that order. The
-          // Reasoner produces Answer/Confidence/Evidence only; the Response
-          // Planner decides whether to answer plainly, explain the
-          // derivation (only when the user asked "为什么"), or hedge on low
-          // confidence; Personality then renders that decision in its voice.
-          const result = graphReasoner.answer(parsed, store);
-          const plan = defaultResponsePlanner.plan(result);
-          return personality.respond({ kind: "reasoning-result", result, plan });
-        }
-        case "intent": {
-          const context = intentToResponseContext(parsed, selfKnowledgeStore, memory);
-          if (parsed.intent === "RememberName") persistMemory();
-          return personality.respond(context);
-        }
-        case "unknown":
-          return personality.respond({ kind: "unknown-input", failure: parsed });
-        default: {
-          const exhaustiveCheck: never = parsed;
-          throw new Error(`createSunlandEngine: unhandled parse result ${JSON.stringify(exhaustiveCheck)}`);
-        }
-      }
+    semanticMode,
+    semanticContextMode,
+    getLastSemanticShadow(): SemanticShadowDiagnostic | null {
+      return semanticDebug ? lastSemanticShadow : null;
     },
+    respond(input: string): string {
+      return process(input).response;
+    },
+    process,
   };
 }

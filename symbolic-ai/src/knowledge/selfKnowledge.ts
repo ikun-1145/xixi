@@ -24,7 +24,7 @@ import { CoreRelations } from "@/types";
 import { InMemoryKnowledgeStore } from "./store";
 
 /** Canonical subject for facts about the system as a whole. */
-export const SUNLAND_SUBJECT = "Sunland AI";
+export const SUNLAND_SUBJECT = "Sunland AI · Beta";
 /** Canonical subject for facts about the default personality specifically. */
 export const FROST_SUBJECT = "霜蓝";
 
@@ -47,7 +47,7 @@ export const selfKnowledgeTriples: readonly Triple[] = [
   {
     subject: FROST_SUBJECT,
     relation: CoreRelations.Is,
-    object: "Sunland AI 目前的默认人格，说话自然温和、带一点点俏皮，仅负责语气，不改变任何事实或推理结论",
+    object: "Sunland AI · Beta 目前的默认人格，说话自然温和、带一点点俏皮，仅负责语气，不改变任何事实或推理结论",
     negated: false,
   },
   {

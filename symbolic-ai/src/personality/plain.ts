@@ -20,12 +20,42 @@ export const PlainPersonality: PersonalityProfile = {
         // as Frost, just rendered with zero decoration -- an undecorated
         // marker for uncertainty rather than a natural-language hedge.
         return context.plan.isUncertain ? `${context.plan.explanation}（不确定）` : context.plan.explanation;
+      case "clarification":
+        if (
+          context.plan.focus === "subject" &&
+          (context.plan.contextLabels?.length ?? 0) >= 2
+        ) {
+          const labels = context.plan.contextLabels ?? [];
+          const alternatives = [
+            labels.slice(0, -1).join("、"),
+            labels.at(-1),
+          ].join("还是");
+          return `你指的是${alternatives}？请再说明一下。`;
+        }
+        if (context.plan.focus === "object" && context.plan.relation === "会") {
+          return "你想问会做什么？请再具体一点。";
+        }
+        if (context.plan.focus === "object") {
+          return "缺少要说明的内容，请补充完整。";
+        }
+        if (context.plan.focus === "subject") {
+          return "缺少要询问的对象，请补充完整。";
+        }
+        if (context.plan.focus === "relation") {
+          return "缺少要询问的方面，请补充完整。";
+        }
+        if (context.plan.focus === "name") {
+          return "请说明你是在询问名字，还是提供名字。";
+        }
+        return "这句话有多种可能的意思，请换一种更具体的说法。";
       case "learned": {
         const negation = context.record.negated ? "不" : "";
         return `已记录：${context.record.subject} ${negation}${context.record.relation} ${context.record.object}`;
       }
       case "unknown-input":
-        return `无法解析："${context.failure.raw}"（${context.failure.reason}）`;
+        return context.failure.raw.trim()
+          ? "这个问题我暂时还没理解清楚。你可以换一种说法，或者再告诉我一点相关信息。"
+          : "好像还没有输入内容呢，可以跟我说点什么。";
       case "greeting":
         return "你好。";
       case "thanks":
@@ -43,7 +73,7 @@ export const PlainPersonality: PersonalityProfile = {
       case "recalled":
         return context.value === null ? `未知：${context.key}` : `${context.key} = ${context.value}`;
       case "error":
-        return `错误：${context.message}`;
+        return "暂时无法完成这次请求，请稍后再试。";
       default: {
         const exhaustiveCheck: never = context;
         throw new Error(`Plain: unhandled response context ${JSON.stringify(exhaustiveCheck)}`);

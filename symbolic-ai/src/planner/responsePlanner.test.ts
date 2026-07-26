@@ -172,4 +172,43 @@ describe("defaultResponsePlanner", () => {
       expect(plan.isUncertain).toBe(true);
     });
   });
+
+  describe("structured clarification planning (Stage 8.5A)", () => {
+    it("selects a deterministic missing-slot focus without creating wording", () => {
+      const plan = defaultResponsePlanner.planClarification({
+        clarificationKind: "missing-object",
+        missingSlots: ["object"],
+        candidateLabels: ["query"],
+        reasonCategory: "missing-information",
+        relation: "会",
+      });
+
+      expect(plan).toEqual({
+        clarificationKind: "missing-object",
+        focus: "object",
+        candidateLabels: ["query"],
+        reasonCategory: "missing-information",
+        relation: "会",
+      });
+      expect(JSON.stringify(plan)).not.toMatch(
+        /confidence|producer|reasonCodes|diagnostics/i,
+      );
+    });
+
+    it("uses a stable slot priority when several fields are absent", () => {
+      const context = {
+        clarificationKind: "uncertain-teaching" as const,
+        missingSlots: ["object", "relation", "subject"] as const,
+        candidateLabels: ["teaching"] as const,
+        reasonCategory: "uncertain" as const,
+      };
+
+      expect(defaultResponsePlanner.planClarification(context).focus).toBe(
+        "subject",
+      );
+      expect(defaultResponsePlanner.planClarification(context)).toEqual(
+        defaultResponsePlanner.planClarification(context),
+      );
+    });
+  });
 });

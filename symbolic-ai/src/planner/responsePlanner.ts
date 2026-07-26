@@ -24,7 +24,15 @@
  * whether to include the derivation chain is this module's decision to own,
  * not something to inherit pre-baked from a specific Reasoner implementation.
  */
-import type { Inference, ReasoningResult, ResponsePlan, ResponsePlanner } from "@/types";
+import type {
+  ClarificationContext,
+  ClarificationPlan,
+  ClarificationSlot,
+  Inference,
+  ReasoningResult,
+  ResponsePlan,
+  ResponsePlanner,
+} from "@/types";
 
 /**
  * Below this, an answer is treated as uncertain enough to hedge. A simple,
@@ -47,6 +55,23 @@ function describeWithEvidence(answer: Inference): string {
 /** The lowest confidence among the answers -- one weak link is enough to hedge. */
 function representativeConfidence(answers: readonly Inference[]): number {
   return Math.min(...answers.map((answer) => answer.confidence));
+}
+
+const CLARIFICATION_SLOT_ORDER: readonly ClarificationSlot[] = Object.freeze([
+  "subject",
+  "relation",
+  "object",
+  "name",
+  "intent",
+]);
+
+function clarificationFocus(context: ClarificationContext): ClarificationSlot {
+  for (const slot of CLARIFICATION_SLOT_ORDER) {
+    if (context.missingSlots.includes(slot)) return slot;
+  }
+
+  if (context.clarificationKind === "uncertain-name") return "name";
+  return "intent";
 }
 
 export const defaultResponsePlanner: ResponsePlanner = {
@@ -75,5 +100,24 @@ export const defaultResponsePlanner: ResponsePlanner = {
       confidence,
       explanation: (wantsExplanation ? answers.map(describeWithEvidence) : answers.map(describeBare)).join("；"),
     };
+  },
+
+  planClarification(context: ClarificationContext): ClarificationPlan {
+    return Object.freeze({
+      clarificationKind: context.clarificationKind,
+      focus: clarificationFocus(context),
+      candidateLabels: Object.freeze([...context.candidateLabels]),
+      reasonCategory: context.reasonCategory,
+      ...(context.relation === undefined
+        ? {}
+        : { relation: context.relation }),
+      ...(context.contextLabels === undefined
+        ? {}
+        : {
+            contextLabels: Object.freeze([
+              ...context.contextLabels,
+            ]),
+          }),
+    });
   },
 };

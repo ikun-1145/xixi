@@ -23,7 +23,7 @@
 import type { KnowledgeRecord } from "./knowledge";
 import type { MemoryKey } from "./memory";
 import type { IdentityAspect, ParseFailure } from "./parser";
-import type { ResponsePlan } from "./planner";
+import type { ClarificationPlan, ResponsePlan } from "./planner";
 import type { ReasoningResult } from "./reasoning";
 
 /**
@@ -45,6 +45,7 @@ export type ResponseContext =
    * whether to append an uncertainty hedge) — never re-deriving facts.
    */
   | { readonly kind: "reasoning-result"; readonly result: ReasoningResult; readonly plan: ResponsePlan }
+  | { readonly kind: "clarification"; readonly plan: ClarificationPlan }
   | { readonly kind: "learned"; readonly record: KnowledgeRecord }
   | { readonly kind: "unknown-input"; readonly failure: ParseFailure }
   /**

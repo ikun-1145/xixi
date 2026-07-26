@@ -20,7 +20,7 @@ import type { IdentityAspect, IntentMatch, IntentMatcher } from "@/types";
  * generate replies".
  */
 
-const SUNLAND_SUBJECT = "Sunland AI";
+const SUNLAND_SUBJECT = "Sunland AI · Beta";
 const FROST_SUBJECT = "霜蓝";
 
 /** Which canonical "self" the question refers to, or `null` if it isn't self-referential at all. */

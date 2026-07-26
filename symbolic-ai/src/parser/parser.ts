@@ -41,7 +41,7 @@ export class RegexParser implements Parser {
     }
 
     for (const matcher of this.intentMatchers) {
-      const match = matcher.match(normalized);
+      const match = matcher.match(normalized, input);
       if (match) {
         return {
           type: "intent",
@@ -54,7 +54,7 @@ export class RegexParser implements Parser {
     }
 
     for (const pattern of this.patterns) {
-      const result = pattern.match(normalized);
+      const result = pattern.match(normalized, input);
       if (result) {
         return { ...result, raw: input };
       }

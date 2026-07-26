@@ -48,4 +48,25 @@ describe("createStatementPattern", () => {
     // A pattern only recognizes its own relation.
     expect(likesPattern.match("猫属于哺乳动物")).toBeNull();
   });
+
+  it("preserves meaningful spaces in raw statement entities", () => {
+    expect(
+      isAPattern.match(
+        "Alice Chen 属于 Furry Club",
+        "Alice Chen 属于 Furry Club",
+      ),
+    ).toMatchObject({
+      subject: "Alice Chen",
+      object: "Furry Club",
+    });
+  });
+
+  it.each([
+    "猫会飞还是会游泳",
+    "鸟有没有翅膀",
+    "猫会飞，鸟会游泳",
+    `${"这是一段很长的输入，".repeat(30)}请问这是什么？`,
+  ])("rejects unsafe side-effect structure '%s'", (input) => {
+    expect(canPattern.match(input, input)).toBeNull();
+  });
 });
