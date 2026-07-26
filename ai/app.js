@@ -708,8 +708,14 @@ import {
   IdentityAuthority,
   isVerifiedIdentity,
 } from './verified-identity.js';
+import { createSunlandDiagnosticsRuntime } from './beta-diagnostics/runtime.js';
 
 const identityAuthority = new IdentityAuthority();
+const sunlandDiagnosticsRuntime = createSunlandDiagnosticsRuntime({
+  getIdentity: getCurrentVerifiedIdentity,
+  storageRef: localStorage,
+  windowRef: window,
+});
 
 // `apiFetch` is a hoisted function declaration (defined below), so it's
 // already safely referenceable here at module-eval time.
@@ -812,6 +818,7 @@ async function resolveIdentityResult({ token, expectedUserId = null, force = fal
   if (!result.ok || !isVerifiedIdentity(result.identity)) return result;
   persistVerifiedIdentity(result.identity);
   if (session?.identity !== result.identity) setSession(result.identity);
+  await sunlandDiagnosticsRuntime.initialize();
   return result;
 }
 
@@ -886,6 +893,7 @@ function setSession(identity) {
 function clearVerifiedSession() {
   identityAuthority.clear();
   setSession(null);
+  void sunlandDiagnosticsRuntime.initialize();
   deletedConversationIds.clear();
   deletingConversationIds.clear();
   conversations = [];
@@ -1641,6 +1649,7 @@ async function checkLogin(options = {}) {
       if (!token) {
         identityAuthority.clear();
         setSession(null);
+        await sunlandDiagnosticsRuntime.initialize();
         currentProfile = null;
       } else {
         const resolution = await identityAuthority.resolve({
@@ -1666,6 +1675,7 @@ async function checkLogin(options = {}) {
           }
           identityAuthority.clear();
           setSession(null);
+          await sunlandDiagnosticsRuntime.initialize();
           currentProfile = null;
           conversations = [];
           currentId = null;
@@ -1683,6 +1693,7 @@ async function checkLogin(options = {}) {
         lastIdentityErrorReason = "";
         persistVerifiedIdentity(resolution.identity);
         if (session?.identity !== resolution.identity) setSession(resolution.identity);
+        await sunlandDiagnosticsRuntime.initialize();
       }
 
       if (expectedVersion != null && isRestoreStale(expectedVersion)) return;
@@ -2986,6 +2997,8 @@ async function sendSunlandMessage(requestContext) {
       signal: requestContext.controller.signal,
       canCommitSemanticContext: () =>
         requestCoordinator.canCommitSemanticContext(requestContext),
+      observationMode:
+        requestContext.diagnostics?.observationMode ?? "off",
       onDelta: text => renderRequestMarkdown(requestContext, requestContext.bubble, text),
     });
 
@@ -3003,6 +3016,10 @@ async function sendSunlandMessage(requestContext) {
       return;
     }
     renderRequestMarkdown(requestContext, requestContext.bubble, result.content);
+    void sunlandDiagnosticsRuntime.record(
+      result.observationSummary,
+      requestContext,
+    );
   } catch (err) {
     console.error("Sunland AI 出错:", err);
     if (requestCoordinator.canWrite(requestContext)) {
@@ -3285,6 +3302,10 @@ async function send() {
   }
   lastRealSendByConversation.set(sendingConversation.id, Date.now());
 
+  const diagnostics = sunlandDiagnosticsRuntime.captureRequest(
+    sendingConversation.provider,
+    currentIdentity,
+  );
   const requestContext = requestCoordinator.begin({
     conversation: sendingConversation,
     identity: currentIdentity,
@@ -3293,12 +3314,15 @@ async function send() {
     model: sendingConversation.provider === "sunland" ? "frost" : currentModel,
     deep: requestDeepMode,
     history: sendingConversation.history,
+    diagnostics,
   });
   if (!requestContext) {
     hideGlobalLoading();
     return;
   }
 
+  requestContext.canRecordDiagnostics = () =>
+    requestCoordinator.canWrite(requestContext);
   requestContext.userText = text;
   clearPendingAttachments();
   updateRequestUiState();
@@ -3389,6 +3413,9 @@ input.addEventListener("keydown", e => {
 window.addEventListener("load", () => {
   if (!window._isMobile) input.focus();
 });
+window.addEventListener("pagehide", () => {
+  void sunlandDiagnosticsRuntime.flush();
+}, { once: true });
 document.getElementById("newChatBtn").onclick = createNewChat;
 
 // 所有恢复流程可能访问的模块状态与事件处理器均已初始化，之后才开始登录、

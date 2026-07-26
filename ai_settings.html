@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>设置 - 霜蓝 AI</title>
+  <title>设置 - Sunland AI · Beta</title>
   <style>
     :root {
       --accent: #22d3ee;
@@ -508,6 +508,295 @@ body.dark .usage-hint {
     .btn-logout:hover { background: rgba(239,68,68,0.14); }
     .btn-logout:active { transform: scale(0.97); }
 
+    .data-action-btn {
+      border: 1px solid rgba(239,68,68,0.22);
+      border-radius: 10px;
+      padding: 8px 11px;
+      background: rgba(239,68,68,0.07);
+      color: var(--danger);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      flex-shrink: 0;
+    }
+    .data-action-btn:hover { background: rgba(239,68,68,0.13); }
+    .data-action-btn:disabled {
+      opacity: 0.55;
+      cursor: wait;
+    }
+    .sunland-data-status {
+      min-height: 18px;
+      padding: 0 16px 12px;
+      color: var(--subtext);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .sunland-data-status.success { color: #059669; }
+    .sunland-data-status.error { color: var(--danger); }
+
+    .beta-diagnostics {
+      overflow: visible;
+    }
+    .beta-diagnostics > summary {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 15px 16px;
+      cursor: pointer;
+      list-style: none;
+      font-size: 14px;
+      font-weight: 650;
+      color: var(--text);
+    }
+    .beta-diagnostics > summary::-webkit-details-marker { display: none; }
+    .beta-diagnostics > summary::after {
+      content: "⌄";
+      color: var(--subtext);
+      transition: transform .18s ease;
+    }
+    .beta-diagnostics[open] > summary::after { transform: rotate(180deg); }
+    .beta-diagnostics > summary:focus-visible,
+    .diagnostics-action-btn:focus-visible,
+    .diagnostics-clear-btn:focus-visible,
+    .diagnostics-preview-close:focus-visible,
+    .diagnostics-switch input:focus-visible + .diagnostics-slider {
+      outline: 2px solid var(--accent);
+      outline-offset: 2px;
+    }
+    .diagnostics-summary-note {
+      display: block;
+      margin-top: 2px;
+      color: var(--subtext);
+      font-size: 11px;
+      font-weight: 400;
+    }
+    .diagnostics-body {
+      border-top: 1px solid var(--border);
+      padding: 0 16px 16px;
+    }
+    .diagnostics-copy {
+      padding: 14px 0 10px;
+      color: var(--subtext);
+      font-size: 12px;
+      line-height: 1.65;
+    }
+    .diagnostics-points {
+      margin: 0 0 12px 18px;
+      color: var(--subtext);
+      font-size: 11px;
+      line-height: 1.7;
+    }
+    .diagnostics-toggle-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      padding: 12px 0;
+      border-top: 1px solid var(--border);
+      border-bottom: 1px solid var(--border);
+    }
+    .diagnostics-toggle-label {
+      color: var(--text);
+      font-size: 13px;
+      font-weight: 600;
+    }
+    .diagnostics-state {
+      display: block;
+      margin-top: 2px;
+      color: var(--subtext);
+      font-size: 11px;
+      font-weight: 400;
+    }
+    .diagnostics-switch {
+      position: relative;
+      display: inline-flex;
+      width: 44px;
+      height: 24px;
+      flex: 0 0 auto;
+    }
+    .diagnostics-switch input {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      opacity: 0;
+    }
+    .diagnostics-slider {
+      position: absolute;
+      inset: 0;
+      border: 1px solid rgba(100,116,139,0.32);
+      border-radius: 999px;
+      background: rgba(100,116,139,0.18);
+      cursor: pointer;
+      transition: background .18s, border-color .18s;
+    }
+    .diagnostics-slider::before {
+      content: "";
+      position: absolute;
+      top: 3px;
+      left: 3px;
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      background: #fff;
+      box-shadow: 0 2px 5px rgba(15,23,42,0.2);
+      transition: transform .18s;
+    }
+    .diagnostics-switch input:checked + .diagnostics-slider {
+      border-color: var(--accent);
+      background: var(--accent);
+    }
+    .diagnostics-switch input:checked + .diagnostics-slider::before {
+      transform: translateX(20px);
+    }
+    .diagnostics-switch input:disabled + .diagnostics-slider {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .diagnostics-empty {
+      padding: 16px 0 6px;
+      color: var(--subtext);
+      text-align: center;
+      font-size: 12px;
+    }
+    .diagnostics-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 8px;
+      padding: 14px 0 6px;
+    }
+    .diagnostics-count {
+      min-width: 0;
+      padding: 10px 8px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(34,211,238,0.04);
+      text-align: center;
+    }
+    .diagnostics-count strong {
+      display: block;
+      color: var(--text);
+      font-size: 16px;
+    }
+    .diagnostics-count span {
+      display: block;
+      margin-top: 2px;
+      color: var(--subtext);
+      font-size: 10px;
+      line-height: 1.35;
+    }
+    .diagnostics-performance {
+      margin: 10px 0;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+    .diagnostics-performance > summary {
+      padding: 10px 12px;
+      cursor: pointer;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .diagnostics-table {
+      width: 100%;
+      border-collapse: collapse;
+      color: var(--subtext);
+      font-size: 10px;
+    }
+    .diagnostics-table th,
+    .diagnostics-table td {
+      padding: 7px 8px;
+      border-top: 1px solid var(--border);
+      text-align: left;
+      overflow-wrap: anywhere;
+    }
+    .diagnostics-table th { color: var(--text); font-weight: 600; }
+    .diagnostics-actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      padding-top: 8px;
+    }
+    .diagnostics-action-btn,
+    .diagnostics-clear-btn,
+    .diagnostics-preview-close {
+      border: 1px solid rgba(34,211,238,0.24);
+      border-radius: 9px;
+      padding: 8px 10px;
+      background: rgba(34,211,238,0.07);
+      color: var(--text);
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .diagnostics-clear-btn {
+      border-color: rgba(239,68,68,0.22);
+      background: rgba(239,68,68,0.07);
+      color: var(--danger);
+    }
+    .diagnostics-action-btn:disabled,
+    .diagnostics-clear-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+    .beta-diagnostics-status {
+      min-height: 18px;
+      padding-top: 10px;
+      color: var(--subtext);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    .beta-diagnostics-status.success { color: #059669; }
+    .beta-diagnostics-status.error { color: var(--danger); }
+    .diagnostics-stage-note {
+      margin-top: 8px;
+      color: var(--subtext);
+      font-size: 10px;
+    }
+    .diagnostics-preview-dialog {
+      width: min(620px, calc(100vw - 32px));
+      max-height: min(78vh, 720px);
+      margin: auto;
+      padding: 0;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: 0 24px 80px rgba(15,23,42,0.28);
+    }
+    .diagnostics-preview-dialog::backdrop {
+      background: rgba(2,6,23,0.58);
+    }
+    .diagnostics-preview-inner { padding: 18px; }
+    .diagnostics-preview-title { font-size: 15px; font-weight: 700; }
+    .diagnostics-preview-copy {
+      margin: 5px 0 12px;
+      color: var(--subtext);
+      font-size: 11px;
+      line-height: 1.5;
+    }
+    .diagnostics-preview-content {
+      max-height: 50vh;
+      overflow: auto;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: rgba(15,23,42,0.06);
+      color: var(--text);
+      font: 10px/1.55 ui-monospace, SFMono-Regular, Menlo, monospace;
+      white-space: pre-wrap;
+      overflow-wrap: anywhere;
+    }
+    .diagnostics-preview-close { margin-top: 12px; }
+    body.dark .diagnostics-preview-dialog {
+      background: #0f172a;
+      border-color: var(--border-dark);
+    }
+    @media (max-width: 420px) {
+      .diagnostics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    }
+
     /* Version footer */
     .footer {
       text-align: center;
@@ -646,6 +935,146 @@ body.dark .usage-hint {
       </div>
     </div>
 
+    <div class="section-label">Sunland AI · Beta 数据管理</div>
+    <div class="card">
+      <div class="row">
+        <div class="row-left">
+          <div class="row-icon" style="background:rgba(34,211,238,0.1)">👤</div>
+          <div class="row-label">
+            姓名记忆
+            <small>只让 Sunland AI 忘记你的名字</small>
+          </div>
+        </div>
+        <button id="clearSunlandNameBtn" class="data-action-btn" type="button">清除姓名</button>
+      </div>
+      <div class="row">
+        <div class="row-left">
+          <div class="row-icon" style="background:rgba(99,102,241,0.1)">🧠</div>
+          <div class="row-label">
+            用户教学知识
+            <small>清除你主动教给 Sunland AI 的知识</small>
+          </div>
+        </div>
+        <button id="clearSunlandKnowledgeBtn" class="data-action-btn" type="button">清除知识</button>
+      </div>
+      <div id="sunlandDataStatus" class="sunland-data-status" role="status" aria-live="polite"></div>
+    </div>
+
+    <div class="section-label">隐私与诊断</div>
+    <details id="betaDiagnosticsSection" class="card beta-diagnostics">
+      <summary
+        id="betaDiagnosticsSummary"
+        aria-expanded="false"
+        aria-controls="betaDiagnosticsBody"
+      >
+        <span>
+          Beta 诊断（仅本地）
+          <span class="diagnostics-summary-note">默认关闭，可随时清除</span>
+        </span>
+      </summary>
+      <div id="betaDiagnosticsBody" class="diagnostics-body">
+        <p id="betaDiagnosticsDescription" class="diagnostics-copy">
+          参与本地 Beta 诊断后，Sunland AI 会在此设备上统计匿名的理解结果和性能分桶，用于帮助改进 Beta 体验。诊断不会自动上传，也不包含对话内容、姓名、教学知识或账号标识。
+        </p>
+        <ul class="diagnostics-points">
+          <li>默认关闭，仅保存在当前设备</li>
+          <li>不会自动上传，不包含聊天内容、姓名、用户教学知识或账号标识</li>
+          <li>可以随时关闭，也可以单独清除已有诊断数据</li>
+        </ul>
+        <div class="diagnostics-toggle-row">
+          <label class="diagnostics-toggle-label" for="betaDiagnosticsToggle">
+            参与本地 Beta 诊断
+            <span id="betaDiagnosticsState" class="diagnostics-state">默认关闭</span>
+          </label>
+          <label class="diagnostics-switch">
+            <input
+              id="betaDiagnosticsToggle"
+              type="checkbox"
+              aria-describedby="betaDiagnosticsDescription betaDiagnosticsStatus"
+              disabled
+            >
+            <span class="diagnostics-slider" aria-hidden="true"></span>
+          </label>
+        </div>
+
+        <div id="betaDiagnosticsEmpty" class="diagnostics-empty">
+          暂无本地诊断数据
+        </div>
+        <div id="betaDiagnosticsCounters" class="diagnostics-grid" hidden>
+          <div class="diagnostics-count"><strong id="betaDiagnosticsCounter-requestCompleted">0</strong><span>Sunland 请求总数</span></div>
+          <div class="diagnostics-count"><strong id="betaDiagnosticsCounter-understood">0</strong><span>正常理解</span></div>
+          <div class="diagnostics-count"><strong id="betaDiagnosticsCounter-clarification">0</strong><span>澄清</span></div>
+          <div class="diagnostics-count"><strong id="betaDiagnosticsCounter-noUnderstanding">0</strong><span>未理解</span></div>
+          <div class="diagnostics-count"><strong id="betaDiagnosticsCounter-missingKnowledge">0</strong><span>缺少知识</span></div>
+          <div class="diagnostics-count"><strong id="betaDiagnosticsCounter-contextUsed">0</strong><span>Context 使用</span></div>
+          <div class="diagnostics-count"><strong id="betaDiagnosticsCounter-legacyFallback">0</strong><span>Legacy 回退</span></div>
+          <div class="diagnostics-count"><strong id="betaDiagnosticsCounter-sideEffectBlocked">0</strong><span>副作用阻止</span></div>
+          <div class="diagnostics-count"><strong id="betaDiagnosticsCounter-safeFallback">0</strong><span>安全降级</span></div>
+        </div>
+
+        <details id="betaDiagnosticsPerformance" class="diagnostics-performance" hidden>
+          <summary>性能分桶</summary>
+          <table class="diagnostics-table">
+            <thead>
+              <tr><th>指标</th><th>分桶计数</th></tr>
+            </thead>
+            <tbody>
+              <tr><th>总处理耗时</th><td>
+                &lt;1ms <span id="betaDiagnosticsDuration-total-under-1ms">0</span> ·
+                1–5ms <span id="betaDiagnosticsDuration-total-1-5ms">0</span> ·
+                5–16ms <span id="betaDiagnosticsDuration-total-5-16ms">0</span> ·
+                16–50ms <span id="betaDiagnosticsDuration-total-16-50ms">0</span> ·
+                &gt;50ms <span id="betaDiagnosticsDuration-total-over-50ms">0</span> ·
+                不可用 <span id="betaDiagnosticsDuration-total-unavailable">0</span>
+              </td></tr>
+              <tr><th>Semantic 耗时</th><td>
+                &lt;1ms <span id="betaDiagnosticsDuration-semantic-under-1ms">0</span> ·
+                1–5ms <span id="betaDiagnosticsDuration-semantic-1-5ms">0</span> ·
+                5–16ms <span id="betaDiagnosticsDuration-semantic-5-16ms">0</span> ·
+                16–50ms <span id="betaDiagnosticsDuration-semantic-16-50ms">0</span> ·
+                &gt;50ms <span id="betaDiagnosticsDuration-semantic-over-50ms">0</span> ·
+                不可用 <span id="betaDiagnosticsDuration-semantic-unavailable">0</span>
+              </td></tr>
+              <tr><th>Reasoner 耗时</th><td>
+                &lt;1ms <span id="betaDiagnosticsDuration-reasoner-under-1ms">0</span> ·
+                1–5ms <span id="betaDiagnosticsDuration-reasoner-1-5ms">0</span> ·
+                5–16ms <span id="betaDiagnosticsDuration-reasoner-5-16ms">0</span> ·
+                16–50ms <span id="betaDiagnosticsDuration-reasoner-16-50ms">0</span> ·
+                &gt;50ms <span id="betaDiagnosticsDuration-reasoner-over-50ms">0</span> ·
+                不可用 <span id="betaDiagnosticsDuration-reasoner-unavailable">0</span>
+              </td></tr>
+              <tr><th>Knowledge 数量</th><td>
+                0 <span id="betaDiagnosticsKnowledge-0">0</span> ·
+                1–99 <span id="betaDiagnosticsKnowledge-1-99">0</span> ·
+                100–999 <span id="betaDiagnosticsKnowledge-100-999">0</span> ·
+                1000–4999 <span id="betaDiagnosticsKnowledge-1000-4999">0</span> ·
+                5000+ <span id="betaDiagnosticsKnowledge-5000-plus">0</span> ·
+                不可用 <span id="betaDiagnosticsKnowledge-unavailable">0</span>
+              </td></tr>
+              <tr><th>Reasoner 路径</th><td>
+                直接 <span id="betaDiagnosticsPath-direct">0</span> ·
+                2–5 <span id="betaDiagnosticsPath-2-5">0</span> ·
+                6–20 <span id="betaDiagnosticsPath-6-20">0</span> ·
+                21–50 <span id="betaDiagnosticsPath-21-50">0</span> ·
+                51+ <span id="betaDiagnosticsPath-51-plus">0</span> ·
+                无 <span id="betaDiagnosticsPath-none">0</span> ·
+                不可用 <span id="betaDiagnosticsPath-unavailable">0</span>
+              </td></tr>
+            </tbody>
+          </table>
+        </details>
+
+        <div class="diagnostics-actions">
+          <button id="viewDiagnosticsExportBtn" class="diagnostics-action-btn" type="button" disabled>查看导出内容</button>
+          <button id="copyDiagnosticsExportBtn" class="diagnostics-action-btn" type="button" disabled>复制匿名摘要</button>
+          <button id="downloadDiagnosticsExportBtn" class="diagnostics-action-btn" type="button" disabled>导出匿名 JSON</button>
+          <button id="clearDiagnosticsBtn" class="diagnostics-clear-btn" type="button" disabled>清除本地诊断数据</button>
+        </div>
+        <div id="betaDiagnosticsStatus" class="beta-diagnostics-status" role="status" aria-live="polite"></div>
+        <p class="diagnostics-stage-note">开启后，仅从后续完成的 Sunland AI 请求开始统计。</p>
+      </div>
+    </details>
+
     <!-- 危险区 -->
     <div class="section-label">其他</div>
     <div class="card">
@@ -655,7 +1084,7 @@ body.dark .usage-hint {
     </div>
 
     <div class="footer">
-      霜蓝 AI · v1.1 &nbsp;·&nbsp; 数据安全存储于云端<br>
+      Sunland AI · Beta · v1.1 &nbsp;·&nbsp; 数据安全存储于云端<br>
       <div style="margin-top:4px;">
         <a href="xukexieyi.html" style="color: inherit; text-decoration: underline;">用户协议</a>
         &nbsp;·&nbsp;
@@ -1175,7 +1604,21 @@ function hideGlobalLoading() {
 }
 document.querySelectorAll("a").forEach(a => {   a.addEventListener("click", () => {     showGlobalLoading();   }); });
 </script>
+<script type="module" src="ai/sunland-data-controls.js"></script>
+<script type="module" src="ai/sunland-beta-diagnostics.js"></script>
 
 <div id="loadingBar" aria-hidden="true"><span class="bar"></span></div>
+<dialog
+  id="diagnosticsPreviewDialog"
+  class="diagnostics-preview-dialog"
+  aria-labelledby="diagnosticsPreviewTitle"
+>
+  <div class="diagnostics-preview-inner">
+    <h2 id="diagnosticsPreviewTitle" class="diagnostics-preview-title">匿名诊断导出预览</h2>
+    <p class="diagnostics-preview-copy">这里显示的 JSON 就是复制或导出的全部内容，不包含聊天原文或账号标识。</p>
+    <pre id="diagnosticsPreviewContent" class="diagnostics-preview-content" tabindex="0"></pre>
+    <button id="closeDiagnosticsPreviewBtn" class="diagnostics-preview-close" type="button">关闭预览</button>
+  </div>
+</dialog>
 </body>
 </html>

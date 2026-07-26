@@ -1,0 +1,56 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.sunland.dev; img-src 'self' data: blob:;">
+  <title>AI Settings Browser Harness</title>
+</head>
+<body>
+  <div id="harnessStatus">LOADING</div>
+  <script type="module">
+    const nativeFetch = window.fetch.bind(window);
+    const encode = value => btoa(JSON.stringify(value))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    const params = new URLSearchParams(location.search);
+    const requestedUserId = params.get('userId') || 'browser-app-user';
+    const userId = /^[A-Za-z0-9@._:-]{3,128}$/.test(requestedUserId)
+      ? requestedUserId
+      : 'browser-app-user';
+    const userEmail = `${userId.replace(/[^A-Za-z0-9._-]/g, '-') || 'browser-app'}@example.com`;
+    const token = `${encode({ alg: 'test' })}.${encode({
+      sub: userId,
+      email: userEmail,
+      exp: Math.floor(Date.now() / 1000) + 3600,
+    })}.signature`;
+    localStorage.setItem('token', token);
+    localStorage.setItem('user', JSON.stringify({
+      id: 'stale-other-user',
+      email: 'stale@example.com',
+    }));
+
+    const shellResponse = await nativeFetch('../../ai_settings.html');
+    const shellText = await shellResponse.text();
+    const shell = new DOMParser().parseFromString(shellText, 'text/html');
+    shell.body.querySelectorAll('script').forEach(script => script.remove());
+    document.body.innerHTML = shell.body.innerHTML;
+
+    window.confirm = () => true;
+    window.fetch = async (url, options = {}) => {
+      if (String(url) === 'https://api.sunland.dev/refresh') {
+        return new Response(JSON.stringify({
+          token,
+          user: { id: userId, email: userEmail },
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      return nativeFetch(url, options);
+    };
+
+    try {
+      await import(`../../ai/sunland-data-controls.js?settings-harness=${Date.now()}`);
+      document.body.dataset.harnessReady = 'true';
+    } catch (error) {
+      document.body.dataset.harnessError = String(error?.stack || error);
+    }
+  </script>
+</body>
+</html>
