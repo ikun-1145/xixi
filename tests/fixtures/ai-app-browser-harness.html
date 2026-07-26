@@ -1,0 +1,90 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.sunland.dev; img-src 'self' data: blob:;">
+  <title>AI App Browser Harness</title>
+</head>
+<body>
+  <div id="harnessStatus">LOADING</div>
+  <script type="module">
+    const nativeFetch = window.fetch.bind(window);
+    const encode = value => btoa(JSON.stringify(value))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    const params = new URLSearchParams(location.search);
+    const requestedUserId = params.get('userId') || 'browser-app-user';
+    const userId = /^[A-Za-z0-9@._:-]{3,128}$/.test(requestedUserId)
+      ? requestedUserId
+      : 'browser-app-user';
+    const userEmail = `${userId.replace(/[^A-Za-z0-9._-]/g, '-') || 'browser-app'}@example.com`;
+    const token = `${encode({ alg: 'test' })}.${encode({ sub: userId, email: userEmail, exp: Math.floor(Date.now() / 1000) + 3600 })}.signature`;
+    const keys = [
+      'token', 'user', `conversations_${userId}`, `current_conversation_${userId}`,
+      `sunland_knowledge_${userId}`, `sunland_knowledge_${userId}::memory`,
+    ];
+    const preserve = params.get('preserve') === '1';
+    if (!preserve) {
+      keys.forEach(key => localStorage.removeItem(key));
+      localStorage.setItem('token', token);
+      localStorage.setItem('user', JSON.stringify({ id: 'stale-other-user', email: 'stale@example.com' }));
+    }
+
+    const shellResponse = await nativeFetch('../../ai.html');
+    const shellText = await shellResponse.text();
+    const shell = new DOMParser().parseFromString(shellText, 'text/html');
+    shell.body.querySelectorAll('script').forEach(script => script.remove());
+    document.body.innerHTML = shell.body.innerHTML;
+
+    window.anime = null;
+    window.hljs = { highlightElement() {} };
+    window.fetch = async (url, options = {}) => {
+      const target = String(url);
+      if (target === 'https://api.sunland.dev/refresh') {
+        return new Response(JSON.stringify({
+          token,
+          user: { id: userId, email: userEmail },
+        }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (target === 'https://api.sunland.dev') {
+        const body = JSON.parse(options.body || '{}');
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+          start(controller) {
+            if (body.deep) {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { reasoning_content: 'mock reasoning' } }] })}\n`));
+            }
+            controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { content: `mock ${body.model} reply` } }] })}\n`));
+            controller.enqueue(encoder.encode('data: [DONE]\n'));
+            controller.close();
+          },
+        });
+        return new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream', 'x-remain': '10' } });
+      }
+      return nativeFetch(url, options);
+    };
+
+    try {
+      await import(`../../ai/app.js?browser-harness=${Date.now()}`);
+      window.__aiHarness = {
+        token,
+        cleanup() { keys.forEach(key => localStorage.removeItem(key)); },
+      };
+      const cleanupButton = document.createElement('button');
+      cleanupButton.type = 'button';
+      cleanupButton.textContent = '清理验收测试数据';
+      cleanupButton.setAttribute('aria-label', '清理验收测试数据');
+      cleanupButton.hidden = params.get('showCleanup') !== '1';
+      cleanupButton.addEventListener('click', () => {
+        window.__aiHarness.cleanup();
+        cleanupButton.disabled = true;
+        cleanupButton.textContent = '验收测试数据已清理';
+      });
+      document.body.append(cleanupButton);
+      document.body.dataset.harnessReady = 'true';
+    } catch (error) {
+      window.__aiHarnessError = String(error?.stack || error);
+      document.body.dataset.harnessError = window.__aiHarnessError;
+    }
+  </script>
+</body>
+</html>

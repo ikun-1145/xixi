@@ -12,12 +12,17 @@
  * @typedef {{
  *   conversation: import("./conversation.js").Conversation,
  *   messages: ChatMessage[],
+ *   identity?: import("../verified-identity.js").VerifiedIdentity,
  *   onDelta: (textSoFar: string) => void,
  *   onReasoningDelta?: (textSoFar: string) => void,
  *   signal?: AbortSignal,
+ *   semanticContext?: object|null,
+ *   turnId?: string,
+ *   canCommitSemanticContext?: () => boolean,
+ *   observationMode?: "off"|"summary",
  * }} SendParams
  *
- * @typedef {{ content: string, remaining?: number }} SendResult
+ * @typedef {{ content: string, remaining?: number, blocked?: boolean, semanticContextUpdate?: object|null, observationSummary?: object }} SendResult
  */
 
 export class AIProvider {

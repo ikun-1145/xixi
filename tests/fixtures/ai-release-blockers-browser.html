@@ -1,0 +1,160 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>AI Release Blockers Browser Test</title>
+  <style>
+    body { font: 14px/1.5 system-ui; padding: 24px; }
+    #status { font-size: 18px; font-weight: 700; }
+    .pass { color: #15803d; }
+    .fail { color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <div id="status">RUNNING</div>
+  <pre id="details"></pre>
+  <script type="module">
+    import { restoreLocalConversationState } from '../../ai/conversation-recovery.js';
+    import { mergeConversationCollections } from '../../ai/providers/conversation.js';
+    import { createProviderRegistry } from '../../ai/providers/registry.js';
+    import { IdentityAuthority, isVerifiedIdentity } from '../../ai/verified-identity.js';
+
+    const results = [];
+    const check = (name, condition) => {
+      results.push({ name, pass: Boolean(condition) });
+      if (!condition) throw new Error(name);
+    };
+    const encode = value => btoa(JSON.stringify(value))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    const tokenFor = userId => `${encode({ alg: 'test' })}.${encode({ sub: userId, exp: Math.floor(Date.now() / 1000) + 3600 })}.signature`;
+    const tokenA = tokenFor('browser-a');
+    const tokenB = tokenFor('browser-b');
+    const authority = new IdentityAuthority({
+      fetchImpl: async (_url, options) => {
+        const token = options.headers.Authorization.slice('Bearer '.length);
+        const userId = token === tokenA ? 'browser-a' : token === tokenB ? 'browser-b' : null;
+        return userId
+          ? { ok: true, status: 200, json: async () => ({ token, user: { id: userId, email: `${userId}@example.com` } }) }
+          : { ok: false, status: 401, json: async () => ({}) };
+      },
+    });
+
+    const system = { role: 'system', content: 'system' };
+    const makeConversation = (id, userId, provider, updatedAt = id) => ({
+      id,
+      provider,
+      model: provider === 'sunland' ? 'frost' : 'deepseek-v4-flash',
+      userId,
+      title: `chat-${id}`,
+      history: [system, { role: 'user', content: 'started' }],
+      updatedAt,
+    });
+
+    const cleanupKeys = [
+      'token', 'user',
+      'conversations_browser-a', 'current_conversation_browser-a',
+      'conversations_browser-b', 'current_conversation_browser-b',
+      'sunland_knowledge_browser-a', 'sunland_knowledge_browser-a::memory',
+      'sunland_knowledge_browser-b', 'sunland_knowledge_browser-b::memory',
+    ];
+    cleanupKeys.forEach(key => localStorage.removeItem(key));
+
+    try {
+      const identityB = (await authority.resolve({ token: tokenB })).identity;
+      const registry = createProviderRegistry({ sendRequest: async body => {
+        const encoder = new TextEncoder();
+        const lines = [
+          `data: ${JSON.stringify({ choices: [{ delta: { reasoning_content: body.deep ? 'reasoning' : '' } }] })}\n`,
+          `data: ${JSON.stringify({ choices: [{ delta: { content: 'deep-answer' } }] })}\n`,
+          'data: [DONE]\n',
+        ];
+        return {
+          ok: true,
+          status: 200,
+          headers: { get: () => '9' },
+          body: new ReadableStream({ start(controller) { lines.forEach(line => controller.enqueue(encoder.encode(line))); controller.close(); } }),
+        };
+      } });
+      const sunland = registry.get('sunland');
+      await sunland.send({
+        conversation: makeConversation(10, 'browser-b', 'sunland'),
+        identity: identityB,
+        messages: [{ role: 'user', content: '我叫浏览器B秘密' }],
+      });
+
+      localStorage.setItem('token', tokenA);
+      localStorage.setItem('user', JSON.stringify({ id: 'browser-b', email: 'private-b@example.com' }));
+      const resolvedA = await authority.resolve({
+        token: tokenA,
+        cachedUser: JSON.parse(localStorage.getItem('user')),
+      });
+      const identityA = resolvedA.identity;
+      check('Token A overrides cached user B', resolvedA.ok && identityA.userId === 'browser-a');
+      check('cached B display data is not reused', identityA.user.email === 'browser-a@example.com');
+      check('switching users revokes old identity', !isVerifiedIdentity(identityB));
+
+      const blockedOld = await sunland.send({
+        conversation: makeConversation(10, 'browser-b', 'sunland'),
+        identity: identityB,
+        messages: [{ role: 'user', content: '我叫什么' }],
+      });
+      check('revoked identity cannot read old Memory', blockedOld.blocked === true);
+
+      const recallA = await sunland.send({
+        conversation: makeConversation(11, 'browser-a', 'sunland'),
+        identity: identityA,
+        messages: [{ role: 'user', content: '我叫什么' }],
+      });
+      check('new user cannot recall prior user name', !recallA.content.includes('浏览器B秘密'));
+
+      const own = makeConversation(20, 'browser-a', 'sunland');
+      const foreign = makeConversation(21, 'browser-b', 'sunland');
+      localStorage.setItem('conversations_browser-a', JSON.stringify([own, foreign]));
+      localStorage.setItem('conversations_browser-b', JSON.stringify([foreign]));
+      const restored = restoreLocalConversationState({ storage: localStorage, userId: identityA.userId });
+      check('conversation restore uses only verified namespace', restored.conversations.length === 1 && restored.conversations[0].id === 20);
+
+      const changedProvider = { ...own, provider: 'deepseek', model: 'deepseek-v4-pro', title: 'remote title', updatedAt: 999 };
+      const merged = mergeConversationCollections([own], [changedProvider]);
+      check('newer merge cannot change started provider', merged[0].provider === 'sunland' && merged[0].model === 'frost');
+      check('newer mutable metadata still merges', merged[0].title === 'remote title');
+      check('unknown provider is rejected', registry.get('unknown') === null);
+
+      const deepseek = registry.get('deepseek');
+      const flash = await deepseek.send({
+        conversation: { model: 'deepseek-v4-flash', deep: false },
+        messages: [{ role: 'user', content: 'flash' }],
+        onDelta: () => {},
+      });
+      const pro = await deepseek.send({
+        conversation: { model: 'deepseek-v4-pro', deep: false },
+        messages: [{ role: 'user', content: 'pro' }],
+        onDelta: () => {},
+      });
+      let reasoning = '';
+      await deepseek.send({
+        conversation: { model: 'deepseek-v4-pro', deep: true },
+        messages: [{ role: 'user', content: 'reasoning' }],
+        onDelta: () => {},
+        onReasoningDelta: value => { reasoning = value; },
+      });
+      check('DeepSeek Flash path remains usable', flash.content === 'deep-answer');
+      check('DeepSeek Pro path remains usable', pro.content === 'deep-answer');
+      check('DeepSeek Reasoning path remains usable', reasoning === 'reasoning');
+
+      window.__releaseBlockerResults = results;
+      document.getElementById('status').textContent = 'PASS';
+      document.getElementById('status').className = 'pass';
+      document.getElementById('details').textContent = JSON.stringify(results, null, 2);
+    } catch (error) {
+      window.__releaseBlockerResults = results;
+      window.__releaseBlockerError = String(error?.stack || error);
+      document.getElementById('status').textContent = 'FAIL';
+      document.getElementById('status').className = 'fail';
+      document.getElementById('details').textContent = window.__releaseBlockerError;
+    } finally {
+      cleanupKeys.forEach(key => localStorage.removeItem(key));
+    }
+  </script>
+</body>
+</html>

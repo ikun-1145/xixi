@@ -1,0 +1,143 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <title>AI Request Race Browser Test</title>
+  <style>
+    body { font: 14px/1.5 system-ui; padding: 24px; }
+    #status { font-size: 18px; font-weight: 700; }
+    #chat { white-space: pre-wrap; border: 1px solid #ddd; padding: 12px; min-height: 80px; }
+    .pass { color: #15803d; }
+    .fail { color: #b91c1c; }
+  </style>
+</head>
+<body>
+  <div id="status">RUNNING</div>
+  <div id="chat"></div>
+  <pre id="details"></pre>
+  <script type="module">
+    import {
+      RequestCoordinator,
+      isRequestVisibleForConversation,
+    } from '../../ai/request-context.js';
+    import { IdentityAuthority } from '../../ai/verified-identity.js';
+
+    const encode = value => btoa(JSON.stringify(value))
+      .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+    const identityToken = `${encode({ alg: 'test' })}.${encode({ sub: 'browser-user', exp: Math.floor(Date.now() / 1000) + 3600 })}.signature`;
+    const identityAuthority = new IdentityAuthority({
+      fetchImpl: async () => ({
+        ok: true,
+        status: 200,
+        json: async () => ({ token: identityToken, user: { id: 'browser-user' } }),
+      }),
+    });
+    const browserIdentity = (await identityAuthority.resolve({ token: identityToken })).identity;
+
+    const system = { role: 'system', content: 'system' };
+    const makeConversation = (id, provider = 'deepseek') => ({
+      id,
+      provider,
+      model: provider === 'sunland' ? 'frost' : 'deepseek-v4-flash',
+      userId: 'browser-user',
+      title: `chat-${id}`,
+      history: [system],
+    });
+    let conversations = [makeConversation(1), makeConversation(2), makeConversation(3, 'sunland')];
+    let currentId = 1;
+    const chat = document.getElementById('chat');
+    const results = [];
+    const coordinator = new RequestCoordinator({
+      getConversation: id => conversations.find(item => item.id === id),
+      getCurrentUserId: () => 'browser-user',
+    });
+
+    function begin(id) {
+      const target = conversations.find(item => item.id === id);
+      return coordinator.begin({
+        conversation: target,
+        identity: browserIdentity,
+        userId: 'browser-user',
+        providerId: target.provider,
+        model: target.model,
+        history: target.history,
+      });
+    }
+
+    function view(id) {
+      currentId = id;
+      const target = conversations.find(item => item.id === id);
+      chat.textContent = target ? target.history.slice(1).map(item => item.content).join('\n') : '';
+    }
+
+    async function complete(request, content, delay) {
+      await new Promise(resolve => setTimeout(resolve, delay));
+      if (!coordinator.canWrite(request)) return false;
+      const changed = coordinator.appendMessage(request, { role: 'assistant', content });
+      if (changed && isRequestVisibleForConversation(request, currentId)) view(currentId);
+      coordinator.finish(request);
+      return changed;
+    }
+
+    function check(name, condition) {
+      results.push({ name, pass: Boolean(condition) });
+      if (!condition) throw new Error(name);
+    }
+
+    try {
+      const deep = begin(1);
+      coordinator.appendMessage(deep, { role: 'user', content: 'deep question' });
+      const deepDone = complete(deep, 'deep answer', 80);
+      view(2);
+      check('other conversation hides DeepSeek stream', !chat.textContent.includes('deep answer'));
+      await deepDone;
+      check('DeepSeek result stayed on source', conversations.find(item => item.id === 1).history.at(-1).content === 'deep answer');
+      check('viewed conversation stayed clean', conversations.find(item => item.id === 2).history.length === 1);
+
+      const sunland = begin(3);
+      coordinator.appendMessage(sunland, { role: 'user', content: 'sunland question' });
+      const sunlandDone = complete(sunland, 'sunland answer', 60);
+      conversations.unshift(makeConversation(4));
+      view(4);
+      await sunlandDone;
+      check('new chat did not receive Sunland result', conversations.find(item => item.id === 4).history.length === 1);
+      check('Sunland result stayed on source', conversations.find(item => item.id === 3).history.at(-1).content === 'sunland answer');
+
+      const removed = begin(2);
+      conversations = conversations.filter(item => item.id !== 2);
+      const removedWrite = await complete(removed, 'must be discarded', 20);
+      check('deleted target discarded completion', removedWrite === false && !conversations.some(item => item.id === 2));
+
+      const first = begin(1);
+      const second = begin(4);
+      const firstDone = complete(first, 'first-late', 70);
+      const secondDone = complete(second, 'second-fast', 10);
+      await Promise.all([firstDone, secondDone]);
+      check('reverse completion stayed isolated', conversations.find(item => item.id === 1).history.at(-1).content === 'first-late');
+      check('reverse completion did not overwrite peer', conversations.find(item => item.id === 4).history.at(-1).content === 'second-fast');
+
+      const abortTarget = begin(3);
+      const unaffected = begin(4);
+      coordinator.abort(abortTarget, 'browser-stop');
+      const late = coordinator.appendMessage(abortTarget, { role: 'assistant', content: 'late-aborted' });
+      const unaffectedWrite = coordinator.appendMessage(unaffected, { role: 'assistant', content: 'still-running' });
+      check('aborted late callback ignored', late === false);
+      check('other request unaffected', unaffectedWrite === true && !unaffected.controller.signal.aborted);
+
+      view(1);
+      check('switching back shows source history', chat.textContent.includes('deep answer') && chat.textContent.includes('first-late'));
+
+      window.__raceResults = results;
+      document.getElementById('status').textContent = 'PASS';
+      document.getElementById('status').className = 'pass';
+      document.getElementById('details').textContent = JSON.stringify(results, null, 2);
+    } catch (error) {
+      window.__raceResults = results;
+      window.__raceError = String(error?.stack || error);
+      document.getElementById('status').textContent = 'FAIL';
+      document.getElementById('status').className = 'fail';
+      document.getElementById('details').textContent = window.__raceError;
+    }
+  </script>
+</body>
+</html>

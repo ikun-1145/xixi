@@ -635,8 +635,9 @@ html, body {
     background: url('../p/ailogo_dark.png') center/185% no-repeat;
   }
 
-.mini-btn::after {
-  content: "深度思考";
+.mini-btn::after,
+#uploadBtn::after {
+  content: attr(data-tooltip);
   position: absolute;
   bottom: 120%;
   left: 50%;
@@ -657,7 +658,8 @@ html, body {
   writing-mode: horizontal-tb;
 }
 
-.mini-btn:hover::after {
+.mini-btn:hover::after,
+#uploadBtn:hover::after {
   opacity: 1;
 }
 
@@ -681,6 +683,27 @@ html, body {
 .mini-btn:hover {
   background: rgba(255,255,255,0.12);
   color: #e5e7eb;
+}
+
+#deepBtn.provider-capability-disabled,
+#uploadBtn.provider-capability-disabled {
+  opacity: 0.42 !important;
+  cursor: not-allowed !important;
+  overflow: visible;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+#deepBtn.provider-capability-disabled:hover,
+#uploadBtn.provider-capability-disabled:hover {
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+#deepBtn.provider-capability-disabled .deep-logo,
+#deepBtn.provider-capability-disabled:hover .deep-logo {
+  filter: none !important;
+  transform: none !important;
 }
 
 .input-top {

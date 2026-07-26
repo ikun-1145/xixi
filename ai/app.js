@@ -198,62 +198,6 @@ if (isIOS && isSafariBrowser && window.navigator.standalone !== true && !hideTip
 }
 // ⚠️ VDS 登录需要配合 /vds-callback.html 页面处理回调
 
-// ===== ⭐ JWT 解码（base64url 安全版）=====
-// JWT 的 payload 是 base64url 编码（用 - _ 替代 + /，且不带 = 补位），
-// 直接丢给 atob() 大概率抛异常。login.html 的“已登录守卫”一直做了转换，
-// 但这里此前没做——导致登录后回到 ai.html 时 checkLogin() 解析不出 user.id，
-// 被误判为未登录。所有 JWT 解析统一走这个函数。
-function decodeJwtPayload(tk) {
-  try {
-    let b64 = tk.split(".")[1].replace(/-/g, "+").replace(/_/g, "/");
-    while (b64.length % 4) b64 += "=";
-    return JSON.parse(atob(b64));
-  } catch (e) {
-    return null;
-  }
-}
-
-function getIdentityFromJwtPayload(payload) {
-  if (!payload) return null;
-  return payload.sub ||
-    payload.id ||
-    payload.user_id ||
-    payload.userId ||
-    payload.uid ||
-    payload.email ||
-    payload.user_email ||
-    payload.mail ||
-    null;
-}
-
-function normalizeStoredUser(user, payload) {
-  if (!user || typeof user !== "object") user = {};
-
-  const id = user.id ||
-    user.user_id ||
-    user.userId ||
-    user.uid ||
-    user.sub ||
-    getIdentityFromJwtPayload(payload);
-
-  const email = user.email ||
-    user.user_email ||
-    user.mail ||
-    payload?.email ||
-    payload?.user_email ||
-    payload?.mail ||
-    (typeof id === "string" && id.includes("@") ? id : "") ||
-    "未知用户";
-
-  if (!id) return null;
-
-  return {
-    ...user,
-    id,
-    email
-  };
-}
-
 // ===== ⭐ 登录跳转：统一改为独立登录页 login.html（携带来源页，登录后自动返回）=====
 function goToLogin() {
   // ⭐ 关键修复：跳转前必须清掉本地残留的 token/user。
@@ -266,6 +210,7 @@ function goToLogin() {
     localStorage.removeItem("token");
     localStorage.removeItem("user");
   } catch (e) {}
+  window.clearVerifiedSession?.();
   location.href = "login.html?return=ai.html";
 }
 window.goToLogin = goToLogin;
@@ -273,64 +218,27 @@ window.goToLogin = goToLogin;
 window.showLoginPrompt = goToLogin;
 
 // ===== ⭐ 全局API封装（使用本地token）=====
-async function apiFetch(body, _retried = false) {
+async function apiFetch(body, _retried = false, signal = undefined) {
   let token = localStorage.getItem("token");
-
-  // ⭐ 过期检测 + 自动续期（base64url 安全解析）
-  function isExpired(tk) {
-    const payload = decodeJwtPayload(tk);
-    if (!payload) return true;
-    if (!payload.exp) return false;
-    // 仅提前5秒判断过期，避免误杀
-    return payload.exp * 1000 < Date.now() + 5000;
-  }
+  if (!token) return null;
 
   async function refreshToken() {
-    try {
-      const old = localStorage.getItem("token");
-      if (!old) return null;
-      // 防止并发刷新（简单锁）
-      if (window.__refreshing) return null;
-      window.__refreshing = true;
-
-      const res = await fetch("https://api.sunland.dev/refresh", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": "Bearer " + old
-        }
-      });
-
-      if (!res.ok) {
-        console.warn("refresh 失败:", res.status);
-        window.__refreshing = false;
-        return null;
-      }
-
-      const data = await res.json().catch(() => ({}));
-      if (data?.token) {
-        localStorage.setItem("token", data.token);
-        const payload = decodeJwtPayload(data.token);
-        const refreshedUser = normalizeStoredUser(data.user, payload);
-        if (refreshedUser) {
-          localStorage.setItem("user", JSON.stringify(refreshedUser));
-        }
-        window.__refreshing = false;
-        return data.token;
-      }
-    } catch (e) {
-      console.warn("refresh token 失败:", e);
-    }
-    window.__refreshing = false;
-    return null;
+    const old = localStorage.getItem("token");
+    if (!old) return null;
+    const identity = await resolveAndStoreIdentity({
+      token: old,
+      expectedUserId: session?.userId ?? null,
+      force: true,
+    });
+    return getVerifiedToken(identity);
   }
 
-  // 即使过期也尝试刷新（不要提前删除）
-  if (token) {
-    if (isExpired(token)) {
-      const newToken = await refreshToken();
-      if (newToken) token = newToken;
-    }
+  // Session 中的身份与 Token 必须来自同一次服务端验证。
+  const currentIdentity = getCurrentVerifiedIdentity();
+  if (token && (!currentIdentity || getVerifiedToken(currentIdentity) !== token)) {
+    const newToken = await refreshToken();
+    if (!newToken) return null;
+    token = newToken;
   }
 
   const res = await fetch("https://api.sunland.dev", {
@@ -339,7 +247,8 @@ async function apiFetch(body, _retried = false) {
       "Content-Type": "application/json",
       ...(token ? { "Authorization": "Bearer " + token } : {})
     },
-    body: JSON.stringify(body)
+    body: JSON.stringify(body),
+    signal,
   });
 
   // ⭐ 如果401 → 尝试刷新一次
@@ -348,7 +257,7 @@ async function apiFetch(body, _retried = false) {
     const newToken = await refreshToken();
 
     if (newToken) {
-      return apiFetch(body, true);
+      return apiFetch(body, true, signal);
     }
     // refresh 失败才真正登出
     localStorage.removeItem("token");
@@ -408,16 +317,40 @@ document.addEventListener("DOMContentLoaded", () => {
 });
 const fileInput = document.getElementById("fileInput");
 const uploadBtn = document.getElementById("uploadBtn");
+const deepBtn = document.getElementById("deepBtn");
 const previewBox = document.getElementById("uploadPreview");
 let pendingFiles = [];
+let providerCapabilityState = {
+  deepThinking: true,
+  fileUpload: true,
+};
+
+function clearPendingAttachments() {
+  previewBox.querySelectorAll('img[src^="blob:"]').forEach(img => {
+    try { URL.revokeObjectURL(img.src); } catch {}
+  });
+  pendingFiles = [];
+  fileInput.value = "";
+  previewBox.innerHTML = "";
+}
 
 uploadBtn.onclick = async () => {
+  if (!providerCapabilityState.fileUpload) return;
   if (!(await requireLoginForAction())) return;
+  if (!providerCapabilityState.fileUpload) return;
   fileInput.click();
 };
 
 fileInput.onchange = async () => {
+  if (!providerCapabilityState.fileUpload) {
+    fileInput.value = "";
+    return;
+  }
   if (!(await requireLoginForAction())) {
+    fileInput.value = "";
+    return;
+  }
+  if (!providerCapabilityState.fileUpload) {
     fileInput.value = "";
     return;
   }
@@ -456,7 +389,16 @@ document.addEventListener("paste", async (e) => {
 
   if (!files.length) return;
 
+  if (!providerCapabilityState.fileUpload) {
+    e.preventDefault();
+    return;
+  }
+
   if (!(await requireLoginForAction())) {
+    e.preventDefault();
+    return;
+  }
+  if (!providerCapabilityState.fileUpload) {
     e.preventDefault();
     return;
   }
@@ -467,12 +409,17 @@ document.addEventListener("paste", async (e) => {
 // ===== 拖拽上传 =====
 chat.addEventListener("dragover", (e) => {
   e.preventDefault();
+  if (!providerCapabilityState.fileUpload && e.dataTransfer) {
+    e.dataTransfer.dropEffect = "none";
+  }
 });
 
 chat.addEventListener("drop", async (e) => {
   e.preventDefault();
   const files = Array.from(e.dataTransfer.files);
+  if (files.length && !providerCapabilityState.fileUpload) return;
   if (files.length && !(await requireLoginForAction())) return;
+  if (!providerCapabilityState.fileUpload) return;
   files.forEach(handleFile);
 });
 function startActivationPolling() {
@@ -488,7 +435,7 @@ function startActivationPolling() {
       return;
     }
 
-    if (!session?.user) return;
+    if (!session?.userId) return;
 
     // ⭐ 统一判定：checkActivation 以 user_profiles.pro 为准（爱发电 worker 写入），
     //    并兼容激活码兑换。检测到即解锁 Pro 并关闭弹窗。
@@ -536,22 +483,21 @@ function showError(title, extra = {}) {
       box-shadow:0 20px 60px rgba(0,0,0,0.3);
       font-size:13px;
     ">
-      <div style="font-weight:600;margin-bottom:6px;">
-        ❌ ${title}
+      <div data-error-title style="font-weight:600;margin-bottom:6px;">
       </div>
 
       <div style="color:#666;font-size:12px;margin-bottom:10px;">
         请复制错误信息发送给开发者
       </div>
 
-      <textarea readonly style="
+      <textarea data-error-detail readonly style="
         width:100%;
         height:100px;
         border-radius:10px;
         border:1px solid #ddd;
         padding:6px;
         font-size:11px;
-      ">${detail}</textarea>
+      "></textarea>
 
       <div style="display:flex;gap:6px;margin-top:8px;">
         <button id="copyErr">复制</button>
@@ -559,6 +505,9 @@ function showError(title, extra = {}) {
       </div>
     </div>
   `;
+
+  box.querySelector("[data-error-title]").textContent = `❌ ${title}`;
+  box.querySelector("[data-error-detail]").value = detail;
 
   document.body.appendChild(box);
 
@@ -652,7 +601,10 @@ async function requireLoginForAction() {
     await checkLogin();
   }
 
-  if (session && session.user) return true;
+  if (getCurrentVerifiedIdentity()) return true;
+
+  await checkLogin();
+  if (getCurrentVerifiedIdentity()) return true;
 
   goToLogin();
   return false;
@@ -660,6 +612,7 @@ async function requireLoginForAction() {
 
 // ===== 统一文件处理函数 =====
 function handleFile(file) {
+  if (!providerCapabilityState.fileUpload) return false;
 
   pendingFiles.push(file);
 
@@ -718,17 +671,49 @@ item.style.borderRadius = "12px";
   item.appendChild(del);
   previewBox.appendChild(item);
 
+  return true;
 }
 
 // ⭐ Sunland AI Provider 框架（Stage 3.5-3.7）：ai.html 只通过 providerRegistry
 // 统一接口与各 Provider 通信；DeepSeek 现有逻辑保持不变，只有新增的 Sunland
 // 分支会用到这个 registry。
 import { createProviderRegistry } from './providers/registry.js';
-import { migrateLegacyConversation } from './providers/conversation.js';
+import {
+  filterConversationsForUser,
+  persistCurrentConversationId,
+  restoreLocalConversationState,
+} from './conversation-recovery.js';
+import { renderSafeMarkdown } from './safe-markdown.js';
+import {
+  RequestCoordinator,
+  applyRequestTitle,
+  cloneRequestHistory,
+  isRequestVisibleForConversation,
+} from './request-context.js';
+import {
+  getSunlandKnowledgeStorageKey,
+  isSameUserIdentity,
+  SUNLAND_LOGIN_STATE_MESSAGE,
+} from './user-identity.js';
+import {
+  createConversation,
+  hasConversationStarted,
+  isSupportedProviderId,
+  mergeConversationCollections,
+  setConversationProvider,
+} from './providers/conversation.js';
+import {
+  getVerifiedToken,
+  getVerifiedUserId,
+  IdentityAuthority,
+  isVerifiedIdentity,
+} from './verified-identity.js';
+
+const identityAuthority = new IdentityAuthority();
 
 // `apiFetch` is a hoisted function declaration (defined below), so it's
 // already safely referenceable here at module-eval time.
-const providerRegistry = createProviderRegistry({ sendRequest: apiFetch });
+let providerRegistry = createProviderRegistry({ sendRequest: apiFetch });
 
 function createOfflineSupabaseClient() {
   const offlineResult = () => Promise.resolve({ data: null, error: null });
@@ -769,8 +754,10 @@ import('../p/js/supabaseClient.js')
   .then((module) => {
     if (module?.supabase) {
       supabase = module.supabase;
-      if (session?.user) {
-        restoreLoginState().catch(() => {});
+      if (session?.userId) {
+        const identity = getCurrentVerifiedIdentity();
+        if (identity) setSession(identity);
+        restoreLoginState();
       }
     }
   })
@@ -782,89 +769,94 @@ let session = null;
 const PROFILE_META_ID = "__xixi_user_profile__";
 const PROFILE_CACHE_PREFIX = "xixi_profile_";
 
-// ===== ⭐ 实时同步：头像 & 对话 =====
-function setupRealtimeSync() {
-  if (!session?.user?.id) return;
-
-  // ⭐ 头像同步
-  supabase
-    .channel('profile-sync-' + session.user.id)
-    .on(
-      'postgres_changes',
-      {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'user_profiles',
-        filter: `user_id=eq.${session.user.id}`
-      },
-      (payload) => {
-        try {
-          const profile = payload.new;
-          if (profile?.avatar_url) {
-            cacheProfile(session.user.id, profile);
-            currentProfile = profile;
-            scheduleRenderUser();
-          }
-        } catch (e) {
-          console.warn('头像同步解析失败:', e);
-        }
-      }
-    )
-    .subscribe();
-
-  // ⭐ 对话同步
-  supabase
-    .channel('chat-sync-' + session.user.id)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'conversations',
-        filter: `user_id=eq.${session.user.id}`
-      },
-      async () => {
-        try {
-          await syncFromCloud();
-
-          if (currentId) {
-            loadChat(currentId);
-          }
-        } catch (e) {
-          console.warn('对话同步失败:', e);
-        }
-      }
-    )
-    .subscribe();
-}
-
 let realtimeChannels = [];
 
-function setSession(s) {
+function getCurrentVerifiedIdentity() {
+  const identity = identityAuthority.current();
+  return identity && session?.identity === identity ? identity : null;
+}
+
+function getCurrentUserId() {
+  return getVerifiedUserId(getCurrentVerifiedIdentity());
+}
+
+function readCachedDisplayUser() {
+  try {
+    const cached = JSON.parse(localStorage.getItem("user") || "null");
+    return cached && typeof cached === "object" && !Array.isArray(cached) ? cached : null;
+  } catch {
+    return null;
+  }
+}
+
+function persistVerifiedIdentity(identity) {
+  const userId = getVerifiedUserId(identity);
+  const token = getVerifiedToken(identity);
+  if (!userId || !token) return false;
+  localStorage.setItem("token", token);
+  localStorage.setItem("user", JSON.stringify({
+    ...identity.user,
+    // Compatibility cache only. Authentication never reads this field.
+    id: userId,
+  }));
+  return true;
+}
+
+async function resolveIdentityResult({ token, expectedUserId = null, force = false } = {}) {
+  const result = await identityAuthority.resolve({
+    token,
+    cachedUser: readCachedDisplayUser(),
+    expectedUserId,
+    force,
+  });
+  if (!result.ok || !isVerifiedIdentity(result.identity)) return result;
+  persistVerifiedIdentity(result.identity);
+  if (session?.identity !== result.identity) setSession(result.identity);
+  return result;
+}
+
+async function resolveAndStoreIdentity(options = {}) {
+  const result = await resolveIdentityResult(options);
+  return result.ok ? result.identity : null;
+}
+
+function setSession(identity) {
+  const previousUserId = session?.userId ?? null;
   // ⭐ 清理旧订阅（不然会叠加）
+  stopRealtime();
   realtimeChannels.forEach(ch => {
     try { supabase.removeChannel(ch); } catch {}
   });
   realtimeChannels = [];
 
-  session = s;
-  window.session = s;
+  if (identity != null && !isVerifiedIdentity(identity)) {
+    throw new TypeError("Session requires a verified identity");
+  }
+  const userId = getVerifiedUserId(identity);
+  session = userId
+    ? { userId, identity, user: identity.user }
+    : null;
+  window.session = session;
+  if (previousUserId && previousUserId !== userId) {
+    deletedConversationIds.clear();
+    deletingConversationIds.clear();
+  }
 
-  setTimeout(() => {
-    if (!session?.user?.id) return;
+  if (!userId) return;
 
     const profileChannel = supabase
-      .channel('profile-sync-' + session.user.id)
+      .channel('profile-sync-' + userId)
       .on('postgres_changes', {
         event: 'UPDATE',
         schema: 'public',
         table: 'user_profiles',
-        filter: `user_id=eq.${session.user.id}`
+        filter: `user_id=eq.${userId}`
       }, (payload) => {
+        if (getCurrentUserId() !== userId) return;
         try {
           const profile = payload.new;
           if (profile?.avatar_url) {
-            cacheProfile(session.user.id, profile);
+            cacheProfile(userId, profile);
             currentProfile = profile;
             scheduleRenderUser();
           }
@@ -873,29 +865,63 @@ function setSession(s) {
       .subscribe();
 
     const chatChannel = supabase
-      .channel('chat-sync-' + session.user.id)
+      .channel('chat-sync-' + userId)
       .on('postgres_changes', {
         event: '*',
         schema: 'public',
         table: 'conversations',
-        filter: `user_id=eq.${session.user.id}`
+        filter: `user_id=eq.${userId}`
       }, async () => {
+        if (getCurrentUserId() !== userId) return;
         try {
           await syncFromCloud();
-          if (currentId) loadChat(currentId);
+          if (getCurrentUserId() === userId && currentId) loadChat(currentId);
         } catch {}
       })
       .subscribe();
 
     realtimeChannels.push(profileChannel, chatChannel);
-  }, 0);
 }
+
+function clearVerifiedSession() {
+  identityAuthority.clear();
+  setSession(null);
+  deletedConversationIds.clear();
+  deletingConversationIds.clear();
+  conversations = [];
+  currentId = null;
+  history = history.length ? [history[0]] : [];
+}
+window.clearVerifiedSession = clearVerifiedSession;
 let isActivated = false;
 let deepMode = false;
 let currentModel = "deepseek-v4-flash";
 let currentProfile = null;
 let conversations = []; // ⭐ 提前声明，避免 TDZ
 let chatSearchKeyword = "";
+const deletedConversationIds = new Set();
+const deletingConversationIds = new Set();
+
+function renderHighlightedTitle(target, title, keyword) {
+  target.textContent = "";
+
+  const escaped = keyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const matches = title.matchAll(new RegExp(escaped, "gi"));
+  let lastIndex = 0;
+
+  for (const match of matches) {
+    target.appendChild(document.createTextNode(title.slice(lastIndex, match.index)));
+
+    const mark = document.createElement("mark");
+    mark.style.cssText = "background:rgba(34,211,238,0.3);border-radius:4px;padding:0 2px;";
+    mark.textContent = match[0];
+    target.appendChild(mark);
+    lastIndex = match.index + match[0].length;
+  }
+
+  target.appendChild(document.createTextNode(title.slice(lastIndex)));
+}
+
 // ===== 聊天列表渲染与搜索 =====
 function renderChatList() {
   const list = document.getElementById("chatList");
@@ -925,18 +951,31 @@ function renderChatList() {
 
   filtered.forEach(c => {
     const div = document.createElement("div");
+    div.className = "chat-list-item";
 
     const title = c.title || "新对话";
+    const titleEl = document.createElement("span");
+    titleEl.className = "chat-list-title";
 
     if (chatSearchKeyword) {
-      // 转义正则特殊字符
-      const escaped = chatSearchKeyword.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-      const reg = new RegExp(`(${escaped})`, "gi");
-
-      div.innerHTML = title.replace(reg, `<mark style="background:rgba(34,211,238,0.3);border-radius:4px;padding:0 2px;">$1</mark>`);
+      renderHighlightedTitle(titleEl, title, chatSearchKeyword);
     } else {
-      div.innerText = title;
+      titleEl.innerText = title;
     }
+    div.appendChild(titleEl);
+
+    const deleteBtn = document.createElement("button");
+    deleteBtn.type = "button";
+    deleteBtn.className = "delete-chat";
+    deleteBtn.innerText = "×";
+    deleteBtn.setAttribute("aria-label", `删除对话：${title}`);
+    deleteBtn.title = "删除对话";
+    deleteBtn.disabled = deletingConversationIds.has(c.id);
+    deleteBtn.onclick = async (e) => {
+      e.stopPropagation();
+      await deleteConversationForCurrentUser(c);
+    };
+    div.appendChild(deleteBtn);
 
     div.onclick = (e) => {
       e.stopPropagation();
@@ -988,24 +1027,32 @@ function stripProfileMeta(data) {
   return (Array.isArray(data) ? data : []).filter(item => item?.id !== PROFILE_META_ID);
 }
 
-function normalizeCloudData(data) {
+function normalizeCloudData(data, userId = getCurrentUserId()) {
   const profile = extractProfileMeta(data);
-  if (profile?.avatar_url && session?.user?.id) {
-    cacheProfile(session.user.id, profile);
+  const profileMatchesUser = profile?.user_id == null || profile.user_id === userId;
+  if (profile?.avatar_url && profileMatchesUser && userId && getCurrentUserId() === userId) {
+    cacheProfile(userId, profile);
   }
 
   return stripProfileMeta(data);
 }
 
-function buildCloudData() {
-  const rows = stripProfileMeta(conversations);
-  if (currentProfile?.avatar_url && session?.user?.id) {
+function buildCloudData(
+  userId = getCurrentUserId(),
+  sourceConversations = conversations,
+) {
+  const rows = filterConversationsForUser(
+    stripProfileMeta(sourceConversations),
+    userId,
+  )
+    .filter(conversation => !deletedConversationIds.has(conversation.id));
+  if (currentProfile?.avatar_url && userId) {
     rows.unshift({
       id: PROFILE_META_ID,
       type: "profile",
       profile: {
         ...currentProfile,
-        user_id: session.user.id,
+        user_id: userId,
         email: session.user.email || "",
         updated_at: currentProfile.updated_at || new Date().toISOString()
       }
@@ -1015,9 +1062,10 @@ function buildCloudData() {
 }
 
 async function loadUserProfileFromCloud() {
-  if (!session?.user?.id) return;
+  const userId = getCurrentUserId();
+  if (!userId) return;
 
-  const cached = loadCachedProfile(session.user.id);
+  const cached = loadCachedProfile(userId);
   if (cached?.avatar_url) {
     currentProfile = cached;
     scheduleRenderUser();
@@ -1027,13 +1075,15 @@ async function loadUserProfileFromCloud() {
     const { data, error } = await supabase
       .from("user_profiles")
       .select("avatar_url, avatar_path, name, pro")
-      .eq("user_id", session.user.id)
+      .eq("user_id", userId)
       .maybeSingle();
+
+    if (getCurrentUserId() !== userId) return;
 
     if (error) throw error;
 
     if (data) {
-      cacheProfile(session.user.id, data);
+      cacheProfile(userId, data);
       currentProfile = data;
       scheduleRenderUser();
     }
@@ -1065,26 +1115,86 @@ function updateDeepButton() {
   const btn = document.getElementById("deepBtn");
   if (!btn) return;
 
-  btn.classList.toggle("active", deepMode);
+  btn.classList.toggle(
+    "active",
+    providerCapabilityState.deepThinking && deepMode,
+  );
+}
+
+function updateProviderCapabilityUI() {
+  const conversation = conversations.find(item => item.id === currentId);
+  const isSunland = conversation?.provider === "sunland";
+
+  providerCapabilityState = {
+    deepThinking: !isSunland,
+    fileUpload: !isSunland,
+  };
+
+  const deepDisabledMessage = "Sunland AI · Beta 暂不支持深度思考";
+  const uploadDisabledMessage = "Sunland AI · Beta 暂不支持文件上传";
+
+  deepBtn.disabled = isSunland;
+  deepBtn.setAttribute("aria-disabled", String(isSunland));
+  deepBtn.setAttribute(
+    "aria-label",
+    isSunland ? deepDisabledMessage : "深度思考",
+  );
+  deepBtn.title = isSunland ? deepDisabledMessage : "深度思考";
+  deepBtn.dataset.tooltip = isSunland ? deepDisabledMessage : "深度思考";
+  deepBtn.classList.toggle("provider-capability-disabled", isSunland);
+
+  uploadBtn.disabled = isSunland;
+  uploadBtn.setAttribute("aria-disabled", String(isSunland));
+  uploadBtn.setAttribute(
+    "aria-label",
+    isSunland ? uploadDisabledMessage : "上传文件",
+  );
+  uploadBtn.title = isSunland ? uploadDisabledMessage : "上传文件";
+  uploadBtn.dataset.tooltip = isSunland ? uploadDisabledMessage : "上传文件";
+  uploadBtn.classList.toggle("provider-capability-disabled", isSunland);
+
+  fileInput.disabled = isSunland;
+  fileInput.setAttribute("aria-disabled", String(isSunland));
+  fileInput.title = isSunland ? uploadDisabledMessage : "";
+
+  if (isSunland) clearPendingAttachments();
+
+  updateDeepButton();
 }
 function updateModelUI() {
   const el = document.getElementById("modelSelector");
+  updateProviderCapabilityUI();
   if (!el) return;
 
   // ⭐ Sunland AI: Provider 一旦绑定即锁定显示，不再跟随 currentModel。
   const c = conversations.find(x => x.id === currentId);
   if (c && c.provider === "sunland") {
-    el.innerHTML = '<img src="p/studio.png" style="width:20px;height:20px;border-radius:5px;flex-shrink:0;">Sunland';
-    el.classList.add("locked");
+    const isLocked = hasConversationStarted(c);
+    const label = "Sunland AI · Beta";
+    const lockMessage = "当前对话已绑定 Sunland AI。请新建对话以切换模型。";
+    el.innerHTML = '<img src="p/studio.png" alt="" aria-hidden="true" style="width:20px;height:20px;border-radius:5px;flex-shrink:0;">Sunland AI · Beta';
+    el.classList.toggle("locked", isLocked);
+    el.setAttribute("aria-label", isLocked ? lockMessage : label);
+    el.title = isLocked ? lockMessage : label;
     return;
   }
   el.classList.remove("locked");
 
   if (currentModel === "deepseek-v4-pro") {
     el.innerText = "Pro";
+    el.setAttribute("aria-label", "DeepSeek V4 Pro");
+    el.title = "DeepSeek V4 Pro";
   } else {
     el.innerText = "Flash";
+    el.setAttribute("aria-label", "DeepSeek V4 Flash");
+    el.title = "DeepSeek V4 Flash";
   }
+}
+
+function getProviderBindingMessage(conversation) {
+  return conversation?.provider === "sunland"
+    ? "当前对话已绑定 Sunland AI。请新建对话以切换模型。"
+    : "当前对话已绑定 DeepSeek。请新建对话以切换模型。";
 }
 
 // 初始化
@@ -1116,21 +1226,26 @@ function updateModelUI() {
     item.onclick = () => {
       const model = item.dataset.model;
       const c = conversations.find(x => x.id === currentId);
-      // ⭐ Provider 一旦有过对话（history.length > 1）即锁定，禁止切换，
-      // 与现有 "history[0] 是 system 消息，真正对话从 length>1 开始" 的
-      // 约定一致。
-      const hasStarted = !!(c && c.history && c.history.length > 1);
+      if (!["sunland", "flash", "pro"].includes(model)) {
+        modelMenu.classList.remove("show");
+        return;
+      }
+      // Provider 在第一条非 system 消息写入后立即锁定。
+      const hasStarted = hasConversationStarted(c);
 
       // ⭐ Sunland AI（新增分支，完全独立于下面 DeepSeek 的现有逻辑）
       if (model === "sunland") {
         if (hasStarted && c.provider !== "sunland") {
-          showToast("对话已开始，无法切换 AI，请新建对话");
+          showToast(getProviderBindingMessage(c));
           modelMenu.classList.remove("show");
           return;
         }
         if (c) {
-          c.provider = "sunland";
-          c.model = "frost";
+          if (!setConversationProvider(c, "sunland", "frost")) {
+            showToast(getProviderBindingMessage(c));
+            modelMenu.classList.remove("show");
+            return;
+          }
           saveConversations();
         }
         updateModelUI();
@@ -1138,7 +1253,7 @@ function updateModelUI() {
         return;
       }
       if (hasStarted && c.provider === "sunland") {
-        showToast("当前对话使用的是 Sunland AI，无法切换，请新建对话");
+        showToast(getProviderBindingMessage(c));
         modelMenu.classList.remove("show");
         return;
       }
@@ -1156,8 +1271,11 @@ function updateModelUI() {
 
       // 🆕 记录这条对话使用的 provider/model（不影响任何既有行为，仅补充字段）
       if (c) {
-        c.provider = "deepseek";
-        c.model = currentModel;
+        if (!setConversationProvider(c, "deepseek", currentModel)) {
+          showToast(getProviderBindingMessage(c));
+          modelMenu.classList.remove("show");
+          return;
+        }
         saveConversations();
       }
 
@@ -1383,15 +1501,18 @@ function showProModelModal() {
 }
 
 async function checkActivation() {
-  if (!session?.user) return;
+  const userId = getCurrentUserId();
+  if (!userId) return;
 
   // ⭐ Pro 判定唯一真值源：user_profiles.pro（爱发电付款由 afdianpay worker 回调写入）。
   //    激活码系统已弃用；历史激活码用户的 pro 已回填，故不再查 activation_codes。
   const { data: prof } = await supabase
     .from("user_profiles")
     .select("pro")
-    .eq("user_id", session.user.id)
+    .eq("user_id", userId)
     .maybeSingle();
+
+  if (getCurrentUserId() !== userId) return;
 
   isActivated = !!prof?.pro;
 
@@ -1413,8 +1534,10 @@ async function checkActivation() {
     const { data } = await supabase
       .from("usage")
       .select("count")
-      .eq("user_id", session.user.id)
+      .eq("user_id", userId)
       .maybeSingle();
+
+    if (getCurrentUserId() !== userId) return;
 
     const count = data?.count || 0;
     const remain = Math.max(0, 20 - count);
@@ -1436,6 +1559,7 @@ let restoreLoginPromise = null;
 let restoreLoginPromiseVersion = 0;
 let renderUserScheduled = false;
 let lastRenderedUserKey = "";
+let lastIdentityErrorReason = "";
 
 function isRestoreStale(version) {
   return version != null && version !== restoreVersion;
@@ -1459,8 +1583,8 @@ function finalizeRenderUser(version) {
   if (isRestoreStale(version)) return;
   queueMicrotask(() => {
     if (isRestoreStale(version)) return;
-    const key = session?.user?.id
-      ? `${session.user.id}:${session.user.email || ""}:${isActivated ? 1 : 0}`
+    const key = session?.userId
+      ? `${session.userId}:${session.user.email || ""}:${isActivated ? 1 : 0}`
       : "guest";
     if (key === lastRenderedUserKey) return;
     lastRenderedUserKey = key;
@@ -1510,91 +1634,84 @@ async function checkLogin(options = {}) {
   }
 
   checkLoginPromise = (async () => {
+    const previousUserId = getCurrentUserId();
+
     try {
       const token = localStorage.getItem("token");
-      if (token) {
-        const payload = decodeJwtPayload(token);
-        if (!payload) {
-          console.warn("token 解析失败（非法或损坏的 JWT）");
-        } else if (payload.exp && payload.exp * 1000 < Date.now()) {
-          console.warn("token 启动时已过期（交给 refresh 处理）");
-        }
-      }
-      const userStr = localStorage.getItem("user");
-
-      if (token) {
-        let user = null;
-
-        if (userStr) {
-          try {
-            user = JSON.parse(userStr);
-          } catch {}
-        }
-
-        if (!user || !user.id) {
-          const payload = decodeJwtPayload(token);
-          if (payload) {
-            console.log("JWT payload:", payload);
-            user = normalizeStoredUser(user, payload);
-
-            if (!user?.id) {
-              console.warn("⚠️ token里没有user id");
-              if (expectedVersion == null || !isRestoreStale(expectedVersion)) {
-                setSession(null);
-              }
-              sessionReady = true;
-              if (expectedVersion == null || !isRestoreStale(expectedVersion)) {
-                scheduleRenderUser();
-              }
-              return;
-            }
-
-            localStorage.setItem("user", JSON.stringify(user));
-          } else {
-            console.warn("JWT解析失败（base64url 解码不通过）");
-          }
-        } else {
-          const payload = decodeJwtPayload(token);
-          user = normalizeStoredUser(user, payload) || user;
-          localStorage.setItem("user", JSON.stringify(user));
-        }
-
-        if (expectedVersion != null && isRestoreStale(expectedVersion)) return;
-
-        if (user && user.id) {
-          setSession({ user });
-        } else {
-          setSession(null);
-        }
-      } else {
+      if (!token) {
+        identityAuthority.clear();
         setSession(null);
         currentProfile = null;
+      } else {
+        const resolution = await identityAuthority.resolve({
+          token,
+          cachedUser: readCachedDisplayUser(),
+        });
+        if (expectedVersion != null && isRestoreStale(expectedVersion)) return;
+
+        if (!resolution.ok || !isVerifiedIdentity(resolution.identity)) {
+          if (resolution.reason === "stale-resolution") return;
+          const hardFailure = [
+            "invalid-input",
+            "invalid-token",
+            "invalid-verification-response",
+            "invalid-verified-token",
+            "identity-mismatch",
+            "missing-identity",
+            "expired-verified-token",
+          ].includes(resolution.reason);
+          if (hardFailure) {
+            localStorage.removeItem("token");
+            localStorage.removeItem("user");
+          }
+          identityAuthority.clear();
+          setSession(null);
+          currentProfile = null;
+          conversations = [];
+          currentId = null;
+          sessionReady = true;
+          renderChatList();
+          updateProviderCapabilityUI();
+          if (lastIdentityErrorReason !== resolution.reason) {
+            lastIdentityErrorReason = resolution.reason;
+            showToast(SUNLAND_LOGIN_STATE_MESSAGE);
+          }
+          scheduleRenderUser();
+          return;
+        }
+
+        lastIdentityErrorReason = "";
+        persistVerifiedIdentity(resolution.identity);
+        if (session?.identity !== resolution.identity) setSession(resolution.identity);
       }
 
       if (expectedVersion != null && isRestoreStale(expectedVersion)) return;
 
       sessionReady = true;
 
-      if (session?.user) {
-        currentProfile = loadCachedProfile(session.user.id);
+      if (session?.userId) {
+        currentProfile = loadCachedProfile(session.userId);
       }
 
       scheduleRenderUser();
 
-      if (session?.user) {
+      if (session?.userId) {
         loadUserProfileFromCloud().catch(() => {});
 
-        const local = localStorage.getItem("conversations_" + session.user.id);
+        const sameUserFallback = previousUserId === session.userId
+          ? conversations
+          : [];
+        const restored = restoreLocalConversationState({
+          storage: localStorage,
+          userId: session.userId,
+          fallbackConversations: sameUserFallback,
+          fallbackCurrentId: previousUserId === session.userId ? currentId : null,
+        });
 
-        if (local) {
-          try {
-            const parsed = JSON.parse(local);
-            // 🆕 迁移旧数据：老会话没有 provider 字段，统一补齐为 "deepseek"
-            // （在 Stage 3.6 之前，这本来就是唯一存在过的 provider）。
-            conversations = (Array.isArray(parsed) ? parsed : []).map(migrateLegacyConversation);
-          } catch {
-            conversations = [];
-          }
+        conversations = restored.conversations;
+        currentId = restored.currentId;
+        if (restored.status === "damaged" || restored.status === "invalid") {
+          console.warn("本地会话数据无法解析，已保留可用的内存会话");
         }
 
         if (!skipCloudSync) {
@@ -1604,6 +1721,7 @@ async function checkLogin(options = {}) {
         renderChatList();
       } else {
         conversations = [];
+        currentId = null;
         renderChatList();
       }
 
@@ -1623,11 +1741,13 @@ async function checkLogin(options = {}) {
           loadChat(currentId);
         }
       }
+      updateProviderCapabilityUI();
     } catch (e) {
+      if (e?.name === "ReferenceError") throw e;
+
       console.error("登录检测异常:", e);
       sessionReady = true;
       if (expectedVersion == null || !isRestoreStale(expectedVersion)) {
-        setSession(null);
         scheduleRenderUser();
       }
     } finally {
@@ -1647,7 +1767,7 @@ if (!sessionReady) return; // ⭐ 防止初始化乱刷
   if (!avatarEl || !emailEl) return;
 
   // ===== 未登录 =====
-  if (!session || !session.user){
+  if (!session?.userId || !session.user){
   avatarEl.innerText = "?";
   avatarEl.style.backgroundImage = ""; // ⭐ 必加
   emailEl.innerText = "未登录";
@@ -1657,16 +1777,6 @@ if (!sessionReady) return; // ⭐ 防止初始化乱刷
 }
 
   const user = session.user;
-  // ⭐ 兜底修复 user.id 丢失问题（base64url 安全解析）
-if (!user.id) {
-  try {
-    const token = localStorage.getItem("token");
-    const payload = token ? decodeJwtPayload(token) : null;
-    const normalizedUser = normalizeStoredUser(user, payload);
-    if (normalizedUser) Object.assign(user, normalizedUser);
-  } catch {}
-}
-
   // ===== 邮箱 =====
   emailEl.innerText = user.email || "未知用户";
 
@@ -1682,12 +1792,11 @@ if (!user.id) {
     avatarEl.style.backgroundImage = "";
     avatarEl.innerText = letter;
   }
-if (user) console.log("🔥 当前 user:", user);
   // ===== Pro按钮 =====
   if (proBtn) {
     proBtn.style.display = isActivated ? "none" : "inline-block";
   }
-  lastRenderedUserKey = `${user.id}:${user.email || ""}:${isActivated ? 1 : 0}`;
+  lastRenderedUserKey = `${session.userId}:${user.email || ""}:${isActivated ? 1 : 0}`;
 }
 
 function renderUser() {
@@ -1859,7 +1968,7 @@ setTimeout(() => {
     const { data: exist } = await supabase
       .from("activation_codes")
       .select("code")
-      .eq("used_by", session.user.id)
+      .eq("used_by", session.userId)
       .maybeSingle();
 
     if (exist) {
@@ -1905,11 +2014,11 @@ setTimeout(() => {
     }
 
     if (data.used_by) {
-      if (data.used_by === session.user.id) {
+      if (data.used_by === session.userId) {
   isActivated = true;
 
   await supabase.from("user_profiles").upsert({
-    user_id: session.user.id,
+    user_id: session.userId,
     pro: true,
     updated_at: new Date().toISOString()
   }, { onConflict: "user_id" });
@@ -1930,7 +2039,7 @@ setTimeout(() => {
     const { data: updated, error: updateError } = await supabase
       .from("activation_codes")
       .update({
-        used_by: session.user.id,
+        used_by: session.userId,
         used_at: new Date().toISOString()
       })
       .eq("code", code)
@@ -1971,7 +2080,7 @@ setTimeout(() => {
 isActivated = true;
 
 await supabase.from("user_profiles").upsert({
-  user_id: session.user.id,
+  user_id: session.userId,
   pro: true,
   updated_at: new Date().toISOString()
 }, { onConflict: "user_id" });
@@ -2012,7 +2121,7 @@ setTimeout(() => {
 function showPayModal() {
   // ⭐ 改为跳转爱发电「下单页」自动开通（替代旧的静态二维码 + 邮件发码手动流程）。
   //    与 ai_settings.html 的 upgrade() 逻辑保持一致。
-  const userId = session?.user?.id;
+  const userId = getCurrentUserId();
   if (!userId) {
     alert("请先登录后再开通 Pro");
     return;
@@ -2037,9 +2146,6 @@ function showPayModal() {
   // 付款后 afdianpay worker 约 2 分钟内自动开通 Pro；轮询激活状态以自动刷新 UI
   startActivationPolling();
 }
-
-// 页面加载时检查登录
-await checkLogin(); // 确保 session 初始化完成再允许发送
 
 // ===== 设备检测控制侧边栏 =====
 // 初始化执行
@@ -2075,28 +2181,87 @@ document.body.classList.remove("preload");
 window.addEventListener("resize", () => {
   requestAnimationFrame(setupSidebarByDevice);
 });
-// ⭐ 延迟启动 realtime，避免初始化顺序问题
-setTimeout(() => {
-  try {
-    startRealtime();
-  } catch (e) {
-    console.warn("realtime 延迟启动失败:", e);
-  }
-}, 0);
-setTimeout(() => {
-  scheduleRenderUser();
-}, 50);
-
 let controller = null;
 let sendingLock = false;
 let isStreaming = false;
 let hasTypedOnce = false;       // ⭐ 只允许一次打字动画
 let isLoadingHistory = false;   // ⭐ 是否在加载历史记录
+let chatRenderVersion = 0;
 let realtimeSub = null;
 const sendBtn = document.getElementById("sendBtn");
 sendBtn.type = "button"; // 防止被当成提交按钮
 sendBtn.innerText = "↑";
 let suppressNextSendClick = false;
+
+const requestCoordinator = new RequestCoordinator({
+  getConversation: conversationId => conversations.find(c => c.id === conversationId),
+  getCurrentUserId,
+  onConversationChanged: (requestContext, conversation) => {
+    if (currentId === requestContext.conversationId) {
+      history = cloneRequestHistory(conversation.history);
+    }
+    conversations.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    saveConversations();
+    renderChatList();
+    updateProviderCapabilityUI();
+  },
+});
+
+function resetSunlandRuntimeCache(userId) {
+  if (!userId || getCurrentUserId() !== userId) return;
+
+  conversations.forEach(conversation => {
+    if (conversation.provider !== "sunland") return;
+    const activeRequest = requestCoordinator.activeForConversation(conversation.id);
+    if (!activeRequest) return;
+    requestCoordinator.abort(activeRequest, "sunland-data-cleared");
+    requestCoordinator.finish(activeRequest, "aborted");
+  });
+
+  providerRegistry = createProviderRegistry({ sendRequest: apiFetch });
+  updateRequestUiState();
+}
+
+window.addEventListener("storage", (event) => {
+  const userId = getCurrentUserId();
+  const knowledgeKey = getSunlandKnowledgeStorageKey(userId);
+  if (!knowledgeKey) return;
+  if (event.key !== knowledgeKey && event.key !== `${knowledgeKey}::memory`) return;
+  resetSunlandRuntimeCache(userId);
+});
+
+if (typeof BroadcastChannel === "function") {
+  const sunlandDataChannel = new BroadcastChannel("sunland-data-control-v1");
+  sunlandDataChannel.addEventListener("message", event => {
+    if (
+      event.data?.type === "sunland-data-cleared" &&
+      event.data.userId === getCurrentUserId()
+    ) {
+      resetSunlandRuntimeCache(event.data.userId);
+    }
+  });
+}
+
+function getVisibleRequest() {
+  return requestCoordinator.activeForConversation(currentId);
+}
+
+function updateRequestUiState() {
+  const visibleRequest = getVisibleRequest();
+  sendingLock = Boolean(visibleRequest);
+  controller = visibleRequest?.controller ?? null;
+  isStreaming = visibleRequest?.providerId === "deepseek";
+  input.readOnly = sendingLock;
+  document.body.classList.toggle("thinking-mode", sendingLock);
+  sendBtn.innerText = sendingLock ? "■" : "↑";
+  sendBtn.setAttribute("aria-label", sendingLock ? "停止当前对话生成" : "发送消息");
+}
+
+function stopRequest(requestContext, reason = "user") {
+  if (!requestCoordinator.abort(requestContext, reason)) return false;
+  updateRequestUiState();
+  return true;
+}
 
 function handleSendButtonIntent(e, source) {
   if (e) {
@@ -2107,7 +2272,11 @@ function handleSendButtonIntent(e, source) {
     suppressNextSendClick = false;
     return;
   }
-  if (sendingLock) return;
+  const visibleRequest = getVisibleRequest();
+  if (visibleRequest) {
+    stopRequest(visibleRequest, "user");
+    return;
+  }
 
   if (window.anime) {
     anime({
@@ -2145,14 +2314,17 @@ let lastUserMessage = null;
 let syncTimer = null;
 
 async function syncFromCloud() {
-  if (!session || !session.user) return;
+  const userId = getCurrentUserId();
+  if (!userId) return;
 
   try {
     const { data, error } = await supabase
       .from("conversations")
       .select("data")
-      .eq("user_id", session.user.id)
+      .eq("user_id", userId)
       .maybeSingle();
+
+    if (getCurrentUserId() !== userId) return;
 
     if (error) {
       console.warn("云端拉取失败:", error);
@@ -2160,7 +2332,10 @@ async function syncFromCloud() {
     }
 
     if (data && data.data) {
-      const cloudConversations = normalizeCloudData(data.data).map(migrateLegacyConversation);
+      const cloudConversations = filterConversationsForUser(
+        normalizeCloudData(data.data, userId),
+        userId,
+      ).filter(conversation => !deletedConversationIds.has(conversation.id));
 // ⭐兼容旧数据（没有updatedAt）
 conversations.forEach(c => {
   if (!c.updatedAt) c.updatedAt = c.id;
@@ -2169,30 +2344,8 @@ conversations.forEach(c => {
 cloudConversations.forEach(c => {
   if (!c.updatedAt) c.updatedAt = c.id;
 });
-      // ⭐ 合并本地与云端（按更新时间优先）
-const map = new Map();
-
-// 先放云端
-cloudConversations.forEach(c => map.set(c.id, c));
-
-// 再合并本地（按时间判断）
-conversations.forEach(local => {
-  const cloud = map.get(local.id);
-
-  if (!cloud) {
-    map.set(local.id, local);
-  } else {
-    const localTime = local.updatedAt || 0;
-    const cloudTime = cloud.updatedAt || 0;
-
-    if (localTime >= cloudTime) {
-      map.set(local.id, local);
-    }
-  }
-});
-
-// 按更新时间排序（最新在前）
-conversations = Array.from(map.values()).sort(
+// ⭐ 合并本地与云端；Provider 不变量由统一 merge 策略保护。
+conversations = mergeConversationCollections(conversations, cloudConversations).sort(
   (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)
 );
 // ⭐ 防止当前会话丢失
@@ -2203,9 +2356,9 @@ if (currentId) {
   }
 }
 
-      if (session?.user) {
+      if (getCurrentUserId() === userId) {
   localStorage.setItem(
-    "conversations_" + session.user.id,
+    "conversations_" + userId,
     JSON.stringify(conversations)
   );
 }
@@ -2227,81 +2380,78 @@ if (currentId) {
   }
 }
 
-async function syncToCloud() {
-  if (!session || !session.user) return;
+async function writeConversationsToCloud(
+  expectedUserId,
+  sourceConversations = conversations,
+) {
+  const userId = getCurrentUserId();
+  if (!userId || userId !== expectedUserId || supabase.__offline) return false;
 
   try {
-    if (!conversations || !conversations.length) return;
+    const data = buildCloudData(userId, sourceConversations);
 
-    await supabase
+    const { error } = await supabase
       .from("conversations")
       .upsert({
-        user_id: session.user.id,
-        data: buildCloudData()
+        user_id: userId,
+        data,
       }, {
         onConflict: "user_id"
       });
+    if (error || getCurrentUserId() !== userId) {
+      if (error) console.warn("云端保存失败:", error);
+      return false;
+    }
+    return true;
   } catch (e) {
     console.warn("云端保存失败:", e);
+    return false;
   }
+}
+
+async function syncToCloud(expectedUserId = getCurrentUserId()) {
+  await writeConversationsToCloud(expectedUserId);
 }
 
 // ===== Realtime 同步 =====
 
 
 function startRealtime() {
-  if (!session || !session.user) return;
+  const userId = getCurrentUserId();
+  if (!userId) return;
   if (realtimeSub) return;
 
   realtimeSub = supabase
-    .channel('conversations-' + session.user.id)
+    .channel('conversations-' + userId)
     .on(
       'postgres_changes',
       {
         event: '*',
         schema: 'public',
         table: 'conversations',
-        filter: `user_id=eq.${session.user.id}`
+        filter: `user_id=eq.${userId}`
       },
       (payload) => {
-        console.log("Realtime:", payload);
-
-        const cloudData = normalizeCloudData(payload.new?.data)?.map(migrateLegacyConversation);
-        if (!cloudData) return;
+        if (getCurrentUserId() !== userId) return;
+        if (payload.new?.user_id != null && payload.new.user_id !== userId) return;
+        const cloudData = filterConversationsForUser(
+          normalizeCloudData(payload.new?.data, userId),
+          userId,
+        ).filter(conversation => !deletedConversationIds.has(conversation.id));
         scheduleRenderUser();
 
-        const map = new Map();
-
-        // 云端优先
-        cloudData.forEach(c => map.set(c.id, c));
-
-        // 本地合并
-        conversations.forEach(local => {
-          const cloud = map.get(local.id);
-
-          if (!cloud) {
-            map.set(local.id, local);
-          } else {
-            const localTime = local.updatedAt || 0;
-            const cloudTime = cloud.updatedAt || 0;
-
-            if (localTime >= cloudTime) {
-              map.set(local.id, local);
-            }
-          }
-        });
-
-        conversations = Array.from(map.values()).sort(
+        conversations = mergeConversationCollections(conversations, cloudData).sort(
           (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)
         );
 
-        if (session?.user) {
+        if (getCurrentUserId() === userId) {
   localStorage.setItem(
-    "conversations_" + session.user.id,
+    "conversations_" + userId,
     JSON.stringify(conversations)
   );
 }
         renderChatList();
+        updateProviderCapabilityUI();
 
         // 如果当前对话存在 → 刷新内容
         if (currentId) {
@@ -2321,56 +2471,149 @@ function stopRealtime() {
     realtimeSub = null;
   }
 }
-function saveConversations() {
-  if (session?.user) {
+
+function persistConversationStateLocally(userId) {
+  if (!userId || getCurrentUserId() !== userId) return false;
   localStorage.setItem(
-    "conversations_" + session.user.id,
+    "conversations_" + userId,
     JSON.stringify(conversations)
   );
+  return persistCurrentConversationId(
+    localStorage,
+    userId,
+    currentId,
+  );
 }
+
+function saveConversations() {
+  const userId = getCurrentUserId();
+  if (userId) persistConversationStateLocally(userId);
 
   // ⭐ 防抖同步（减少请求）
   clearTimeout(syncTimer);
   syncTimer = setTimeout(() => {
-    syncToCloud();
+    syncToCloud(userId);
   }, 600);
 }
 
+function belongsToCurrentConversationNamespace(conversation, userId) {
+  if (!conversation || !userId) return false;
+  if (conversation.userId === userId) return true;
+  return conversation.userId == null && conversation.provider === "deepseek";
+}
+
+async function deleteConversationForCurrentUser(targetConversation) {
+  const identity = getCurrentVerifiedIdentity();
+  const userId = getVerifiedUserId(identity);
+  const target = conversations.find(conversation => conversation === targetConversation);
+  if (
+    !identity ||
+    !userId ||
+    !target ||
+    !belongsToCurrentConversationNamespace(target, userId)
+  ) {
+    showToast(SUNLAND_LOGIN_STATE_MESSAGE);
+    return false;
+  }
+  if (deletingConversationIds.has(target.id)) return false;
+  if (!confirm("确定删除这个对话吗？删除后无法恢复。")) return false;
+
+  const targetWasCurrentAtStart = currentId === target.id;
+  deletingConversationIds.add(target.id);
+  deletedConversationIds.add(target.id);
+  renderChatList();
+
+  const activeRequest = requestCoordinator.activeForConversation(target.id);
+  if (activeRequest) {
+    requestCoordinator.abort(activeRequest, "conversation-deleted");
+    requestCoordinator.finish(activeRequest, "aborted");
+    updateRequestUiState();
+  }
+
+  const systemMessage = target.history?.find(message => message?.role === "system")
+    || history.find(message => message?.role === "system")
+    || null;
+  const nextConversations = conversations.filter(conversation => conversation !== target);
+  if (!nextConversations.length) {
+    const replacement = createConversation({
+      provider: "deepseek",
+      model: currentModel,
+      userId,
+      title: "新对话",
+    });
+    replacement.history = systemMessage ? [{ ...systemMessage }] : [];
+    nextConversations.push(replacement);
+  }
+
+  clearTimeout(syncTimer);
+  const cloudDeleted = await writeConversationsToCloud(userId, nextConversations);
+  if (!cloudDeleted || getCurrentUserId() !== userId) {
+    deletedConversationIds.delete(target.id);
+    deletingConversationIds.delete(target.id);
+    renderChatList();
+    if (currentId === target.id) loadChat(target.id);
+    showToast("暂时无法删除这个对话，请稍后再试。");
+    return false;
+  }
+
+  const targetIsCurrent = currentId === target.id;
+  conversations = conversations.filter(conversation => conversation !== target);
+  if (!conversations.length) conversations = nextConversations;
+  deletingConversationIds.delete(target.id);
+
+  const nextConversation = targetIsCurrent
+    ? conversations[0]
+    : conversations.find(conversation => conversation.id === currentId) || conversations[0];
+  currentId = nextConversation.id;
+  history = cloneRequestHistory(nextConversation.history);
+  chatRenderVersion += 1;
+  if (targetWasCurrentAtStart || targetIsCurrent) clearPendingAttachments();
+
+  saveConversations();
+  loadChat(currentId);
+  updateRequestUiState();
+  showToast("对话已删除。");
+  return true;
+}
+
 function createNewChat() {
+  const userId = getCurrentUserId();
+  if (!userId) {
+    showToast(SUNLAND_LOGIN_STATE_MESSAGE);
+    return;
+  }
   // ⭐ 如果最新对话是空的（只有 system），直接跳转，不新建
   if (conversations.length) {
     const latest = conversations[0];
-    if (latest && (!latest.history || latest.history.length <= 1)) {
+    if (latest && !hasConversationStarted(latest)) {
       loadChat(latest.id);
       return;
     }
   }
-  const id = Date.now();
-
-  const newChat = {
-    id,
+  const newChat = createConversation({
     // 🆕 默认绑定 DeepSeek（与改造前完全一致的默认行为）；用户可以在对话
     // 还是空的时候，通过右下角模型选择器切到 Sunland AI —— 一旦发出第一
     // 条消息，provider 就锁定，需要新建对话才能更换。
     provider: "deepseek",
     model: currentModel,
-    userId: session?.user?.id ?? null,
+    userId,
     title: "新对话",
-    history: [history[0]],
-    createdAt: Date.now(),
-    updatedAt: Date.now()
-  };
+  });
+  newChat.history = [history[0]];
+  const id = newChat.id;
 
   // ⭐ 新对话永远置顶（并避免被排序打乱）
   conversations = conversations.filter(c => c.id !== id);
   conversations.unshift(newChat);
   currentId = id;
   history = [...newChat.history];
+  chatRenderVersion += 1;
 
   chatInner.innerHTML = "";
   saveConversations();
   renderChatList();
   updateModelUI();
+  updateRequestUiState();
   closeSidebarForMobile();
 }
 
@@ -2378,15 +2621,34 @@ function createNewChat() {
 function loadChat(id) {
   closeSidebarForMobile();
   const c = conversations.find(x => x.id === id);
-  if (!c) return;
+  if (!c) return false;
 
   isLoadingHistory = true;
+  const renderVersion = ++chatRenderVersion;
 
   currentId = id;
+  if (c.provider !== "sunland") {
+    currentModel = c.model === "deepseek-v4-pro"
+      ? "deepseek-v4-pro"
+      : "deepseek-v4-flash";
+  }
+  if (session?.userId) {
+    persistCurrentConversationId(localStorage, session.userId, currentId);
+  }
   history = JSON.parse(JSON.stringify(c.history));
   chatInner.style.opacity = "0";
+  updateRequestUiState();
 
   setTimeout(() => {
+    if (renderVersion !== chatRenderVersion || currentId !== id) return;
+    const latestConversation = conversations.find(item => item.id === id);
+    if (!latestConversation) {
+      isLoadingHistory = false;
+      chatInner.style.opacity = "1";
+      return;
+    }
+    const renderHistory = cloneRequestHistory(latestConversation.history);
+    history = cloneRequestHistory(renderHistory);
     chatInner.innerHTML = "";
 
     // ⭐ 禁用气泡动画（关键修复）
@@ -2395,9 +2657,16 @@ function loadChat(id) {
     style.innerText = ".bubble { animation: none !important; }";
     document.head.appendChild(style);
 
-    history.slice(1).forEach(m => {
+    renderHistory.slice(1).forEach(m => {
       addMessage(m.content, m.role === "user" ? "user" : "ai");
     });
+
+    const activeRequest = requestCoordinator.activeForConversation(id);
+    if (activeRequest) {
+      addMessage("", "ai", { thinking: true });
+      const pendingMessage = chatInner.lastElementChild;
+      activeRequest.bubble = pendingMessage?.querySelector(".bubble") ?? null;
+    }
 
     chatInner.style.opacity = "1";
 
@@ -2412,13 +2681,16 @@ function loadChat(id) {
   // ⭐ 重新渲染侧边栏（更新选中高亮）
   renderChatList();
   updateModelUI();
+  return true;
 }
 input.addEventListener("input", () => {
   input.style.height = "auto";
   input.style.height = input.scrollHeight + "px";
 });
 
-function addMessage(text, type) {
+const SAFE_INLINE_IMAGE_PATTERN = /^data:image\/(?:avif|gif|jpeg|png|webp);base64,/i;
+
+function addMessage(text, type, options = {}) {
   const div = document.createElement("div");
   div.className = "message " + type;
 
@@ -2426,56 +2698,36 @@ function addMessage(text, type) {
   bubble.className = "bubble";
 
   if (type === "ai") {
-    if (text.includes("thinking")) {
+    if (options.thinking === true) {
       bubble.style.animation = "fadeInBubble 0.2s ease";
-      bubble.innerHTML = text;
       bubble.style.opacity = "0.8";
-    } else {
-      // ⭐ 强制走 Markdown 渲染，避免 <p> 标签直接显示
-      let html = marked.parse(text);
 
-      // ⭐ 如果包含代码块，不做打字动画（避免炸）
-      if (html.includes("<pre") || html.includes("<code")) {
-        bubble.innerHTML = html;
-      } else {
-        // ⭐ 只在首次AI回复 & 非历史加载时使用打字动画
-        if (!hasTypedOnce && !isLoadingHistory) {
-          bubble.innerHTML = `<span class="typing">${
-            html.replace(/([^\n])/g, '<span>$1</span>')
-          }</span>`;
-          hasTypedOnce = true;
-        } else {
-          bubble.innerHTML = html;
-        }
+      const thinking = document.createElement("span");
+      thinking.className = "thinking";
+      for (let index = 0; index < 3; index += 1) {
+        const dot = document.createElement("span");
+        dot.className = "dot";
+        thinking.appendChild(dot);
       }
+      bubble.appendChild(thinking);
+    } else {
+      // 实时回复与历史恢复统一走白名单 Markdown 渲染入口。
+      const result = renderSafeMarkdown(bubble, text, {
+        animateText: !hasTypedOnce && !isLoadingHistory,
+      });
+      if (result.animated) hasTypedOnce = true;
     }
   } else {
-    if (typeof text === "string" && text.includes("<img")) {
-      // ⭐ 更安全：拆分图片和文本，避免被浏览器吞掉
-      const wrapper = document.createElement("div");
-      wrapper.innerHTML = text;
-
-      // 清空 bubble
-      bubble.innerHTML = "";
-
-      wrapper.childNodes.forEach(node => {
-        if (node.nodeName === "IMG") {
-          const img = document.createElement("img");
-          img.src = node.src;
-          img.style.maxWidth = "100%";
-          img.style.borderRadius = "10px";
-          img.style.marginTop = "4px";
-          bubble.appendChild(img);
-        } else if (node.nodeType === Node.TEXT_NODE) {
-          const span = document.createElement("span");
-          span.innerText = node.textContent;
-          bubble.appendChild(span);
-        } else {
-          bubble.appendChild(node);
-        }
-      });
+    if (options.imageSrc && SAFE_INLINE_IMAGE_PATTERN.test(options.imageSrc)) {
+      const img = document.createElement("img");
+      img.src = options.imageSrc;
+      img.alt = String(text || "用户上传的图片");
+      img.style.maxWidth = "100%";
+      img.style.borderRadius = "10px";
+      img.style.marginTop = "4px";
+      bubble.appendChild(img);
     } else {
-      bubble.innerText = text;
+      bubble.textContent = String(text ?? "");
     }
   }
 
@@ -2518,22 +2770,21 @@ if (isNearBottom()) {
 }
 
 // AI标题生成助手
-async function generateTitleFromAI(userMsg, aiMsg) {
+async function generateTitleFromAI(userMsg, aiMsg, { model, signal } = {}) {
   try {
     const prompt = `请根据下面的对话生成一个简短标题（不超过12个字，不要标点结尾）：\n用户：${userMsg}\n助手：${aiMsg}`;
 
     if (!session || !localStorage.getItem("token")) return null;
 
     const res = await apiFetch({
-  model: currentModel,
+  model: model || currentModel,
   messages: [
         { role: "system", content: "你是一个标题生成器，只返回标题本身。" },
         { role: "user", content: prompt }
       ]
-    });
+    }, false, signal);
 if (!res) return null;
     const data = await res.json();
-    console.log("标题API返回:", data);
     let title = data.choices?.[0]?.message?.content?.trim() || "";
 
     if (title.length > 12) title = title.slice(0, 12) + "…";
@@ -2635,517 +2886,497 @@ function refuseModeratedInput(result) {
  * apiFetch/SSE 逻辑。`history`（本对话的聊天记录）与 Sunland 的知识图谱
  * （跨对话共享的"大脑"）是两回事：这里只把最新一句用户输入交给引擎。
  */
-async function sendSunlandMessage({ bubble, conversation }) {
+function isRequestVisible(requestContext) {
+  return requestCoordinator.canWrite(requestContext) && isRequestVisibleForConversation(
+    requestContext,
+    currentId,
+    requestContext.bubble?.isConnected === true,
+  );
+}
+
+function renderRequestMarkdown(requestContext, target, markdown) {
+  if (!isRequestVisible(requestContext) || !target) return;
+  renderSafeMarkdown(target, markdown);
+}
+
+function abortMissingTarget(requestContext) {
+  if (requestCoordinator.canWrite(requestContext)) return false;
+  requestCoordinator.abort(requestContext, "target-missing-or-stale");
+  return true;
+}
+
+function appendRequestMessage(requestContext, message) {
+  const changed = requestCoordinator.appendMessage(requestContext, message);
+  if (!changed) abortMissingTarget(requestContext);
+  return changed;
+}
+
+function scheduleRequestTitle(requestContext, aiText) {
+  const conversation = requestCoordinator.target(requestContext);
+  if (!conversation || requestContext.history.length !== 3 || conversation._autoTitle) return;
+
+  const userMsg = requestContext.history.find(message => message.role === "user")?.content || "";
+  const titleRequestId = requestContext.requestId;
+  const conversationId = requestContext.conversationId;
+  const userId = requestContext.userId;
+  conversation._autoTitle = true;
+  conversation._autoTitleRequestId = titleRequestId;
+  saveConversations();
+  renderChatList();
+
+  generateTitleFromAI(userMsg, aiText, { model: requestContext.model }).then(title => {
+    const fallback = userMsg.slice(0, 12).replace(/\n/g, " ");
+    const applied = applyRequestTitle({
+      conversations,
+      conversationId,
+      userId,
+      requestId: titleRequestId,
+      title,
+      fallbackTitle: fallback,
+    });
+    if (!applied) return;
+    conversations.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    saveConversations();
+    renderChatList();
+  });
+}
+
+function addRegenerateButton(requestContext, fullText) {
+  const bubble = requestContext.bubble;
+  if (!fullText || !isRequestVisible(requestContext) || !bubble) return;
+
+  const regenWrap = document.createElement("div");
+  regenWrap.className = "regen";
+  const regenBtn = document.createElement("button");
+  regenBtn.className = "regen-btn";
+  regenBtn.innerText = "↻";
+  regenWrap.appendChild(regenBtn);
+  bubble.appendChild(regenWrap);
+
+  regenBtn.onclick = () => {
+    if (currentId !== requestContext.conversationId) return;
+    const conversation = conversations.find(item => item.id === requestContext.conversationId);
+    if (!conversation || conversation.userId !== requestContext.userId) return;
+    if (requestCoordinator.activeForConversation(conversation.id)) return;
+
+    if (conversation.history.at(-1)?.role === "assistant") {
+      conversation.history = conversation.history.slice(0, -1);
+      conversation.updatedAt = Date.now();
+      history = cloneRequestHistory(conversation.history);
+      saveConversations();
+    }
+    input.value = requestContext.userText || "";
+    loadChat(conversation.id);
+    send();
+  };
+}
+
+async function sendSunlandMessage(requestContext) {
+  const errorMessage = "Sunland AI · Beta 暂时出了点问题，请稍后重试";
   try {
-    if (bubble) bubble.innerHTML = "";
+    if (isRequestVisible(requestContext)) requestContext.bubble.innerHTML = "";
     const provider = providerRegistry.get("sunland");
+    if (!provider) throw new Error("Sunland provider is unavailable");
     const result = await provider.send({
-      conversation,
-      messages: history,
-      onDelta: (text) => {
-        if (bubble) bubble.innerHTML = marked.parse(text);
-      },
+      conversation: requestCoordinator.target(requestContext),
+      messages: cloneRequestHistory(requestContext.history),
+      identity: requestContext.identity,
+      semanticContext: requestContext.semanticContext,
+      turnId: requestContext.requestId,
+      signal: requestContext.controller.signal,
+      canCommitSemanticContext: () =>
+        requestCoordinator.canCommitSemanticContext(requestContext),
+      onDelta: text => renderRequestMarkdown(requestContext, requestContext.bubble, text),
     });
 
-    history.push({ role: "assistant", content: result.content });
-
-    if (currentId) {
-      const c = conversations.find(x => x.id === currentId);
-      if (c) {
-        c.history = [...history];
-        c.updatedAt = Date.now();
-        conversations.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-      }
-      saveConversations();
-      renderChatList();
+    if (result.blocked) {
+      renderRequestMarkdown(requestContext, requestContext.bubble, result.content);
+      return;
     }
+    const saved = requestCoordinator.appendMessageWithSemanticContext(
+      requestContext,
+      { role: "assistant", content: result.content },
+      result.semanticContextUpdate,
+    );
+    if (!saved.messageSaved) {
+      abortMissingTarget(requestContext);
+      return;
+    }
+    renderRequestMarkdown(requestContext, requestContext.bubble, result.content);
   } catch (err) {
     console.error("Sunland AI 出错:", err);
-    if (bubble) {
-      bubble.innerHTML = '<small style="color:#999;">Sunland AI 暂时出了点问题，请稍后重试</small>';
+    if (requestCoordinator.canWrite(requestContext)) {
+      appendRequestMessage(requestContext, { role: "assistant", content: errorMessage });
+      renderRequestMarkdown(requestContext, requestContext.bubble, errorMessage);
     }
   }
 }
 
-async function send() {
-  if (pendingFiles.length > 0) {
-  showGlobalLoading(); // ⭐ 上传才显示
+function decorateVisibleCodeBlocks(requestContext) {
+  if (currentId !== requestContext.conversationId) return;
+  document.querySelectorAll("pre code").forEach(el => {
+    hljs.highlightElement(el);
+    if (el.parentElement.querySelector(".copy-btn")) return;
+    const lang = el.className.match(/language-(\w+)/)?.[1];
+    if (lang) {
+      const langTag = document.createElement("span");
+      langTag.className = "lang-tag";
+      langTag.innerText = lang;
+      el.parentElement.appendChild(langTag);
+    }
+    const btn = document.createElement("button");
+    btn.className = "copy-btn";
+    btn.innerText = "复制";
+    btn.onclick = () => {
+      navigator.clipboard.writeText(el.innerText).then(() => {
+        btn.innerText = "已复制 ✓";
+        setTimeout(() => btn.innerText = "复制", 1500);
+      });
+    };
+    el.parentElement.style.position = "relative";
+    el.parentElement.appendChild(btn);
+  });
 }
-  // ===== 轻量防抖（不阻止发送，只提示） =====
+
+async function runDeepSeekRequest(requestContext) {
+  let fullText = "";
+  let attempt = 0;
+
+  while (attempt < (window._isMobile ? 2 : 1)) {
+    attempt += 1;
+    let softTimeoutShown = false;
+    const timeoutId = setTimeout(() => {
+      if (!softTimeoutShown && isRequestVisible(requestContext) && !fullText) {
+        requestContext.bubble.textContent = "响应较慢，请稍等…";
+        softTimeoutShown = true;
+      }
+    }, 15000);
+    const hardTimeoutId = window._isMobile ? null : setTimeout(() => {
+      stopRequest(requestContext, "timeout");
+    }, 40000);
+
+    try {
+      if (!localStorage.getItem("token")) {
+        const message = "登录状态已失效，请重新登录";
+        appendRequestMessage(requestContext, { role: "assistant", content: message });
+        renderRequestMarkdown(requestContext, requestContext.bubble, message);
+        goToLogin();
+        return;
+      }
+
+      const res = await apiFetch({
+        model: requestContext.model,
+        messages: cloneRequestHistory(requestContext.history),
+        deep: requestContext.deep,
+      }, false, requestContext.controller.signal);
+      if (!res || abortMissingTarget(requestContext)) return;
+
+      if (res.status === 429) {
+        if (currentId === requestContext.conversationId) showLimitModal();
+        const message = "今天的使用次数已达上限，请稍后再试";
+        appendRequestMessage(requestContext, { role: "assistant", content: message });
+        renderRequestMarkdown(requestContext, requestContext.bubble, message);
+        return;
+      }
+
+      if (!res.ok) {
+        const errText = await res.text();
+        console.error("API错误:", res.status, errText);
+        const message = `请求失败（${res.status}），请稍后重试`;
+        appendRequestMessage(requestContext, { role: "assistant", content: message });
+        renderRequestMarkdown(requestContext, requestContext.bubble, message);
+        return;
+      }
+
+      const remain = parseInt(res.headers.get("x-remain") ?? "-1");
+      if (!isActivated && remain >= 0 && currentId === requestContext.conversationId) {
+        const hintEl = document.getElementById("usageHint");
+        if (hintEl) hintEl.innerText = `今日剩余 ${remain} 次`;
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let reasoning = "";
+      let reasoningDiv = null;
+      let reasoningContent = null;
+      let contentDiv = null;
+      if (isRequestVisible(requestContext)) requestContext.bubble.innerHTML = "";
+
+      while (true) {
+        if (abortMissingTarget(requestContext)) {
+          await reader.cancel().catch(() => {});
+          return;
+        }
+        const { done, value } = await reader.read();
+        if (done) break;
+        if (abortMissingTarget(requestContext)) continue;
+
+        const chunk = decoder.decode(value, { stream: true });
+        for (const line of chunk.split("\n")) {
+          if (!line.startsWith("data: ")) continue;
+          const raw = line.slice(6).trim();
+          if (raw === "[DONE]") break;
+
+          let parsed;
+          try {
+            parsed = JSON.parse(raw);
+          } catch {
+            continue;
+          }
+          if (!requestCoordinator.canWrite(requestContext)) continue;
+          const delta = parsed.choices?.[0]?.delta || {};
+
+          if (delta.reasoning_content) {
+            reasoning += delta.reasoning_content;
+            if (isRequestVisible(requestContext)) {
+              if (!reasoningDiv || !reasoningDiv.isConnected) {
+                reasoningDiv = document.createElement("div");
+                reasoningDiv.style.cssText = "font-size:12px;color:#888;margin-bottom:8px;border-left:3px solid #22d3ee;padding-left:8px;line-height:1.5;";
+                const title = document.createElement("div");
+                title.innerText = "🧠 思考过程";
+                title.style.marginBottom = "4px";
+                reasoningContent = document.createElement("div");
+                reasoningDiv.appendChild(title);
+                reasoningDiv.appendChild(reasoningContent);
+                requestContext.bubble.appendChild(reasoningDiv);
+              }
+              renderSafeMarkdown(reasoningContent, reasoning);
+            }
+          }
+
+          if (delta.content) {
+            fullText += delta.content;
+            if (isRequestVisible(requestContext)) {
+              if (!contentDiv || !contentDiv.isConnected) {
+                contentDiv = document.createElement("div");
+                requestContext.bubble.appendChild(contentDiv);
+              }
+              renderSafeMarkdown(contentDiv, fullText);
+              if (isNearBottom()) chat.scrollTop = chat.scrollHeight;
+            }
+          }
+        }
+      }
+
+      if (!requestCoordinator.canWrite(requestContext)) return;
+      if (!appendRequestMessage(requestContext, { role: "assistant", content: fullText })) return;
+      scheduleRequestTitle(requestContext, fullText);
+      addRegenerateButton(requestContext, fullText);
+      decorateVisibleCodeBlocks(requestContext);
+      return;
+    } catch (err) {
+      if (requestContext.controller.signal.aborted || err?.name === "AbortError") return;
+      if (fullText && requestCoordinator.canWrite(requestContext)) {
+        appendRequestMessage(requestContext, { role: "assistant", content: fullText });
+        renderRequestMarkdown(requestContext, requestContext.bubble, fullText);
+        return;
+      }
+      if (window._isMobile && attempt < 2 && requestCoordinator.canWrite(requestContext)) {
+        console.warn("移动端自动重试一次...");
+        await new Promise(resolve => setTimeout(resolve, 500));
+        continue;
+      }
+
+      console.error("真实错误:", err);
+      const message = "请求异常，请稍后重试";
+      if (requestCoordinator.canWrite(requestContext)) {
+        appendRequestMessage(requestContext, { role: "assistant", content: message });
+        renderRequestMarkdown(requestContext, requestContext.bubble, message);
+      }
+      return;
+    } finally {
+      clearTimeout(timeoutId);
+      clearTimeout(hardTimeoutId);
+    }
+  }
+}
+
+const lastRealSendByConversation = new Map();
+
+async function send() {
+  if (pendingFiles.length > 0) showGlobalLoading();
   const now = Date.now();
-  if (window._lastSendTime && now - window._lastSendTime < 800) {
-    console.warn("发送过快");
-  }
+  if (window._lastSendTime && now - window._lastSendTime < 800) console.warn("发送过快");
   window._lastSendTime = now;
-  if (sendingLock) {
-    console.warn("发送被锁定，跳过");
-    hideGlobalLoading();
-    return;
-  }
 
   if (!(await requireLoginForAction())) {
     hideGlobalLoading();
     return;
   }
 
-  const text = input.value.trim();
-  const moderationText = [
-    text,
-    ...pendingFiles.map(file => file.name)
-  ].join(" ");
-  const moderationResult = checkInputModeration(moderationText);
+  const sendingConversation = conversations.find(x => x.id === currentId);
+  if (!sendingConversation) {
+    hideGlobalLoading();
+    return;
+  }
+  if (deletingConversationIds.has(sendingConversation.id)) {
+    showToast("正在删除这个对话，请稍候。");
+    hideGlobalLoading();
+    return;
+  }
+  if (requestCoordinator.activeForConversation(sendingConversation.id)) {
+    console.warn("当前会话已有请求，跳过重复发送");
+    hideGlobalLoading();
+    return;
+  }
 
+  const currentIdentity = getCurrentVerifiedIdentity();
+  const verifiedUserId = getVerifiedUserId(currentIdentity);
+  if (!currentIdentity || !verifiedUserId || !isSupportedProviderId(sendingConversation.provider)) {
+    showToast(SUNLAND_LOGIN_STATE_MESSAGE);
+    hideGlobalLoading();
+    return;
+  }
+  if (sendingConversation.userId != null && sendingConversation.userId !== verifiedUserId) {
+    showToast(SUNLAND_LOGIN_STATE_MESSAGE);
+    hideGlobalLoading();
+    return;
+  }
+
+  const text = input.value.trim();
+  const isSunlandConversation = sendingConversation.provider === "sunland";
+  if (isSunlandConversation && pendingFiles.length) {
+    clearPendingAttachments();
+    updateProviderCapabilityUI();
+  }
+  const files = isSunlandConversation ? [] : [...pendingFiles];
+  if (isSunlandConversation && !text) {
+    showToast("好像还没有输入内容呢，可以跟我说点什么。");
+    hideGlobalLoading();
+    return;
+  }
+  const moderationResult = checkInputModeration([text, ...files.map(file => file.name)].join(" "));
   if (moderationResult) {
     refuseModeratedInput(moderationResult);
     hideGlobalLoading();
     return;
   }
 
-  sendingLock = true; // ⭐ 审核通过后立即加锁
+  if (
+    sendingConversation?.provider === "sunland" &&
+    !isSameUserIdentity(verifiedUserId, sendingConversation.userId)
+  ) {
+    addMessage(SUNLAND_LOGIN_STATE_MESSAGE, "ai");
+    hideGlobalLoading();
+    return;
+  }
 
-  if (deepMode && !isActivated) {
+  // 旧 DeepSeek 会话可能没有 owner 字段；它已从当前用户专属命名空间恢复，
+  // 在首次发送时补齐所有者，后续请求即可执行同样的身份绑定校验。
+  if (sendingConversation.provider === "deepseek" && sendingConversation.userId == null) {
+    sendingConversation.userId = verifiedUserId;
+    saveConversations();
+  }
+
+  const requestDeepMode = !isSunlandConversation && deepMode;
+  if (requestDeepMode && !isActivated) {
     deepMode = false;
     updateDeepButton();
     showProRequiredModal();
-    sendingLock = false;
     hideGlobalLoading();
     return;
   }
 
-  // ===== ⭐ 前端轻量限频（替代服务端） =====
-  if (window._lastRealSend && Date.now() - window._lastRealSend < 800) {
+  const lastSentAt = lastRealSendByConversation.get(sendingConversation.id) || 0;
+  if (Date.now() - lastSentAt < 800) {
     showToast("操作太快了，慢一点 😅");
-    sendingLock = false;
     hideGlobalLoading();
     return;
   }
-  window._lastRealSend = Date.now();
+  lastRealSendByConversation.set(sendingConversation.id, Date.now());
 
-  // ⭐ 合并上传文件
-  if (pendingFiles.length) {
-    for (const file of pendingFiles) {
+  const requestContext = requestCoordinator.begin({
+    conversation: sendingConversation,
+    identity: currentIdentity,
+    userId: verifiedUserId,
+    providerId: sendingConversation.provider,
+    model: sendingConversation.provider === "sunland" ? "frost" : currentModel,
+    deep: requestDeepMode,
+    history: sendingConversation.history,
+  });
+  if (!requestContext) {
+    hideGlobalLoading();
+    return;
+  }
+
+  requestContext.userText = text;
+  clearPendingAttachments();
+  updateRequestUiState();
+
+  try {
+    for (const file of files) {
       const reader = new FileReader();
-
-      await new Promise(resolve => {
-        reader.onload = () => {
-          if (file.type.startsWith("image/")) {
-            // 前端显示图片（用 img 标签）
-            addMessage(`<img src="${reader.result}" style="max-width:100%;border-radius:10px;">`, "user");
-
-            // history 只存描述，避免 base64 爆炸
-            history.push({ role: "user", content: "[用户发送了一张图片]" });
-          } else {
-            addMessage(`📄 ${file.name}`, "user");
-            history.push({ role: "user", content: `[用户上传文件: ${file.name}]` });
-          }
-          resolve();
-        };
+      const fileData = await new Promise((resolve, reject) => {
+        reader.onload = () => resolve(reader.result);
+        reader.onerror = () => reject(reader.error || new Error("文件读取失败"));
         reader.readAsDataURL(file);
       });
-    }
+      if (abortMissingTarget(requestContext)) return;
 
-    pendingFiles = [];
-    previewBox.innerHTML = "";
-  }
-
-  // 空内容直接退出（但不锁死）
-  if (!text) {
-    sendingLock = false;
-    hideGlobalLoading();
-    return;
-  }
-
-  document.body.classList.add("thinking-mode");
-  input.readOnly = true;
-  const welcome = document.getElementById("welcome");
-  if (welcome) {
-    welcome.classList.add("hidden");
-    setTimeout(() => welcome.remove(), 300);
-  }
-
-  // ✅ 动画结束后彻底移除（防止占位）
-  setTimeout(() => {
-    if (welcome) welcome.remove();
-  }, 300);
-
-  addMessage(text, "user");
-  if (navigator.vibrate) navigator.vibrate(10);
-  history.push({ role: "user", content: text });
-  if (currentId) {
-    const c = conversations.find(x => x.id === currentId);
-    if (c && c.title === "新对话") {
-      c.title = text.length > 15 ? text.slice(0, 15) + "…" : text;
-      renderChatList();
-      saveConversations();
-    }
-  }
-  lastUserMessage = text;
-  input.value = "";
-  input.style.height = "auto";
-
-  addMessage('<span class="thinking"><span class="dot"></span><span class="dot"></span><span class="dot"></span></span>', "ai");
-
-  const lastMsg = chatInner.lastElementChild;
-  const bubble = lastMsg ? lastMsg.querySelector(".bubble") : null;
-
-  // ⭐ Sunland AI：完全独立的最小路径，浏览器本地运行，不进入下面 DeepSeek
-  // 的 apiFetch/SSE 逻辑，两者互不影响。
-  const activeConversation = conversations.find(x => x.id === currentId);
-  if (activeConversation && activeConversation.provider === "sunland") {
-    await sendSunlandMessage({ bubble, conversation: activeConversation });
-    sendingLock = false;
-    hideGlobalLoading();
-    document.body.classList.remove("thinking-mode");
-    input.readOnly = false;
-    if (!window._isMobile) input.focus();
-    return;
-  }
-
-  // ⭐ 确保思考动画至少显示一段时间（避免瞬间跳结果）
-  const minThinkingTime = 500; // ms
-  const thinkingStart = Date.now();
-
-  // 状态切换
-  window._isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
-
-controller = window._isMobile ? null : new AbortController();
-isStreaming = true;
-
-  let fullText = "";
-  // ⭐ 优化：延长超时 + 软超时提示（避免安卓误杀）
-  let softTimeoutShown = false;
-
-  const timeoutId = setTimeout(() => {
-    if (!softTimeoutShown && bubble && !fullText) {
-      bubble.innerHTML = '<small style="color:#999;">响应较慢，请稍等…</small>';
-      softTimeoutShown = true;
-    }
-  }, 15000);
-
-  // ⭐ 仅桌面端才允许硬中断（移动端禁止，避免误报网络问题）
-  let hardTimeoutId = null;
-  if (!window._isMobile) {
-    hardTimeoutId = setTimeout(() => {
-      if (controller) controller && controller.abort && controller.abort();
-      isStreaming = false;
-    }, 40000);
-  }
-  try {
-    console.log("准备发送请求", { session, history });
-    // ⭐ 检查本地 token（替代 supabase session 检查）
-    const token = localStorage.getItem("token");
-    if (!token) {
-      alert("登录状态失效，请重新登录");
-      goToLogin();
-      sendingLock = false;
-      hideGlobalLoading();
-      return;
-    }
-
-    // ===== ⭐ 主请求（已通过关键词 + 模型双重审核）=====
-    // --- Non-streaming fetch ---
-    console.log("开始 fetch");
-    const res = await apiFetch({
-  model: currentModel,
-      
-      messages: history,
-      deep: deepMode
-    });
-    if (res && res.status === 429) {
-  showLimitModal();
-  sendingLock = false;
-  return;
-}
-    console.log("fetch 已返回", res);
-
-    if (!res.ok) {
-      const errText = await res.text();
-      console.error("API错误:", res.status, errText);
-      alert("请求失败：" + res.status + "\n" + errText);
-
-      if (bubble) {
-        bubble.innerHTML = `<small style="color:#ef4444;">请求失败 (${res.status})</small>`;
-      }
-      throw new Error(errText || "API响应异常");
-    }
-
-    // ===== 读取剩余次数（来自响应头）=====
-const remain = parseInt(res.headers.get("x-remain") ?? "-1");
-if (!isActivated && remain >= 0) {
-  const hintEl = document.getElementById("usageHint");
-  if (hintEl) hintEl.innerText = `今日剩余 ${remain} 次`;
-}
-
-// ===== SSE 流式读取 =====
-const reader = res.body.getReader();
-const decoder = new TextDecoder();
-let reasoning = "";
-let reasoningDiv = null;
-let reasoningContent = null;
-let contentDiv = null;
-
-// 清空思考动画
-if (bubble) {
-  bubble.innerHTML = "";
-}
-
-while (true) {
-  const { done, value } = await reader.read();
-  if (done) break;
-
-  const chunk = decoder.decode(value, { stream: true });
-  const lines = chunk.split("\n");
-
-  for (const line of lines) {
-    if (!line.startsWith("data: ")) continue;
-    const raw = line.slice(6).trim();
-    if (raw === "[DONE]") break;
-
-    let parsed;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      continue;
-    }
-
-    const delta = parsed.choices?.[0]?.delta || {};
-
-    // ===== 深度思考内容 =====
-    if (delta.reasoning_content) {
-      reasoning += delta.reasoning_content;
-
-      if (!reasoningDiv) {
-        reasoningDiv = document.createElement("div");
-        reasoningDiv.style.cssText = `
-          font-size:12px;color:#888;margin-bottom:8px;
-          border-left:3px solid #22d3ee;padding-left:8px;line-height:1.5;
-        `;
-        const title = document.createElement("div");
-        title.innerText = "🧠 思考过程";
-        title.style.marginBottom = "4px";
-        reasoningContent = document.createElement("div");
-        reasoningDiv.appendChild(title);
-        reasoningDiv.appendChild(reasoningContent);
-        bubble.appendChild(reasoningDiv);
-      }
-
-      reasoningContent.innerHTML = marked.parse(reasoning);
-    }
-
-    // ===== 正文内容 =====
-    if (delta.content) {
-      fullText += delta.content;
-
-      if (!contentDiv) {
-        contentDiv = document.createElement("div");
-        bubble.appendChild(contentDiv);
-      }
-
-      contentDiv.innerHTML = marked.parse(fullText);
-
-      if (isNearBottom()) chat.scrollTop = chat.scrollHeight;
-    }
-  }
-}
-
-// ===== 流结束后加重生按钮 =====
-if (bubble && fullText) {
-  // 兜底：内容为空时提示
-  if (!bubble.innerHTML.trim()) {
-    bubble.innerText = "返回为空，请重试";
-  }
-
-  const regenWrap = document.createElement("div");
-  regenWrap.className = "regen";
-  regenWrap.innerHTML = `<button class="regen-btn">↻</button>`;
-  bubble.appendChild(regenWrap);
-}
-    history.push({ role: "assistant", content: fullText });
-
-    if (currentId) {
-      const c = conversations.find(x => x.id === currentId);
-      if (c) {
-        c.history = [...history];
-        c.updatedAt = Date.now();
-        // ⭐ 保证“空新对话”始终在最顶部
-        const emptyChat = conversations.find(c => !c.history || c.history.length <= 1);
-
-        conversations.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-
-        if (emptyChat) {
-          conversations = conversations.filter(c => c.id !== emptyChat.id);
-          conversations.unshift(emptyChat);
+      if (file.type.startsWith("image/")) {
+        if (currentId === requestContext.conversationId) {
+          addMessage(`🖼️ ${file.name}`, "user", { imageSrc: fileData });
         }
-        // ⭐ AI生成标题（仅第一次AI回复时）
-        if (history.length === 3 && !c._autoTitle) {
-          const userMsg = history.find(m => m.role === "user")?.content || "";
-          const aiMsg = fullText || "";
-          c._autoTitle = true; // ✅ 允许AI改标题
-          renderChatList();
-          saveConversations();
-          // 异步用AI生成更好的标题
-          generateTitleFromAI(userMsg, aiMsg).then(title => {
-            if (!title) {
-              const fallback = userMsg.slice(0, 12).replace(/\n/g, " ");
-              const currentChat = conversations.find(x => x.id === currentId);
-              if (currentChat && currentChat._autoTitle) {
-  currentChat.title = fallback || "新对话";
-  currentChat._autoTitle = false;
-  renderChatList();
-  saveConversations();
-}
-              return;
-            }
-            const currentChat = conversations.find(x => x.id === currentId);
-            if (!currentChat) return;
-
-// ⭐只有自动标题才允许被AI覆盖
-if (currentChat._autoTitle) {
-              currentChat.title = "";
-              let i = 0;
-              const finalTitle = title;
-
-              currentChat.title = finalTitle;
-renderChatList();
-
-setTimeout(() => {
-  const items = document.querySelectorAll("#chatList div span:first-child");
-
-  items.forEach(el => {
-    if (el.innerText === finalTitle) {
-      el.style.opacity = "0";
-      el.style.transform = "translateY(4px)";
-      el.style.transition = "all .25s ease";
-
-      requestAnimationFrame(() => {
-        el.style.opacity = "1";
-        el.style.transform = "translateY(0)";
-      });
-    }
-  });
-}, 0);
-
-currentChat._autoTitle = false;
-currentChat.updatedAt = Date.now();
-              conversations.sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-              saveConversations();
-              // renderChatList(); // Already called in animation
-            }
-          });
-        }
-      }
-      saveConversations();
-      renderChatList();
-    }
-    if (history.length > 20) {
-      const systemMsg = history[0];
-      const rest = history.slice(-19);
-      history = [systemMsg, ...rest];
-    }
-
-    document.querySelectorAll("pre code").forEach(el => {
-      hljs.highlightElement(el);
-      if (el.parentElement.querySelector(".copy-btn")) return;
-      // ===== 语言标签 =====
-      const lang = el.className.match(/language-(\w+)/)?.[1];
-      if (lang) {
-        const langTag = document.createElement("span");
-        langTag.className = "lang-tag";
-        langTag.innerText = lang;
-        el.parentElement.appendChild(langTag);
-      }
-      // ===== 复制按钮 =====
-      const btn = document.createElement("button");
-      btn.className = "copy-btn";
-      btn.innerText = "复制";
-      btn.onclick = () => {
-        navigator.clipboard.writeText(el.innerText).then(() => {
-          btn.innerText = "已复制 ✓";
-          setTimeout(() => btn.innerText = "复制", 1500);
-        });
-      };
-      el.parentElement.style.position = "relative";
-      el.parentElement.appendChild(btn);
-    });
-    clearTimeout(timeoutId);
-    clearTimeout(hardTimeoutId);
-  } catch (err) {
-    clearTimeout(timeoutId);
-    clearTimeout(hardTimeoutId);
-    if (fullText) {
-      console.warn("stream end (ignored):", err);
-    } else {
-      if (err.name === "AbortError") {
-        console.warn("Abort（忽略移动端）");
-
-        // ⭐ 移动端直接忽略 abort（不显示错误）
-        if (window._isMobile) {
-          return;
-        }
-
-        // 有内容就不提示
-        if (bubble && fullText) return;
-
-        if (bubble) {
-          bubble.innerHTML =
-            '<small style="color:#999;">请求较慢，请稍后</small>';
-        }
+        if (!appendRequestMessage(requestContext, { role: "user", content: "[用户发送了一张图片]" })) return;
       } else {
-        console.error("真实错误:", err);
-
-// ⭐ 移动端自动重试一次（关键！）
-if (window._isMobile) {
-  if (!window._retryOnce) {
-    window._retryOnce = true;
-    console.warn("移动端自动重试一次...");
-    sendingLock = false;
-    setTimeout(() => send(), 500);
-    return;
-  } else {
-    window._retryOnce = false;
-  }
-}
-if (bubble) {
-  bubble.innerHTML =
-    '<small style="color:#999;">请求异常，请稍后重试</small>';
-}
+        if (currentId === requestContext.conversationId) addMessage(`📄 ${file.name}`, "user");
+        if (!appendRequestMessage(requestContext, { role: "user", content: `[用户上传文件: ${file.name}]` })) return;
       }
     }
-  }
-  finally {
-    clearTimeout(timeoutId);
-    clearTimeout(hardTimeoutId);
-    sendingLock = false;
-    hideGlobalLoading();
-    document.body.classList.remove("thinking-mode");
-    input.readOnly = false;
-    if (!window._isMobile) input.focus();
+
+    if (!text) return;
+    const welcome = document.getElementById("welcome");
+    if (welcome && currentId === requestContext.conversationId) {
+      welcome.classList.add("hidden");
+      setTimeout(() => welcome.remove(), 300);
+    }
+
+    if (currentId === requestContext.conversationId) addMessage(text, "user");
+    if (navigator.vibrate) navigator.vibrate(10);
+    if (!appendRequestMessage(requestContext, { role: "user", content: text })) return;
+
+    const target = requestCoordinator.target(requestContext);
+    if (target?.title === "新对话") {
+      target.title = text.length > 15 ? text.slice(0, 15) + "…" : text;
+      saveConversations();
+      renderChatList();
+    }
+
+    lastUserMessage = text;
+    input.value = "";
     input.style.height = "auto";
-    isStreaming = false;
-    controller = null;
-    window._retryOnce = false;
-
-    // ⭐ 不再重复渲染 bubble，只绑定 regen 按钮事件
-    if (bubble && fullText) {
-      const regenBtn = bubble.querySelector(".regen-btn");
-      if (regenBtn) {
-        regenBtn.onclick = () => {
-          const msgDiv = bubble.closest(".message");
-          if (msgDiv) msgDiv.remove();
-
-          if (history.length && history[history.length - 1].role === "assistant") {
-            history.pop();
-          }
-
-          if (!sendingLock) {
-            input.value = lastUserMessage;
-            send();
-          }
-        };
-      }
+    if (currentId === requestContext.conversationId) {
+      addMessage("", "ai", { thinking: true });
+      requestContext.bubble = chatInner.lastElementChild?.querySelector(".bubble") ?? null;
     }
-  }
 
+    window._isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
+    if (requestContext.providerId === "sunland") {
+      await sendSunlandMessage(requestContext);
+    } else {
+      await runDeepSeekRequest(requestContext);
+    }
+  } catch (err) {
+    console.error("发送流程出错:", err);
+    const message = "消息处理失败，请稍后重试";
+    if (requestCoordinator.canWrite(requestContext)) {
+      appendRequestMessage(requestContext, { role: "assistant", content: message });
+      renderRequestMarkdown(requestContext, requestContext.bubble, message);
+    }
+  } finally {
+    const shouldReload = (
+      currentId === requestContext.conversationId &&
+      (!requestContext.bubble?.isConnected || requestContext.status === "aborted")
+    );
+    requestCoordinator.finish(requestContext);
+    updateRequestUiState();
+    if (requestCoordinator.size === 0) hideGlobalLoading();
+    if (shouldReload && conversations.some(item => item.id === requestContext.conversationId)) {
+      loadChat(requestContext.conversationId);
+    }
+    if (!window._isMobile && !sendingLock) input.focus();
+    input.style.height = "auto";
+  }
 }
 
 input.addEventListener("keydown", e => {
@@ -3159,11 +3390,19 @@ window.addEventListener("load", () => {
   if (!window._isMobile) input.focus();
 });
 document.getElementById("newChatBtn").onclick = createNewChat;
-if (!conversations.length) {
+
+// 所有恢复流程可能访问的模块状态与事件处理器均已初始化，之后才开始登录、
+// Provider/会话恢复。这里故意不依赖定时器，也不吞掉初始化 ReferenceError。
+await checkLogin();
+startRealtime();
+scheduleRenderUser();
+
+if (getCurrentVerifiedIdentity() && !conversations.length) {
   createNewChat();
 }
 
 renderChatList();
+updateProviderCapabilityUI();
 const sidebar = document.getElementById("sidebar");
 const toggle = document.getElementById("menuToggle");
 const overlay = document.getElementById("sidebarOverlay");
@@ -3216,7 +3455,7 @@ scrollBtn.style.transform = "translateY(8px) scale(0.9)";
 }
 // ⭐ 定时兜底同步
 setInterval(async () => {
-  if (session && session.user) {
+  if (getCurrentVerifiedIdentity()) {
     await syncFromCloud();
     scheduleRenderUser();
   }
@@ -3229,11 +3468,11 @@ if (proBtn) {
     showActivationModal();
   };
 }
-const deepBtn = document.getElementById("deepBtn");
-
 if (deepBtn) {
   deepBtn.onclick = async () => {
+    if (!providerCapabilityState.deepThinking) return;
     if (!(await requireLoginForAction())) return;
+    if (!providerCapabilityState.deepThinking) return;
 
     if (!isActivated) {
       deepMode = false;
@@ -3282,13 +3521,15 @@ async function restoreLoginState() {
       });
       if (isRestoreStale(version)) return;
 
-      if (session?.user) {
+      if (getCurrentVerifiedIdentity()) {
         await syncFromCloud();
       }
       if (isRestoreStale(version)) return;
 
       finalizeRenderUser(version);
     } catch (e) {
+      if (e?.name === "ReferenceError") throw e;
+
       console.warn("恢复登录失败:", e);
       if (!isRestoreStale(version)) {
         sessionReady = true;

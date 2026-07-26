@@ -6,6 +6,7 @@ import vm from 'node:vm';
 const aiHtml = fs.readFileSync(new URL('../ai.html', import.meta.url), 'utf8');
 const loginHtml = fs.readFileSync(new URL('../login.html', import.meta.url), 'utf8');
 const aiAppJs = fs.readFileSync(new URL('../ai/app.js', import.meta.url), 'utf8');
+const verifiedIdentityJs = fs.readFileSync(new URL('../ai/verified-identity.js', import.meta.url), 'utf8');
 
 function createMockStorage(initial = {}) {
   const map = new Map(Object.entries(initial));
@@ -39,7 +40,7 @@ function createJwt(payload) {
 
 function getAiGuardScript() {
   const scripts = [...aiHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)].map(match => match[1]);
-  return scripts.find(script => script.includes('function restoreUserFromToken'));
+  return scripts.find(script => script.includes('window.__SUNLAND_AI_AUTH_OK__ = false'));
 }
 
 function runAiGuard(initialStorage) {
@@ -70,46 +71,35 @@ function runAiGuard(initialStorage) {
 
 test('ai.html checks local login before loading app logic', () => {
   assert.ok(
-    aiHtml.indexOf('function restoreUserFromToken') > -1,
-    'ai.html should restore local user data from token before app.js runs'
+    aiHtml.indexOf('window.__SUNLAND_AI_AUTH_OK__ = false') > -1,
+    'ai.html should check for a token before app.js runs'
   );
   assert.ok(
-    aiHtml.indexOf('function restoreUserFromToken') < aiHtml.indexOf('appScript.src = "ai/app.js"'),
+    aiHtml.indexOf('window.__SUNLAND_AI_AUTH_OK__ = false') < aiHtml.indexOf('appScript.src = "ai/app.js"'),
     'login guard must run before ai/app.js is loaded'
   );
   assert.match(aiHtml, /if \(window\.__SUNLAND_AI_AUTH_OK__\)/);
   assert.match(aiHtml, /location\.replace\("login\.html\?return=ai\.html"\)/);
+  assert.doesNotMatch(aiHtml, /restoreUserFromToken|decodeJwtPayload/);
 });
 
-test('ai.html guard restores user from token email before app startup', () => {
+test('ai.html guard never derives identity or mutates user cache', () => {
   const token = createJwt({ email: 'fox@example.com', exp: Math.floor(Date.now() / 1000) + 3600 });
-  const result = runAiGuard({ token });
+  const cached = JSON.stringify({ id: 'other-user', email: 'other@example.com' });
+  const result = runAiGuard({ token, user: cached });
 
   assert.equal(result.authOk, true);
   assert.deepEqual(result.redirects, []);
-  assert.equal(JSON.parse(result.storage.user).id, 'fox@example.com');
-  assert.equal(JSON.parse(result.storage.user).email, 'fox@example.com');
+  assert.equal(result.storage.user, cached);
 });
 
-test('ai.html guard normalizes stored user with email but no id', () => {
-  const token = createJwt({ email: 'fox@example.com', exp: Math.floor(Date.now() / 1000) + 3600 });
-  const result = runAiGuard({
-    token,
-    user: JSON.stringify({ email: 'fox@example.com' })
-  });
-
-  assert.equal(result.authOk, true);
-  assert.deepEqual(result.redirects, []);
-  assert.equal(JSON.parse(result.storage.user).id, 'fox@example.com');
-});
-
-test('ai.html guard redirects when token is missing or damaged', () => {
+test('ai.html guard redirects only when token is missing and defers validation', () => {
   assert.deepEqual(runAiGuard({}).redirects, ['login.html?return=ai.html']);
 
   const damaged = runAiGuard({ token: 'bad.jwt.token' });
-  assert.deepEqual(damaged.redirects, ['login.html?return=ai.html']);
-  assert.equal(damaged.storage.token, undefined);
-  assert.equal(damaged.storage.user, undefined);
+  assert.equal(damaged.authOk, true);
+  assert.deepEqual(damaged.redirects, []);
+  assert.equal(damaged.storage.token, 'bad.jwt.token');
 });
 
 test('login.html stores a normalized user object after successful login', () => {
@@ -120,12 +110,13 @@ test('login.html stores a normalized user object after successful login', () => 
   assert.doesNotMatch(loginHtml, /localStorage\.setItem\("user",\s*JSON\.stringify\(data\.user\)\)/);
 });
 
-test('ai app accepts token identity fields used by settings page fallback', () => {
-  assert.match(aiAppJs, /function getIdentityFromJwtPayload\(/);
-  assert.match(aiAppJs, /payload\.userId/);
-  assert.match(aiAppJs, /payload\.uid/);
-  assert.match(aiAppJs, /payload\.email/);
-  assert.match(aiAppJs, /normalizeStoredUser\(user, payload\)/);
+test('ai app resolves one verified identity before restoring user data', () => {
+  assert.match(aiAppJs, /const identityAuthority = new IdentityAuthority\(\)/);
+  assert.match(aiAppJs, /await identityAuthority\.resolve\(\{/);
+  assert.match(aiAppJs, /userId: session\.userId/);
+  assert.doesNotMatch(aiAppJs, /normalizeStoredUser|session\.user\.id/);
+  assert.match(verifiedIdentityJs, /source: "server-refresh"/);
+  assert.match(verifiedIdentityJs, /claimUserId && responseUserId && claimUserId !== responseUserId/);
 });
 
 test('ai app does not block local login rendering on Supabase CDN load failure', () => {

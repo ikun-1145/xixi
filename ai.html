@@ -4,21 +4,22 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 
-<title>AI助手</title>
+<title>Sunland AI · Beta</title>
 <link rel="manifest" href="/manifest.json">
 
 <meta name="theme-color" content="#71f8fc">
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-<meta name="apple-mobile-web-app-title" content="霜蓝AI">
+<meta name="apple-mobile-web-app-title" content="Sunland AI · Beta">
 <link rel="apple-touch-icon" href="/p/ailogo.png">
 <!-- 网站 favicon -->
 <link rel="icon" type="image/png" href="p/ailogo.png">
 <link rel="shortcut icon" href="p/ailogo.png">
 
 <!-- Markdown & Highlight -->
-<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/marked@18.0.6/lib/marked.umd.js" integrity="sha384-uGn1eBC40GtuBgao0epc/cz9O4Lo8/flg/10SW+69UjLI5nP31iT4UPc65Xz10Le" crossorigin="anonymous"></script>
+<script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.12/dist/purify.min.js" integrity="sha384-piCcpDdJ7qVeK4Tv8Z6Hpcr3ZBIgP16TxQTPVfsLFdZ5uDgwc3Y8Ho7oUnqf12qu" crossorigin="anonymous"></script>
 <script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js/styles/github.min.css">
 <script src="https://cdn.jsdelivr.net/npm/highlight.js/highlight.min.js"></script>
@@ -46,65 +47,12 @@ child-src *;
     location.replace("login.html?return=ai.html");
   }
 
-  function decodeJwtPayload(tk) {
-    try {
-      var part = String(tk || "").split(".")[1];
-      if (!part) return null;
-      var b64 = part.replace(/-/g, "+").replace(/_/g, "/");
-      while (b64.length % 4) b64 += "=";
-      return JSON.parse(atob(b64));
-    } catch (e) {
-      return null;
-    }
-  }
-
-  function restoreUserFromToken(token) {
-    var user = null;
-
-    try {
-      user = JSON.parse(localStorage.getItem("user") || "null");
-    } catch (e) {
-      try { localStorage.removeItem("user"); } catch (_) {}
-    }
-
-    if (user && user.id) return true;
-    if (user && !user.id) {
-      user.id = user.user_id || user.userId || user.uid || user.sub || user.email || user.user_email || user.mail;
-      if (user.id) {
-        user.email = user.email || user.user_email || user.mail || "未知用户";
-        localStorage.setItem("user", JSON.stringify(user));
-        return true;
-      }
-    }
-
-    // 如果 token 是 JWT，则在 app.js 执行前先用 payload 兜底恢复 user，
-    // 避免登录成功后只有 token、没有 user 时被后续逻辑误判为未登录。
-    if (String(token).indexOf(".") !== -1) {
-      var payload = decodeJwtPayload(token);
-      if (!payload) {
-        try { localStorage.removeItem("token"); } catch (_) {}
-        try { localStorage.removeItem("user"); } catch (_) {}
-        return false;
-      }
-
-      var uid = payload.sub || payload.id || payload.user_id || payload.userId || payload.uid || payload.email || payload.user_email || payload.mail;
-      if (uid) {
-        localStorage.setItem("user", JSON.stringify({
-          id: uid,
-          email: payload.email || payload.user_email || payload.mail || (user && user.email) || "未知用户"
-        }));
-      }
-    }
-
-    return true;
-  }
-
   try {
-    // 以 token 是否存在作为入口判断依据，并在 app.js 加载前尽量恢复 user。
-    // ⚠️ 不在此处判断 token 是否过期：app.js 对过期 token 会尝试静默刷新
-    //    （即使过期也尝试刷新，不提前删除），过期不等于未登录。
+    // 此处只负责没有 Token 时尽早跳转。Token 是否有效、属于谁，只能由
+    // app.js 的 IdentityAuthority 通过服务端 /refresh 验证后决定。
+    // localStorage.user 永远不是认证依据。
     var token = localStorage.getItem("token");
-    if (!token || !restoreUserFromToken(token)) {
+    if (!token) {
       redirectToLogin();
       return;
     }
@@ -172,7 +120,7 @@ child-src *;
     ">☰</div>
 
     <div style="font-weight:600;font-size:14px;">
-      霜蓝 AI
+      Sunland AI · Beta
     </div>
   </div>
 
@@ -224,13 +172,13 @@ child-src *;
   <div class="input-toolbar">
 
     <div class="left-tools">
-      <button id="uploadBtn" class="icon-btn">＋</button>
+      <button id="uploadBtn" class="icon-btn" type="button" aria-label="上传文件" data-tooltip="上传文件">＋</button>
 
-      <button id="deepBtn" class="mini-btn">
+      <button id="deepBtn" class="mini-btn" type="button" aria-label="深度思考" data-tooltip="深度思考">
         <span class="deep-logo"></span>
       </button>
 
-      <div id="modelSelector">Flash</div>
+      <div id="modelSelector" role="button" aria-label="DeepSeek V4 Flash" title="DeepSeek V4 Flash">Flash</div>
     </div>
 
     <button id="sendBtn" class="icon-btn">↑</button>
@@ -264,9 +212,9 @@ z-index:999;
     DeepSeek V4 Pro
   </div>
   <div style="height:1px;background:rgba(0,0,0,0.08);margin:6px 2px;"></div>
-  <div class="model-item sunland" data-model="sunland" style="display:flex;align-items:center;">
+  <div class="model-item sunland" data-model="sunland" role="button" aria-label="Sunland AI · Beta" title="Sunland AI · Beta" style="display:flex;align-items:center;">
     <img src="p/studio.png" style="width:24px;height:24px;margin-right:7px;border-radius:6px;flex-shrink:0;">
-    Sunland
+    Sunland AI · Beta
   </div>
 </div>
 

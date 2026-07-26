@@ -1,5 +1,13 @@
 import { AIProvider } from "./AIProvider.js";
 import { createSunlandEngine } from "../vendor/sunland-core.js";
+import {
+  getSunlandKnowledgeStorageKey,
+  SUNLAND_LOGIN_STATE_MESSAGE,
+} from "../user-identity.js";
+import {
+  getVerifiedUserId,
+  isVerifiedIdentity,
+} from "../verified-identity.js";
 
 /**
  * Sunland AI provider -- runs the Sunland Core engine (Parser -> Knowledge
@@ -35,29 +43,72 @@ export class SunlandProvider extends AIProvider {
   }
 
   /** One shared engine per user, created lazily, never demo-seeded. */
-  _getEngine(userId) {
-    const key = String(userId ?? "anonymous");
-    let engine = this._engines.get(key);
+  _getEngine(identity) {
+    const userId = getVerifiedUserId(identity);
+    const storageKey = getSunlandKnowledgeStorageKey(userId);
+    if (!isVerifiedIdentity(identity) || !userId || !storageKey) {
+      throw new TypeError("Sunland engine requires a verified identity");
+    }
+
+    let engine = this._engines.get(userId);
     if (!engine) {
       engine = createSunlandEngine({
-        storage: { adapter: window.localStorage, key: `sunland_knowledge_${key}` },
+        storage: { adapter: window.localStorage, key: storageKey },
+        semanticMode: "passive",
+        semanticDebug: false,
+        semanticContextMode: "enabled",
       });
-      this._engines.set(key, engine);
+      this._engines.set(userId, engine);
     }
     return engine;
   }
 
-  async send({ conversation, messages, onDelta }) {
-    const engine = this._getEngine(conversation?.userId);
+  async send({
+    conversation,
+    messages,
+    onDelta,
+    identity,
+    semanticContext,
+    turnId,
+    canCommitSemanticContext,
+    observationMode = "off",
+    signal,
+  }) {
+    const userId = getVerifiedUserId(identity);
+    if (!userId || userId !== conversation?.userId) {
+      onDelta?.(SUNLAND_LOGIN_STATE_MESSAGE);
+      return { content: SUNLAND_LOGIN_STATE_MESSAGE, blocked: true };
+    }
+
+    const engine = this._getEngine(identity);
     const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
     const input = lastUserMessage?.content ?? "";
+    if (signal?.aborted) {
+      return { content: "", blocked: true, semanticContextUpdate: null };
+    }
 
     // Symbolic reasoning is effectively instant -- no real stream to read,
     // but we still go through `onDelta` so the UI's rendering path is
     // identical regardless of which provider answered.
-    const content = engine.respond(input);
+    const processed = engine.process(input, {
+      semanticContext,
+      turnId,
+      observationMode: observationMode === "summary" ? "summary" : "off",
+      canCommitSemanticContext: () => (
+        signal?.aborted !== true &&
+        canCommitSemanticContext?.() !== false
+      ),
+    });
+    const content = processed.response;
     onDelta?.(content);
 
-    return { content };
+    const result = {
+      content,
+      semanticContextUpdate: processed.semanticContextUpdate,
+    };
+    if (processed.observationSummary) {
+      result.observationSummary = processed.observationSummary;
+    }
+    return result;
   }
 }
