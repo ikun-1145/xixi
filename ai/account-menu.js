@@ -14,6 +14,7 @@ if (logoutBtn) {
 
     localStorage.removeItem("token");
     localStorage.removeItem("user");
+    window.clearVerifiedSession?.();
 
     location.reload();
   };

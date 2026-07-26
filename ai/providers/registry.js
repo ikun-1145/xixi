@@ -22,9 +22,9 @@ export function createProviderRegistry({ sendRequest }) {
   ]);
 
   return {
-    /** Resolve a provider by id; falls back to "deepseek" for old/unknown ids. */
+    /** Resolve a known provider id. Unknown ids are invalid conversation data. */
     get(id) {
-      return providers.get(id) ?? providers.get("deepseek");
+      return providers.get(id) ?? null;
     },
     /** Every registered provider, e.g. for rendering the new-chat picker. */
     list() {
