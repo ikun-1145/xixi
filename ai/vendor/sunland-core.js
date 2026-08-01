@@ -12,14 +12,14 @@ const p = {
   Likes: "喜欢",
   /** Spatial location, e.g. 猫 在 屋顶 */
   LocatedIn: "在"
-}, re = {
+}, ne = {
   Name: "name"
 };
-let bt = 0;
+let mt = 0;
 function On() {
-  return bt += 1, `k_${Date.now().toString(36)}_${bt.toString(36)}`;
+  return mt += 1, `k_${Date.now().toString(36)}_${mt.toString(36)}`;
 }
-const En = 1, Sn = "user";
+const Sn = 1, En = "user";
 function de(e) {
   return `${e.subject} ${e.relation} ${e.object} ${e.negated}`;
 }
@@ -27,7 +27,7 @@ function Ae(e, t, n) {
   const r = e.get(t);
   r === void 0 ? e.set(t, /* @__PURE__ */ new Set([n])) : r.add(n);
 }
-function xe(e, t, n) {
+function ve(e, t, n) {
   const r = e.get(t);
   r !== void 0 && (r.delete(n), r.size === 0 && e.delete(t));
 }
@@ -50,7 +50,7 @@ function Rn(e) {
   if (Number.isNaN(e) || e < 0 || e > 1)
     throw new RangeError(`confidence must be within [0, 1], got ${e}`);
 }
-class xt {
+class vt {
   constructor() {
     L(this, "records", /* @__PURE__ */ new Map());
     L(this, "bySubject", /* @__PURE__ */ new Map());
@@ -80,7 +80,7 @@ class xt {
       const s = this.records.get(r);
       if (s !== void 0) return s;
     }
-    const i = (n == null ? void 0 : n.confidence) ?? En;
+    const i = (n == null ? void 0 : n.confidence) ?? Sn;
     Rn(i);
     const c = {
       subject: t.subject,
@@ -89,7 +89,7 @@ class xt {
       negated: t.negated,
       id: On(),
       confidence: i,
-      source: (n == null ? void 0 : n.source) ?? Sn,
+      source: (n == null ? void 0 : n.source) ?? En,
       createdAt: (/* @__PURE__ */ new Date()).toISOString()
     };
     return this.insertRecord(c), c;
@@ -100,7 +100,7 @@ class xt {
   }
   remove(t) {
     const n = this.records.get(t);
-    n !== void 0 && (this.records.delete(t), this.idByTripleKey.delete(de(n)), xe(this.bySubject, n.subject, t), xe(this.byRelation, n.relation, t), xe(this.byObject, n.object, t));
+    n !== void 0 && (this.records.delete(t), this.idByTripleKey.delete(de(n)), ve(this.bySubject, n.subject, t), ve(this.byRelation, n.relation, t), ve(this.byObject, n.object, t));
   }
   clear() {
     this.records.clear(), this.bySubject.clear(), this.byRelation.clear(), this.byObject.clear(), this.idByTripleKey.clear();
@@ -138,9 +138,9 @@ function Nn(e, t, n) {
   }
   Array.isArray(i) && e.addMany(i);
 }
-const Y = "Sunland AI · Beta", Tn = "霜蓝", $t = "开发者", vn = [
+const G = "Sunland AI · Beta", Tn = "霜蓝", xt = "开发者", An = [
   {
-    subject: Y,
+    subject: G,
     relation: p.Is,
     object: "一个可以学习你提供的信息，并根据已有知识回答和推理的小助手",
     negated: !1
@@ -152,36 +152,36 @@ const Y = "Sunland AI · Beta", Tn = "霜蓝", $t = "开发者", vn = [
     negated: !1
   },
   {
-    subject: Y,
+    subject: G,
     relation: p.Can,
     object: "记住你教给我的信息（比如「猫属于哺乳动物」），并在之后的对话里参考",
     negated: !1
   },
   {
-    subject: Y,
+    subject: G,
     relation: p.Can,
     object: "根据已知事实回答和推理，当你问“为什么”时，也能说明得出答案的依据",
     negated: !1
   },
   {
-    subject: Y,
-    relation: $t,
+    subject: G,
+    relation: xt,
     object: "由一名独立开发者持续设计与打磨，目前仍在成长中",
     negated: !1
   }
 ];
-function An() {
-  const e = new xt();
-  for (const t of vn)
+function vn() {
+  const e = new vt();
+  for (const t of An)
     e.add(t, { source: "seed" });
   return e;
 }
 function xn() {
-  return new xt();
+  return new vt();
 }
-let gt = 0;
+let bt = 0;
 function $n() {
-  return gt += 1, `mem_${Date.now().toString(36)}_${gt.toString(36)}`;
+  return bt += 1, `mem_${Date.now().toString(36)}_${bt.toString(36)}`;
 }
 class Ln {
   constructor() {
@@ -229,15 +229,15 @@ function Mn() {
   return new Ln();
 }
 const Pn = /\s+/gu, Dn = /[呀啊呢哦啦~～]+$/u;
-function ht(e) {
+function gt(e) {
   return e.replace(Pn, "").replace(Dn, "").toLowerCase();
 }
 function Se(e, t, n = 0.95) {
-  const r = new Set(t.map(ht));
+  const r = new Set(t.map(gt));
   return {
     intent: e,
     match(i) {
-      return r.has(ht(i)) ? { entities: [], confidence: n } : null;
+      return r.has(gt(i)) ? { entities: [], confidence: n } : null;
     }
   };
 }
@@ -277,9 +277,9 @@ const Wn = [
 function Vn() {
   return Se("Farewell", Wn);
 }
-const pt = "Sunland AI · Beta", Gn = "霜蓝";
+const ht = "Sunland AI · Beta", Gn = "霜蓝";
 function Yn(e) {
-  return e.includes("霜蓝") || e.includes("frost") ? Gn : e.includes("sunland") || e.includes("你") ? pt : null;
+  return e.includes("霜蓝") || e.includes("frost") ? Gn : e.includes("sunland") || e.includes("你") ? ht : null;
 }
 const Qn = ["谁开发", "谁做的", "谁创造", "谁写的", "开发者"], Hn = ["能做什么", "会做什么", "能干什么", "能做啥", "会做啥", "能干嘛", "有什么能力", "擅长什么"], Jn = ["是谁", "叫什么", "是什么", "你的名字", "名字是"];
 function Xn(e) {
@@ -306,7 +306,7 @@ const er = [
 function tr() {
   return Se("RecallName", er);
 }
-const qe = Object.freeze({
+const Ue = Object.freeze({
   maxInputLength: 160,
   maxNameLength: 64,
   maxRelationMentions: 1
@@ -323,24 +323,24 @@ const qe = Object.freeze({
   "是",
   "在"
 ]);
-function Lt(e) {
+function $t(e) {
   return e.trim().replace(rr, "").trim();
 }
 function or(e) {
   return nr.test(
-    Lt(e)
+    $t(e)
   );
 }
 function ur(e) {
   return ir.test(e.trim());
 }
-function _t(e) {
+function Lt(e) {
   return cr.test(e);
 }
-function Kt(e) {
+function _t(e) {
   return sr.test(e);
 }
-function Mt(e) {
+function Kt(e) {
   let t = e, n = 0;
   for (const r of ar) {
     let i = t.indexOf(r);
@@ -349,12 +349,12 @@ function Mt(e) {
   }
   return n;
 }
-function tt(e) {
+function et(e) {
   const t = e.trim();
-  return t.length === 0 || t.length > qe.maxInputLength || or(t) || ur(t) || _t(t) || Kt(t) || Mt(t) > qe.maxRelationMentions;
+  return t.length === 0 || t.length > Ue.maxInputLength || or(t) || ur(t) || Lt(t) || _t(t) || Kt(t) > Ue.maxRelationMentions;
 }
-function Be(e) {
-  return Lt(e).replace(/\s+/gu, " ").trim();
+function qe(e) {
+  return $t(e).replace(/\s+/gu, " ").trim();
 }
 const lr = [
   /^我\s*叫\s*(.+)$/iu,
@@ -364,13 +364,13 @@ const lr = [
 ], fr = /* @__PURE__ */ new Set(["什么", "什么名字", "谁"]), dr = /^(?:你好|您好|嗨|哈喽|hello|hi)[,，]\s*/iu, mr = /[呀啊呢哦啦吧~～]+$/u, br = /^[\p{P}\p{S}\s]+$/u;
 function gr(e) {
   const t = e.trim().replace(dr, "");
-  if (tt(t))
+  if (et(t))
     return null;
   for (const n of lr) {
     const r = n.exec(t);
     if (!r) continue;
-    const i = Be(r[1] ?? "").replace(mr, "").trim();
-    return i.length === 0 || i.length > qe.maxNameLength || fr.has(i) || br.test(i) || _t(i) || Mt(i) > 0 ? null : i;
+    const i = qe(r[1] ?? "").replace(mr, "").trim();
+    return i.length === 0 || i.length > Ue.maxNameLength || fr.has(i) || br.test(i) || Lt(i) || Kt(i) > 0 ? null : i;
   }
   return null;
 }
@@ -394,14 +394,14 @@ const pr = [
 function Or(e) {
   return e.replace(jr, "").replace(yr, "");
 }
-function we(e) {
+function Ee(e) {
   return e.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
-function Er(e) {
-  return [...e].map((t) => we(t)).join("\\s*");
+function Sr(e) {
+  return [...e].map((t) => Ee(t)).join("\\s*");
 }
-function Fe(e, t = [e]) {
-  const n = [...t].sort((i, c) => c.length - i.length).map(Er).join("|"), r = new RegExp(
+function Be(e, t = [e]) {
+  const n = [...t].sort((i, c) => c.length - i.length).map(Sr).join("|"), r = new RegExp(
     `^\\s*(.+?)\\s*(不|没)?\\s*(?:${n})\\s*(.+?)\\s*[。.!！]*\\s*$`,
     "u"
   );
@@ -409,13 +409,13 @@ function Fe(e, t = [e]) {
     name: `statement:${e}`,
     match(i, c) {
       const s = c ?? i;
-      if (tt(s))
+      if (et(s))
         return null;
       const a = r.exec(s);
       if (!a) return null;
       const [, o, d, l] = a;
       if (!o || !l) return null;
-      const b = Be(o), g = Be(l);
+      const b = qe(o), g = qe(l);
       return !b || !g ? null : {
         type: "statement",
         subject: b,
@@ -427,8 +427,8 @@ function Fe(e, t = [e]) {
     }
   };
 }
-function Sr(e) {
-  const t = we(e), n = new RegExp(`^(.+?)${t}什么$`, "u");
+function Er(e) {
+  const t = Ee(e), n = new RegExp(`^(.+?)${t}什么$`, "u");
   return {
     name: `query:object-of:${e}`,
     match(r) {
@@ -449,7 +449,7 @@ function wr(e) {
   return `${e.charAt(0)}不${e}`;
 }
 function Cr(e) {
-  const t = wr(e), n = we(t), r = new RegExp(`^(.+?)${n}(.+)$`, "u");
+  const t = wr(e), n = Ee(t), r = new RegExp(`^(.+?)${n}(.+)$`, "u");
   return {
     name: `query:verify:${e}`,
     match(i) {
@@ -486,7 +486,7 @@ function kr() {
   };
 }
 function zr(e) {
-  const t = we(e), n = new RegExp(`^(.+?)为什么${t}(.+)$`, "u");
+  const t = Ee(e), n = new RegExp(`^(.+?)为什么${t}(.+)$`, "u");
   return {
     name: `query:why:${e}`,
     match(r) {
@@ -512,16 +512,16 @@ const me = [
   p.Likes,
   p.LocatedIn
 ], Ir = [
-  Fe("意思是", ["指的是", "意思是"]),
-  Fe("有")
+  Be("意思是", ["指的是", "意思是"]),
+  Be("有")
 ], Nr = [
   kr(),
   ...me.map(zr),
   ...me.map(Cr),
-  ...me.map(Sr),
+  ...me.map(Er),
   ...Ir,
   ...me.map(
-    (e) => Fe(e)
+    (e) => Be(e)
   )
 ];
 class Tr {
@@ -557,13 +557,13 @@ class Tr {
     };
   }
 }
-function Pt() {
+function Mt() {
   return new Tr();
 }
-function je(...e) {
+function Pt(...e) {
   return e.filter((t) => !!(t && t.length > 0)).join(" ");
 }
-function vr(e) {
+function Ar(e) {
   let t = 0;
   for (let n = 0; n < e.length; n += 1)
     t = t * 31 + e.charCodeAt(n) | 0;
@@ -572,116 +572,127 @@ function vr(e) {
 function O(e, t) {
   if (e.length === 0)
     throw new Error("pickBySeed: `items` must not be empty");
-  const n = vr(t) % e.length;
+  const n = Ar(t) % e.length;
   return e[n];
 }
-const Ar = ["✨", "🌸", "🐾", "💙"], xr = [
+const vr = [
   "简单来说，",
   "就目前知道的信息来看，",
   "我会这样回答："
-], $r = [
+], xr = [
   "关于这个问题，我看了看目前掌握的信息。",
   "关于这个问题，",
   "就现有信息来看，"
-], Lr = [
+], $r = [
   "你可以补充一点背景，或者直接教我一条相关信息，我会继续试着回答。",
   "如果你愿意告诉我一些相关信息，我会把它保存在你的知识库里，之后再接着聊。",
   "也可以换一种方式问问看，或者先告诉我一条相关信息。"
-], _r = [
+], Lr = [
   "不过我对这个答案还没有十足把握，可以再核对一下。",
   "这部分我不太确定，可以把它当作一个待确认的答案。",
   "这个结论的把握不高，最好再确认一下。"
+], _r = [
+  "好，这条信息我按你刚才提供的内容记下啦，已放进你的知识库：",
+  "收到，我把这条信息按你的说法记进知识库了：",
+  "明白，这条信息已经记在你的知识库里："
 ], Kr = [
-  "记住啦，这条信息已经保存在你的知识库中：",
-  "好，我把这条信息记到你的知识库里了：",
-  "收到，这条信息已经放进你的知识库："
-], Mr = [
   "以后你问到相关内容时，我会参考它。",
-  "之后遇到相关问题，我会把它作为已知信息。",
-  "下次聊到相关内容时，我会用上这条信息。"
+  "下次聊到相关内容时，我们可以从这条信息接着说。",
+  "之后再问到它，我会把这条信息作为已知内容。"
+], Mr = [
+  "这句话我还没完全接住呢。",
+  "这个问题，我现在还缺少一点上下文。"
 ], Pr = [
-  "这个问题，我现在还缺少一点上下文。",
-  "我暂时还不能确定你想了解哪一部分。"
-], Dr = [
   "你可以补充一点背景，或者换一种说法，我会继续试着理解。",
   "如果愿意，再告诉我一点相关信息，或者换个方式问问看。"
-], Ur = [
-  "你好，我是 Sunland AI。你可以和我聊聊，也可以教我新的信息；之后再问起时，我会参考你告诉我的内容。",
-  "嗨，我是 Sunland AI。想聊天、教我一条新信息，或者问问我已经知道的内容，都可以从这里开始。",
-  "你好，我是 Sunland AI。你可以先告诉我一条信息，再用问题考考我；我会试着记住并在之后用上。",
-  "嗨，我是 Sunland AI。日常话题、兽设想法，或是想教我的新知识，都可以慢慢聊。"
+], Dr = [
+  "你好，我是霜蓝，Sunland AI 的知识伙伴。你可以和我聊聊，也可以教我一条信息，再问我相关问题。",
+  "嗨，我是霜蓝，Sunland AI 的知识伙伴。想教我新信息，或问问我已经知道的内容，都可以从这里开始。",
+  "你好，我是霜蓝，Sunland AI 的知识伙伴。可以先告诉我一条信息，再用问题考考我。",
+  "嗨，我是霜蓝，Sunland AI 的知识伙伴。普通知识或你的兽设设定，都可以先告诉我，再问我相关问题。"
   // furry nod
-], qr = [
-  "不客气，能帮上忙就好。",
+], Ur = [
+  "不客气，能帮上忙就好啦。",
   "不用谢，有想继续聊的就告诉我。",
-  "没关系，之后有问题也可以接着问。",
-  "能帮到你就好。"
-], Br = [
-  "再见，下次再聊。",
-  "先聊到这里，之后见。",
-  "好，那我们下次继续。",
+  "好呀，之后有问题也可以接着问。",
+  "能和你一起理清就好。"
+], qr = [
+  "再见，下次想继续时再来找我。",
+  "那就先聊到这里啦，下次见。",
+  "好，我们下次再接着聊。",
   "再见，祝你接下来一切顺利。"
+], Br = [
+  "现在和你说话的是霜蓝，是 Sunland AI 当前使用的回复人格。",
+  "我是霜蓝，负责呈现 Sunland AI 的回复。"
 ], Fr = [
-  "我是 ",
-  "简单介绍一下：我是 ",
-  "问得好，我是 "
-], Wr = [
   "你可以教我一条新信息，或者直接问我已经知道的内容。",
   "想试试的话，可以先告诉我一条信息，再问一个相关问题。"
-], Vr = [
+], Wr = [
   "我可以",
   "目前我可以"
-], Gr = [
+], Vr = [
   "想试试的话，可以先教我一条信息，再问一个相关问题。",
   "你可以直接教我一条信息，或者问一个已经教过的问题。"
-], Yr = [
+], Gr = [
   "Sunland AI",
   "目前，Sunland AI"
-], Qr = [
+], Yr = [
   "现在仍处于持续完善阶段。",
   "目前仍在继续打磨中。"
+], Qr = [
+  "好，我记下啦，你叫",
+  "收到，我会称呼你为",
+  "明白，你的名字是"
 ], Hr = [
-  "好呀，",
-  "记住啦，",
-  "收到～"
+  "之后在这个账号里，我会这样称呼你。",
+  "接下来聊天时，我会用这个名字。",
+  "之后聊到名字时，我会参考这条记忆。"
 ], Jr = [
-  "以后见面我都会记得你。",
-  "很高兴认识你！",
-  "下次再聊我就认得你啦。"
-], Xr = [
-  "你叫",
   "我记得，你是",
-  "当然记得呀，你是"
+  "在这个账号的记忆里，你叫",
+  "我这里记着的名字是"
+], Xr = [
+  "。",
+  "，对吗？",
+  "。如果想换个称呼，也可以告诉我。"
 ], Zr = [
-  "，对吧？",
-  "呀！",
-  "，很高兴又和你聊天。"
-], ei = [
   "目前你还没有告诉我你的名字。",
-  "我还不知道你的名字诶，要不要告诉我？"
+  "我这里还没有你的名字呢。愿意的话，可以告诉我怎么称呼你。"
+], ei = [
+  "好，我记下这条信息：",
+  "收到，这条记忆是："
 ], ti = [
-  "好，我记住了：",
-  "收到，这个我记下了："
+  "之后聊到相关内容时，我会参考它。",
+  "这条记忆会保留在当前账号范围内。"
 ], ni = [
-  "以后我都会记得。",
-  "谢谢你告诉我～"
+  "这条信息你还没有告诉过我。",
+  "我这里还没有这条记忆呢。"
 ], ri = [
-  "这个你还没有告诉过我。",
-  "唔，这个我暂时还不知道。"
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "🐾",
+  "✨"
 ];
-function _(e, t) {
-  const n = O(Ar, t);
-  return `${e} ${n}`;
+function ae(e, t, n) {
+  const r = O(
+    ri,
+    `${t}:${n}:accent`
+  );
+  return r.length > 0 ? `${e} ${r}` : e;
 }
 function ii(e, t) {
-  const n = `${e.query.subject}:${e.query.relation}:${e.query.kind}`, r = t.mode !== "no-answer", i = t.isUncertain ? O(_r, `${n}:hedge`) : void 0;
+  const n = `${e.query.subject}:${e.query.relation}:${e.query.kind}`, r = t.mode !== "no-answer", i = t.isUncertain ? O(Lr, `${n}:hedge`) : void 0;
   if (r)
-    return `${O(xr, n)}${t.explanation}${i ?? ""}`;
-  const c = O($r, n), s = O(Lr, `${n}:closer`);
+    return `${O(vr, n)}${t.explanation}${i ?? ""}`;
+  const c = O(xr, n), s = O($r, `${n}:closer`);
   return `${c}${t.explanation}${s}`;
 }
 function ci(e) {
-  const t = `${e.subject}:${e.relation}:${e.object}`, n = O(Kr, t), r = O(Mr, `${t}:closer`), i = e.negated ? "不" : "", c = `${e.subject} ${i}${e.relation} ${e.object}`;
+  const t = `${e.subject}:${e.relation}:${e.object}`, n = O(_r, t), r = O(Kr, `${t}:closer`), i = e.negated ? "不" : "", c = `${e.subject} ${i}${e.relation} ${e.object}`;
   return [n, c, r].join(`
 
 `);
@@ -690,71 +701,79 @@ function si(e) {
   const t = e.raw.trim();
   if (!t)
     return "好像还没有输入内容，可以跟我说点什么。";
-  const n = t, r = O(Pr, n), i = O(Dr, `${n}:closer`);
+  const n = t, r = O(Mr, n), i = O(Pr, `${n}:closer`);
   return `${r}${i}`;
 }
 function ai(e) {
-  const t = e && e.length > 0 ? e : "greeting", n = O(Ur, t);
-  return _(n, t);
+  const t = e && e.length > 0 ? e : "greeting", n = O(Dr, t);
+  return ae(n, "greeting", t);
 }
 function oi(e) {
-  const t = e && e.length > 0 ? e : "thanks", n = O(qr, t);
-  return _(n, t);
+  const t = e && e.length > 0 ? e : "thanks", n = O(Ur, t);
+  return ae(n, "thanks", t);
 }
 function ui(e) {
-  const t = e && e.length > 0 ? e : "farewell", n = O(Br, t);
-  return _(n, t);
+  const t = e && e.length > 0 ? e : "farewell", n = O(qr, t);
+  return ae(n, "farewell", t);
 }
 function li(e) {
   var n;
   const t = new Set(e.candidateLabels);
   if (t.has("identity") && t.has("query"))
-    return "这个问题里像是同时问了我的名字和能力，可以分开问我哦。";
+    return "这个问题里像是同时问了我的名字和能力，可以分开问我。";
   if (e.focus === "subject" && (((n = e.contextLabels) == null ? void 0 : n.length) ?? 0) >= 2) {
     const r = e.contextLabels ?? [];
     return `你指的是${[
       r.slice(0, -1).join("、"),
       r.at(-1)
-    ].join("还是")}呢？可以再告诉我一下哦。`;
+    ].join("还是")}呢？可以再确认一下。`;
   }
-  return e.focus === "object" && e.relation === "会" ? "你想问我会做什么呢？可以再具体一点点哦。" : e.focus === "object" ? "这里好像还缺少要说明的内容，可以再告诉我它是什么吗？" : e.focus === "subject" ? "你想问的是谁或什么呢？可以再告诉我一点点。" : e.focus === "relation" ? "你想了解它哪一方面呢？可以再说具体一点点。" : e.focus === "name" ? "你是在问名字，还是想告诉我你的名字呢？" : t.has("teaching") ? "这个知识好像还没说完整，可以再告诉我对象和它们的关系吗？" : "我好像看到了不止一种意思，可以换一种更具体的说法吗？";
+  return e.focus === "object" && e.relation === "会" ? "你想问我会做什么呢？可以再具体一些。" : e.focus === "object" ? "这里还缺少要说明的内容，可以再告诉我它是什么吗？" : e.focus === "subject" ? "你想问的是谁或什么？可以再补充一点。" : e.focus === "relation" ? "你想了解它哪一方面？可以再说具体一些。" : e.focus === "name" ? "你是在问名字，还是想告诉我你的名字呢？" : t.has("teaching") ? "这条信息还没有说完整，可以再告诉我对象和它们的关系吗？" : "我看到不止一种可能的意思，可以换一种更具体的说法吗？";
 }
 function fi(e, t, n, r) {
   const i = r && r.length > 0 ? r : `identity:${t}:${e}`;
   if (e === "capability") {
-    const d = O(Vr, i), l = O(Gr, `${i}:closer`);
-    return `${n.length > 0 ? `${d}${n.map((g) => g.object).join("；")}。` : `关于「${t}」能做什么，我目前还没有明确的答案。`}${l}`;
+    const l = O(Wr, i), b = O(Vr, `${i}:closer`);
+    return `${n.length > 0 ? `${l}${n.map((S) => S.object).join("；")}。` : `关于「${t}」能做什么，我目前还没有明确的答案。`}${b}`;
   }
   if (e === "creator") {
-    const d = O(Yr, i), l = O(Qr, `${i}:closer`), [b] = n, g = b ? b.object : "这个我暂时还不清楚。";
-    return je(d, g, l);
+    const l = O(Gr, i), b = O(Yr, `${i}:closer`), [g] = n, S = g ? g.object : "这个我暂时还不清楚。";
+    return Pt(l, S, b);
   }
-  const c = O(Fr, i), s = O(Wr, `${i}:closer`), [a] = n;
-  return `${a ? `${c}${a.subject}，${a.negated ? "不" : ""}${a.relation}${a.object}。` : `关于「${t}」，我目前还没有明确的答案。`}${s}`;
+  const c = O(Br, i), s = O(Fr, `${i}:closer`), [a] = n, o = t === "霜蓝" || (a == null ? void 0 : a.subject) === "霜蓝";
+  return `${a ? o ? `我就是霜蓝，${a.negated ? "不" : ""}${a.relation} ${a.object}。` : `${c}${a.subject}，${a.negated ? "不" : ""}${a.relation}${a.object}。` : `关于「${t}」，我目前还没有明确的答案。`}${s}`;
 }
 function di(e, t, n) {
   const r = n && n.length > 0 ? n : `remembered:${e}`;
-  if (e === re.Name) {
-    const s = O(Hr, r), a = O(Jr, `${r}:closer`);
-    return _(je(s, `你叫 ${t}`, a), r);
+  if (e === ne.Name) {
+    const s = O(Qr, r), a = O(Hr, `${r}:closer`);
+    return ae(
+      `${s}${t}。${a}`,
+      "name-remembered",
+      r
+    );
   }
-  const i = O(ti, r), c = O(ni, `${r}:closer`);
-  return _(je(i, t, c), r);
+  const i = O(ei, r), c = O(ti, `${r}:closer`);
+  return Pt(i, t, c);
 }
 function mi(e, t, n) {
   const r = n && n.length > 0 ? n : `recalled:${e}`;
-  if (e === re.Name) {
+  if (e === ne.Name) {
     if (t === null)
-      return _(O(ei, r), r);
-    const i = O(Xr, r), c = O(Zr, `${r}:closer`);
-    return _(je(i, t, c), r);
+      return O(Zr, r);
+    const i = O(Jr, r), c = O(Xr, `${r}:closer`);
+    return ae(
+      `${i}${t}${c}`,
+      "name-recalled",
+      r
+    );
   }
-  return _(t === null ? O(ri, r) : t, r);
+  return t === null ? O(ni, r) : t;
 }
 function bi(e) {
   return "抱歉，我现在遇到了一点问题，请稍后再试一次。";
 }
-const We = {
+const Fe = {
   id: "frost",
   displayName: "霜蓝 Frost",
   description: "温柔友善、带一点活力的兽圈朋友型人格。默认人格。仅影响语言风格与语气，不改变任何推理结论、置信度或知识内容。",
@@ -788,7 +807,7 @@ const We = {
       }
     }
   }
-}, jt = {
+}, pt = {
   id: "plain",
   displayName: "Plain（无风格 / 调试用）",
   description: "不做任何语言风格修饰的基线人格，仅用于验证人格切换机制与调试输出。",
@@ -836,19 +855,19 @@ const We = {
       }
     }
   }
-}, gi = We.id, ie = /* @__PURE__ */ new Map();
+}, gi = Fe.id, re = /* @__PURE__ */ new Map();
 function hi() {
-  ie.set(We.id, We), ie.set(jt.id, jt);
+  re.set(Fe.id, Fe), re.set(pt.id, pt);
 }
 hi();
 function Ca(e) {
-  ie.set(e.id, e);
+  re.set(e.id, e);
 }
 function Ra() {
-  return Array.from(ie.values());
+  return Array.from(re.values());
 }
 function pi(e = gi) {
-  const t = ie.get(e);
+  const t = re.get(e);
   if (!t)
     throw new Error(`getPersonality: unknown personality id "${e}"`);
   return t;
@@ -865,19 +884,19 @@ function yi(e) {
 function Oi(e) {
   return Math.min(...e.map((t) => t.confidence));
 }
-const Ei = Object.freeze([
+const Si = Object.freeze([
   "subject",
   "relation",
   "object",
   "name",
   "intent"
 ]);
-function Si(e) {
-  for (const t of Ei)
+function Ei(e) {
+  for (const t of Si)
     if (e.missingSlots.includes(t)) return t;
   return e.clarificationKind === "uncertain-name" ? "name" : "intent";
 }
-const yt = {
+const jt = {
   id: "default-v1",
   plan(e) {
     const { answers: t, query: n } = e;
@@ -901,7 +920,7 @@ const yt = {
   planClarification(e) {
     return Object.freeze({
       clarificationKind: e.clarificationKind,
-      focus: Si(e),
+      focus: Ei(e),
       candidateLabels: Object.freeze([...e.candidateLabels]),
       reasonCategory: e.reasonCategory,
       ...e.relation === void 0 ? {} : { relation: e.relation },
@@ -937,7 +956,7 @@ function Ci(e) {
   }
   return t;
 }
-function Ot(e) {
+function yt(e) {
   const t = e[0].subject, n = e[e.length - 1].object, r = [t, ...e.map((c) => c.object)], i = e.reduce((c, s) => c * s.confidence, 1);
   return {
     conclusion: { subject: t, relation: p.IsA, object: n, negated: !1 },
@@ -964,11 +983,11 @@ function Ri(e, t) {
       n.add(o.object);
       const d = [...s.records, o];
       if (t.targetObject === o.object)
-        return d.length >= 2 ? [Ot(d)] : [];
+        return d.length >= 2 ? [yt(d)] : [];
       r.push({
         node: o.object,
         records: d
-      }), t.targetObject === void 0 && d.length >= 2 && i.push(Ot(d));
+      }), t.targetObject === void 0 && d.length >= 2 && i.push(yt(d));
     }
   }
   return i;
@@ -992,7 +1011,7 @@ const ki = "relation-alignment-v1", zi = Object.freeze([
     ) ?? null;
   }
 });
-function $e(e, t, n, r = Ut) {
+function xe(e, t, n, r = Ut) {
   return Object.freeze({
     mode: e,
     queriedRelation: t,
@@ -1019,12 +1038,12 @@ function Ti(e, t) {
     ...e.object === void 0 ? {} : { targetObject: e.object }
   });
 }
-function vi(e) {
+function Ai(e) {
   const { subject: t, relation: n, object: r, negated: i } = e.conclusion, c = i ? "不" : "";
   return e.steps.length === 0 ? `${t} ${c}${n} ${r}` : `${t} ${c}${n} ${r}（推理路径：${e.path.join(" → ")}）`;
 }
-function Ve(e, t) {
-  const n = t.length > 0 ? t.map(vi).join("；") : Ii;
+function We(e, t) {
+  const n = t.length > 0 ? t.map(Ai).join("；") : Ii;
   return {
     query: e,
     answers: t,
@@ -1032,18 +1051,18 @@ function Ve(e, t) {
     explanation: n
   };
 }
-function Et(e, t) {
+function Ot(e, t) {
   const n = Ni(e, t);
   if (e.object !== void 0 && n.length > 0)
-    return Ve(e, n);
+    return We(e, n);
   const r = new Set(
     n.map((c) => c.conclusion.object)
   ), i = Ti(e, t).filter(
     (c) => !r.has(c.conclusion.object)
   );
-  return Ve(e, [...n, ...i]);
+  return We(e, [...n, ...i]);
 }
-function Ai(e) {
+function vi(e) {
   if (e.negated || !e.object.startsWith("一种"))
     return null;
   const t = e.object.slice(2).trim();
@@ -1056,7 +1075,7 @@ function xi(e, t) {
     relation: p.Is,
     negated: !1
   })) {
-    const i = Ai(r);
+    const i = vi(r);
     i !== null && n.push({
       conclusion: {
         subject: r.subject,
@@ -1072,11 +1091,11 @@ function xi(e, t) {
   return n;
 }
 function $i(e, t, n = {}, r = Ut) {
-  const i = Et(e, t);
+  const i = Ot(e, t);
   if (i.answers.length > 0)
     return Object.freeze({
       result: i,
-      relationResolution: $e(
+      relationResolution: xe(
         "exact",
         e.relation,
         e.relation,
@@ -1087,14 +1106,14 @@ function $i(e, t, n = {}, r = Ut) {
   if (c === null)
     return Object.freeze({
       result: i,
-      relationResolution: $e(
+      relationResolution: xe(
         "exact",
         e.relation,
         e.relation,
         r
       )
     });
-  const s = c.legacyClassificationOnly ? xi(e, t) : Et(
+  const s = c.legacyClassificationOnly ? xi(e, t) : Ot(
     {
       ...e,
       relation: c.matchedRelation
@@ -1102,8 +1121,8 @@ function $i(e, t, n = {}, r = Ut) {
     t
   ).answers;
   return Object.freeze({
-    result: Ve(e, s),
-    relationResolution: $e(
+    result: We(e, s),
+    relationResolution: xe(
       "fallback",
       e.relation,
       c.matchedRelation,
@@ -1111,17 +1130,17 @@ function $i(e, t, n = {}, r = Ut) {
     )
   });
 }
-function nt(e) {
+function tt(e) {
   return e !== null && Number.isFinite(e) && e >= 0;
 }
-function Le(e) {
-  return nt(e) ? e < 1 ? "under-1ms" : e < 5 ? "1-5ms" : e < 16 ? "5-16ms" : e < 50 ? "16-50ms" : "over-50ms" : "unavailable";
+function $e(e) {
+  return tt(e) ? e < 1 ? "under-1ms" : e < 5 ? "1-5ms" : e < 16 ? "5-16ms" : e < 50 ? "16-50ms" : "over-50ms" : "unavailable";
 }
 function Li(e) {
-  return !nt(e) || !Number.isSafeInteger(e) ? "unavailable" : e === 0 ? "0" : e < 100 ? "1-99" : e < 1e3 ? "100-999" : e < 5e3 ? "1000-4999" : "5000-plus";
+  return !tt(e) || !Number.isSafeInteger(e) ? "unavailable" : e === 0 ? "0" : e < 100 ? "1-99" : e < 1e3 ? "100-999" : e < 5e3 ? "1000-4999" : "5000-plus";
 }
 function _i(e) {
-  return !nt(e) || !Number.isSafeInteger(e) ? "unavailable" : e === 0 ? "none" : e === 1 ? "direct" : e <= 5 ? "2-5" : e <= 20 ? "6-20" : e <= 50 ? "21-50" : "51-plus";
+  return !tt(e) || !Number.isSafeInteger(e) ? "unavailable" : e === 0 ? "none" : e === 1 ? "direct" : e <= 5 ? "2-5" : e <= 20 ? "6-20" : e <= 50 ? "21-50" : "51-plus";
 }
 const qt = "0.1.0", Bt = 1, Ft = 1, Wt = 1, Ki = Object.freeze([
   "understood",
@@ -1195,7 +1214,7 @@ const qt = "0.1.0", Bt = 1, Ft = 1, Wt = 1, Ki = Object.freeze([
   "possible-mismatch",
   "no-alternative-known",
   "unavailable"
-]), Ge = Object.freeze([
+]), Ve = Object.freeze([
   "schemaVersion",
   "sunlandCoreVersion",
   "semanticSchemaVersion",
@@ -1219,13 +1238,13 @@ const qt = "0.1.0", Bt = 1, Ft = 1, Wt = 1, Ki = Object.freeze([
   Ki
 ), Gt = new Set(
   Mi
-), Q = new Set(
+), Y = new Set(
   Pi
 ), Yt = new Set(
   Di
 ), Wi = new Set(Bi), Vi = new Set(
   qi
-), _e = new Set(Ui), Qt = new Set(
+), Le = new Set(Ui), Qt = new Set(
   Fi
 );
 function Gi(e) {
@@ -1236,12 +1255,12 @@ function z(e, t) {
 }
 function Yi(e) {
   const t = Reflect.ownKeys(e);
-  return t.length === Ge.length && t.every(
-    (n) => typeof n == "string" && Ge.includes(n)
+  return t.length === Ve.length && t.every(
+    (n) => typeof n == "string" && Ve.includes(n)
   );
 }
 function Qi(e) {
-  return Ge.every((t) => {
+  return Ve.every((t) => {
     const n = Object.getOwnPropertyDescriptor(e, t);
     return n !== void 0 && "value" in n && n.get === void 0 && n.set === void 0;
   });
@@ -1254,7 +1273,7 @@ function Hi(e) {
     contextSchemaVersion: Ft,
     resultCategory: Vt.has(e.resultCategory) ? e.resultCategory : "safe-fallback",
     reasonCategory: Gt.has(e.reasonCategory) ? e.reasonCategory : "unclassified",
-    relationCategory: Q.has(e.relationCategory) ? e.relationCategory : "unknown",
+    relationCategory: Y.has(e.relationCategory) ? e.relationCategory : "unknown",
     semanticAdopted: e.semanticAdopted === !0,
     legacyFallback: e.legacyFallback === !0,
     contextUsed: e.contextUsed === !0,
@@ -1267,15 +1286,15 @@ function Hi(e) {
     knowledgeCountBucket: Li(
       e.knowledgeCount
     ),
-    totalDurationBucket: Le(e.totalDurationMs),
-    semanticDurationBucket: Le(
+    totalDurationBucket: $e(e.totalDurationMs),
+    semanticDurationBucket: $e(
       e.semanticDurationMs
     ),
-    reasonerDurationBucket: Le(
+    reasonerDurationBucket: $e(
       e.reasonerDurationMs
     ),
-    queriedRelation: Q.has(e.queriedRelation) ? e.queriedRelation : "unknown",
-    alternativeKnownRelation: Q.has(
+    queriedRelation: Y.has(e.queriedRelation) ? e.queriedRelation : "unknown",
+    alternativeKnownRelation: Y.has(
       e.alternativeKnownRelation
     ) ? e.alternativeKnownRelation : "unknown",
     alignmentResult: Qt.has(e.alignmentResult) ? e.alignmentResult : "unavailable"
@@ -1283,21 +1302,21 @@ function Hi(e) {
 }
 function Ji(e) {
   try {
-    return !Gi(e) || !Yi(e) || !Qi(e) ? !1 : e.schemaVersion === Wt && e.sunlandCoreVersion === qt && e.semanticSchemaVersion === Bt && e.contextSchemaVersion === Ft && z(e.resultCategory, Vt) && z(e.reasonCategory, Gt) && z(e.relationCategory, Q) && typeof e.semanticAdopted == "boolean" && typeof e.legacyFallback == "boolean" && typeof e.contextUsed == "boolean" && z(e.clarificationKind, Yt) && z(e.pathLengthBucket, Wi) && z(
+    return !Gi(e) || !Yi(e) || !Qi(e) ? !1 : e.schemaVersion === Wt && e.sunlandCoreVersion === qt && e.semanticSchemaVersion === Bt && e.contextSchemaVersion === Ft && z(e.resultCategory, Vt) && z(e.reasonCategory, Gt) && z(e.relationCategory, Y) && typeof e.semanticAdopted == "boolean" && typeof e.legacyFallback == "boolean" && typeof e.contextUsed == "boolean" && z(e.clarificationKind, Yt) && z(e.pathLengthBucket, Wi) && z(
       e.knowledgeCountBucket,
       Vi
     ) && z(
       e.totalDurationBucket,
-      _e
+      Le
     ) && z(
       e.semanticDurationBucket,
-      _e
+      Le
     ) && z(
       e.reasonerDurationBucket,
-      _e
-    ) && z(e.queriedRelation, Q) && z(
+      Le
+    ) && z(e.queriedRelation, Y) && z(
       e.alternativeKnownRelation,
-      Q
+      Y
     ) && z(e.alignmentResult, Qt);
   } catch {
     return !1;
@@ -1537,10 +1556,10 @@ const tc = Object.freeze(
   "’": "'",
   "～": "~"
 }), rc = /* @__PURE__ */ new Set(["嗯", "呃", "唔"]), ic = /* @__PURE__ */ new Set(["呀", "啊", "呢", "哦", "啦"]), cc = /[\s,.;:!?'"()[\]~]/u;
-function P(e, t) {
+function M(e, t) {
   return Object.freeze({ start: e, end: t });
 }
-function H(e) {
+function Q(e) {
   return Object.freeze({
     ...e,
     rawRange: Object.freeze({ ...e.rawRange })
@@ -1554,7 +1573,7 @@ function sc(e) {
     n += r.length, t.push(
       Object.freeze({
         text: r,
-        rawRange: P(i, n)
+        rawRange: M(i, n)
       })
     );
   }
@@ -1570,12 +1589,12 @@ function ac(e, t) {
       let o = i + 1;
       for (; o < n.length && /\s/u.test(n[o].text); )
         o += 1;
-      const d = n.slice(a, o), l = P(
+      const d = n.slice(a, o), l = M(
         d[0].rawRange.start,
         d[d.length - 1].rawRange.end
       ), b = e.slice(l.start, l.end);
       a === 0 || o === n.length ? t.push(
-        H({
+        Q({
           stage: "surface",
           kind: "whitespace-trimmed",
           rawRange: l,
@@ -1583,7 +1602,7 @@ function ac(e, t) {
           targetText: ""
         })
       ) : (r.push(Object.freeze({ text: " ", rawRange: l })), b !== " " && t.push(
-        H({
+        Q({
           stage: "surface",
           kind: "whitespace-collapsed",
           rawRange: l,
@@ -1600,7 +1619,7 @@ function ac(e, t) {
         rawRange: c.rawRange
       })
     ), t.push(
-      H({
+      Q({
         stage: "surface",
         kind: "punctuation-normalized",
         rawRange: c.rawRange,
@@ -1621,12 +1640,12 @@ function oc(e, t) {
     let c = n + 1;
     for (; c < r && be(e[c]); )
       c += 1;
-    const s = e.slice(n, c), a = P(
+    const s = e.slice(n, c), a = M(
       i.rawRange.start,
       s[s.length - 1].rawRange.end
     );
     t.push(
-      H({
+      Q({
         stage: "match-key",
         kind: "edge-filler-removed",
         rawRange: a,
@@ -1640,12 +1659,12 @@ function oc(e, t) {
     let c = r - 1;
     for (; c > n && be(e[c - 1]); )
       c -= 1;
-    const s = e.slice(c, r), a = P(
+    const s = e.slice(c, r), a = M(
       s[0].rawRange.start,
       i.rawRange.end
     );
     t.push(
-      H({
+      Q({
         stage: "match-key",
         kind: "edge-filler-removed",
         rawRange: a,
@@ -1664,7 +1683,7 @@ function uc(e, t) {
   for (const i of n) {
     const c = i.text.toLocaleLowerCase("und");
     r.push(Object.freeze({ text: c, rawRange: i.rawRange })), c !== i.text && t.push(
-      H({
+      Q({
         stage: "match-key",
         kind: "case-folded",
         rawRange: i.rawRange,
@@ -1699,7 +1718,7 @@ function lc(e) {
     transformations: Object.freeze(t)
   });
 }
-function U(e, t, n, r) {
+function D(e, t, n, r) {
   const i = t === "surface" ? e.surface : e.matchKey, c = t === "surface" ? e.surfaceToRaw : e.matchKeyToRaw;
   if (!Number.isInteger(n) || !Number.isInteger(r) || n < 0 || r < n || r > i.length)
     throw new RangeError(
@@ -1707,17 +1726,17 @@ function U(e, t, n, r) {
     );
   if (n === r) {
     if (n < c.length)
-      return P(c[n].start, c[n].start);
+      return M(c[n].start, c[n].start);
     if (c.length > 0) {
       const o = c[c.length - 1];
-      return P(o.end, o.end);
+      return M(o.end, o.end);
     }
-    return P(0, 0);
+    return M(0, 0);
   }
   let s = c[n].start, a = c[n].end;
   for (let o = n + 1; o < r; o += 1)
     s = Math.min(s, c[o].start), a = Math.max(a, c[o].end);
-  return P(s, a);
+  return M(s, a);
 }
 const h = T, m = Object.freeze({
   producerWeight: Object.freeze({
@@ -1772,16 +1791,16 @@ const h = T, m = Object.freeze({
     context: 3
   })
 });
-function ye(e) {
+function je(e) {
   return T(Math.min(1, Math.max(0, e)));
 }
-function Ce(e, t = [], n = []) {
+function we(e, t = [], n = []) {
   const r = t.reduce((c, s) => c + s, 0), i = n.reduce((c, s) => c + s, 0);
-  return ye(e + r - i);
+  return je(e + r - i);
 }
 function fc(e, t, n, r) {
   const i = n.length === 0 ? 0 : Math.min(1, t.length / n.length), c = e * m.lexicon.aliasWeightShare + i * m.lexicon.coverageWeightShare;
-  return Ce(
+  return we(
     c,
     r ? [m.lexicon.exactInputBonus] : []
   );
@@ -1832,11 +1851,11 @@ const dc = Object.freeze(
     canonical: "霜蓝",
     confidence: m.feature.indirectSelf
   })
-]), gc = /* @__PURE__ */ new Set(["is-a", "can", "has", "means"]), hc = /* @__PURE__ */ new Set(["什么", "什么名字", "谁", "吗"]), Ye = /[a-z0-9]/iu, Qe = /[\s,.;:!?'"()[\]~]/u;
-function rt(e, t) {
+]), gc = /* @__PURE__ */ new Set(["is-a", "can", "has", "means"]), hc = /* @__PURE__ */ new Set(["什么", "什么名字", "谁", "吗"]), Ge = /[a-z0-9]/iu, Ye = /[\s,.;:!?'"()[\]~]/u;
+function nt(e, t) {
   return Object.freeze({ start: e, end: t });
 }
-function ce(e, t, n, r, i) {
+function ie(e, t, n, r, i) {
   return Object.freeze({
     kind: e,
     key: t,
@@ -1845,11 +1864,11 @@ function ce(e, t, n, r, i) {
     weight: i
   });
 }
-function wt(e, t) {
-  return t < 0 || t >= e.length ? !0 : !Ye.test(e[t]);
+function Et(e, t) {
+  return t < 0 || t >= e.length ? !0 : !Ge.test(e[t]);
 }
 function Ht(e, t, n, r) {
-  const i = t[0], c = t[t.length - 1], s = i === void 0 || !Ye.test(i) || wt(e, n - 1), a = c === void 0 || !Ye.test(c) || wt(e, r);
+  const i = t[0], c = t[t.length - 1], s = i === void 0 || !Ge.test(i) || Et(e, n - 1), a = c === void 0 || !Ge.test(c) || Et(e, r);
   return s && a;
 }
 function Jt(e, t) {
@@ -1871,7 +1890,7 @@ function pc(e) {
         const l = d + a.length;
         if (o = d + 1, !Ht(e.matchKey, a, d, l))
           continue;
-        const b = U(
+        const b = D(
           e,
           "matchKey",
           d,
@@ -1881,7 +1900,7 @@ function pc(e) {
           a,
           e.matchKey,
           e.matchKey === a
-        ), w = ce(
+        ), S = ie(
           "lexicon-alias",
           n.id,
           s,
@@ -1892,7 +1911,7 @@ function pc(e) {
           canonical: n.canonical,
           matchedAlias: s,
           confidence: g,
-          evidence: Object.freeze([w])
+          evidence: Object.freeze([S])
         });
         r.push(
           Object.freeze({
@@ -1901,7 +1920,7 @@ function pc(e) {
             start: d,
             end: l,
             rawRange: b,
-            feature: w,
+            feature: S,
             concept: R
           })
         );
@@ -1921,7 +1940,7 @@ function pc(e) {
     )
   );
 }
-function Ct(e, t, n) {
+function wt(e, t, n) {
   const r = [], i = [...t].sort(
     (c, s) => s.value.length - c.value.length
   );
@@ -1936,7 +1955,7 @@ function Ct(e, t, n) {
         (l) => a < l.end && l.start < o
       ))
         continue;
-      const d = U(
+      const d = D(
         e,
         "matchKey",
         a,
@@ -1946,7 +1965,7 @@ function Ct(e, t, n) {
         Object.freeze({
           start: a,
           end: o,
-          feature: ce(
+          feature: ie(
             c.kind,
             c.key,
             c.value,
@@ -1965,14 +1984,14 @@ function Ct(e, t, n) {
 }
 function jc(e, t, n) {
   let r = t, i = n;
-  for (; r < i && Qe.test(e[r]); )
+  for (; r < i && Ye.test(e[r]); )
     r += 1;
-  for (; i > r && Qe.test(e[i - 1]); )
+  for (; i > r && Ye.test(e[i - 1]); )
     i -= 1;
-  return rt(r, i);
+  return nt(r, i);
 }
-function it(e, t, n, r, i, c) {
-  const s = U(
+function rt(e, t, n, r, i, c) {
+  const s = D(
     e,
     "matchKey",
     r,
@@ -2003,7 +2022,7 @@ function yc(e) {
         i,
         c
       ) && t.push(
-        it(
+        rt(
           e,
           "self",
           n.canonical,
@@ -2022,21 +2041,21 @@ function Oc(e, t) {
     if (r.entry.id !== "remember-name")
       continue;
     let i = r.end, c = e.matchKey.length;
-    for (; i < c && Qe.test(e.matchKey[i]); )
+    for (; i < c && Ye.test(e.matchKey[i]); )
       i += 1;
     const s = e.matchKey.slice(i).search(/[,;!?]/u);
     s >= 0 && (c = i + s);
     const a = jc(e.matchKey, i, c);
     if (a.start >= a.end)
       continue;
-    const o = U(
+    const o = D(
       e,
       "matchKey",
       a.start,
       a.end
     ), d = e.raw.slice(o.start, o.end).trim().replace(/\s+/gu, " "), l = d.toLocaleLowerCase("und");
     d.length === 0 || hc.has(l) || /^(?:不|没|别)/u.test(l) || n.push(
-      it(
+      rt(
         e,
         "person-name",
         d,
@@ -2054,7 +2073,7 @@ function Oc(e, t) {
     )
   );
 }
-function Ec(e, t) {
+function Sc(e, t) {
   const n = t.filter(
     (i) => gc.has(i.entry.id)
   ).sort(
@@ -2064,7 +2083,7 @@ function Ec(e, t) {
     r.some((c) => Jt(c, i)) || r.push(i);
   return Object.freeze(
     r.map((i) => {
-      const c = it(
+      const c = rt(
         e,
         "relation",
         i.entry.canonical,
@@ -2076,7 +2095,7 @@ function Ec(e, t) {
         conceptId: i.entry.id,
         canonical: i.entry.canonical,
         alias: i.alias,
-        matchKeyRange: rt(i.start, i.end),
+        matchKeyRange: nt(i.start, i.end),
         entity: c,
         confidence: i.concept.confidence,
         evidence: Object.freeze([i.feature])
@@ -2084,14 +2103,14 @@ function Ec(e, t) {
     })
   );
 }
-function Sc(e, t) {
+function Ec(e, t) {
   return t.length > 0 ? Object.freeze([]) : Object.freeze(
     e.map(
-      (n) => ce(
+      (n) => ie(
         "teaching-cue",
         `teaching:${n.conceptId}`,
         n.alias,
-        rt(n.entity.start, n.entity.end),
+        nt(n.entity.start, n.entity.end),
         m.feature.structuralTeaching
       )
     )
@@ -2100,16 +2119,16 @@ function Sc(e, t) {
 function wc(e) {
   const t = pc(e), n = Object.freeze(
     t.map((g) => g.concept)
-  ), r = Ct(
+  ), r = wt(
     e,
     dc,
     m.feature.questionCue
-  ), i = Ct(
+  ), i = wt(
     e,
     mc,
     m.feature.negationCue
-  ), c = yc(e), s = Oc(e, t), a = Ec(e, t), o = t.filter((g) => g.entry.id === "teaching").map(
-    (g) => ce(
+  ), c = yc(e), s = Oc(e, t), a = Sc(e, t), o = t.filter((g) => g.entry.id === "teaching").map(
+    (g) => ie(
       "teaching-cue",
       "teaching:explicit",
       g.alias,
@@ -2118,10 +2137,10 @@ function wc(e) {
     )
   ), d = Object.freeze([
     ...o,
-    ...Sc(a, r)
+    ...Ec(a, r)
   ]), l = Object.freeze(
     t.filter((g) => g.entry.id === "query-definition").map(
-      (g) => ce(
+      (g) => ie(
         "definition-query",
         "query:definition",
         g.alias,
@@ -2180,28 +2199,28 @@ const N = Object.freeze({
   "sunland ai",
   "sunland ai · beta"
 ]);
-function Re(e) {
+function Ce(e) {
   return typeof e == "object" && e !== null;
 }
-function J(e, t) {
+function H(e, t) {
   if (typeof e != "string") return null;
   const n = e.trim().replace(/\s+/gu, " ");
   return n.length === 0 || n.length > t ? null : n;
 }
-function ct(e) {
+function it(e) {
   return zc.has(
     e.trim().replace(/\s+/gu, " ").toLocaleLowerCase("und")
   );
 }
-function st(e) {
+function ct(e) {
   return Ic.has(
     e.trim().replace(/\s+/gu, " ").toLocaleLowerCase("und")
   );
 }
-function Rt(e) {
-  if (!Re(e) || !kc.has(e.kind))
+function Ct(e) {
+  if (!Ce(e) || !kc.has(e.kind))
     return null;
-  const t = J(
+  const t = H(
     e.value,
     N.maximumEntityValueLength
   );
@@ -2211,9 +2230,9 @@ function Rt(e) {
   });
 }
 function Nc(e) {
-  if (!Re(e) || !Rc.has(e.kind))
+  if (!Ce(e) || !Rc.has(e.kind))
     return;
-  const t = J(
+  const t = H(
     e.relation,
     N.maximumRelationLength
   );
@@ -2225,25 +2244,25 @@ function Nc(e) {
     });
 }
 function Tc(e) {
-  if (!Re(e) || e.speaker !== "user" && e.speaker !== "assistant")
+  if (!Ce(e) || e.speaker !== "user" && e.speaker !== "assistant")
     return null;
-  const t = J(
+  const t = H(
     e.turnId,
     N.maximumTurnIdLength
   );
   if (t === null) return null;
   const n = typeof e.acceptedIntent == "string" && Cc.has(e.acceptedIntent) ? e.acceptedIntent : void 0, r = Object.freeze(
     (Array.isArray(e.concepts) ? e.concepts : []).map(
-      (o) => J(
+      (o) => H(
         o,
         N.maximumEntityValueLength
       )
     ).filter((o) => o !== null).slice(0, N.maximumConceptsPerTurn)
   ), i = Object.freeze(
-    (Array.isArray(e.entityReferences) ? e.entityReferences : []).map(Rt).filter(
+    (Array.isArray(e.entityReferences) ? e.entityReferences : []).map(Ct).filter(
       (o) => o !== null
     ).slice(0, N.maximumEntitiesPerTurn)
-  ), c = Rt(e.focusEntity), s = J(
+  ), c = Ct(e.focusEntity), s = H(
     e.relation,
     N.maximumRelationLength
   ), a = Nc(e.queryShape);
@@ -2265,8 +2284,8 @@ function Xt() {
     recentTurns: Object.freeze([])
   });
 }
-function Z(e) {
-  if (!Re(e)) return Xt();
+function X(e) {
+  if (!Ce(e)) return Xt();
   const t = typeof e.version == "number" && Number.isSafeInteger(e.version) && e.version >= 0 ? e.version : 0, n = Object.freeze(
     (Array.isArray(e.recentTurns) ? e.recentTurns : []).map(Tc).filter((r) => r !== null).slice(-N.maximumTurns)
   );
@@ -2276,13 +2295,13 @@ function Z(e) {
     recentTurns: n
   });
 }
-function Ke(e, t) {
+function _e(e, t) {
   return Object.freeze({ kind: e, value: t.trim().replace(/\s+/gu, " ") });
 }
-function kt(e) {
-  return st(e);
+function Rt(e) {
+  return ct(e);
 }
-function vc(e) {
+function Ac(e) {
   const t = [
     e.selectedCandidate,
     ...e.secondaryCandidates
@@ -2291,13 +2310,13 @@ function vc(e) {
     [...new Set(t.flatMap(({ concepts: n }) => n.map(({ id: r }) => r)))].sort().slice(0, N.maximumConceptsPerTurn)
   );
 }
-function Ac(e, t, n) {
-  const r = vc(n);
+function vc(e, t, n) {
+  const r = Ac(n);
   switch (t.type) {
     case "query": {
-      const i = Ke(
-        kt(t.subject) ? "self" : "subject",
-        kt(t.subject) ? "Sunland AI · Beta" : t.subject
+      const i = _e(
+        Rt(t.subject) ? "self" : "subject",
+        Rt(t.subject) ? "Sunland AI · Beta" : t.subject
       );
       return Object.freeze({
         turnId: e,
@@ -2314,7 +2333,7 @@ function Ac(e, t, n) {
       });
     }
     case "statement": {
-      const i = Ke("subject", t.subject);
+      const i = _e("subject", t.subject);
       return Object.freeze({
         turnId: e,
         speaker: "user",
@@ -2326,7 +2345,7 @@ function Ac(e, t, n) {
     }
     case "intent": {
       if (t.intent === "Identity") {
-        const i = Ke("self", "Sunland AI · Beta");
+        const i = _e("self", "Sunland AI · Beta");
         return Object.freeze({
           turnId: e,
           speaker: "user",
@@ -2350,13 +2369,13 @@ function Ac(e, t, n) {
   }
 }
 function xc(e) {
-  const t = Z(e.context);
+  const t = X(e.context);
   if (!e.canCommit || e.decision.kind !== "accept" || e.executedResult === null)
     return Object.freeze({
       kind: "none",
       baseVersion: t.version
     });
-  const n = J(
+  const n = H(
     e.turnId,
     N.maximumTurnIdLength
   );
@@ -2365,7 +2384,7 @@ function xc(e) {
       kind: "none",
       baseVersion: t.version
     });
-  const r = Ac(
+  const r = vc(
     n,
     e.executedResult,
     e.decision
@@ -2392,10 +2411,10 @@ function xc(e) {
   });
 }
 function ka(e, t) {
-  const n = Z(e);
-  return t.kind !== "replace" || t.baseVersion !== n.version || t.nextVersion !== t.baseVersion + 1 || t.context.version !== t.nextVersion ? n : Z(t.context);
+  const n = X(e);
+  return t.kind !== "replace" || t.baseVersion !== n.version || t.nextVersion !== t.baseVersion + 1 || t.context.version !== t.nextVersion ? n : X(t.context);
 }
-function ke(e) {
+function Re(e) {
   return e.trim().replace(/\s+/gu, " ").toLocaleLowerCase("und");
 }
 function $c(e) {
@@ -2414,7 +2433,7 @@ function Zt(e) {
     });
   const n = /* @__PURE__ */ new Set(), r = Object.freeze(
     t.entityReferences.filter(({ kind: i }) => i === "subject" || i === "self").filter((i) => {
-      const c = ke(i.value);
+      const c = Re(i.value);
       return n.has(c) ? !1 : (n.add(c), !0);
     })
   );
@@ -2424,7 +2443,7 @@ function Lc(e) {
   var t;
   return ((t = [...e.recentTurns].reverse().find(({ relation: n }) => n !== void 0)) == null ? void 0 : t.relation) ?? null;
 }
-function Oe(e, t, n, r, i) {
+function ye(e, t, n, r, i) {
   return Object.freeze({
     kind: e,
     value: t,
@@ -2435,7 +2454,7 @@ function Oe(e, t, n, r, i) {
     confidence: m.context.resolvedQuery
   });
 }
-function se(e, t, n, r) {
+function ce(e, t, n, r) {
   return Object.freeze({
     kind: "context-reference",
     key: e,
@@ -2444,7 +2463,7 @@ function se(e, t, n, r) {
     ...r === void 0 ? {} : { rawRange: Object.freeze({ ...r }) }
   });
 }
-function zt(e, t, n) {
+function kt(e, t, n) {
   return Object.freeze({
     id: e,
     canonical: t,
@@ -2452,7 +2471,7 @@ function zt(e, t, n) {
     evidence: n
   });
 }
-function ae(e, t, n, r, i, c) {
+function se(e, t, n, r, i, c) {
   return Object.freeze({
     id: e,
     producer: "context",
@@ -2466,38 +2485,38 @@ function ae(e, t, n, r, i, c) {
     sideEffect: "none"
   });
 }
-function at(e, t) {
+function st(e, t) {
   const n = e.input.matchKey.indexOf(t);
-  return n < 0 ? Object.freeze({ start: 0, end: 0 }) : U(
+  return n < 0 ? Object.freeze({ start: 0, end: 0 }) : D(
     e.input,
     "matchKey",
     n,
     n + t.length
   );
 }
-function He(e) {
+function Qe(e) {
+  return it(e);
+}
+function Z(e) {
   return ct(e);
 }
-function ee(e) {
-  return st(e);
-}
-function Me(e, t, n, r, i) {
-  const c = at(e, ke(n.subject)), s = e.input.raw.slice(c.start, c.end), a = Oe(
-    ee(r) ? "self" : "subject",
-    ee(r) ? "Sunland AI · Beta" : r,
+function Ke(e, t, n, r, i) {
+  const c = st(e, Re(n.subject)), s = e.input.raw.slice(c.start, c.end), a = ye(
+    Z(r) ? "self" : "subject",
+    Z(r) ? "Sunland AI · Beta" : r,
     s,
     c,
     i
   ), o = Object.freeze({
     ...n,
     subject: a.value
-  }), d = se(
+  }), d = ce(
     "context:resolved-subject",
     a.value,
     m.context.inheritedSubject,
     c
   );
-  return ae(
+  return se(
     `context:query:${o.subject}:${o.relation}:${o.kind}`,
     o,
     Object.freeze([
@@ -2510,16 +2529,16 @@ function Me(e, t, n, r, i) {
   );
 }
 function _c(e, t, n, r) {
-  const i = at(e, ke(n.subject)), c = Object.freeze([
+  const i = st(e, Re(n.subject)), c = Object.freeze([
     ...t.evidence,
-    se(
+    ce(
       r.kind === "ambiguous" ? "context:ambiguous-subject" : "context:missing-subject",
       n.subject,
       m.context.unresolvedReference,
       i
     )
   ]), s = r.entities.map(
-    (a) => Oe(
+    (a) => ye(
       a.kind === "self" ? "self" : "subject",
       a.value,
       "",
@@ -2527,7 +2546,7 @@ function _c(e, t, n, r) {
       "context"
     )
   );
-  return ae(
+  return se(
     `context:partial:${n.relation}:${r.kind}`,
     null,
     Object.freeze(s),
@@ -2546,18 +2565,18 @@ function Kc(e, t, n) {
       c.push(a.id);
       continue;
     }
-    if ((o == null ? void 0 : o.type) === "statement" && He(o.subject)) {
-      const d = at(
+    if ((o == null ? void 0 : o.type) === "statement" && Qe(o.subject)) {
+      const d = st(
         e,
-        ke(o.subject)
-      ), l = se(
+        Re(o.subject)
+      ), l = ce(
         "context:side-effect-subject-prohibited",
         o.subject,
         m.context.unresolvedReference,
         d
       );
       i.push(
-        ae(
+        se(
           `context:partial:side-effect-subject:${o.relation}`,
           null,
           Object.freeze([]),
@@ -2571,7 +2590,7 @@ function Kc(e, t, n) {
     if ((o == null ? void 0 : o.type) === "query") {
       if (o.kind === "object-of" && o.relation === "意思是") {
         i.push(
-          Me(
+          Ke(
             e,
             a,
             o,
@@ -2581,9 +2600,9 @@ function Kc(e, t, n) {
         ), c.push(a.id);
         continue;
       }
-      if (ee(o.subject)) {
+      if (Z(o.subject)) {
         i.push(
-          Me(
+          Ke(
             e,
             a,
             o,
@@ -2593,8 +2612,8 @@ function Kc(e, t, n) {
         ), c.push(a.id);
         continue;
       }
-      He(o.subject) && (c.push(a.id), r.kind === "unique" ? i.push(
-        Me(
+      Qe(o.subject) && (c.push(a.id), r.kind === "unique" ? i.push(
+        Ke(
           e,
           a,
           o,
@@ -2624,20 +2643,20 @@ function Mc(e, t) {
   if (r === null) return null;
   const i = ((a = r[1]) == null ? void 0 : a.trim()) ?? "";
   if (i.length === 0) return null;
-  const c = n.indexOf(i), s = U(
+  const c = n.indexOf(i), s = D(
     e.input,
     "surface",
     c,
     c + i.length
   );
-  if (ee(i))
+  if (Z(i))
     return Object.freeze({
       value: "Sunland AI · Beta",
       rawRange: s,
       source: "explicit",
       ambiguousEntities: Object.freeze([])
     });
-  if (He(i)) {
+  if (Qe(i)) {
     const o = Zt(t);
     return o.kind !== "unique" ? Object.freeze({
       value: "",
@@ -2661,7 +2680,7 @@ function Mc(e, t) {
 function Pc(e, t) {
   const n = Mc(e, t);
   if (n === null) return null;
-  const r = Lc(t), i = se(
+  const r = Lc(t), i = ce(
     n.value.length === 0 ? "context:ambiguous-subject" : "context:ellipsis-subject",
     n.value,
     m.context.inheritedSubject,
@@ -2672,7 +2691,7 @@ function Pc(e, t) {
       ...n.value.length === 0 ? ["subject"] : [],
       ...r === null ? ["relation"] : []
     ]), b = n.ambiguousEntities.map(
-      (g) => Oe(
+      (g) => ye(
         g.kind === "self" ? "self" : "subject",
         g.value,
         "",
@@ -2680,14 +2699,14 @@ function Pc(e, t) {
         "context"
       )
     );
-    return ae(
+    return se(
       `context:ellipsis:partial:${l.join("+")}`,
       null,
       Object.freeze(b),
       Object.freeze([i]),
       l,
       Object.freeze([
-        zt(
+        kt(
           "context-ellipsis",
           "context ellipsis",
           Object.freeze([i])
@@ -2695,16 +2714,16 @@ function Pc(e, t) {
       ])
     );
   }
-  const c = Oe(
-    ee(n.value) ? "self" : "subject",
-    ee(n.value) ? "Sunland AI · Beta" : n.value,
+  const c = ye(
+    Z(n.value) ? "self" : "subject",
+    Z(n.value) ? "Sunland AI · Beta" : n.value,
     e.input.raw.slice(
       n.rawRange.start,
       n.rawRange.end
     ),
     n.rawRange,
     n.source
-  ), s = se(
+  ), s = ce(
     "context:inherited-relation",
     r,
     m.context.inheritedRelation
@@ -2715,14 +2734,14 @@ function Pc(e, t) {
     kind: a,
     raw: e.input.raw
   }), d = Object.freeze([i, s]);
-  return ae(
+  return se(
     `context:ellipsis:query:${c.value}:${r}`,
     o,
     Object.freeze([c]),
     d,
     Object.freeze([]),
     Object.freeze([
-      zt("context-ellipsis", "context ellipsis", d)
+      kt("context-ellipsis", "context ellipsis", d)
     ])
   );
 }
@@ -2787,7 +2806,7 @@ function Fc(e) {
       return T(
         Math.max(
           m.legacy.intentFloor,
-          ye(e.confidence)
+          je(e.confidence)
         )
       );
     case "statement":
@@ -2799,7 +2818,7 @@ function Fc(e) {
   }
 }
 function Wc(e) {
-  const t = Pt().parse(e.input.raw), n = Fc(t), r = Object.freeze({
+  const t = Mt().parse(e.input.raw), n = Fc(t), r = Object.freeze({
     start: 0,
     end: e.input.raw.length
   }), i = Object.freeze([
@@ -2888,7 +2907,7 @@ function Jc(e, t) {
       return null;
     r = Object.freeze([l]), i = Object.freeze([l.value]);
   }
-  const c = r.length > 0 ? [m.lexicon.entityCompleteBonus] : [], s = n.sideEffect === "none" ? [] : [m.lexicon.sideEffectPenalty], a = Ce(
+  const c = r.length > 0 ? [m.lexicon.entityCompleteBonus] : [], s = n.sideEffect === "none" ? [] : [m.lexicon.sideEffectPenalty], a = we(
     e.confidence,
     c,
     s
@@ -2937,7 +2956,7 @@ function Xc(e) {
     )
   );
 }
-const tn = /[,;!?]/u, It = /[\s,.;:!?'"()[\]~]/u, nn = /* @__PURE__ */ new Set(["什么", "啥", "谁", "哪", "哪里"]), rn = /[吗呢]$/u, Zc = /(?:不是|不会|不能|没有|不|没)$/u;
+const tn = /[,;!?]/u, zt = /[\s,.;:!?'"()[\]~]/u, nn = /* @__PURE__ */ new Set(["什么", "啥", "谁", "哪", "哪里"]), rn = /[吗呢]$/u, Zc = /(?:不是|不会|不能|没有|不|没)$/u;
 function es(e, t) {
   let n = 0;
   for (let c = t - 1; c >= 0; c -= 1)
@@ -2954,11 +2973,11 @@ function ts(e, t) {
       return n;
   return e.length;
 }
-function Ee(e, t, n) {
+function Oe(e, t, n) {
   let r = t, i = n;
-  for (; r < i && It.test(e[r]); )
+  for (; r < i && zt.test(e[r]); )
     r += 1;
-  for (; i > r && It.test(e[i - 1]); )
+  for (; i > r && zt.test(e[i - 1]); )
     i -= 1;
   return r >= i ? null : Object.freeze({
     start: r,
@@ -2971,7 +2990,7 @@ function ns(e, t) {
     return Object.freeze({ segment: null, negated: !1 });
   const n = Zc.exec(t.value);
   return Object.freeze(n === null ? { segment: t, negated: !1 } : {
-    segment: Ee(
+    segment: Oe(
       e,
       t.start,
       t.end - n[0].length
@@ -2983,14 +3002,14 @@ function rs(e, t) {
   if (t === null)
     return null;
   const n = rn.exec(t.value);
-  return n === null ? t : Ee(
+  return n === null ? t : Oe(
     e,
     t.start,
     t.end - n[0].length
   );
 }
 function cn(e, t) {
-  return U(
+  return D(
     e.input,
     "matchKey",
     t.start,
@@ -3001,7 +3020,7 @@ function is(e, t) {
   const n = cn(e, t);
   return e.input.raw.slice(n.start, n.end).trim().replace(/\s+/gu, " ").replace(/^["“”'‘’]+|["“”'‘’]+$/gu, "");
 }
-function Nt(e, t, n, r) {
+function It(e, t, n, r) {
   const i = cn(e, n);
   return Object.freeze({
     kind: t,
@@ -3042,7 +3061,7 @@ function ss(e, t) {
 function as(e, t, n, r) {
   if (r !== null && nn.has(r.value.replace(rn, "")))
     return !0;
-  const i = t < n ? U(
+  const i = t < n ? D(
     e.input,
     "matchKey",
     t,
@@ -3079,11 +3098,11 @@ function os(e, t, n, r, i, c) {
 function us(e, t) {
   if (ss(e, t))
     return null;
-  const n = e.input.matchKey, r = es(n, t.matchKeyRange.start), i = ts(n, t.matchKeyRange.end), c = Ee(
+  const n = e.input.matchKey, r = es(n, t.matchKeyRange.start), i = ts(n, t.matchKeyRange.end), c = Oe(
     n,
     r,
     t.matchKeyRange.start
-  ), s = ns(n, c), a = Ee(
+  ), s = ns(n, c), a = Oe(
     n,
     t.matchKeyRange.end,
     i
@@ -3092,45 +3111,45 @@ function us(e, t) {
     r,
     i,
     o
-  ), l = t.alias === "是什么意思" || o !== null && nn.has(o.value), b = l ? "object-of" : d ? "verify" : null, g = l ? null : o, w = s.segment === null ? null : Nt(
+  ), l = t.alias === "是什么意思" || o !== null && nn.has(o.value), b = l ? "object-of" : d ? "verify" : null, g = l ? null : o, S = s.segment === null ? null : It(
     e,
     "subject",
     s.segment,
     t.confidence
-  ), R = g === null ? null : Nt(
+  ), R = g === null ? null : It(
     e,
     "object",
     g,
     t.confidence
-  ), S = os(
+  ), w = os(
     e,
     t,
-    w,
+    S,
     R,
     b,
     s.negated
-  ), F = [];
-  w === null && F.push("subject"), (b === null || b === "verify") && R === null && F.push("object");
-  const oe = (S == null ? void 0 : S.type) === "statement" ? "knowledge-write" : "none", v = [
+  ), B = [];
+  S === null && B.push("subject"), (b === null || b === "verify") && R === null && B.push("object");
+  const oe = (w == null ? void 0 : w.type) === "statement" ? "knowledge-write" : "none", A = [
     t.confidence * m.relation.conceptWeightShare,
-    ...w === null ? [] : [m.relation.subjectBonus],
+    ...S === null ? [] : [m.relation.subjectBonus],
     ...R === null ? [] : [m.relation.objectBonus],
     b !== null ? m.relation.queryShapeBonus : m.relation.statementShapeBonus
-  ], ze = [
-    ...F.map(
+  ], ke = [
+    ...B.map(
       () => m.relation.missingSlotPenalty
     ),
     ...oe === "none" ? [] : [m.relation.sideEffectPenalty],
     ...t.alias.length === 1 ? [m.relation.weakSingleCharacterPenalty] : []
-  ], Ie = Ce(
+  ], ze = we(
     m.relation.base,
-    v,
-    ze
+    A,
+    ke
   ), ue = Object.freeze(
-    [w, t.entity, R].filter(
+    [S, t.entity, R].filter(
       (k) => k !== null
     )
-  ), A = Object.freeze([
+  ), v = Object.freeze([
     ...t.evidence,
     ...ue.filter((k) => k.kind !== "relation").map(
       (k) => Object.freeze({
@@ -3146,17 +3165,17 @@ function us(e, t) {
     ),
     ...b !== null ? e.questionCues : e.teachingCues,
     ...s.negated ? e.negationCues : []
-  ]), Ne = S === null ? `partial:${t.canonical}:${t.entity.start}` : S.type === "query" ? `query:${S.subject}:${S.relation}` : `statement:${S.subject}:${S.relation}:${S.object}:${S.negated}`;
+  ]), Ie = w === null ? `partial:${t.canonical}:${t.entity.start}` : w.type === "query" ? `query:${w.subject}:${w.relation}` : `statement:${w.subject}:${w.relation}:${w.object}:${w.negated}`;
   return Object.freeze({
-    id: `relation-pattern:${Ne}`,
+    id: `relation-pattern:${Ie}`,
     producer: "relation-pattern",
     producerWeight: m.producerWeight["relation-pattern"],
-    result: S,
+    result: w,
     concepts: Object.freeze([cs(e, t)]),
     entities: ue,
-    confidence: Ie,
-    evidence: A,
-    missingSlots: Object.freeze(F),
+    confidence: ze,
+    evidence: v,
+    missingSlots: Object.freeze(B),
     sideEffect: oe
   });
 }
@@ -3173,7 +3192,7 @@ function ls(e) {
     "subject",
     "relation",
     "object"
-  ]), i = Ce(
+  ]), i = we(
     m.relation.base,
     [],
     r.map(
@@ -3255,7 +3274,7 @@ function hs(e) {
     e.value
   ].join(":");
 }
-function Pe(e, t) {
+function Me(e, t) {
   const n = /* @__PURE__ */ new Set(), r = [];
   for (const i of e) {
     const c = t(i);
@@ -3275,22 +3294,22 @@ function js(e, t) {
   return Object.freeze({
     id: e.id.localeCompare(t.id) <= 0 ? e.id : t.id,
     producer: e.producer,
-    producerWeight: ye(
+    producerWeight: je(
       Math.max(e.producerWeight, t.producerWeight)
     ),
     result: e.result ?? t.result,
-    concepts: Pe(
+    concepts: Me(
       [...e.concepts, ...t.concepts],
       gs
     ),
-    entities: Pe(
+    entities: Me(
       [...e.entities, ...t.entities],
       hs
     ),
-    confidence: ye(
+    confidence: je(
       Math.max(e.confidence, t.confidence)
     ),
-    evidence: Pe(
+    evidence: Me(
       [...e.evidence, ...t.evidence],
       bs
     ),
@@ -3321,7 +3340,7 @@ function Os(e) {
     )
   );
 }
-function Es(e, t, n) {
+function Ss(e, t, n) {
   const r = [];
   return e.trim().length === 0 && r.push(
     Object.freeze({
@@ -3348,12 +3367,12 @@ function Es(e, t, n) {
     })
   ), Object.freeze(r);
 }
-function Ss(e, t) {
+function Es(e, t) {
   const n = lc(e), r = wc(n), i = [
     Wc(r),
     ...Xc(r),
     ...fs(r)
-  ], c = t === void 0 ? void 0 : Z(t), s = c === void 0 ? Object.freeze({
+  ], c = t === void 0 ? void 0 : X(t), s = c === void 0 ? Object.freeze({
     candidates: Object.freeze([]),
     supersededCandidateIds: Object.freeze([])
   }) : Dc(
@@ -3370,7 +3389,7 @@ function Ss(e, t) {
     input: n,
     extraction: r,
     candidates: d,
-    diagnostics: Es(
+    diagnostics: Ss(
       e,
       d,
       c
@@ -3403,7 +3422,7 @@ function Cs(e, t) {
     e.negated
   ]);
 }
-function Je(e, t) {
+function He(e, t) {
   if ((e == null ? void 0 : e.type) === "statement")
     return `knowledge:${Cs(e, t).join("|")}`;
   if ((e == null ? void 0 : e.type) === "intent" && e.intent === "RememberName") {
@@ -3423,14 +3442,14 @@ function ks(e) {
     e.candidates.filter(on).filter(
       (t) => t.result !== null && t.result.type !== "unknown" && t.missingSlots.length === 0
     ).map(
-      (t) => Je(t.result, e)
+      (t) => He(t.result, e)
     ).filter((t) => t !== null)
   );
 }
 function zs(e) {
   return sn(e) ? e.raw.trim().replace(ws, "") : e.raw;
 }
-function M(e) {
+function K(e) {
   return Object.freeze({
     kind: "block-and-no-understanding",
     reason: e
@@ -3449,36 +3468,36 @@ function Is(e, t, n) {
       decision: e
     });
   if (e.kind === "reject-side-effect")
-    return M("semantic-side-effect-rejected");
+    return K("semantic-side-effect-rejected");
   if (e.kind !== "accept")
-    return M("semantic-side-effect-not-accepted");
+    return K("semantic-side-effect-not-accepted");
   if (n.extraction.negationCues.length > 0)
-    return M("negation-detected");
+    return K("negation-detected");
   if (n.extraction.questionCues.length > 0)
-    return M("question-detected");
-  if (Kt(n.input.raw))
-    return M("explicit-prohibition");
-  if (tt(
+    return K("question-detected");
+  if (_t(n.input.raw))
+    return K("explicit-prohibition");
+  if (et(
     zs(t)
   ))
-    return M("unsafe-input-structure");
+    return K("unsafe-input-structure");
   const r = Rs(
     e
   ).filter(on);
   if (r.length === 0 || r.some(
     (s) => s.result === null || s.missingSlots.length > 0
   ))
-    return M(
+    return K(
       r.length === 0 ? "semantic-side-effect-not-accepted" : "missing-required-slot"
     );
   if (ks(n).size > 1)
-    return M("compound-or-conflicting-side-effect");
-  const i = Je(
+    return K("compound-or-conflicting-side-effect");
+  const i = He(
     t,
     n
   ), c = new Set(
     r.map(
-      (s) => Je(s.result, n)
+      (s) => He(s.result, n)
     ).filter((s) => s !== null)
   );
   return i === null || !c.has(i) ? Object.freeze({
@@ -3509,7 +3528,7 @@ function un(e) {
   var t, n;
   return e.sideEffect !== "none" || ((t = e.result) == null ? void 0 : t.type) === "statement" || ((n = e.result) == null ? void 0 : n.type) === "intent" && e.result.intent === "RememberName";
 }
-function vs(e) {
+function As(e) {
   return e.type === "query" || e.type === "intent" && Ns.has(e.intent);
 }
 function ln(e, t) {
@@ -3527,9 +3546,9 @@ function ln(e, t) {
       return t.type === "unknown";
   }
 }
-function As(e, t) {
+function vs(e, t) {
   const n = e.result;
-  return e.producer !== "context" || (n == null ? void 0 : n.type) !== "query" ? !1 : t.type === "intent" && t.intent === "Identity" ? n.relation === "意思是" || e.concepts.some(({ id: r }) => r === "context-ellipsis") : t.type !== "query" || !ct(t.subject) && !st(t.subject) ? !1 : E(n.relation) === E(t.relation) && n.kind === t.kind && E(n.object ?? "") === E(t.object ?? "");
+  return e.producer !== "context" || (n == null ? void 0 : n.type) !== "query" ? !1 : t.type === "intent" && t.intent === "Identity" ? n.relation === "意思是" || e.concepts.some(({ id: r }) => r === "context-ellipsis") : t.type !== "query" || !it(t.subject) && !ct(t.subject) ? !1 : E(n.relation) === E(t.relation) && n.kind === t.kind && E(n.object ?? "") === E(t.object ?? "");
 }
 function xs(e) {
   const t = e.result;
@@ -3586,7 +3605,7 @@ function fn(e) {
   });
 }
 function _s(e, t) {
-  return t.type === "unknown" || t.type === "query" && ct(t.subject) && e.missingSlots.includes("subject") && e.candidateOptions.some(
+  return t.type === "unknown" || t.type === "query" && it(t.subject) && e.missingSlots.includes("subject") && e.candidateOptions.some(
     ({ producer: n }) => n === "context"
   ) || e.reasonCodes.includes("compound-query") && e.candidateOptions.length >= 2 && e.candidateOptions.every(
     (n) => !un(n)
@@ -3594,7 +3613,7 @@ function _s(e, t) {
     (n) => n.evidence.some(({ kind: r }) => r === "question-cue")
   );
 }
-function Xe(e, t) {
+function Je(e, t) {
   return Object.freeze({
     kind: "no-understanding",
     failure: Object.freeze({
@@ -3620,12 +3639,12 @@ function Ks(e, t) {
         context: fn(e.decision)
       });
     case "block-and-no-understanding":
-      return Xe(
+      return Je(
         t,
         `legacy-side-effect-blocked:${e.reason}`
       );
     case "reject":
-      return Xe(
+      return Je(
         t,
         `legacy-side-effect-rejected:${e.reason}`
       );
@@ -3657,11 +3676,11 @@ function Ms(e, t, n) {
         kind: "fallback-legacy",
         result: t,
         reason: "incomplete-result"
-      }) : e.selectedCandidate.missingSlots.length > 0 || !vs(c) ? Object.freeze({
+      }) : e.selectedCandidate.missingSlots.length > 0 || !As(c) ? Object.freeze({
         kind: "fallback-legacy",
         result: t,
         reason: "unsupported-result"
-      }) : t.type !== "unknown" && !ln(c, t) && !As(
+      }) : t.type !== "unknown" && !ln(c, t) && !vs(
         e.selectedCandidate,
         t
       ) ? Object.freeze({
@@ -3680,7 +3699,7 @@ function Ms(e, t, n) {
         reason: "legacy-conflict"
       });
     case "reject-side-effect":
-      return t.type === "unknown" ? Xe(
+      return t.type === "unknown" ? Je(
         t,
         "semantic-side-effect-rejected"
       ) : Object.freeze({
@@ -3811,13 +3830,13 @@ function mn(e, t) {
     )
   );
 }
-function B(e) {
+function q(e) {
   return mn(e, Ys);
 }
 function bn(e) {
   return mn(e, Qs);
 }
-function X(e) {
+function J(e) {
   return e.trim().replace(/\s+/gu, " ").toLocaleLowerCase("und");
 }
 function Hs(e) {
@@ -3825,12 +3844,12 @@ function Hs(e) {
     ({ conceptId: t }) => t === "is-a"
   );
 }
-function Ze(e, t) {
+function Xe(e, t) {
   return Hs(e) && (t === "是" || t === "属于") ? "属于" : t;
 }
-function Tt(e, t, n) {
-  const r = X(n);
-  return Ze(e, t) === "属于" && r.startsWith("一种") && r.length > 2 ? r.slice(2) : r;
+function Nt(e, t, n) {
+  const r = J(n);
+  return Xe(e, t) === "属于" && r.startsWith("一种") && r.length > 2 ? r.slice(2) : r;
 }
 function Js(e, t) {
   const n = t.result;
@@ -3841,23 +3860,23 @@ function Js(e, t) {
       return [
         "intent",
         n.intent,
-        ...n.entities.map(X)
+        ...n.entities.map(J)
       ].join(":");
     case "statement":
       return [
         "statement",
-        X(n.subject),
-        Ze(e, n.relation),
-        Tt(e, n.relation, n.object),
+        J(n.subject),
+        Xe(e, n.relation),
+        Nt(e, n.relation, n.object),
         n.negated
       ].join(":");
     case "query":
       return [
         "query",
         n.kind,
-        X(n.subject),
-        Ze(e, n.relation),
-        n.object === void 0 ? "" : Tt(
+        J(n.subject),
+        Xe(e, n.relation),
+        n.object === void 0 ? "" : Nt(
           e,
           n.relation,
           n.object
@@ -3867,7 +3886,7 @@ function Js(e, t) {
       return `unknown:${t.id}`;
   }
 }
-function et(e) {
+function Ze(e) {
   const t = new Set(
     e.entities.map(
       ({ kind: n, start: r, end: i, value: c }) => `${n}:${r}:${i}:${c}`
@@ -3875,16 +3894,16 @@ function et(e) {
   );
   return e.evidence.length + t.size;
 }
-function D(e) {
+function P(e) {
   var t, n;
   return ((t = e.result) == null ? void 0 : t.type) === "intent" && e.result.intent === "RememberName" ? "memory-write" : ((n = e.result) == null ? void 0 : n.type) === "statement" ? "knowledge-write" : e.sideEffect;
 }
-function ne(e, t) {
-  const n = D(e) === e.sideEffect ? 0 : 1, r = D(t) === t.sideEffect ? 0 : 1;
-  return n - r || t.confidence - e.confidence || et(t) - et(e) || e.missingSlots.length - t.missingSlots.length || m.producerTieBreak[e.producer] - m.producerTieBreak[t.producer] || e.id.localeCompare(t.id);
+function te(e, t) {
+  const n = P(e) === e.sideEffect ? 0 : 1, r = P(t) === t.sideEffect ? 0 : 1;
+  return n - r || t.confidence - e.confidence || Ze(t) - Ze(e) || e.missingSlots.length - t.missingSlots.length || m.producerTieBreak[e.producer] - m.producerTieBreak[t.producer] || e.id.localeCompare(t.id);
 }
 function Xs(e, t) {
-  const n = /* @__PURE__ */ new Map(), r = [...t].sort(ne);
+  const n = /* @__PURE__ */ new Map(), r = [...t].sort(te);
   for (const i of r) {
     const c = Js(e, i), s = n.get(c);
     s === void 0 ? n.set(c, [i]) : s.push(i);
@@ -3892,7 +3911,7 @@ function Xs(e, t) {
   return Object.freeze(
     [...n.entries()].map(([i, c]) => {
       const s = Object.freeze(
-        [...c].sort(ne)
+        [...c].sort(te)
       );
       return Object.freeze({
         key: i,
@@ -3900,7 +3919,7 @@ function Xs(e, t) {
         supporters: s
       });
     }).sort(
-      (i, c) => ne(
+      (i, c) => te(
         i.representative,
         c.representative
       )
@@ -3908,12 +3927,12 @@ function Xs(e, t) {
   );
 }
 function Zs(e, t) {
-  if (D(e) !== "none")
+  if (P(e) !== "none")
     return t.sideEffectAcceptThreshold;
   const n = e.result;
   return (n == null ? void 0 : n.type) === "intent" && dn.has(n.intent) ? t.passiveIntentAcceptThreshold : (n == null ? void 0 : n.type) === "query" || (n == null ? void 0 : n.type) === "intent" && (n.intent === "Identity" || n.intent === "RecallName") ? t.queryAcceptThreshold : t.partialCandidateThreshold;
 }
-function ot(e) {
+function at(e) {
   var t;
   return ((t = e.result) == null ? void 0 : t.type) === "statement" && e.result.negated;
 }
@@ -3923,7 +3942,7 @@ function ea(e) {
     return !1;
   const t = e.result.entities[0];
   return t === void 0 ? !1 : e.entities.some(
-    (r) => r.kind === "person-name" && X(r.value) === X(t)
+    (r) => r.kind === "person-name" && J(r.value) === J(t)
   );
 }
 function ta(e) {
@@ -3939,11 +3958,11 @@ function na(e, t) {
   ]);
   return e.evidence.some(({ kind: i }) => n.has(i)) ? !0 : !(e.evidence.length > 0 && e.evidence.every(
     ({ kind: i, value: c }) => i === "lexicon-alias" && ((c == null ? void 0 : c.length) ?? 0) <= t.weakAliasMaximumLength
-  )) && et(e) >= t.minimumSideEffectEvidenceUnits;
+  )) && Ze(e) >= t.minimumSideEffectEvidenceUnits;
 }
 function gn(e, t, n) {
   var s;
-  const r = D(e);
+  const r = P(e);
   if (r === "none")
     return Object.freeze({
       safe: !0,
@@ -3951,17 +3970,17 @@ function gn(e, t, n) {
       reasonCodes: Object.freeze([])
     });
   const i = [], c = [];
-  return (e.missingSlots.length > 0 || e.result === null) && (i.push("complete-slots"), c.push("missing-required-slot")), e.confidence < n.sideEffectAcceptThreshold && (i.push("confidence-threshold"), c.push("insufficient-confidence")), n.negationPolicy.rejectNegatedSideEffects && ot(e) && (i.push("non-negated-assertion"), c.push("negation-conflict")), ((s = e.result) == null ? void 0 : s.type) === "statement" && t.extraction.questionCues.length > 0 && (i.push("non-question-assertion"), c.push("side-effect-evidence-insufficient")), r === "memory-write" && !ea(e) && (i.push("explicit-name"), c.push("side-effect-evidence-insufficient")), r === "knowledge-write" && !ta(e) && (i.push("complete-triple"), c.push("side-effect-evidence-insufficient")), na(e, n) || (i.push("strong-non-alias-evidence"), c.push("side-effect-evidence-insufficient")), Object.freeze({
+  return (e.missingSlots.length > 0 || e.result === null) && (i.push("complete-slots"), c.push("missing-required-slot")), e.confidence < n.sideEffectAcceptThreshold && (i.push("confidence-threshold"), c.push("insufficient-confidence")), n.negationPolicy.rejectNegatedSideEffects && at(e) && (i.push("non-negated-assertion"), c.push("negation-conflict")), ((s = e.result) == null ? void 0 : s.type) === "statement" && t.extraction.questionCues.length > 0 && (i.push("non-question-assertion"), c.push("side-effect-evidence-insufficient")), r === "memory-write" && !ea(e) && (i.push("explicit-name"), c.push("side-effect-evidence-insufficient")), r === "knowledge-write" && !ta(e) && (i.push("complete-triple"), c.push("side-effect-evidence-insufficient")), na(e, n) || (i.push("strong-non-alias-evidence"), c.push("side-effect-evidence-insufficient")), Object.freeze({
     safe: i.length === 0,
     requiredEvidence: bn(i),
-    reasonCodes: B(c)
+    reasonCodes: q(c)
   });
 }
 function ra(e) {
   return e.result !== null && e.result.type !== "unknown" && e.missingSlots.length === 0;
 }
 function ia(e, t, n) {
-  return ot(e) && !n.negationPolicy.preserveNegatedCandidate ? !1 : ra(e) && e.confidence >= Zs(e, n) && gn(e, t, n).safe;
+  return at(e) && !n.negationPolicy.preserveNegatedCandidate ? !1 : ra(e) && e.confidence >= Zs(e, n) && gn(e, t, n).safe;
 }
 function ca(e, t) {
   const n = e.candidates.filter(
@@ -3969,12 +3988,12 @@ function ca(e, t) {
   );
   return Xs(e, n);
 }
-function vt(e) {
+function Tt(e) {
   var t;
   return ((t = e.result) == null ? void 0 : t.type) === "intent" ? e.result.intent : null;
 }
 function At(e, t) {
-  const n = vt(e), r = vt(t);
+  const n = Tt(e), r = Tt(t);
   if (n === null || r === null)
     return !1;
   const i = [n, r].sort().join("+");
@@ -3986,9 +4005,9 @@ function hn(e) {
 }
 function sa(e) {
   var t;
-  return D(e) !== "none" ? "high" : hn(e) ? "low" : ((t = e.result) == null ? void 0 : t.type) === "intent" && dn.has(e.result.intent) ? "none" : "medium";
+  return P(e) !== "none" ? "high" : hn(e) ? "low" : ((t = e.result) == null ? void 0 : t.type) === "intent" && dn.has(e.result.intent) ? "none" : "medium";
 }
-function De(e, t) {
+function Pe(e, t) {
   return Object.freeze(
     e.slice(0, t.maximumAlternatives).map(({ representative: n }) => n)
   );
@@ -4005,8 +4024,8 @@ function ua(e, t) {
   const n = e.candidates.filter(
     (i) => i.result === null || i.missingSlots.length > 0
   ).filter(
-    (i) => D(i) === "none" && (i.confidence >= t.partialCandidateThreshold || t.missingSlotPolicy.clarifyExplicitTeaching && oa(i))
-  ).sort(ne), r = n[0];
+    (i) => P(i) === "none" && (i.confidence >= t.partialCandidateThreshold || t.missingSlotPolicy.clarifyExplicitTeaching && oa(i))
+  ).sort(te), r = n[0];
   return r === void 0 ? null : Object.freeze({
     kind: "clarify",
     candidateOptions: Object.freeze(
@@ -4014,7 +4033,7 @@ function ua(e, t) {
     ),
     missingSlots: Object.freeze([...r.missingSlots]),
     clarificationKind: aa(r),
-    reasonCodes: B([
+    reasonCodes: q([
       "partial-candidate",
       "missing-required-slot",
       ...r.confidence < t.partialCandidateThreshold ? ["insufficient-confidence"] : []
@@ -4022,15 +4041,15 @@ function ua(e, t) {
   });
 }
 function la(e, t) {
-  const r = e.candidates.filter((i) => D(i) !== "none").filter(
-    (i) => !ot(i) || t.negationPolicy.preserveNegatedCandidate
+  const r = e.candidates.filter((i) => P(i) !== "none").filter(
+    (i) => !at(i) || t.negationPolicy.preserveNegatedCandidate
   ).map(
     (i) => Object.freeze({
       candidate: i,
       assessment: gn(i, e, t)
     })
   ).filter(({ assessment: i }) => !i.safe).sort(
-    (i, c) => ne(i.candidate, c.candidate)
+    (i, c) => te(i.candidate, c.candidate)
   )[0];
   return r === void 0 ? null : Object.freeze({
     kind: "reject-side-effect",
@@ -4054,10 +4073,10 @@ function da(e, t = Vs) {
   if (e.extraction.questionCues.length >= 2 && r.length >= 2)
     return Object.freeze({
       kind: "clarify",
-      candidateOptions: De(r, t),
+      candidateOptions: Pe(r, t),
       missingSlots: Object.freeze([]),
       clarificationKind: "ambiguous-intent",
-      reasonCodes: B([
+      reasonCodes: q([
         "compound-query",
         "conflicting-candidates"
       ])
@@ -4073,14 +4092,14 @@ function da(e, t = Vs) {
     );
     if (g !== null)
       return g;
-    const w = e.candidates.some(
+    const S = e.candidates.some(
       (R) => R.result !== null && R.result.type !== "unknown"
     );
     return Object.freeze({
       kind: "no-understanding",
       diagnosticsSummary: fa(e),
-      reasonCodes: B([
-        ...w ? ["insufficient-confidence"] : [],
+      reasonCodes: q([
+        ...S ? ["insufficient-confidence"] : [],
         "no-viable-candidate"
       ])
     });
@@ -4091,30 +4110,30 @@ function da(e, t = Vs) {
     ({ representative: b }) => !At(c, b)
   ), o = a[0];
   if (o !== void 0 && c.confidence - o.representative.confidence < t.minimumCandidateMargin)
-    return D(c) !== "none" ? Object.freeze({
+    return P(c) !== "none" ? Object.freeze({
       kind: "reject-side-effect",
       rejectedCandidate: c,
       requiredEvidence: bn(["candidate-margin"]),
-      reasonCodes: B([
+      reasonCodes: q([
         "insufficient-margin",
         "conflicting-candidates"
       ])
     }) : Object.freeze({
       kind: "clarify",
-      candidateOptions: De(
+      candidateOptions: Pe(
         [i, o],
         t
       ),
       missingSlots: Object.freeze([]),
       clarificationKind: "conflicting-candidates",
-      reasonCodes: B([
+      reasonCodes: q([
         "insufficient-margin",
         "conflicting-candidates"
       ])
     });
   const d = Object.freeze(
     s.slice(0, t.maximumAlternatives).map(({ representative: b }) => b)
-  ), l = De(
+  ), l = Pe(
     a,
     t
   );
@@ -4123,7 +4142,7 @@ function da(e, t = Vs) {
     selectedCandidate: c,
     secondaryCandidates: d,
     confidence: T(c.confidence),
-    reasonCodes: B([
+    reasonCodes: q([
       "threshold-met",
       ...i.supporters.length > 1 ? ["corroborated-producers"] : [],
       ...d.length > 0 ? ["compatible-secondary-candidate"] : []
@@ -4135,7 +4154,7 @@ function da(e, t = Vs) {
 const ma = {
   identity: p.Is,
   capability: p.Can,
-  creator: $t
+  creator: xt
 };
 function ba(e) {
   return e === "identity" || e === "capability" || e === "creator";
@@ -4184,7 +4203,7 @@ function pn(e) {
       return [];
   }
 }
-function Ue(e, t, n) {
+function De(e, t, n) {
   return Object.freeze({
     negatedInput: e.extraction.negationCues.length > 0,
     contextResolved: n && pn(t).some(
@@ -4231,18 +4250,18 @@ function ja(e) {
   };
 }
 function ya(e, t) {
-  const [n = Y, r] = e.entities, i = ba(r) ? r : "identity", c = ma[i], s = t.match({ subject: n, relation: c });
+  const [n = G, r] = e.entities, i = ba(r) ? r : "identity", c = ma[i], s = t.match({ subject: n, relation: c });
   return { kind: "identity", aspect: i, subject: n, facts: s, raw: e.raw };
 }
 function Oa(e, t) {
-  const [n] = e.entities, r = t.remember(re.Name, n ?? "");
+  const [n] = e.entities, r = t.remember(ne.Name, n ?? "");
   return { kind: "remembered", key: r.key, value: r.value, raw: e.raw };
 }
-function Ea(e, t) {
-  const n = t.recall(re.Name);
-  return { kind: "recalled", key: re.Name, value: (n == null ? void 0 : n.value) ?? null, raw: e.raw };
+function Sa(e, t) {
+  const n = t.recall(ne.Name);
+  return { kind: "recalled", key: ne.Name, value: (n == null ? void 0 : n.value) ?? null, raw: e.raw };
 }
-function Sa(e, t, n) {
+function Ea(e, t, n) {
   switch (e.intent) {
     case "Greeting":
       return { kind: "greeting", raw: e.raw };
@@ -4255,7 +4274,7 @@ function Sa(e, t, n) {
     case "RememberName":
       return Oa(e, n);
     case "RecallName":
-      return Ea(e, n);
+      return Sa(e, n);
     default: {
       const r = e.intent;
       throw new Error(`createSunlandEngine: unhandled intent "${String(r)}"`);
@@ -4263,18 +4282,18 @@ function Sa(e, t, n) {
   }
 }
 function za(e = {}) {
-  var ut, lt, ft, dt;
-  const t = e.knowledgeStore ?? xn(), n = e.memory ?? Mn(), r = pi(e.personalityId), i = e.parser ?? Pt(), c = e.storage, s = e.semanticMode ?? "passive", a = e.semanticContextMode ?? "off", o = e.semanticDebug === !0, d = ((ut = e.semanticRuntime) == null ? void 0 : ut.analyze) ?? Ss, l = ((lt = e.semanticRuntime) == null ? void 0 : lt.plan) ?? da, b = ((ft = e.observationRuntime) == null ? void 0 : ft.now) ?? ha, g = ((dt = e.observationRuntime) == null ? void 0 : dt.finalizeSummary) ?? ((f) => f);
-  let w = null;
-  const R = An(), S = c ? `${c.key}::memory` : void 0;
-  c && Nn(t, c.adapter, c.key), S && c && Kn(n, c.adapter, S), e.seedDemoData === !0 && t.all().length === 0 && zn(t);
-  function F() {
+  var ot, ut, lt, ft;
+  const t = e.knowledgeStore ?? xn(), n = e.memory ?? Mn(), r = pi(e.personalityId), i = e.parser ?? Mt(), c = e.storage, s = e.semanticMode ?? "passive", a = e.semanticContextMode ?? "off", o = e.semanticDebug === !0, d = ((ot = e.semanticRuntime) == null ? void 0 : ot.analyze) ?? Es, l = ((ut = e.semanticRuntime) == null ? void 0 : ut.plan) ?? da, b = ((lt = e.observationRuntime) == null ? void 0 : lt.now) ?? ha, g = ((ft = e.observationRuntime) == null ? void 0 : ft.finalizeSummary) ?? ((f) => f);
+  let S = null;
+  const R = vn(), w = c ? `${c.key}::memory` : void 0;
+  c && Nn(t, c.adapter, c.key), w && c && Kn(n, c.adapter, w), e.seedDemoData === !0 && t.all().length === 0 && zn(t);
+  function B() {
     c && In(t, c.adapter, c.key);
   }
   function oe() {
-    c && S && _n(n, c.adapter, S);
+    c && w && _n(n, c.adapter, w);
   }
-  function v() {
+  function A() {
     try {
       const f = b();
       return typeof f == "number" && Number.isFinite(f) ? f : null;
@@ -4282,7 +4301,7 @@ function za(e = {}) {
       return null;
     }
   }
-  function ze(f, j) {
+  function ke(f, j) {
     if ((f.type === "query" || f.type === "statement") && (j.relationCategory = ge(
       f.relation
     )), f.type === "query" && (j.queriedRelation = ge(
@@ -4295,7 +4314,7 @@ function za(e = {}) {
       j.resultCategory = "understood", j.reasonCategory = j.semanticAdopted ? "complete-passive-understanding" : "unclassified";
     }
   }
-  function Ie(f, j, u) {
+  function ze(f, j, u) {
     if (f.semanticAdopted = s === "passive" && u.kind !== "fallback-legacy", f.legacyFallback = s === "shadow" || u.kind === "fallback-legacy", f.contextUsed = u.kind !== "fallback-legacy" && pn(j).some(
       ({ producer: y }) => y === "context"
     ), u.kind === "clarification") {
@@ -4318,39 +4337,39 @@ function za(e = {}) {
       return;
     }
     y.reasonerPathLength = j.reduce(
-      (W, q) => Math.max(W, Math.max(1, q.path.length - 1)),
+      (F, U) => Math.max(F, Math.max(1, U.path.length - 1)),
       1
     ), y.alignmentResult = "aligned";
   }
-  function A(f, j, u = {}) {
-    switch (j !== void 0 && ze(f, j), f.type) {
+  function v(f, j, u = {}) {
+    switch (j !== void 0 && ke(f, j), f.type) {
       case "statement": {
         const y = t.add(
           { subject: f.subject, relation: f.relation, object: f.object, negated: f.negated },
           { source: "user" }
         );
-        return F(), r.respond({ kind: "learned", record: y });
+        return B(), r.respond({ kind: "learned", record: y });
       }
       case "query": {
-        const y = f.subject.trim().toLocaleLowerCase("und") === Y.toLocaleLowerCase("und") ? R : t, W = j === void 0 ? null : v(), q = $i(
+        const y = f.subject.trim().toLocaleLowerCase("und") === G.toLocaleLowerCase("und") ? R : t, F = j === void 0 ? null : A(), U = $i(
           f,
           y,
           u
-        ), x = q.result;
+        ), x = U.result;
         j !== void 0 && (j.reasonerDurationMs = he(
-          W,
-          v()
+          F,
+          A()
         ), ue(
           f,
           x.answers,
-          q.relationResolution,
+          U.relationResolution,
           j
         ));
-        const le = yt.plan(x);
+        const le = jt.plan(x);
         return r.respond({ kind: "reasoning-result", result: x, plan: le });
       }
       case "intent": {
-        const y = Sa(f, R, n);
+        const y = Ea(f, R, n);
         return f.intent === "RememberName" && oe(), r.respond(y);
       }
       case "unknown":
@@ -4361,25 +4380,25 @@ function za(e = {}) {
       }
     }
   }
-  function Ne(f) {
-    const j = yt.planClarification(f);
+  function Ie(f) {
+    const j = jt.planClarification(f);
     return r.respond({ kind: "clarification", plan: j });
   }
   function k(f, j = {}) {
-    const u = j.observationMode === "summary" ? ja(v()) : void 0, y = Z(a === "enabled" ? j.semanticContext : j.semanticContext ?? Xt()), W = () => Object.freeze({
+    const u = j.observationMode === "summary" ? ja(A()) : void 0, y = X(a === "enabled" ? j.semanticContext : j.semanticContext ?? Xt()), F = () => Object.freeze({
       kind: "none",
       baseVersion: y.version
-    }), q = (C) => {
+    }), U = (C) => {
       if (u === void 0) return C;
       try {
-        let te = null;
+        let ee = null;
         try {
-          const ve = t.all().length;
-          te = Number.isSafeInteger(ve) && ve >= 0 ? ve : null;
+          const Te = t.all().length;
+          ee = Number.isSafeInteger(Te) && Te >= 0 ? Te : null;
         } catch {
-          te = null;
+          ee = null;
         }
-        const Te = {
+        const Ne = {
           resultCategory: u.resultCategory,
           reasonCategory: u.reasonCategory,
           relationCategory: u.relationCategory,
@@ -4388,18 +4407,18 @@ function za(e = {}) {
           contextUsed: u.contextUsed,
           clarificationKind: u.clarificationKind,
           reasonerPathLength: u.reasonerPathLength,
-          knowledgeCount: te,
+          knowledgeCount: ee,
           totalDurationMs: he(
             u.startedAt,
-            v()
+            A()
           ),
           semanticDurationMs: u.semanticDurationMs,
           reasonerDurationMs: u.reasonerDurationMs,
           queriedRelation: u.queriedRelation,
           alternativeKnownRelation: u.alternativeKnownRelation,
           alignmentResult: u.alignmentResult
-        }, G = Hi(Te), fe = Xi(
-          g(G)
+        }, V = Hi(Ne), fe = Xi(
+          g(V)
         );
         return fe === null ? C : Object.freeze({
           response: C.response,
@@ -4409,84 +4428,84 @@ function za(e = {}) {
       } catch {
         return C;
       }
-    }, x = (C) => q(
+    }, x = (C) => U(
       Object.freeze({
         response: C,
-        semanticContextUpdate: W()
+        semanticContextUpdate: F()
       })
-    ), le = (C, te, Te) => {
-      let G = a === "enabled";
-      if (G && j.canCommitSemanticContext !== void 0)
+    ), le = (C, ee, Ne) => {
+      let V = a === "enabled";
+      if (V && j.canCommitSemanticContext !== void 0)
         try {
-          G = j.canCommitSemanticContext();
+          V = j.canCommitSemanticContext();
         } catch {
-          G = !1;
+          V = !1;
         }
       const fe = s === "passive" ? xc({
         context: y,
-        decision: te,
-        executedResult: Te,
+        decision: ee,
+        executedResult: Ne,
         turnId: j.turnId ?? `turn-${y.version + 1}`,
-        canCommit: G
-      }) : W();
-      return q(
+        canCommit: V
+      }) : F();
+      return U(
         Object.freeze({ response: C, semanticContextUpdate: fe })
       );
-    }, K = i.parse(f);
-    if (w = null, s === "off")
+    }, _ = i.parse(f);
+    if (S = null, s === "off")
       return u !== void 0 && (u.legacyFallback = !0), x(
-        A(K, u)
+        v(_, u)
       );
-    let V, $, I;
-    const mt = u === void 0 ? null : v();
+    let W, $, I;
+    const dt = u === void 0 ? null : A();
     try {
-      V = d(
+      W = d(
         f,
         a === "enabled" ? y : void 0
       ), $ = l(
-        V,
+        W,
         e.understandingPolicy
       ), I = Ms(
         $,
-        K,
-        V
+        _,
+        W
       ), u !== void 0 && (u.semanticDurationMs = he(
-        mt,
-        v()
-      ), Ie(
+        dt,
+        A()
+      ), ze(
         u,
         $,
         I
-      )), o && (w = Fs(
+      )), o && (S = Fs(
         s,
-        K,
+        _,
         $,
         I
       ));
     } catch {
       u !== void 0 && (u.semanticDurationMs = he(
-        mt,
-        v()
-      ), u.semanticAdopted = !1, u.legacyFallback = !0), o && (w = Ws(
+        dt,
+        A()
+      ), u.semanticAdopted = !1, u.legacyFallback = !0), o && (S = Ws(
         s,
-        K
+        _
       ));
-      const C = an(K) ? A({
+      const C = an(_) ? v({
         type: "unknown",
-        raw: K.raw,
+        raw: _.raw,
         reason: "semantic-side-effect-validation-unavailable"
-      }, u) : A(K, u, {
+      }, u) : v(_, u, {
         negatedInput: !0
       });
       return u !== void 0 && (u.resultCategory = "safe-fallback", u.reasonCategory = "semantic-runtime", u.classificationLocked = !0), x(C);
     }
     if (s === "shadow")
       return x(
-        A(
-          K,
+        v(
+          _,
           u,
-          Ue(
-            V,
+          De(
+            W,
             $,
             !1
           )
@@ -4495,11 +4514,11 @@ function za(e = {}) {
     switch (I.kind) {
       case "adopt":
         return le(
-          A(
+          v(
             I.result,
             u,
-            Ue(
-              V,
+            De(
+              W,
               $,
               !0
             )
@@ -4509,19 +4528,19 @@ function za(e = {}) {
         );
       case "clarification":
         return x(
-          Ne(I.context)
+          Ie(I.context)
         );
       case "no-understanding":
         return x(
-          A(I.failure, u)
+          v(I.failure, u)
         );
       case "fallback-legacy":
         return le(
-          A(
+          v(
             I.result,
             u,
-            Ue(
-              V,
+            De(
+              W,
               $,
               !1
             )
@@ -4543,7 +4562,7 @@ function za(e = {}) {
     semanticMode: s,
     semanticContextMode: a,
     getLastSemanticShadow() {
-      return o ? w : null;
+      return o ? S : null;
     },
     respond(f) {
       return k(f).response;
@@ -4567,35 +4586,35 @@ function Ia() {
 }
 export {
   Ft as CONTEXT_SCHEMA_VERSION,
-  $t as CREATOR_RELATION,
+  xt as CREATOR_RELATION,
   gi as DEFAULT_PERSONALITY_ID,
   Ui as DURATION_BUCKETS,
   Wn as FAREWELL_PHRASES,
   Tn as FROST_SUBJECT,
-  We as FrostPersonality,
+  Fe as FrostPersonality,
   Un as GREETING_PHRASES,
-  xt as InMemoryKnowledgeStore,
+  vt as InMemoryKnowledgeStore,
   qi as KNOWLEDGE_COUNT_BUCKETS,
-  qe as LEGACY_SIDE_EFFECT_LIMITS,
+  Ue as LEGACY_SIDE_EFFECT_LIMITS,
   Di as OBSERVATION_CLARIFICATION_KINDS,
   Mi as OBSERVATION_REASON_CATEGORIES,
   Pi as OBSERVATION_RELATION_CATEGORIES,
   Ki as OBSERVATION_RESULT_CATEGORIES,
   Wt as OBSERVATION_SCHEMA_VERSION,
-  jt as PlainPersonality,
+  pt as PlainPersonality,
   Bi as REASONER_PATH_BUCKETS,
   er as RECALL_NAME_PHRASES,
   Fi as RELATION_ALIGNMENT_RESULTS,
   Tr as RegexParser,
   Bt as SEMANTIC_SCHEMA_VERSION,
   qt as SUNLAND_CORE_VERSION,
-  Y as SUNLAND_SUBJECT,
+  G as SUNLAND_SUBJECT,
   Bn as THANKS_PHRASES,
   ka as applySemanticContextUpdate,
-  Le as bucketDuration,
+  $e as bucketDuration,
   Li as bucketKnowledgeCount,
   _i as bucketReasonerPath,
-  Mt as countKnownRelationMentions,
+  Kt as countKnownRelationMentions,
   Xt as createEmptySemanticContext,
   Vn as createFarewellIntentMatcher,
   qn as createGreetingIntentMatcher,
@@ -4604,13 +4623,13 @@ export {
   xn as createKnowledgeStore,
   kr as createLocatePattern,
   Ia as createMemoryStorageAdapter,
-  Sr as createObjectOfPattern,
+  Er as createObjectOfPattern,
   Hi as createObservationSummary,
-  Pt as createParser,
+  Mt as createParser,
   tr as createRecallNameIntentMatcher,
   hr as createRememberNameIntentMatcher,
-  An as createSelfKnowledgeStore,
-  Fe as createStatementPattern,
+  vn as createSelfKnowledgeStore,
+  Be as createStatementPattern,
   za as createSunlandEngine,
   Fn as createThanksIntentMatcher,
   Cr as createVerifyPattern,
@@ -4618,22 +4637,22 @@ export {
   pr as defaultIntentMatchers,
   Nr as defaultPatterns,
   pi as getPersonality,
-  _t as hasChoiceOrSequenceStructure,
-  Kt as hasExplicitSideEffectProhibition,
+  Lt as hasChoiceOrSequenceStructure,
+  _t as hasExplicitSideEffectProhibition,
   or as hasInternalClauseBoundary,
   ur as hasQuestionStructure,
-  tt as hasUnsafeLegacySideEffectStructure,
+  et as hasUnsafeLegacySideEffectStructure,
   Ra as listPersonalities,
   Nn as loadKnowledgeStore,
-  Be as normalizeCapturedValue,
+  qe as normalizeCapturedValue,
   Or as normalizeInput,
-  Z as normalizeSemanticContext,
+  X as normalizeSemanticContext,
   Ca as registerPersonality,
   Xi as sanitizeObservationSummary,
   In as saveKnowledgeStore,
   zn as seedKnowledgeStore,
   kn as seedTriples,
-  vn as selfKnowledgeTriples,
-  Lt as stripTrailingDeclarativePunctuation,
+  An as selfKnowledgeTriples,
+  $t as stripTrailingDeclarativePunctuation,
   Ji as validateObservationSummary
 };

@@ -32,7 +32,6 @@ import {
   CREATOR_CLOSERS,
   CREATOR_OPENERS,
   FAREWELL_LINES,
-  FROST_EMOJI,
   GREETING_LINES,
   IDENTITY_CLOSERS,
   IDENTITY_OPENERS,
@@ -55,10 +54,28 @@ import {
   UNKNOWN_INPUT_OPENERS,
 } from "./frostPhrases";
 
-/** Append at most one emoji from Frost's palette, deterministically by seed. */
-function withEmoji(text: string, seed: string): string {
-  const emoji = pickBySeed(FROST_EMOJI, seed);
-  return `${text} ${emoji}`;
+const FROST_ACCENT_OPTIONS: readonly string[] = [
+  "",
+  "",
+  "",
+  "",
+  "",
+  "",
+  "🐾",
+  "✨",
+];
+
+/** Add one low-frequency accent deterministically for eligible social turns. */
+function withOptionalAccent(
+  text: string,
+  context: string,
+  seed: string,
+): string {
+  const accent = pickBySeed(
+    FROST_ACCENT_OPTIONS,
+    `${context}:${seed}:accent`,
+  );
+  return accent.length > 0 ? `${text} ${accent}` : text;
 }
 
 function renderReasoningResult(result: ReasoningResult, plan: ResponsePlan): string {
@@ -110,26 +127,26 @@ function renderUnknownInput(failure: ParseFailure): string {
 function renderGreeting(raw?: string): string {
   const seed = raw && raw.length > 0 ? raw : "greeting";
   const line = pickBySeed(GREETING_LINES, seed);
-  return withEmoji(line, seed);
+  return withOptionalAccent(line, "greeting", seed);
 }
 
 function renderThanks(raw?: string): string {
   const seed = raw && raw.length > 0 ? raw : "thanks";
   const line = pickBySeed(THANKS_LINES, seed);
-  return withEmoji(line, seed);
+  return withOptionalAccent(line, "thanks", seed);
 }
 
 function renderFarewell(raw?: string): string {
   const seed = raw && raw.length > 0 ? raw : "farewell";
   const line = pickBySeed(FAREWELL_LINES, seed);
-  return withEmoji(line, seed);
+  return withOptionalAccent(line, "farewell", seed);
 }
 
 function renderClarification(plan: ClarificationPlan): string {
   const labels = new Set(plan.candidateLabels);
 
   if (labels.has("identity") && labels.has("query")) {
-    return "这个问题里像是同时问了我的名字和能力，可以分开问我哦。";
+    return "这个问题里像是同时问了我的名字和能力，可以分开问我。";
   }
 
   if (
@@ -141,23 +158,23 @@ function renderClarification(plan: ClarificationPlan): string {
       contextLabels.slice(0, -1).join("、"),
       contextLabels.at(-1),
     ].join("还是");
-    return `你指的是${alternatives}呢？可以再告诉我一下哦。`;
+    return `你指的是${alternatives}呢？可以再确认一下。`;
   }
 
   if (plan.focus === "object" && plan.relation === "会") {
-    return "你想问我会做什么呢？可以再具体一点点哦。";
+    return "你想问我会做什么呢？可以再具体一些。";
   }
 
   if (plan.focus === "object") {
-    return "这里好像还缺少要说明的内容，可以再告诉我它是什么吗？";
+    return "这里还缺少要说明的内容，可以再告诉我它是什么吗？";
   }
 
   if (plan.focus === "subject") {
-    return "你想问的是谁或什么呢？可以再告诉我一点点。";
+    return "你想问的是谁或什么？可以再补充一点。";
   }
 
   if (plan.focus === "relation") {
-    return "你想了解它哪一方面呢？可以再说具体一点点。";
+    return "你想了解它哪一方面？可以再说具体一些。";
   }
 
   if (plan.focus === "name") {
@@ -165,10 +182,10 @@ function renderClarification(plan: ClarificationPlan): string {
   }
 
   if (labels.has("teaching")) {
-    return "这个知识好像还没说完整，可以再告诉我对象和它们的关系吗？";
+    return "这条信息还没有说完整，可以再告诉我对象和它们的关系吗？";
   }
 
-  return "我好像看到了不止一种意思，可以换一种更具体的说法吗？";
+  return "我看到不止一种可能的意思，可以换一种更具体的说法吗？";
 }
 
 /**
@@ -209,8 +226,11 @@ function renderIdentity(
   const opener = pickBySeed(IDENTITY_OPENERS, seed);
   const closer = pickBySeed(IDENTITY_CLOSERS, `${seed}:closer`);
   const [first] = facts;
+  const isFrostIdentity = subject === "霜蓝" || first?.subject === "霜蓝";
   const body = first
-    ? `${opener}${first.subject}，${first.negated ? "不" : ""}${first.relation}${first.object}。`
+    ? isFrostIdentity
+      ? `我就是霜蓝，${first.negated ? "不" : ""}${first.relation} ${first.object}。`
+      : `${opener}${first.subject}，${first.negated ? "不" : ""}${first.relation}${first.object}。`
     : `关于「${subject}」，我目前还没有明确的答案。`;
   return `${body}${closer}`;
 }
@@ -228,12 +248,16 @@ function renderRemembered(key: MemoryKey, value: string, raw?: string): string {
   if (key === MemoryKeys.Name) {
     const opener = pickBySeed(NAME_REMEMBERED_OPENERS, seed);
     const closer = pickBySeed(NAME_REMEMBERED_CLOSERS, `${seed}:closer`);
-    return withEmoji(compose(opener, `你叫 ${value}`, closer), seed);
+    return withOptionalAccent(
+      `${opener}${value}。${closer}`,
+      "name-remembered",
+      seed,
+    );
   }
 
   const opener = pickBySeed(MEMORY_REMEMBERED_OPENERS, seed);
   const closer = pickBySeed(MEMORY_REMEMBERED_CLOSERS, `${seed}:closer`);
-  return withEmoji(compose(opener, value, closer), seed);
+  return compose(opener, value, closer);
 }
 
 /**
@@ -245,17 +269,21 @@ function renderRecalled(key: MemoryKey, value: string | null, raw?: string): str
 
   if (key === MemoryKeys.Name) {
     if (value === null) {
-      return withEmoji(pickBySeed(NAME_RECALL_NOT_FOUND_LINES, seed), seed);
+      return pickBySeed(NAME_RECALL_NOT_FOUND_LINES, seed);
     }
     const opener = pickBySeed(NAME_RECALL_FOUND_OPENERS, seed);
     const closer = pickBySeed(NAME_RECALL_FOUND_CLOSERS, `${seed}:closer`);
-    return withEmoji(compose(opener, value, closer), seed);
+    return withOptionalAccent(
+      `${opener}${value}${closer}`,
+      "name-recalled",
+      seed,
+    );
   }
 
   if (value === null) {
-    return withEmoji(pickBySeed(MEMORY_RECALL_NOT_FOUND_LINES, seed), seed);
+    return pickBySeed(MEMORY_RECALL_NOT_FOUND_LINES, seed);
   }
-  return withEmoji(value, seed);
+  return value;
 }
 
 function renderError(_message: string): string {

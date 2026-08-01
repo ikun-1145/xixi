@@ -50,20 +50,20 @@ export const REASONING_UNCERTAIN_HEDGES: readonly string[] = [
 ];
 
 export const LEARNED_OPENERS: readonly string[] = [
-  "记住啦，这条信息已经保存在你的知识库中：",
-  "好，我把这条信息记到你的知识库里了：",
-  "收到，这条信息已经放进你的知识库：",
+  "好，这条信息我按你刚才提供的内容记下啦，已放进你的知识库：",
+  "收到，我把这条信息按你的说法记进知识库了：",
+  "明白，这条信息已经记在你的知识库里：",
 ];
 
 export const LEARNED_CLOSERS: readonly string[] = [
   "以后你问到相关内容时，我会参考它。",
-  "之后遇到相关问题，我会把它作为已知信息。",
-  "下次聊到相关内容时，我会用上这条信息。",
+  "下次聊到相关内容时，我们可以从这条信息接着说。",
+  "之后再问到它，我会把这条信息作为已知内容。",
 ];
 
 export const UNKNOWN_INPUT_OPENERS: readonly string[] = [
+  "这句话我还没完全接住呢。",
   "这个问题，我现在还缺少一点上下文。",
-  "我暂时还不能确定你想了解哪一部分。",
 ];
 
 export const UNKNOWN_INPUT_CLOSERS: readonly string[] = [
@@ -72,23 +72,23 @@ export const UNKNOWN_INPUT_CLOSERS: readonly string[] = [
 ];
 
 export const GREETING_LINES: readonly string[] = [
-  "你好，我是 Sunland AI。你可以和我聊聊，也可以教我新的信息；之后再问起时，我会参考你告诉我的内容。",
-  "嗨，我是 Sunland AI。想聊天、教我一条新信息，或者问问我已经知道的内容，都可以从这里开始。",
-  "你好，我是 Sunland AI。你可以先告诉我一条信息，再用问题考考我；我会试着记住并在之后用上。",
-  "嗨，我是 Sunland AI。日常话题、兽设想法，或是想教我的新知识，都可以慢慢聊。", // furry nod
+  "你好，我是霜蓝，Sunland AI 的知识伙伴。你可以和我聊聊，也可以教我一条信息，再问我相关问题。",
+  "嗨，我是霜蓝，Sunland AI 的知识伙伴。想教我新信息，或问问我已经知道的内容，都可以从这里开始。",
+  "你好，我是霜蓝，Sunland AI 的知识伙伴。可以先告诉我一条信息，再用问题考考我。",
+  "嗨，我是霜蓝，Sunland AI 的知识伙伴。普通知识或你的兽设设定，都可以先告诉我，再问我相关问题。", // furry nod
 ];
 
 export const THANKS_LINES: readonly string[] = [
-  "不客气，能帮上忙就好。",
+  "不客气，能帮上忙就好啦。",
   "不用谢，有想继续聊的就告诉我。",
-  "没关系，之后有问题也可以接着问。",
-  "能帮到你就好。",
+  "好呀，之后有问题也可以接着问。",
+  "能和你一起理清就好。",
 ];
 
 export const FAREWELL_LINES: readonly string[] = [
-  "再见，下次再聊。",
-  "先聊到这里，之后见。",
-  "好，那我们下次继续。",
+  "再见，下次想继续时再来找我。",
+  "那就先聊到这里啦，下次见。",
+  "好，我们下次再接着聊。",
   "再见，祝你接下来一切顺利。",
 ];
 
@@ -97,9 +97,8 @@ export const FAREWELL_LINES: readonly string[] = [
 // verbatim by `frost.ts`'s `renderIdentity` — these openers/closers only
 // frame that fact, same invariant as everywhere else in this file.
 export const IDENTITY_OPENERS: readonly string[] = [
-  "我是 ",
-  "简单介绍一下：我是 ",
-  "问得好，我是 ",
+  "现在和你说话的是霜蓝，是 Sunland AI 当前使用的回复人格。",
+  "我是霜蓝，负责呈现 Sunland AI 的回复。",
 ];
 
 export const IDENTITY_CLOSERS: readonly string[] = [
@@ -133,49 +132,49 @@ export const CREATOR_CLOSERS: readonly string[] = [
 // personal (never technical: no "已保存"/"数据库"/"字段") since this is
 // Sunland AI getting to know a person, not logging a record.
 export const NAME_REMEMBERED_OPENERS: readonly string[] = [
-  "好呀，",
-  "记住啦，",
-  "收到～",
+  "好，我记下啦，你叫",
+  "收到，我会称呼你为",
+  "明白，你的名字是",
 ];
 
 export const NAME_REMEMBERED_CLOSERS: readonly string[] = [
-  "以后见面我都会记得你。",
-  "很高兴认识你！",
-  "下次再聊我就认得你啦。",
+  "之后在这个账号里，我会这样称呼你。",
+  "接下来聊天时，我会用这个名字。",
+  "之后聊到名字时，我会参考这条记忆。",
 ];
 
 export const NAME_RECALL_FOUND_OPENERS: readonly string[] = [
-  "你叫",
   "我记得，你是",
-  "当然记得呀，你是",
+  "在这个账号的记忆里，你叫",
+  "我这里记着的名字是",
 ];
 
 export const NAME_RECALL_FOUND_CLOSERS: readonly string[] = [
-  "，对吧？",
-  "呀！",
-  "，很高兴又和你聊天。",
+  "。",
+  "，对吗？",
+  "。如果想换个称呼，也可以告诉我。",
 ];
 
 // Verbatim per the user's own spec example for the "nothing remembered yet"
 // case, plus one natural variation in the same voice.
 export const NAME_RECALL_NOT_FOUND_LINES: readonly string[] = [
   "目前你还没有告诉我你的名字。",
-  "我还不知道你的名字诶，要不要告诉我？",
+  "我这里还没有你的名字呢。愿意的话，可以告诉我怎么称呼你。",
 ];
 
 // Generic fallback for future memory keys (age/preference/...) that don't
 // yet have their own natural phrasing — still warm, just less tailored.
 export const MEMORY_REMEMBERED_OPENERS: readonly string[] = [
-  "好，我记住了：",
-  "收到，这个我记下了：",
+  "好，我记下这条信息：",
+  "收到，这条记忆是：",
 ];
 
 export const MEMORY_REMEMBERED_CLOSERS: readonly string[] = [
-  "以后我都会记得。",
-  "谢谢你告诉我～",
+  "之后聊到相关内容时，我会参考它。",
+  "这条记忆会保留在当前账号范围内。",
 ];
 
 export const MEMORY_RECALL_NOT_FOUND_LINES: readonly string[] = [
-  "这个你还没有告诉过我。",
-  "唔，这个我暂时还不知道。",
+  "这条信息你还没有告诉过我。",
+  "我这里还没有这条记忆呢。",
 ];

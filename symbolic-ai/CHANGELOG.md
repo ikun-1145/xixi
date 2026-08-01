@@ -11,8 +11,12 @@ checklist is complete and the target version is fixed.
 ### Changed
 
 - Refined Frost's user-facing greeting, identity, unknown-input, teaching,
-  and reasoning wording while preserving the existing reasoning, Knowledge,
-  Memory, Semantic Context, Provider, and public SDK boundaries.
+  and memory wording so the active persona introduces itself as 霜蓝, keeps
+  memory promises account-scoped, and uses deterministic low-frequency
+  `🐾`/`✨` accents only on eligible social turns.
+- Preserved the existing Response Planner decisions, factual and reasoning
+  output, Knowledge, Memory, Semantic Context, Provider, Plain Personality,
+  and public SDK boundaries.
 
 ## [0.1.0] - 2026-08-01
 
