@@ -782,6 +782,21 @@ a.furry-event-title:hover {
   font-size: 11px;
 }
 
+.furry-event-organization,
+.furry-event-description {
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.55;
+}
+
+.furry-event-description {
+  display: -webkit-box;
+  margin: 0;
+  overflow: hidden;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 3;
+}
+
 .furry-event-status {
   padding: 2px 7px;
   border-radius: 999px;
@@ -869,7 +884,9 @@ body.night .furry-event-title {
 }
 
 body.night .furry-event-meta,
-body.night .furry-event-details {
+body.night .furry-event-details,
+body.night .furry-event-organization,
+body.night .furry-event-description {
   color: #94a3b8;
 }
 

@@ -6,6 +6,7 @@ import {
   buildFurryEventModelHistory,
   createFurryEventCardMessage,
   enrichFurryEventsWithWeather,
+  normalizeHistoricalFurryEvents,
   normalizeFurryEvents,
   resolveFurryQueryParams,
   searchFurryEvents,
@@ -15,14 +16,22 @@ import {
 import { mergeConversationCollections } from "../ai/providers/conversation.js";
 
 const eventA = {
+  source_id: "event-a",
   name: "霜蓝兽聚",
+  full_name: "霜蓝兽聚 2026",
   start_at: "2026-09-06T00:00:00.000Z",
   end_at: "2026-09-07T00:00:00.000Z",
+  province: "上海",
   city: "上海",
   address: "测试酒店",
+  venue: "测试会展中心",
   cover: "https://images.example.com/event.png",
   source_url: "https://events.example.com/detail",
-  raw_status: "售票中",
+  status: "confirmed",
+  source_state: 2,
+  source_state_text: "已确认",
+  organization: "霜蓝组委会",
+  detail: "一场用于测试的活动",
 };
 
 test("兽聚查询参数支持相对月份、跨轮继承和范围放宽", () => {
@@ -63,8 +72,8 @@ test("兽聚追问只在已有卡片上下文时触发", () => {
   assert.equal(shouldAnswerFromFurryEventContext("帮我写首诗", [card]), false);
 });
 
-test("Flutter 与网页字段会归一为同一张安全卡片", () => {
-  const normalized = normalizeFurryEvents([
+test("历史 Flutter 与网页字段会立即归一为同一张安全卡片", () => {
+  const normalized = normalizeHistoricalFurryEvents([
     {
       name: "霜蓝兽聚",
       startAt: "2026-09-06T00:00:00.000Z",
@@ -75,11 +84,12 @@ test("Flutter 与网页字段会归一为同一张安全卡片", () => {
     },
     eventA,
   ]);
-  assert.equal(normalized.length, 1);
-  assert.equal(normalized[0].address, "测试酒店");
-  assert.equal(normalized[0].cover, "https://images.example.com/event.png");
-  assert.match(normalized[0].hotels.ctripUrl, /^https:\/\/hotels\.ctrip\.com\//);
-  assert.match(normalized[0].hotels.meituanUrl, /^https:\/\/i\.meituan\.com\//);
+  assert.equal(normalized.length, 2);
+  assert.equal(normalized[0].cover, null);
+  assert.equal(normalized[1].address, "测试酒店");
+  assert.equal(normalized[1].cover, "https://images.example.com/event.png");
+  assert.match(normalized[1].hotels.ctripUrl, /^https:\/\/hotels\.ctrip\.com\//);
+  assert.match(normalized[1].hotels.meituanUrl, /^https:\/\/i\.meituan\.com\//);
 });
 
 test("卡片持久化格式可转换成模型只读上下文", () => {
@@ -119,53 +129,30 @@ test("Sunland AI 能基于同一份结构化结果回答数量和地点", () => 
     query: { city: "上海", month: 9, year: 2026 },
   });
   assert.match(answerFurryEventQuestion("一共有几场？", card), /1 场/);
-  assert.match(answerFurryEventQuestion("第一场在哪里？", card), /上海 · 测试酒店/);
+  assert.match(answerFurryEventQuestion("第一场在哪里？", card), /上海 · 测试会展中心/);
 });
 
-test("Supabase 查询使用与 Flutter 一致的城市和月份边界", async () => {
+test("Web 只通过查询 Edge Function 传递城市和年月", async () => {
   const calls = [];
-  const queryBuilder = {
-    select(fields) {
-      calls.push(["select", fields]);
-      return this;
-    },
-    ilike(column, value) {
-      calls.push(["ilike", column, value]);
-      return this;
-    },
-    gte(column, value) {
-      calls.push(["gte", column, value]);
-      return this;
-    },
-    lt(column, value) {
-      calls.push(["lt", column, value]);
-      return this;
-    },
-    order(column, options) {
-      calls.push(["order", column, options]);
-      return this;
-    },
-    then(resolve, reject) {
-      return Promise.resolve({ data: [eventA], error: null }).then(resolve, reject);
-    },
-  };
   const supabase = {
-    from(table) {
-      calls.push(["from", table]);
-      return queryBuilder;
+    functions: {
+      async invoke(name, options) {
+        calls.push([name, options]);
+        return { data: { events: [eventA], total: 1 }, error: null };
+      },
     },
   };
 
   const result = await searchFurryEvents({
     supabase,
     query: { city: "上海", month: 9, year: 2026 },
-    now: new Date(2026, 7, 1, 12, 0, 0),
   });
 
   assert.equal(result.events.length, 1);
-  assert.deepEqual(calls.find(call => call[0] === "ilike"), ["ilike", "city", "%上海%"]);
-  assert.match(calls.find(call => call[0] === "gte")[2], /^2026-09-01T00:00:00/);
-  assert.match(calls.find(call => call[0] === "lt")[2], /^2026-10-01T00:00:00/);
+  assert.deepEqual(calls, [[
+    "furry-event-search",
+    { body: { city: "上海", month: 9, year: 2026 } },
+  ]]);
 });
 
 test("近期活动天气会按城市合并请求并写回模型上下文", async () => {

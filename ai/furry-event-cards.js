@@ -1,6 +1,6 @@
 import {
   formatFurryEventDateRange,
-  normalizeFurryEvents,
+  normalizeHistoricalFurryEvents,
   safeHttpUrl,
 } from "./furry-events.js";
 
@@ -25,7 +25,15 @@ function weatherText(weather) {
 }
 
 function eventLocation(event) {
-  return [event.city, event.address].filter(Boolean).join(" · ") || "地点待公布";
+  return [event.province, event.city, event.venue || event.address]
+    .filter((value, index, values) => value && values.indexOf(value) === index)
+    .join(" · ") || "地点待公布";
+}
+
+function statusText(status) {
+  if (status === "preview") return "预告";
+  if (status === "confirmed") return "已确认";
+  return status || "";
 }
 
 function createEventCard(documentRef, event) {
@@ -45,10 +53,9 @@ function createEventCard(documentRef, event) {
     const image = documentRef.createElement("img");
     image.className = "furry-event-cover";
     image.src = event.cover;
-    image.alt = `${event.name}活动封面`;
+    image.alt = `${event.full_name || event.name}活动封面`;
     image.loading = "lazy";
     image.decoding = "async";
-    image.referrerPolicy = "no-referrer";
     image.addEventListener("error", () => {
       image.remove();
       coverHost.classList.add("is-placeholder");
@@ -67,7 +74,7 @@ function createEventCard(documentRef, event) {
   const titleLink = externalLink(
     documentRef,
     event.source_url,
-    event.name,
+    event.full_name || event.name,
     "furry-event-title",
   );
   if (titleLink) {
@@ -75,7 +82,7 @@ function createEventCard(documentRef, event) {
   } else {
     const title = documentRef.createElement("div");
     title.className = "furry-event-title";
-    title.textContent = event.name;
+    title.textContent = event.full_name || event.name;
     body.appendChild(title);
   }
 
@@ -90,10 +97,10 @@ function createEventCard(documentRef, event) {
 
   const details = documentRef.createElement("div");
   details.className = "furry-event-details";
-  if (event.raw_status) {
+  if (event.status) {
     const status = documentRef.createElement("span");
     status.className = "furry-event-status";
-    status.textContent = event.raw_status;
+    status.textContent = statusText(event.status);
     details.appendChild(status);
   }
   const weather = documentRef.createElement("span");
@@ -101,6 +108,19 @@ function createEventCard(documentRef, event) {
   weather.textContent = `🌤 ${weatherText(event.weather)}`;
   details.appendChild(weather);
   body.appendChild(details);
+
+  if (event.organization) {
+    const organization = documentRef.createElement("div");
+    organization.className = "furry-event-organization";
+    organization.textContent = `主办：${event.organization}`;
+    body.appendChild(organization);
+  }
+  if (event.detail) {
+    const detail = documentRef.createElement("p");
+    detail.className = "furry-event-description";
+    detail.textContent = event.detail;
+    body.appendChild(detail);
+  }
 
   const actions = documentRef.createElement("div");
   actions.className = "furry-event-actions";
@@ -148,7 +168,7 @@ function renderLoading(documentRef, content) {
 }
 
 function renderResult(documentRef, content, message) {
-  const events = normalizeFurryEvents(message?.furryEvents);
+  const events = normalizeHistoricalFurryEvents(message?.furryEvents);
   if (message?.furryError) {
     const error = documentRef.createElement("div");
     error.className = "furry-event-empty";

@@ -1,0 +1,31 @@
+name: Sync furry events
+
+on:
+  schedule:
+    - cron: "17 */6 * * *"
+  workflow_dispatch:
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Synchronize canonical furry event snapshot
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          FUNCTION_SECRET: ${{ secrets.FUNCTION_SECRET }}
+        run: |
+          response_file="$(mktemp)"
+          http_code="$(curl --fail-with-body --retry 2 --retry-all-errors \
+            --connect-timeout 15 --max-time 90 \
+            --output "$response_file" --write-out '%{http_code}' \
+            --request POST "$SUPABASE_URL/functions/v1/fetch-furry-events" \
+            --header "Authorization: Bearer $SUPABASE_ANON_KEY" \
+            --header "apikey: $SUPABASE_ANON_KEY" \
+            --header "Content-Type: application/json" \
+            --header "x-function-secret: $FUNCTION_SECRET" \
+            --header "x-sync-trigger: scheduled" \
+            --data '{}')"
+          jq -e '.success == true and (.fetched | type == "number") and (.upserted | type == "number")' "$response_file"
+          test "$http_code" = "200"
