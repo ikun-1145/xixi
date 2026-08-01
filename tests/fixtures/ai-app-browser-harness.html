@@ -40,6 +40,14 @@
     window.fetch = async (url, options = {}) => {
       const target = String(url);
       if (target === 'https://api.sunland.dev/refresh') {
+        try {
+          JSON.parse(options.body);
+        } catch {
+          return new Response(JSON.stringify({ error: 'Bad JSON' }), {
+            status: 400,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
         return new Response(JSON.stringify({
           token,
           user: { id: userId, email: userEmail },

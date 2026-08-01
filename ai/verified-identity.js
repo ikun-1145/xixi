@@ -194,6 +194,7 @@ export class IdentityAuthority {
           "Content-Type": "application/json",
           "Authorization": `Bearer ${token}`,
         },
+        body: JSON.stringify({}),
         signal,
       });
     } catch {

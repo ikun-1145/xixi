@@ -64,6 +64,22 @@ test('Token A is authoritative when localStorage user cache says B', async () =>
   assert.notEqual(result.identity.user.avatar_url, 'b.png');
 });
 
+test('identity verification sends the JSON body required by the refresh endpoint', async () => {
+  const token = tokenFor('user-a');
+  let requestOptions;
+  const authority = new IdentityAuthority({
+    fetchImpl: async (_url, options) => {
+      requestOptions = options;
+      return responseFor('user-a', { token });
+    },
+  });
+
+  const result = await authority.resolve({ token });
+
+  assert.equal(result.ok, true);
+  assert.deepEqual(JSON.parse(requestOptions.body), {});
+});
+
 test('residual or manually modified local user data never changes an in-memory verified identity', async () => {
   const token = tokenFor('user-a');
   let calls = 0;
