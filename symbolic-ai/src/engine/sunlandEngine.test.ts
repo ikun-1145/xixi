@@ -31,6 +31,63 @@ describe("createSunlandEngine", () => {
     expect(reply).toContain("飞");
   });
 
+  describe("Relation Alignment v1", () => {
+    it("answers 猫是什么 from an existing 猫属于动物 fact", () => {
+      const engine = createSunlandEngine({
+        personalityId: "plain",
+      });
+      engine.respond("猫属于动物");
+      const before = engine.knowledgeStore.all();
+
+      expect(engine.respond("猫是什么")).toContain("动物");
+      expect(engine.knowledgeStore.all()).toEqual(before);
+    });
+
+    it("answers 猫属于什么 from a legacy 猫是一种动物 fact", () => {
+      const engine = createSunlandEngine({
+        personalityId: "plain",
+      });
+      engine.respond("猫是一种动物");
+      const before = engine.knowledgeStore.all();
+
+      const reply = engine.respond("猫属于什么");
+      expect(reply).toContain("动物");
+      expect(reply).not.toContain("一种动物");
+      expect(engine.knowledgeStore.all()).toEqual(before);
+    });
+
+    it("keeps exact relation answers ahead of legacy fallback data", () => {
+      const engine = createSunlandEngine({
+        personalityId: "plain",
+      });
+      engine.respond("猫属于动物");
+      engine.knowledgeStore.add({
+        subject: "猫",
+        relation: "是",
+        object: "一种生物",
+        negated: false,
+      });
+      const before = engine.knowledgeStore.all();
+
+      const reply = engine.respond("猫属于什么");
+      expect(reply).toContain("动物");
+      expect(reply).not.toContain("生物");
+      expect(engine.knowledgeStore.all()).toEqual(before);
+      expect(engine.memory.list()).toEqual([]);
+    });
+
+    it("never exposes relation resolution evidence in user text", () => {
+      const engine = createSunlandEngine({
+        personalityId: "plain",
+      });
+      engine.respond("猫属于动物");
+
+      expect(engine.respond("猫是什么")).not.toMatch(
+        /relation-alignment|queriedRelation|matchedRelation|policyId/iu,
+      );
+    });
+  });
+
   it("gives a graceful (non-throwing) answer when nothing is known yet", () => {
     const engine = createSunlandEngine();
     const reply = engine.respond("恐龙会什么");

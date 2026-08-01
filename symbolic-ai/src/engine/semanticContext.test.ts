@@ -74,6 +74,53 @@ describe("SunlandEngine Stage 8.6A conversation context", () => {
     });
   });
 
+  it("does not apply Relation Alignment fallback to a context-completed query", () => {
+    const engine = createSunlandEngine({
+      personalityId: "plain",
+      semanticContextMode: "enabled",
+    });
+    engine.knowledgeStore.add(
+      {
+        subject: "猫",
+        relation: "是",
+        object: "一种猫科动物",
+        negated: false,
+      },
+      { source: "user" },
+    );
+    engine.knowledgeStore.add(
+      {
+        subject: "鸟",
+        relation: "属于",
+        object: "动物",
+        negated: false,
+      },
+      { source: "user" },
+    );
+    let context = createEmptySemanticContext();
+    context = applyResult(
+      context,
+      engine.process("猫是什么", {
+        semanticContext: context,
+        turnId: "turn-1",
+      }),
+    );
+
+    const followUp = engine.process("鸟呢", {
+      semanticContext: context,
+      turnId: "turn-2",
+      observationMode: "summary",
+    });
+
+    expect(followUp.response).not.toContain("动物");
+    expect(followUp.observationSummary).toMatchObject({
+      contextUsed: true,
+      queriedRelation: "是",
+      alternativeKnownRelation: "none",
+      alignmentResult: "unavailable",
+    });
+  });
+
   it("resolves 猫会什么 → 鸟呢 by inheriting only the relation", () => {
     const engine = createSunlandEngine({
       personalityId: "plain",

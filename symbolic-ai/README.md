@@ -7,6 +7,9 @@ over a knowledge graph. Every step is visible and explainable.
 Input → Language Parsing → Knowledge Graph → Reasoning Engine → Learning → Answer Generation
 ```
 
+正式的 Core SDK 架构、公开接口与宿主集成契约见
+[`docs/architecture.md`](./docs/architecture.md)。
+
 ## Core diagram
 
 ```
@@ -58,9 +61,29 @@ Core
 ```bash
 npm run dev        # start Vite dev server
 npm run build      # typecheck + production build
+npm run release:core # typecheck + test + build once + publish + verify + release report
+npm run check:core-release # verify both published bundles and manifests without writing
 npm run typecheck  # strict tsc, no emit
 npm run test       # vitest
+npm run test:contract # public SDK black-box contract tests
+npm run test:api-surface # exact v0.1.0 exports + primary TypeScript signatures
 ```
+
+`release:core` first runs strict type-checking and the complete Core test suite,
+then builds once and publishes those exact bytes to Web and Flutter. It writes
+deterministic `sunland-core.manifest.json` files beside both bundles, verifies
+their bytes, hash, manifest and exported runtime version, and writes the
+machine-readable release report to
+`dist/core/sunland-core.release-report.json`. The default layout expects the
+Flutter checkout at `../../../sunland_ai_app` relative to this package; set
+`SUNLAND_FLUTTER_ROOT` when using a different workspace layout.
+
+Semantic Version 规则与发布操作清单分别见
+[`docs/versioning.md`](./docs/versioning.md) 和
+[`docs/release-checklist.md`](./docs/release-checklist.md)。
+小规模用户测试前，另需阅读
+[`docs/beta-launch-audit-v0.1.0.md`](./docs/beta-launch-audit-v0.1.0.md) 并执行
+[`docs/beta-test-checklist.md`](./docs/beta-test-checklist.md)。
 
 ## Environment
 Copy `.env.example` → `.env` and fill Supabase values (added in Stage 5).

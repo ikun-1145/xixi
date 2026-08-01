@@ -182,6 +182,44 @@ test('browser passive mode keeps admitted positive Memory and Knowledge writes o
   assert.equal(engine.getLastSemanticShadow(), null);
 });
 
+test('browser bundle aligns read-only definition queries without new writes', async () => {
+  const identity = await identityFor('relation-alignment@example.com');
+  const provider = new SunlandProvider();
+  const engine = provider._getEngine(identity);
+
+  await sendSunland(provider, identity, '猫属于动物');
+  const beforeNaturalQuery = JSON.stringify(engine.knowledgeStore.all());
+  const naturalQuery = await sendSunland(
+    provider,
+    identity,
+    '猫是什么',
+  );
+  assert.match(naturalQuery.content, /动物/);
+  assert.equal(
+    JSON.stringify(engine.knowledgeStore.all()),
+    beforeNaturalQuery,
+  );
+
+  await sendSunland(provider, identity, '狐狸是一种动物');
+  const beforeLegacyQuery = JSON.stringify(engine.knowledgeStore.all());
+  const legacyQuery = await sendSunland(
+    provider,
+    identity,
+    '狐狸属于什么',
+  );
+  assert.match(legacyQuery.content, /动物/);
+  assert.doesNotMatch(legacyQuery.content, /一种动物/);
+  assert.equal(
+    JSON.stringify(engine.knowledgeStore.all()),
+    beforeLegacyQuery,
+  );
+
+  assert.doesNotMatch(
+    `${naturalQuery.content}\n${legacyQuery.content}`,
+    /relation-alignment|queriedRelation|matchedRelation|policyId/i,
+  );
+});
+
 test('browser bundle falls back to Legacy when Semantic throws', () => {
   const legacy = createSunlandEngine({
     personalityId: 'plain',
@@ -199,6 +237,13 @@ test('browser bundle falls back to Legacy when Semantic throws', () => {
   });
 
   assert.equal(fallback.respond('你好'), legacy.respond('你好'));
+  fallback.knowledgeStore.add({
+    subject: '猫',
+    relation: '属于',
+    object: '动物',
+    negated: false,
+  });
+  assert.doesNotMatch(fallback.respond('猫是什么'), /动物/);
   assert.equal(fallback.getLastSemanticShadow(), null);
 });
 

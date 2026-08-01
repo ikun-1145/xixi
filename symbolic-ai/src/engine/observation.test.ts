@@ -127,6 +127,43 @@ describe("Sunland Core privacy-safe observation", () => {
     });
   });
 
+  it("records the canonical alternative relation used by fallback", () => {
+    const engine = createSunlandEngine({
+      semanticMode: "passive",
+      personalityId: "plain",
+    });
+    engine.respond("猫属于动物");
+    const result = engine.process("猫是什么", {
+      observationMode: "summary",
+    });
+
+    expect(result.observationSummary).toMatchObject({
+      resultCategory: "understood",
+      relationCategory: "是",
+      queriedRelation: "是",
+      alternativeKnownRelation: "属于",
+      alignmentResult: "aligned",
+      pathLengthBucket: "direct",
+    });
+  });
+
+  it("keeps the alternative relation empty when exact knowledge wins", () => {
+    const engine = createSunlandEngine({
+      semanticMode: "passive",
+      personalityId: "plain",
+    });
+    engine.respond("猫属于动物");
+    const result = engine.process("猫属于什么", {
+      observationMode: "summary",
+    });
+
+    expect(result.observationSummary).toMatchObject({
+      queriedRelation: "属于",
+      alternativeKnownRelation: "none",
+      alignmentResult: "aligned",
+    });
+  });
+
   it("records context use without exposing the resolved entity", () => {
     const engine = createSunlandEngine({
       semanticMode: "passive",

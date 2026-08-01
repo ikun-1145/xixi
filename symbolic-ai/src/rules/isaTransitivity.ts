@@ -38,6 +38,17 @@ interface PathState {
   readonly records: readonly KnowledgeRecord[];
 }
 
+interface QueryPathState {
+  readonly node: string;
+  readonly records: readonly KnowledgeRecord[];
+}
+
+export interface IsAQueryTraversal {
+  readonly subject: string;
+  /** When present, stop as soon as BFS reaches this object. */
+  readonly targetObject?: string;
+}
+
 /** Build the adjacency list of un-negated 属于 edges: subject -> outgoing edges. */
 function buildAdjacency(known: KnowledgeQuery): Map<string, KnowledgeRecord[]> {
   const edges = known.match({ relation: CoreRelations.IsA, negated: false });
@@ -99,6 +110,61 @@ function buildInference(records: readonly KnowledgeRecord[]): Inference {
     steps: buildSteps(records),
     path,
   };
+}
+
+/**
+ * Traverse only the is-a subgraph reachable from one query subject.
+ *
+ * Unlike `isaTransitivityRule.apply()`, this does not materialize closure for
+ * unrelated subjects. `KnowledgeQuery.match()` is deliberately called with
+ * both subject and relation so the store's existing indexes can constrain
+ * every expansion. BFS retains the existing shortest, deterministic Evidence
+ * path and its per-query visited set provides cycle detection.
+ */
+export function traverseIsAForQuery(
+  known: KnowledgeQuery,
+  query: IsAQueryTraversal,
+): readonly Inference[] {
+  const visited = new Set<string>([query.subject]);
+  const queue: QueryPathState[] = [
+    { node: query.subject, records: [] },
+  ];
+  const inferences: Inference[] = [];
+  let queueIndex = 0;
+
+  while (queueIndex < queue.length) {
+    const current = queue[queueIndex]!;
+    queueIndex += 1;
+    const outgoing = known.match({
+      subject: current.node,
+      relation: CoreRelations.IsA,
+      negated: false,
+    });
+
+    for (const edge of outgoing) {
+      if (visited.has(edge.object)) continue;
+      visited.add(edge.object);
+      const records = [...current.records, edge];
+
+      if (query.targetObject === edge.object) {
+        return records.length >= 2
+          ? [buildInference(records)]
+          : [];
+      }
+
+      queue.push({
+        node: edge.object,
+        records,
+      });
+
+      // A single direct edge is already returned by direct lookup.
+      if (query.targetObject === undefined && records.length >= 2) {
+        inferences.push(buildInference(records));
+      }
+    }
+  }
+
+  return inferences;
 }
 
 export const isaTransitivityRule: InferenceRule = {

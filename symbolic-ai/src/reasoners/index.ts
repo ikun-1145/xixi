@@ -15,3 +15,4 @@
  *   - graphReasoner   the active Reasoner (implements `Reasoner`)
  */
 export * from "./graphReasoner";
+export * from "./relationResolution";

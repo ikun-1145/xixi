@@ -7,11 +7,16 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
-    "build:lib": "vite build --config vite.lib.config.ts",
+    "build:lib:bundle": "vite build --config vite.lib.config.ts",
+    "build:lib": "npm run build:lib:bundle && node scripts/release-core.mjs",
+    "release:core": "npm run typecheck && npm test && npm run build:lib",
+    "check:core-release": "node scripts/release-core.mjs --check",
     "preview": "vite preview",
     "typecheck": "tsc -b --noEmit",
     "lint": "eslint . --ext .ts,.tsx",
     "test": "vitest run",
+    "test:contract": "vitest run src/sdk.contract.test.ts src/sdk.recovery.contract.test.ts src/sdk.api-surface.contract.test.ts",
+    "test:api-surface": "npm run typecheck && vitest run src/sdk.api-surface.contract.test.ts",
     "test:watch": "vitest"
   },
   "dependencies": {

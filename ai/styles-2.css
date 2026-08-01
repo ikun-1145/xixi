@@ -642,3 +642,277 @@ body:not(.night) #loadingBar img {
 #loadingBar.active img {
   transform: scale(1);
 }
+
+/* ===== 兽聚查询结果卡片（与 Flutter 的横向卡片保持同一信息层级） ===== */
+.furry-event-message {
+  justify-content: flex-start;
+}
+
+.furry-event-results {
+  width: min(100%, 680px);
+  min-width: 0;
+  padding: 2px 0 6px;
+}
+
+.furry-event-header,
+.furry-event-loading-label {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  margin: 0 2px 9px;
+  color: #475569;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.furry-event-count {
+  color: #94a3b8;
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.furry-event-track {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: clamp(260px, 82%, 420px);
+  gap: 12px;
+  width: 100%;
+  box-sizing: border-box;
+  padding: 2px 2px 12px;
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(34, 211, 238, 0.45) transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.furry-event-track:focus-visible {
+  outline: 2px solid rgba(34, 211, 238, 0.7);
+  outline-offset: 3px;
+  border-radius: 14px;
+}
+
+.furry-event-card {
+  min-width: 0;
+  overflow: hidden;
+  scroll-snap-align: center;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  border-radius: 16px;
+  background: linear-gradient(145deg, #fff, #f3f6fb);
+  box-shadow: 0 10px 26px rgba(15, 23, 42, 0.09);
+}
+
+.furry-event-cover-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 132px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #cffafe, #e0f2fe 55%, #ede9fe);
+  color: #0891b2;
+  font-size: 34px;
+  text-decoration: none;
+}
+
+.furry-event-cover-link.is-placeholder {
+  background:
+    radial-gradient(circle at 30% 30%, rgba(255, 255, 255, 0.9), transparent 35%),
+    linear-gradient(135deg, #cffafe, #e0f2fe 55%, #ede9fe);
+}
+
+.furry-event-cover {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform .25s ease;
+}
+
+.furry-event-cover-link:hover .furry-event-cover {
+  transform: scale(1.025);
+}
+
+.furry-event-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 12px;
+}
+
+.furry-event-title {
+  display: -webkit-box;
+  overflow: hidden;
+  color: #0f172a;
+  font-size: 14px;
+  font-weight: 700;
+  line-height: 1.35;
+  text-decoration: none;
+  -webkit-box-orient: vertical;
+  -webkit-line-clamp: 2;
+}
+
+a.furry-event-title:hover {
+  color: #0891b2;
+}
+
+.furry-event-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  min-width: 0;
+  color: #64748b;
+  font-size: 12px;
+}
+
+.furry-event-meta span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.furry-event-details {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 7px;
+  color: #64748b;
+  font-size: 11px;
+}
+
+.furry-event-status {
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(14, 165, 233, 0.1);
+  color: #0284c7;
+  font-weight: 600;
+}
+
+.furry-event-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+  padding-top: 1px;
+}
+
+.furry-event-action {
+  padding: 4px 8px;
+  border: 1px solid rgba(14, 165, 233, 0.2);
+  border-radius: 7px;
+  background: rgba(14, 165, 233, 0.08);
+  color: #0369a1;
+  font-size: 11px;
+  font-weight: 600;
+  text-decoration: none;
+  transition: transform .15s ease, background .15s ease;
+}
+
+.furry-event-action:hover {
+  transform: translateY(-1px);
+  background: rgba(14, 165, 233, 0.14);
+}
+
+.furry-event-action.meituan {
+  border-color: rgba(245, 158, 11, 0.24);
+  background: rgba(245, 158, 11, 0.1);
+  color: #b45309;
+}
+
+.furry-event-empty {
+  width: fit-content;
+  max-width: 100%;
+  padding: 10px 13px;
+  border: 1px solid rgba(15, 23, 42, 0.07);
+  border-radius: 12px;
+  background: rgba(255, 255, 255, 0.66);
+  color: #64748b;
+  font-size: 13px;
+}
+
+.furry-event-skeleton-track {
+  overflow: hidden;
+}
+
+.furry-event-skeleton {
+  height: 220px;
+  border-radius: 16px;
+  background: linear-gradient(
+    100deg,
+    rgba(148, 163, 184, 0.12) 25%,
+    rgba(255, 255, 255, 0.72) 42%,
+    rgba(148, 163, 184, 0.12) 60%
+  );
+  background-size: 220% 100%;
+  animation: furrySkeleton 1.25s ease-in-out infinite;
+}
+
+@keyframes furrySkeleton {
+  from { background-position: 100% 0; }
+  to { background-position: -100% 0; }
+}
+
+body.night .furry-event-header,
+body.night .furry-event-loading-label {
+  color: #cbd5e1;
+}
+
+body.night .furry-event-card {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: linear-gradient(145deg, #1e293b, #111827);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.35);
+}
+
+body.night .furry-event-title {
+  color: #f8fafc;
+}
+
+body.night .furry-event-meta,
+body.night .furry-event-details {
+  color: #94a3b8;
+}
+
+body.night .furry-event-empty {
+  border-color: rgba(255, 255, 255, 0.08);
+  background: rgba(15, 23, 42, 0.72);
+  color: #94a3b8;
+}
+
+body.night .furry-event-skeleton {
+  background: linear-gradient(
+    100deg,
+    rgba(51, 65, 85, 0.55) 25%,
+    rgba(100, 116, 139, 0.45) 42%,
+    rgba(51, 65, 85, 0.55) 60%
+  );
+  background-size: 220% 100%;
+}
+
+@media (max-width: 520px) {
+  .furry-event-results {
+    width: calc(100vw - 24px);
+    max-width: calc(100vw - 24px);
+  }
+
+  .furry-event-track {
+    grid-auto-columns: clamp(280px, 86vw, 330px);
+    gap: 9px;
+  }
+
+  .furry-event-cover-link {
+    height: 120px;
+  }
+
+  .furry-event-count {
+    font-size: 10px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .furry-event-skeleton,
+  .furry-event-cover {
+    animation: none;
+    transition: none;
+  }
+}

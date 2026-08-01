@@ -96,7 +96,9 @@ export function parseStoredCurrentConversationId(raw, fallback = null) {
 
 export function resolveCurrentConversation(conversations, preferredId = null) {
   const safeList = Array.isArray(conversations) ? conversations : [];
-  const preferred = safeList.find(conversation => conversation.id === preferredId);
+  const preferred = preferredId == null
+    ? null
+    : safeList.find(conversation => String(conversation.id) === String(preferredId));
   return preferred || safeList[0] || null;
 }
 

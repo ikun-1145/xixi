@@ -9,12 +9,11 @@ import path from "node:path";
  * dependency-free ESM bundle meant to be imported by an entirely different,
  * non-Vite, no-build-tool host -- the production website.
  *
- * `outDir` points OUTSIDE this package, directly at the production site's
- * `ai/vendor/` folder (this project lives at `xixi/symbolic-ai/`, the site
- * at `xixi/`) -- running `npm run build:lib` is the ENTIRE deploy step for
- * this artifact; there is no separate manual copy. `emptyOutDir: false` so
- * this build never deletes unrelated files that might already live in
- * `ai/vendor/`.
+ * Vite writes one canonical staging artifact inside this package. The
+ * `scripts/release-core.mjs` release step then publishes those exact bytes to
+ * every supported host and verifies their SHA-256 manifests. Keeping publish
+ * destinations out of the bundler makes the artifact source explicit and
+ * prevents Web and Flutter builds from drifting.
  */
 export default defineConfig({
   resolve: {
@@ -23,8 +22,7 @@ export default defineConfig({
     },
   },
   build: {
-    outDir: path.resolve(__dirname, "../ai/vendor"),
-    emptyOutDir: false,
+    outDir: path.resolve(__dirname, "./dist/core"),
     lib: {
       entry: path.resolve(__dirname, "./src/sdk.ts"),
       name: "SunlandCore",

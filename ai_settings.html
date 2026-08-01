@@ -533,6 +533,75 @@ body.dark .usage-hint {
     }
     .sunland-data-status.success { color: #059669; }
     .sunland-data-status.error { color: var(--danger); }
+    .sunland-knowledge-manager {
+      margin: 0 16px 12px;
+      padding: 12px;
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      background: rgba(148,163,184,0.05);
+    }
+    .sunland-knowledge-heading {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 9px;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 650;
+    }
+    .sunland-knowledge-count {
+      color: var(--subtext);
+      font-weight: 500;
+    }
+    .sunland-knowledge-empty {
+      color: var(--subtext);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .sunland-knowledge-list {
+      display: grid;
+      gap: 8px;
+      max-height: 280px;
+      margin: 0;
+      padding: 0;
+      overflow-y: auto;
+      list-style: none;
+    }
+    .sunland-knowledge-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 9px 10px;
+      border-radius: 10px;
+      background: var(--card);
+    }
+    .sunland-knowledge-text {
+      min-width: 0;
+      color: var(--text);
+      font-size: 12px;
+      line-height: 1.5;
+      overflow-wrap: anywhere;
+    }
+    .knowledge-delete-btn {
+      flex-shrink: 0;
+      border: 1px solid rgba(239,68,68,0.2);
+      border-radius: 8px;
+      padding: 6px 9px;
+      background: transparent;
+      color: var(--danger);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .knowledge-delete-btn:hover {
+      background: rgba(239,68,68,0.1);
+    }
+    .knowledge-delete-btn:disabled {
+      opacity: 0.55;
+      cursor: wait;
+    }
 
     .beta-diagnostics {
       overflow: visible;
@@ -956,6 +1025,23 @@ body.dark .usage-hint {
           </div>
         </div>
         <button id="clearSunlandKnowledgeBtn" class="data-action-btn" type="button">清除知识</button>
+      </div>
+      <div
+        class="sunland-knowledge-manager"
+        aria-labelledby="sunlandKnowledgeHeading"
+      >
+        <div class="sunland-knowledge-heading">
+          <span id="sunlandKnowledgeHeading">已教给 Sunland AI 的知识</span>
+          <span id="sunlandKnowledgeCount" class="sunland-knowledge-count">正在读取</span>
+        </div>
+        <div id="sunlandKnowledgeEmpty" class="sunland-knowledge-empty">
+          正在读取教学知识
+        </div>
+        <ul
+          id="sunlandKnowledgeList"
+          class="sunland-knowledge-list"
+          aria-live="polite"
+        ></ul>
       </div>
       <div id="sunlandDataStatus" class="sunland-data-status" role="status" aria-live="polite"></div>
     </div>

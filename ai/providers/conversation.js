@@ -32,6 +32,10 @@ import {
 export const SUPPORTED_PROVIDER_IDS = Object.freeze(["deepseek", "sunland"]);
 const SUPPORTED_PROVIDERS = new Set(SUPPORTED_PROVIDER_IDS);
 
+function conversationIdKey(value) {
+  return value == null ? null : String(value);
+}
+
 export function isSupportedProviderId(provider) {
   return typeof provider === "string" && SUPPORTED_PROVIDERS.has(provider);
 }
@@ -239,7 +243,11 @@ export function mergeConversationRecords(existingRaw, incomingRaw) {
   const incoming = normalizedConversation(incomingRaw);
   if (!incoming) return existing;
   if (!existing) return incoming;
-  if (existing.id !== incoming.id) return existing;
+  // Flutter 会把会话 id 序列化为字符串，网页端历史数据则可能是数字。
+  // 两者表示同一个毫秒时间戳时必须合并，避免跨端同步后出现重复会话。
+  if (conversationIdKey(existing.id) !== conversationIdKey(incoming.id)) {
+    return existing;
+  }
   if (
     existing.userId != null &&
     incoming.userId != null &&
@@ -291,21 +299,31 @@ export function mergeConversationCollections(baseValue, incomingValue, {
       : [];
     const unique = new Map();
     records.forEach(record => {
-      unique.set(record.id, mergeConversationRecords(unique.get(record.id), record));
+      const key = conversationIdKey(record.id);
+      unique.set(key, mergeConversationRecords(unique.get(key), record));
     });
     return Array.from(unique.values());
   };
   const base = normalizeUnique(baseValue);
   const incoming = normalizeUnique(incomingValue);
-  const baseById = new Map(base.map(conversation => [conversation.id, conversation]));
+  const baseById = new Map(
+    base.map(conversation => [conversationIdKey(conversation.id), conversation]),
+  );
   const merged = incoming.map(conversation => (
-    mergeConversationRecords(baseById.get(conversation.id), conversation)
+    mergeConversationRecords(
+      baseById.get(conversationIdKey(conversation.id)),
+      conversation,
+    )
   )).filter(Boolean);
 
   if (retainBaseOnly) {
-    const incomingIds = new Set(incoming.map(conversation => conversation.id));
+    const incomingIds = new Set(
+      incoming.map(conversation => conversationIdKey(conversation.id)),
+    );
     base.forEach(conversation => {
-      if (!incomingIds.has(conversation.id)) merged.push(conversation);
+      if (!incomingIds.has(conversationIdKey(conversation.id))) {
+        merged.push(conversation);
+      }
     });
   }
 

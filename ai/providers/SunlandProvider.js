@@ -8,6 +8,7 @@ import {
   getVerifiedUserId,
   isVerifiedIdentity,
 } from "../verified-identity.js";
+import { answerFurryEventQuestion } from "../furry-events.js";
 
 /**
  * Sunland AI provider -- runs the Sunland Core engine (Parser -> Knowledge
@@ -69,6 +70,8 @@ export class SunlandProvider extends AIProvider {
     onDelta,
     identity,
     semanticContext,
+    furryContext,
+    furryContextActive = false,
     turnId,
     canCommitSemanticContext,
     observationMode = "off",
@@ -80,12 +83,22 @@ export class SunlandProvider extends AIProvider {
       return { content: SUNLAND_LOGIN_STATE_MESSAGE, blocked: true };
     }
 
-    const engine = this._getEngine(identity);
     const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
     const input = lastUserMessage?.content ?? "";
     if (signal?.aborted) {
       return { content: "", blocked: true, semanticContextUpdate: null };
     }
+
+    // 兽聚查询是一个独立、可解释的原生领域能力。查询结果以结构化上下文
+    // 传入，而不是写进知识图谱或依赖外部 LLM；因此不会污染用户长期知识，
+    // 同时能与 DeepSeek 使用同一份卡片数据回答当前问题。
+    if (furryContextActive && furryContext) {
+      const content = answerFurryEventQuestion(input, furryContext);
+      onDelta?.(content);
+      return { content, semanticContextUpdate: null };
+    }
+
+    const engine = this._getEngine(identity);
 
     // Symbolic reasoning is effectively instant -- no real stream to read,
     // but we still go through `onDelta` so the UI's rendering path is

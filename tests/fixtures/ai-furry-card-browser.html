@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>兽聚卡片浏览器验收</title>
+  <link rel="stylesheet" href="../../ai/styles-1.css">
+  <link rel="stylesheet" href="../../ai/styles-2.css">
+  <style>
+    body { min-height: 100vh; }
+    #chat { width: 100%; margin-left: 0 !important; padding: 20px 0 80px; box-sizing: border-box; }
+    #harnessTitle { max-width: 680px; margin: 0 auto 12px; padding: 0 16px; color: #64748b; font-size: 13px; }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <div id="harnessTitle">兽聚查询结果 · 浏览器验收</div>
+    <main id="chat" class="chat-container">
+      <div id="chatInner" class="chat-inner"></div>
+    </main>
+  </div>
+  <script type="module">
+    import { appendFurryEventMessage } from "../../ai/furry-event-cards.js";
+    import {
+      answerFurryEventQuestion,
+      createFurryEventCardMessage,
+    } from "../../ai/furry-events.js";
+
+    const target = document.getElementById("chatInner");
+    const user = document.createElement("div");
+    user.className = "message user";
+    const userBubble = document.createElement("div");
+    userBubble.className = "bubble";
+    userBubble.textContent = "上海近期有什么兽聚？";
+    user.appendChild(userBubble);
+    target.appendChild(user);
+
+    const view = appendFurryEventMessage({ target, loading: true });
+    const message = createFurryEventCardMessage({
+      query: { city: "上海", month: 8, year: 2026 },
+      events: [
+        {
+          name: "棱彩演化",
+          start_at: "2026-08-02T02:00:00.000Z",
+          end_at: "2026-08-03T10:00:00.000Z",
+          city: "上海",
+          address: "上海虹桥会展中心",
+          cover: "https://images.furrycons.cn/organizations/example/cover.png",
+          source_url: "https://www.furrycons.cn/",
+          raw_status: "售票中",
+          weather: { label: "多云", tempMin: 26, tempMax: 33 },
+        },
+        {
+          name: "沧海瓷吟",
+          start_at: "2026-08-14T00:00:00.000Z",
+          end_at: "2026-08-16T00:00:00.000Z",
+          city: "上海",
+          address: "活动酒店待主办方确认",
+          source_url: "https://www.furrycons.cn/",
+          raw_status: "预售中",
+        },
+      ],
+    });
+    view.update(message);
+
+    const reply = document.createElement("div");
+    reply.className = "message ai";
+    const replyBubble = document.createElement("div");
+    replyBubble.className = "bubble";
+    replyBubble.textContent = answerFurryEventQuestion("上海近期有什么兽聚？", message);
+    reply.appendChild(replyBubble);
+    target.appendChild(reply);
+    document.body.dataset.harnessReady = "true";
+  </script>
+</body>
+</html>

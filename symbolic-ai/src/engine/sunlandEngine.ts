@@ -52,7 +52,11 @@ import { createMemoryManager, loadMemoryManager, saveMemoryManager } from "@/mem
 import { createParser } from "@/parser";
 import { getPersonality } from "@/personality";
 import { defaultResponsePlanner } from "@/planner";
-import { graphReasoner } from "@/reasoners";
+import {
+  answerGraphQuery,
+  type RelationResolutionEvidence,
+  type RelationResolutionOptions,
+} from "@/reasoners";
 import {
   createObservationSummary,
   sanitizeObservationSummary,
@@ -307,6 +311,21 @@ function decisionCandidates(
     case "no-understanding":
       return [];
   }
+}
+
+function relationResolutionOptions(
+  analysis: SemanticAnalysis,
+  decision: UnderstandingDecision,
+  usesSemanticResult: boolean,
+): RelationResolutionOptions {
+  return Object.freeze({
+    negatedInput: analysis.extraction.negationCues.length > 0,
+    contextResolved:
+      usesSemanticResult &&
+      decisionCandidates(decision).some(
+        ({ producer }) => producer === "context",
+      ),
+  });
 }
 
 function clarificationReason(
@@ -574,12 +593,18 @@ export function createSunlandEngine(options: SunlandEngineOptions = {}): Sunland
     answers: readonly {
       readonly path: readonly string[];
     }[],
+    relationResolution: RelationResolutionEvidence,
     observation: ObservationTurnState,
   ): void {
     observation.relationCategory = observableRelation(
       parsed.relation,
     );
     observation.queriedRelation = observation.relationCategory;
+    observation.alternativeKnownRelation =
+      relationResolution.mode === "fallback" &&
+      answers.length > 0
+        ? observableRelation(relationResolution.matchedRelation)
+        : "none";
 
     if (answers.length === 0) {
       observation.reasonerPathLength = 0;
@@ -587,7 +612,10 @@ export function createSunlandEngine(options: SunlandEngineOptions = {}): Sunland
         observation.resultCategory = "missing-knowledge";
         observation.reasonCategory = "missing-knowledge";
       }
-      observation.alignmentResult = "unavailable";
+      observation.alignmentResult =
+        relationResolution.mode === "fallback"
+          ? "no-alternative-known"
+          : "unavailable";
       return;
     }
 
@@ -602,6 +630,7 @@ export function createSunlandEngine(options: SunlandEngineOptions = {}): Sunland
   function respondToParseResult(
     parsed: ParseResult,
     observation?: ObservationTurnState,
+    resolutionOptions: RelationResolutionOptions = {},
   ): string {
     if (observation !== undefined) {
       observeParsedResult(parsed, observation);
@@ -626,7 +655,12 @@ export function createSunlandEngine(options: SunlandEngineOptions = {}): Sunland
             : store;
         const reasonerStartedAt =
           observation === undefined ? null : safeObservationNow();
-        const result = graphReasoner.answer(parsed, queryStore);
+        const resolved = answerGraphQuery(
+          parsed,
+          queryStore,
+          resolutionOptions,
+        );
+        const result = resolved.result;
         if (observation !== undefined) {
           observation.reasonerDurationMs = elapsedMilliseconds(
             reasonerStartedAt,
@@ -635,6 +669,7 @@ export function createSunlandEngine(options: SunlandEngineOptions = {}): Sunland
           observeReasoningResult(
             parsed,
             result.answers,
+            resolved.relationResolution,
             observation,
           );
         }
@@ -847,7 +882,9 @@ export function createSunlandEngine(options: SunlandEngineOptions = {}): Sunland
             raw: legacyResult.raw,
             reason: "semantic-side-effect-validation-unavailable",
           }, observation)
-        : respondToParseResult(legacyResult, observation);
+        : respondToParseResult(legacyResult, observation, {
+            negatedInput: true,
+          });
       if (observation !== undefined) {
         observation.resultCategory = "safe-fallback";
         observation.reasonCategory = "semantic-runtime";
@@ -858,14 +895,30 @@ export function createSunlandEngine(options: SunlandEngineOptions = {}): Sunland
 
     if (semanticMode === "shadow") {
       return resultWithoutContext(
-        respondToParseResult(legacyResult, observation),
+        respondToParseResult(
+          legacyResult,
+          observation,
+          relationResolutionOptions(
+            analysis,
+            decision,
+            false,
+          ),
+        ),
       );
     }
 
     switch (adaptation.kind) {
       case "adopt":
         return resultWithAcceptedContext(
-          respondToParseResult(adaptation.result, observation),
+          respondToParseResult(
+            adaptation.result,
+            observation,
+            relationResolutionOptions(
+              analysis,
+              decision,
+              true,
+            ),
+          ),
           decision,
           adaptation.result,
         );
@@ -879,7 +932,15 @@ export function createSunlandEngine(options: SunlandEngineOptions = {}): Sunland
         );
       case "fallback-legacy":
         return resultWithAcceptedContext(
-          respondToParseResult(adaptation.result, observation),
+          respondToParseResult(
+            adaptation.result,
+            observation,
+            relationResolutionOptions(
+              analysis,
+              decision,
+              false,
+            ),
+          ),
           decision,
           adaptation.result,
         );

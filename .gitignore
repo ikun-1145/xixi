@@ -1,6 +1,9 @@
 # Markdown docs: keep only the public README.
 *.md
 !Readme.md
+!symbolic-ai/CHANGELOG.md
+!symbolic-ai/docs/
+!symbolic-ai/docs/*.md
 
 # Local environment and secrets.
 .env
