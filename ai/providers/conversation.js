@@ -32,7 +32,7 @@ import {
 export const SUPPORTED_PROVIDER_IDS = Object.freeze(["deepseek", "sunland"]);
 const SUPPORTED_PROVIDERS = new Set(SUPPORTED_PROVIDER_IDS);
 
-function conversationIdKey(value) {
+export function conversationIdKey(value) {
   return value == null ? null : String(value);
 }
 

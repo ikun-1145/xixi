@@ -4,6 +4,7 @@ import fs from 'node:fs';
 
 import { parseStoredConversations } from '../ai/conversation-recovery.js';
 import {
+  conversationIdKey,
   createConversation,
   mergeConversationCollections,
   mergeConversationRecords,
@@ -94,6 +95,25 @@ test('cloud and realtime collection merges preserve provider while accepting mut
   }
 });
 
+test('conversation ids use one canonical key across web and Flutter serialization', () => {
+  assert.equal(conversationIdKey(42), conversationIdKey('42'));
+  assert.equal(conversationIdKey(null), null);
+});
+
+test('a canonical deletion marker removes a base-only record retained during realtime merge', () => {
+  const deleted = conversation({ id: 42 });
+  const remaining = conversation({ id: '43', title: 'remaining' });
+  const deletionMarkers = new Set([conversationIdKey('42')]);
+
+  const merged = mergeConversationCollections([deleted, remaining], [remaining]);
+  assert.ok(merged.some(item => conversationIdKey(item.id) === conversationIdKey(42)));
+
+  const filtered = merged.filter(
+    item => !deletionMarkers.has(conversationIdKey(item.id)),
+  );
+  assert.deepEqual(filtered.map(item => conversationIdKey(item.id)), ['43']);
+});
+
 test('a remotely started conversation may establish provider only while local copy is empty', () => {
   const empty = conversation({
     provider: 'deepseek',
@@ -139,4 +159,13 @@ test('live local, cloud, and realtime code all use the centralized provider merg
   assert.match(aiApp, /latest && !hasConversationStarted\(latest\)/);
   assert.ok((aiApp.match(/mergeConversationCollections\(conversations,/g) || []).length >= 2);
   assert.match(aiApp, /!isSupportedProviderId\(sendingConversation\.provider\)/);
+});
+
+test('web deletion survives realtime object replacement and mixed id types', () => {
+  assert.match(aiApp, /const targetKey = conversationIdKey\(targetConversation\?\.id\)/);
+  assert.match(aiApp, /deletedConversationIds\.add\(targetKey\)/);
+  assert.ok(
+    (aiApp.match(/mergeConversationCollections\(conversations, (?:cloudConversations|cloudData)\)\s*\.filter\(conversation => !isConversationDeleted\(conversation\)\)/g) || []).length >= 2,
+  );
+  assert.doesNotMatch(aiApp, /conversation !== target/);
 });

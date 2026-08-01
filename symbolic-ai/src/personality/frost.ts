@@ -46,7 +46,6 @@ import {
   NAME_RECALL_NOT_FOUND_LINES,
   NAME_REMEMBERED_CLOSERS,
   NAME_REMEMBERED_OPENERS,
-  REASONING_ANSWER_CLOSERS,
   REASONING_ANSWER_OPENERS,
   REASONING_NO_ANSWER_CLOSERS,
   REASONING_NO_ANSWER_OPENERS,
@@ -66,14 +65,6 @@ function renderReasoningResult(result: ReasoningResult, plan: ResponsePlan): str
   const seed = `${result.query.subject}:${result.query.relation}:${result.query.kind}`;
   const hasAnswer = plan.mode !== "no-answer";
 
-  const opener = pickBySeed(
-    hasAnswer ? REASONING_ANSWER_OPENERS : REASONING_NO_ANSWER_OPENERS,
-    seed,
-  );
-  const closer = pickBySeed(
-    hasAnswer ? REASONING_ANSWER_CLOSERS : REASONING_NO_ANSWER_CLOSERS,
-    `${seed}:closer`,
-  );
   // The DECISION to hedge is the Response Planner's (`plan.isUncertain`,
   // based on confidence); only the WORDING of the hedge is Frost's to pick.
   const hedge = plan.isUncertain ? pickBySeed(REASONING_UNCERTAIN_HEDGES, `${seed}:hedge`) : undefined;
@@ -82,7 +73,14 @@ function renderReasoningResult(result: ReasoningResult, plan: ResponsePlan): str
   // neutral, already-decided narrative (whether or not it includes the
   // derivation chain was decided there, not here). Frost frames it, never
   // rewrites it.
-  return withEmoji(compose(opener, plan.explanation, hedge, closer), seed);
+  if (hasAnswer) {
+    const opener = pickBySeed(REASONING_ANSWER_OPENERS, seed);
+    return `${opener}${plan.explanation}${hedge ?? ""}`;
+  }
+
+  const opener = pickBySeed(REASONING_NO_ANSWER_OPENERS, seed);
+  const closer = pickBySeed(REASONING_NO_ANSWER_CLOSERS, `${seed}:closer`);
+  return `${opener}${plan.explanation}${closer}`;
 }
 
 function renderLearned(record: KnowledgeRecord): string {
@@ -93,20 +91,20 @@ function renderLearned(record: KnowledgeRecord): string {
   const negation = record.negated ? "不" : "";
   const fact = `${record.subject} ${negation}${record.relation} ${record.object}`;
 
-  return withEmoji(compose(opener, fact, closer), seed);
+  return [opener, fact, closer].join("\n\n");
 }
 
 function renderUnknownInput(failure: ParseFailure): string {
   const normalizedInput = failure.raw.trim();
   if (!normalizedInput) {
-    return withEmoji("好像还没有输入内容呢，可以跟我说点什么。", "empty-input");
+    return "好像还没有输入内容，可以跟我说点什么。";
   }
 
   const seed = normalizedInput;
   const opener = pickBySeed(UNKNOWN_INPUT_OPENERS, seed);
   const closer = pickBySeed(UNKNOWN_INPUT_CLOSERS, `${seed}:closer`);
 
-  return withEmoji(compose(opener, closer), seed);
+  return `${opener}${closer}`;
 }
 
 function renderGreeting(raw?: string): string {
@@ -129,18 +127,9 @@ function renderFarewell(raw?: string): string {
 
 function renderClarification(plan: ClarificationPlan): string {
   const labels = new Set(plan.candidateLabels);
-  const seed = [
-    plan.clarificationKind,
-    plan.focus,
-    plan.relation ?? "",
-    ...plan.candidateLabels,
-  ].join(":");
 
   if (labels.has("identity") && labels.has("query")) {
-    return withEmoji(
-      "这个问题里像是同时问了我的名字和能力，可以分开问我哦。",
-      seed,
-    );
+    return "这个问题里像是同时问了我的名字和能力，可以分开问我哦。";
   }
 
   if (
@@ -152,46 +141,34 @@ function renderClarification(plan: ClarificationPlan): string {
       contextLabels.slice(0, -1).join("、"),
       contextLabels.at(-1),
     ].join("还是");
-    return withEmoji(
-      `你指的是${alternatives}呢？可以再告诉我一下哦。`,
-      seed,
-    );
+    return `你指的是${alternatives}呢？可以再告诉我一下哦。`;
   }
 
   if (plan.focus === "object" && plan.relation === "会") {
-    return withEmoji("你想问我会做什么呢？可以再具体一点点哦。", seed);
+    return "你想问我会做什么呢？可以再具体一点点哦。";
   }
 
   if (plan.focus === "object") {
-    return withEmoji(
-      "这里好像还缺少要说明的内容，可以再告诉我它是什么吗？",
-      seed,
-    );
+    return "这里好像还缺少要说明的内容，可以再告诉我它是什么吗？";
   }
 
   if (plan.focus === "subject") {
-    return withEmoji("你想问的是谁或什么呢？可以再告诉我一点点。", seed);
+    return "你想问的是谁或什么呢？可以再告诉我一点点。";
   }
 
   if (plan.focus === "relation") {
-    return withEmoji("你想了解它哪一方面呢？可以再说具体一点点。", seed);
+    return "你想了解它哪一方面呢？可以再说具体一点点。";
   }
 
   if (plan.focus === "name") {
-    return withEmoji("你是在问名字，还是想告诉我你的名字呢？", seed);
+    return "你是在问名字，还是想告诉我你的名字呢？";
   }
 
   if (labels.has("teaching")) {
-    return withEmoji(
-      "这个知识好像还没说完整，可以再告诉我对象和它们的关系吗？",
-      seed,
-    );
+    return "这个知识好像还没说完整，可以再告诉我对象和它们的关系吗？";
   }
 
-  return withEmoji(
-    "我好像看到了不止一种意思，可以换一种更具体的说法吗？",
-    seed,
-  );
+  return "我好像看到了不止一种意思，可以换一种更具体的说法吗？";
 }
 
 /**
@@ -215,9 +192,9 @@ function renderIdentity(
     const closer = pickBySeed(CAPABILITY_CLOSERS, `${seed}:closer`);
     const body =
       facts.length > 0
-        ? facts.map((fact) => `· ${fact.object}`).join("\n")
+        ? `${opener}${facts.map((fact) => fact.object).join("；")}。`
         : `关于「${subject}」能做什么，我目前还没有明确的答案。`;
-    return withEmoji(compose(opener, body, closer), seed);
+    return `${body}${closer}`;
   }
 
   if (aspect === "creator") {
@@ -225,7 +202,7 @@ function renderIdentity(
     const closer = pickBySeed(CREATOR_CLOSERS, `${seed}:closer`);
     const [first] = facts;
     const body = first ? first.object : "这个我暂时还不清楚。";
-    return withEmoji(compose(opener, body, closer), seed);
+    return compose(opener, body, closer);
   }
 
   // aspect === "identity"
@@ -233,9 +210,9 @@ function renderIdentity(
   const closer = pickBySeed(IDENTITY_CLOSERS, `${seed}:closer`);
   const [first] = facts;
   const body = first
-    ? `${first.subject} ${first.negated ? "不" : ""}${first.relation} ${first.object}`
+    ? `${opener}${first.subject}，${first.negated ? "不" : ""}${first.relation}${first.object}。`
     : `关于「${subject}」，我目前还没有明确的答案。`;
-  return withEmoji(compose(opener, body, closer), seed);
+  return `${body}${closer}`;
 }
 
 /**

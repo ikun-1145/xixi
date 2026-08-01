@@ -23,6 +23,7 @@
       `sunland_knowledge_${userId}`, `sunland_knowledge_${userId}::memory`,
     ];
     const preserve = params.get('preserve') === '1';
+    if (params.get('autoConfirm') === '1') window.confirm = () => true;
     if (!preserve) {
       keys.forEach(key => localStorage.removeItem(key));
       localStorage.setItem('token', token);

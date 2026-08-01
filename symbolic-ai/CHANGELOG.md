@@ -8,6 +8,12 @@ follow the policy in [`docs/versioning.md`](./docs/versioning.md).
 Changes intended for the next release must remain here until the release
 checklist is complete and the target version is fixed.
 
+### Changed
+
+- Refined Frost's user-facing greeting, identity, unknown-input, teaching,
+  and reasoning wording while preserving the existing reasoning, Knowledge,
+  Memory, Semantic Context, Provider, and public SDK boundaries.
+
 ## [0.1.0] - 2026-08-01
 
 ### Added

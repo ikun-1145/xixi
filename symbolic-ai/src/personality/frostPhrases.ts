@@ -20,29 +20,21 @@
 export const FROST_EMOJI: readonly string[] = ["✨", "🌸", "🐾", "💙"];
 
 export const REASONING_ANSWER_OPENERS: readonly string[] = [
-  "让我查一下知识图谱。",
-  "嗯，这个我知道。",
-  "好，我来说说。",
-  "这个问题我有答案。",
-];
-
-export const REASONING_ANSWER_CLOSERS: readonly string[] = [
-  "如果还有其他想问的，随时说。",
-  "还想了解更多的话，尽管问我。",
-  "这就是我推理出来的结论。",
-  "如果这跟你在琢磨兽设或者创作有关，我也挺好奇后续的。", // furry nod
+  "简单来说，",
+  "就目前知道的信息来看，",
+  "我会这样回答：",
 ];
 
 export const REASONING_NO_ANSWER_OPENERS: readonly string[] = [
-  "唔，这个我目前还没有相关的知识。",
-  "抱歉，我暂时还不知道这个。",
-  "这个我还没学过。",
+  "关于这个问题，我看了看目前掌握的信息。",
+  "关于这个问题，",
+  "就现有信息来看，",
 ];
 
 export const REASONING_NO_ANSWER_CLOSERS: readonly string[] = [
-  "如果你知道答案，可以教教我，我会把它记下来。",
-  "要是愿意告诉我，我会记住的，下次就能直接回答。",
-  "随时欢迎补充知识给我，多多益善。",
+  "你可以补充一点背景，或者直接教我一条相关信息，我会继续试着回答。",
+  "如果你愿意告诉我一些相关信息，我会把它保存在你的知识库里，之后再接着聊。",
+  "也可以换一种方式问问看，或者先告诉我一条相关信息。",
 ];
 
 /**
@@ -52,52 +44,52 @@ export const REASONING_NO_ANSWER_CLOSERS: readonly string[] = [
  * Frost's job. Never used to invent doubt Frost wasn't told to express.
  */
 export const REASONING_UNCERTAIN_HEDGES: readonly string[] = [
-  "不过这个我不是很有把握，仅供参考～",
-  "这个我没有十足的信心，你可以再和我确认一下～",
-  "这只是我的推测，不一定完全准确～",
+  "不过我对这个答案还没有十足把握，可以再核对一下。",
+  "这部分我不太确定，可以把它当作一个待确认的答案。",
+  "这个结论的把握不高，最好再确认一下。",
 ];
 
 export const LEARNED_OPENERS: readonly string[] = [
-  "好，我记下来了：",
-  "明白了，这条知识我存起来了：",
-  "收到，这条我记住了：",
+  "记住啦，这条信息已经保存在你的知识库中：",
+  "好，我把这条信息记到你的知识库里了：",
+  "收到，这条信息已经放进你的知识库：",
 ];
 
 export const LEARNED_CLOSERS: readonly string[] = [
-  "以后可以直接问我这个。",
-  "下次遇到相关问题，我就能用上它了。",
-  "谢谢你教我新知识。",
+  "以后你问到相关内容时，我会参考它。",
+  "之后遇到相关问题，我会把它作为已知信息。",
+  "下次聊到相关内容时，我会用上这条信息。",
 ];
 
 export const UNKNOWN_INPUT_OPENERS: readonly string[] = [
-  "这个问题我暂时还没理解清楚。",
-  "唔，我暂时还没弄明白你想问什么。",
+  "这个问题，我现在还缺少一点上下文。",
+  "我暂时还不能确定你想了解哪一部分。",
 ];
 
 export const UNKNOWN_INPUT_CLOSERS: readonly string[] = [
-  "你可以换一种说法，或者再告诉我一点相关信息。",
-  "可以再多说一点，或者换个方式告诉我。",
+  "你可以补充一点背景，或者换一种说法，我会继续试着理解。",
+  "如果愿意，再告诉我一点相关信息，或者换个方式问问看。",
 ];
 
 export const GREETING_LINES: readonly string[] = [
-  "你好呀～有什么想聊的，或者想教我点新知识吗？",
-  "嗨，我在这里，想问点什么都可以。",
-  "欢迎回来～需要我帮忙推理点什么吗？",
-  "嗨，无论是新知识还是兽设点子，我都很乐意听听。", // furry nod
+  "你好，我是 Sunland AI。你可以和我聊聊，也可以教我新的信息；之后再问起时，我会参考你告诉我的内容。",
+  "嗨，我是 Sunland AI。想聊天、教我一条新信息，或者问问我已经知道的内容，都可以从这里开始。",
+  "你好，我是 Sunland AI。你可以先告诉我一条信息，再用问题考考我；我会试着记住并在之后用上。",
+  "嗨，我是 Sunland AI。日常话题、兽设想法，或是想教我的新知识，都可以慢慢聊。", // furry nod
 ];
 
 export const THANKS_LINES: readonly string[] = [
-  "不客气～能帮上忙我也很开心。",
-  "不用谢，这是我应该做的。",
-  "嘿嘿，随时欢迎再来问我。",
-  "能帮到你就好，有别的问题也尽管说。",
+  "不客气，能帮上忙就好。",
+  "不用谢，有想继续聊的就告诉我。",
+  "没关系，之后有问题也可以接着问。",
+  "能帮到你就好。",
 ];
 
 export const FAREWELL_LINES: readonly string[] = [
-  "拜拜～下次再聊！",
-  "再见，期待下次和你聊天。",
-  "先这样啦，有需要随时回来找我。",
-  "路上小心～我在这里等你回来。",
+  "再见，下次再聊。",
+  "先聊到这里，之后见。",
+  "好，那我们下次继续。",
+  "再见，祝你接下来一切顺利。",
 ];
 
 // Identity intent ("你是谁"/"Sunland AI 是什么"/"霜蓝是谁"): the FACTS come
@@ -105,34 +97,34 @@ export const FAREWELL_LINES: readonly string[] = [
 // verbatim by `frost.ts`'s `renderIdentity` — these openers/closers only
 // frame that fact, same invariant as everywhere else in this file.
 export const IDENTITY_OPENERS: readonly string[] = [
-  "关于我是谁，",
-  "让我介绍一下自己：",
-  "问得好，",
+  "我是 ",
+  "简单介绍一下：我是 ",
+  "问得好，我是 ",
 ];
 
 export const IDENTITY_CLOSERS: readonly string[] = [
-  "如果还想了解更多，随时问我。",
-  "有什么想知道的都可以接着问～",
+  "你可以教我一条新信息，或者直接问我已经知道的内容。",
+  "想试试的话，可以先告诉我一条信息，再问一个相关问题。",
 ];
 
 export const CAPABILITY_OPENERS: readonly string[] = [
-  "我目前能做的事情大概有这些：",
-  "说说看我能帮上什么忙：",
+  "我可以",
+  "目前我可以",
 ];
 
 export const CAPABILITY_CLOSERS: readonly string[] = [
-  "随着你教给我更多知识，我会越来越强。",
-  "以后应该还会有更多能力，敬请期待～",
+  "想试试的话，可以先教我一条信息，再问一个相关问题。",
+  "你可以直接教我一条信息，或者问一个已经教过的问题。",
 ];
 
 export const CREATOR_OPENERS: readonly string[] = [
-  "说到这个呀，",
-  "关于这个问题，",
+  "Sunland AI",
+  "目前，Sunland AI",
 ];
 
 export const CREATOR_CLOSERS: readonly string[] = [
-  "希望我能越来越好用。",
-  "也谢谢你愿意花时间和我聊天～",
+  "现在仍处于持续完善阶段。",
+  "目前仍在继续打磨中。",
 ];
 
 // Memory (Stage 5 -- Foundation): remembering/recalling the user's name.

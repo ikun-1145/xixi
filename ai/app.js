@@ -708,6 +708,7 @@ import {
   SUNLAND_LOGIN_STATE_MESSAGE,
 } from './user-identity.js';
 import {
+  conversationIdKey,
   createConversation,
   hasConversationStarted,
   isSupportedProviderId,
@@ -925,6 +926,22 @@ let chatSearchKeyword = "";
 const deletedConversationIds = new Set();
 const deletingConversationIds = new Set();
 
+function hasConversationMarker(markers, conversationOrId) {
+  const id = conversationOrId && typeof conversationOrId === "object"
+    ? conversationOrId.id
+    : conversationOrId;
+  const key = conversationIdKey(id);
+  return key != null && markers.has(key);
+}
+
+function isConversationDeleted(conversation) {
+  return hasConversationMarker(deletedConversationIds, conversation);
+}
+
+function isConversationDeleting(conversation) {
+  return hasConversationMarker(deletingConversationIds, conversation);
+}
+
 function renderHighlightedTitle(target, title, keyword) {
   target.textContent = "";
 
@@ -952,7 +969,9 @@ function renderChatList() {
 
   list.innerHTML = "";
 
-  const safeList = Array.isArray(conversations) ? conversations : [];
+  const safeList = Array.isArray(conversations)
+    ? conversations.filter(conversation => !isConversationDeleted(conversation))
+    : [];
   const keyword = (chatSearchKeyword || "").toLowerCase();
 
   const filtered = safeList.filter(c => {
@@ -993,7 +1012,7 @@ function renderChatList() {
     deleteBtn.innerText = "×";
     deleteBtn.setAttribute("aria-label", `删除对话：${title}`);
     deleteBtn.title = "删除对话";
-    deleteBtn.disabled = deletingConversationIds.has(c.id);
+    deleteBtn.disabled = isConversationDeleting(c);
     deleteBtn.onclick = async (e) => {
       e.stopPropagation();
       await deleteConversationForCurrentUser(c);
@@ -1068,7 +1087,7 @@ function buildCloudData(
     stripProfileMeta(sourceConversations),
     userId,
   )
-    .filter(conversation => !deletedConversationIds.has(conversation.id));
+    .filter(conversation => !isConversationDeleted(conversation));
   if (currentProfile?.avatar_url && userId) {
     rows.unshift({
       id: PROFILE_META_ID,
@@ -2368,7 +2387,7 @@ async function syncFromCloud() {
       const cloudConversations = filterConversationsForUser(
         normalizeCloudData(data.data, userId),
         userId,
-      ).filter(conversation => !deletedConversationIds.has(conversation.id));
+      ).filter(conversation => !isConversationDeleted(conversation));
 // ⭐兼容旧数据（没有updatedAt）
 conversations.forEach(c => {
   if (!c.updatedAt) c.updatedAt = c.id;
@@ -2378,9 +2397,9 @@ cloudConversations.forEach(c => {
   if (!c.updatedAt) c.updatedAt = c.id;
 });
 // ⭐ 合并本地与云端；Provider 不变量由统一 merge 策略保护。
-conversations = mergeConversationCollections(conversations, cloudConversations).sort(
-  (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)
-);
+conversations = mergeConversationCollections(conversations, cloudConversations)
+  .filter(conversation => !isConversationDeleted(conversation))
+  .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 // ⭐ 防止当前会话丢失
 if (currentId) {
   const stillExists = conversations.find(c => c.id === currentId);
@@ -2470,12 +2489,12 @@ function startRealtime() {
         const cloudData = filterConversationsForUser(
           normalizeCloudData(payload.new?.data, userId),
           userId,
-        ).filter(conversation => !deletedConversationIds.has(conversation.id));
+        ).filter(conversation => !isConversationDeleted(conversation));
         scheduleRenderUser();
 
-        conversations = mergeConversationCollections(conversations, cloudData).sort(
-          (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0)
-        );
+        conversations = mergeConversationCollections(conversations, cloudData)
+          .filter(conversation => !isConversationDeleted(conversation))
+          .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
 
         if (getCurrentUserId() === userId) {
   localStorage.setItem(
@@ -2538,7 +2557,10 @@ function belongsToCurrentConversationNamespace(conversation, userId) {
 async function deleteConversationForCurrentUser(targetConversation) {
   const identity = getCurrentVerifiedIdentity();
   const userId = getVerifiedUserId(identity);
-  const target = conversations.find(conversation => conversation === targetConversation);
+  const targetKey = conversationIdKey(targetConversation?.id);
+  const target = targetKey == null
+    ? null
+    : conversations.find(conversation => conversationIdKey(conversation.id) === targetKey);
   if (
     !identity ||
     !userId ||
@@ -2548,12 +2570,12 @@ async function deleteConversationForCurrentUser(targetConversation) {
     showToast(SUNLAND_LOGIN_STATE_MESSAGE);
     return false;
   }
-  if (deletingConversationIds.has(target.id)) return false;
+  if (deletingConversationIds.has(targetKey)) return false;
   if (!confirm("确定删除这个对话吗？删除后无法恢复。")) return false;
 
-  const targetWasCurrentAtStart = currentId === target.id;
-  deletingConversationIds.add(target.id);
-  deletedConversationIds.add(target.id);
+  const targetWasCurrentAtStart = conversationIdKey(currentId) === targetKey;
+  deletingConversationIds.add(targetKey);
+  deletedConversationIds.add(targetKey);
   renderChatList();
 
   const activeRequest = requestCoordinator.activeForConversation(target.id);
@@ -2566,7 +2588,9 @@ async function deleteConversationForCurrentUser(targetConversation) {
   const systemMessage = target.history?.find(message => message?.role === "system")
     || history.find(message => message?.role === "system")
     || null;
-  const nextConversations = conversations.filter(conversation => conversation !== target);
+  const nextConversations = conversations.filter(
+    conversation => conversationIdKey(conversation.id) !== targetKey,
+  );
   if (!nextConversations.length) {
     const replacement = createConversation({
       provider: "deepseek",
@@ -2581,22 +2605,35 @@ async function deleteConversationForCurrentUser(targetConversation) {
   clearTimeout(syncTimer);
   const cloudDeleted = await writeConversationsToCloud(userId, nextConversations);
   if (!cloudDeleted || getCurrentUserId() !== userId) {
-    deletedConversationIds.delete(target.id);
-    deletingConversationIds.delete(target.id);
+    deletedConversationIds.delete(targetKey);
+    deletingConversationIds.delete(targetKey);
+    if (
+      getCurrentUserId() === userId &&
+      !conversations.some(conversation => conversationIdKey(conversation.id) === targetKey)
+    ) {
+      conversations = mergeConversationCollections(conversations, [target]).sort(
+        (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0),
+      );
+      persistConversationStateLocally(userId);
+    }
     renderChatList();
-    if (currentId === target.id) loadChat(target.id);
+    if (conversationIdKey(currentId) === targetKey) loadChat(target.id);
     showToast("暂时无法删除这个对话，请稍后再试。");
     return false;
   }
 
-  const targetIsCurrent = currentId === target.id;
-  conversations = conversations.filter(conversation => conversation !== target);
+  const targetIsCurrent = conversationIdKey(currentId) === targetKey;
+  conversations = conversations.filter(
+    conversation => conversationIdKey(conversation.id) !== targetKey,
+  );
   if (!conversations.length) conversations = nextConversations;
-  deletingConversationIds.delete(target.id);
+  deletingConversationIds.delete(targetKey);
 
   const nextConversation = targetIsCurrent
     ? conversations[0]
-    : conversations.find(conversation => conversation.id === currentId) || conversations[0];
+    : conversations.find(
+      conversation => conversationIdKey(conversation.id) === conversationIdKey(currentId),
+    ) || conversations[0];
   currentId = nextConversation.id;
   history = cloneRequestHistory(nextConversation.history);
   chatRenderVersion += 1;
@@ -3259,7 +3296,7 @@ async function send() {
     hideGlobalLoading();
     return;
   }
-  if (deletingConversationIds.has(sendingConversation.id)) {
+  if (isConversationDeleting(sendingConversation)) {
     showToast("正在删除这个对话，请稍候。");
     hideGlobalLoading();
     return;
