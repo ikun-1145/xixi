@@ -1,7 +1,7 @@
 {
-  "version": "1.2.1",
-  "build": 27,
+  "version": "1.3.0",
+  "build": 28,
   "force": false,
   "url": "https://download-worker.liuxizekali.workers.dev/",
-  "desc": "优化 Sunland AI 霜蓝人格表达，改进知识教学、记忆提示与回复自然度。"
+  "desc": "迁移兽聚数据源，统一网页端与 Flutter 活动字段，并提升地点、时间筛选与活动详情展示稳定性。"
 }
