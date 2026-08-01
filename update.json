@@ -1,7 +1,7 @@
 {
-  "version": "1.2.0",
-  "build": 26,
+  "version": "1.2.1",
+  "build": 27,
   "force": false,
   "url": "https://download-worker.liuxizekali.workers.dev/",
-  "desc": "增设Sunland AI"
+  "desc": "优化 Sunland AI 霜蓝人格表达，改进知识教学、记忆提示与回复自然度。"
 }
