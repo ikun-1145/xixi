@@ -5,6 +5,8 @@
   <meta http-equiv="x-dns-prefetch-control" content="on">
   <meta name="baidu-site-verification" content="codeva-ZHYrUXwN49" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="p/js/site-i18n-extra.js"></script>
+  <script src="p/js/site-i18n.js"></script>
   <meta name="theme-color" content="#f7f9fa">
   <meta name="theme-color" content="#13151e" media="(prefers-color-scheme: dark)">
   <meta property="og:title" content="霜蓝的个人主页">
@@ -461,9 +463,34 @@
   </script>
 
   <div id="langSwitcher" class="lang-switcher" role="navigation" aria-label="语言切换">
-    <button data-lang="zh">中文</button>
-    <button data-lang="en">EN</button>
-    <button data-lang="ja">日本語</button>
+    <button id="languageMenuToggle" class="language-menu-toggle" type="button"
+      aria-haspopup="menu" aria-expanded="false" aria-controls="languageMenu">
+      <img class="language-flag" src="p/flags/cn.svg" alt="" data-language-current-flag>
+      <span data-language-current-label>简体中文</span>
+      <svg class="language-menu-chevron" viewBox="0 0 12 12" aria-hidden="true">
+        <path d="m2 4 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div id="languageMenu" class="language-menu" role="menu" aria-labelledby="languageMenuToggle" hidden>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="zh" aria-checked="true">
+        <img class="language-flag" src="p/flags/cn.svg" alt="">简体中文
+      </button>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="zh-Hant" aria-checked="false">
+        <img class="language-flag" src="p/flags/cn.svg" alt="">繁體中文
+      </button>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="en" aria-checked="false">
+        <img class="language-flag" src="p/flags/gb.svg" alt="">English
+      </button>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="ja" aria-checked="false">
+        <img class="language-flag" src="p/flags/jp.svg" alt="">日本語
+      </button>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="ko" aria-checked="false">
+        <img class="language-flag" src="p/flags/kr.svg" alt="">한국어
+      </button>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="es" aria-checked="false">
+        <img class="language-flag" src="p/flags/es.svg" alt="">Español
+      </button>
+    </div>
   </div>
 
   <div id="loading" aria-live="polite" aria-label="页面加载中">
@@ -769,11 +796,56 @@ document.addEventListener('DOMContentLoaded', () => {
       donate: "支援する",
       loading: "読み込み中...",
       firstVisitTip: "初回読み込みには時間がかかる場合があります。しばらくお待ちください。",
+    },
+    "zh-Hant": {
+      greeting: "你好",
+      intro: "歡迎來到我的個人主頁，這裡記錄著我的創作、想法與旅程。",
+      shoushe: "獸設介紹",
+      banquan: "版權資訊",
+      guanzhu: "關注我",
+      lianxi: "聯絡我",
+      comment: "評論留言",
+      fans: "即時粉絲數",
+      game: "小遊戲",
+      plan: "留學規劃",
+      donate: "捐贈支持",
+      loading: "載入中...",
+      firstVisitTip: "首次載入可能較慢，請耐心等候。",
+    },
+    ko: {
+      greeting: "안녕하세요",
+      intro: "제 개인 홈페이지에 오신 것을 환영합니다. 이곳에는 창작물과 생각, 여정을 기록합니다.",
+      shoushe: "캐릭터 소개",
+      banquan: "저작권 정보",
+      guanzhu: "팔로우",
+      lianxi: "연락하기",
+      comment: "댓글",
+      fans: "실시간 팔로워 수",
+      game: "미니 게임",
+      plan: "유학 계획",
+      donate: "후원하기",
+      loading: "로딩 중...",
+      firstVisitTip: "첫 로딩은 시간이 조금 걸릴 수 있습니다. 잠시만 기다려 주세요.",
+    },
+    es: {
+      greeting: "Hola",
+      intro: "Bienvenido a mi sitio web personal, donde comparto mis creaciones, ideas y viajes.",
+      shoushe: "Mi fursona",
+      banquan: "Derechos de autor",
+      guanzhu: "Sígueme",
+      lianxi: "Contacto",
+      comment: "Comentarios",
+      fans: "Seguidores",
+      game: "Minijuego",
+      plan: "Plan de estudios",
+      donate: "Apóyame",
+      loading: "Cargando...",
+      firstVisitTip: "La primera carga puede tardar un poco. Espera, por favor.",
     }
   };
 
   function applyLang(lang) {
-    const t = i18n[lang];
+    const t = i18n[lang] || i18n.en;
 
     // 更新加载文本
     const loadingText = document.getElementById("loadingText");
@@ -872,27 +944,33 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let autoLang = "en"; // 默认回退英语
 
-    if (browserLang.startsWith("zh")) {
+    if (/^zh-(hant|tw|hk|mo)/.test(browserLang)) {
+      autoLang = "zh-Hant";
+    } else if (browserLang.startsWith("zh")) {
       autoLang = "zh";
     } else if (browserLang.startsWith("ja")) {
       autoLang = "ja";
+    } else if (browserLang.startsWith("ko")) {
+      autoLang = "ko";
+    } else if (browserLang.startsWith("es")) {
+      autoLang = "es";
     } else if (browserLang.startsWith("en")) {
       autoLang = "en";
     } else {
       autoLang = "en"; // 其他语言统一回退到英语
     }
 
-    const saved = localStorage.getItem("lang");
+    const saved = window.SiteI18n?.normalizeLanguage(localStorage.getItem("lang"));
     const finalLang = saved || autoLang;
 
     applyLang(finalLang);
 
-    document.querySelectorAll("#langSwitcher button").forEach(btn => {
+    document.querySelectorAll("#langSwitcher [data-lang]").forEach(btn => {
       btn.classList.toggle("active", btn.dataset.lang === finalLang);
       btn.onclick = () => {
         const lang = btn.dataset.lang;
         localStorage.setItem("lang", lang);
-        document.querySelectorAll("#langSwitcher button")
+        document.querySelectorAll("#langSwitcher [data-lang]")
           .forEach(b => b.classList.remove("active"));
         btn.classList.add("active");
         applyLang(lang);

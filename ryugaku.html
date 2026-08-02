@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<script src="p/js/site-i18n-extra.js"></script>
+<script src="p/js/site-i18n.js"></script>
 <title>Project 2028 · 留学规划</title>
 
 <link rel="stylesheet" href="p/css/tokens.css">
@@ -393,7 +395,7 @@ const i18n = {
 };
 
 function applyLang(lang){
-  const t=i18n[lang] || i18n.en;
+  const t=i18n[lang] || i18n.zh;
 
   document.getElementById("heroSub").textContent=t.heroSub;
   document.getElementById("timelineTitle").textContent=t.timelineTitle;
@@ -416,11 +418,14 @@ function applyLang(lang){
   const browserLang = rawLang.toLowerCase();
 
   let autoLang = "en";
-  if (browserLang.startsWith("zh")) autoLang = "zh";
+  if (/^zh-(hant|tw|hk|mo)/.test(browserLang)) autoLang = "zh-Hant";
+  else if (browserLang.startsWith("zh")) autoLang = "zh";
   else if (browserLang.startsWith("ja")) autoLang = "ja";
+  else if (browserLang.startsWith("ko")) autoLang = "ko";
+  else if (browserLang.startsWith("es")) autoLang = "es";
   else if (browserLang.startsWith("en")) autoLang = "en";
 
-  const saved = localStorage.getItem("lang");
+  const saved = window.SiteI18n?.normalizeLanguage(localStorage.getItem("lang"));
   const finalLang = saved || autoLang;
 
   applyLang(finalLang);

@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-label="Bandera de España">
+  <path fill="#aa151b" d="M0 0h640v480H0z"/>
+  <path fill="#f1bf00" d="M0 120h640v240H0z"/>
+  <g transform="translate(168 240)">
+    <path fill="#aa151b" d="M-38-54h76v108h-76z"/>
+    <path fill="#f1bf00" d="M-29-45h58v90h-58z"/>
+    <path fill="#aa151b" d="M-20-38h40v76h-40z"/>
+    <path fill="#fff" d="M-12-28h24v56h-24z"/>
+    <path fill="#aa151b" d="M-44-64h88v10h-88z"/>
+  </g>
+</svg>

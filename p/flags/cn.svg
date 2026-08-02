@@ -1,0 +1,9 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 640 480" role="img" aria-label="中华人民共和国国旗">
+  <defs><path id="star" fill="#ff0" d="M-.6.8 0-1 .6.8-1-.3h2z"/></defs>
+  <path fill="#ee1c25" d="M0 0h640v480H0z"/>
+  <use href="#star" transform="matrix(72 0 0 72 120 120)"/>
+  <use href="#star" transform="matrix(-12.34 -20.59 20.59 -12.34 240.3 48)"/>
+  <use href="#star" transform="matrix(-3.39 -23.76 23.76 -3.39 288 95.8)"/>
+  <use href="#star" transform="matrix(6.6 -23.07 23.07 6.6 288 168)"/>
+  <use href="#star" transform="matrix(15 -18.74 18.74 15 240 216)"/>
+</svg>

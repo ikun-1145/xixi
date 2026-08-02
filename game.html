@@ -4,6 +4,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<script src="p/js/site-i18n-extra.js"></script>
+<script src="p/js/site-i18n.js"></script>
 <title>小游戏</title>
 
 <link rel="preload" as="image" href="p/chengshi.webp" type="image/webp">
@@ -213,16 +215,43 @@ const i18n = {
     loading: "読み込み中...",
     tapToStart: "タップして開始",
     highScore: "最高"
+  },
+  "zh-Hant": {
+    title: "小遊戲",
+    gameOver: "遊戲結束",
+    restart: "再來一局",
+    loading: "載入中...",
+    tapToStart: "點擊螢幕開始",
+    highScore: "最高"
+  },
+  ko: {
+    title: "미니 게임",
+    gameOver: "게임 종료",
+    restart: "다시 하기",
+    loading: "로딩 중...",
+    tapToStart: "화면을 눌러 시작",
+    highScore: "최고 점수"
+  },
+  es: {
+    title: "Minijuego",
+    gameOver: "Fin del juego",
+    restart: "Jugar de nuevo",
+    loading: "Cargando...",
+    tapToStart: "Toca la pantalla para empezar",
+    highScore: "Récord"
   }
 };
 
 function detectLang(){
-  const saved = localStorage.getItem("lang");
+  const saved = window.SiteI18n?.normalizeLanguage(localStorage.getItem("lang"));
   if (saved && i18n[saved]) return saved;
 
   const nav = navigator.language || "zh";
+  if (/^zh-(hant|tw|hk|mo)/i.test(nav)) return "zh-Hant";
   if (nav.startsWith("ja")) return "ja";
   if (nav.startsWith("en")) return "en";
+  if (nav.startsWith("ko")) return "ko";
+  if (nav.startsWith("es")) return "es";
   return "zh";
 }
 

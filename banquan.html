@@ -4,6 +4,8 @@
   <meta charset="UTF-8" />
   <meta http-equiv="x-dns-prefetch-control" content="off">
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <script src="p/js/site-i18n-extra.js"></script>
+  <script src="p/js/site-i18n.js"></script>
   <title id="pageTitle">版权信息 - 霜蓝</title>
   <meta name="theme-color" content="#f7f9fa" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#13151e" media="(prefers-color-scheme: dark)">
@@ -98,9 +100,34 @@
   </div>
 
   <div id="langSwitcher" class="lang-switcher" role="navigation" aria-label="语言切换">
-    <button data-lang="zh">中文</button>
-    <button data-lang="en">EN</button>
-    <button data-lang="ja">日本語</button>
+    <button id="languageMenuToggle" class="language-menu-toggle" type="button"
+      aria-haspopup="menu" aria-expanded="false" aria-controls="languageMenu">
+      <img class="language-flag" src="p/flags/cn.svg" alt="" data-language-current-flag>
+      <span data-language-current-label>简体中文</span>
+      <svg class="language-menu-chevron" viewBox="0 0 12 12" aria-hidden="true">
+        <path d="m2 4 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div id="languageMenu" class="language-menu" role="menu" aria-labelledby="languageMenuToggle" hidden>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="zh" aria-checked="true">
+        <img class="language-flag" src="p/flags/cn.svg" alt="">简体中文
+      </button>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="zh-Hant" aria-checked="false">
+        <img class="language-flag" src="p/flags/cn.svg" alt="">繁體中文
+      </button>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="en" aria-checked="false">
+        <img class="language-flag" src="p/flags/gb.svg" alt="">English
+      </button>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="ja" aria-checked="false">
+        <img class="language-flag" src="p/flags/jp.svg" alt="">日本語
+      </button>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="ko" aria-checked="false">
+        <img class="language-flag" src="p/flags/kr.svg" alt="">한국어
+      </button>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="es" aria-checked="false">
+        <img class="language-flag" src="p/flags/es.svg" alt="">Español
+      </button>
+    </div>
   </div>
 
   <main class="page-shell page-card card">
@@ -154,7 +181,7 @@
     };
 
     function applyLang() {
-      const lang = localStorage.getItem("lang") || "zh";
+      const lang = window.SiteI18n?.normalizeLanguage(localStorage.getItem("lang")) || "zh";
       const t = i18n[lang] || i18n.zh;
 
       document.title = t.pageTitle;
@@ -162,12 +189,12 @@
       document.getElementById("descText").textContent = t.desc;
       document.getElementById("backBtn").textContent = t.back;
 
-      document.querySelectorAll("#langSwitcher button").forEach(btn => {
+      document.querySelectorAll("#langSwitcher [data-lang]").forEach(btn => {
         btn.classList.toggle("active", btn.dataset.lang === lang);
       });
     }
 
-    document.querySelectorAll("#langSwitcher button").forEach(btn => {
+    document.querySelectorAll("#langSwitcher [data-lang]").forEach(btn => {
       btn.onclick = () => {
         localStorage.setItem("lang", btn.dataset.lang);
         applyLang();

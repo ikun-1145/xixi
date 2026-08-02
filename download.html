@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="p/js/site-i18n-extra.js"></script>
+  <script src="p/js/site-i18n.js"></script>
   <title data-i18n="pageTitle">Sunland AI · Beta — 重新定义智能交互</title>
   <meta name="description" content="Sunland AI · Beta 公测正式开启，立即下载体验智能对话助手">
   <meta name="theme-color" content="#0c0e1a">
@@ -1353,20 +1355,25 @@
 
   // Detect language from localStorage (set by index.html) or browser
   (function initLang() {
-    const saved = localStorage.getItem('lang');
-    if (saved && i18n[saved]) {
+    const supported = ['zh', 'zh-Hant', 'en', 'ja', 'ko', 'es'];
+    const htmlLang = { zh: 'zh-Hans', 'zh-Hant': 'zh-Hant', en: 'en', ja: 'ja', ko: 'ko', es: 'es' };
+    const saved = window.SiteI18n?.normalizeLanguage(localStorage.getItem('lang'));
+    if (saved && supported.includes(saved)) {
       applyLang(saved);
-      document.documentElement.lang = saved === 'ja' ? 'ja' : saved === 'en' ? 'en' : 'zh-Hans';
+      document.documentElement.lang = htmlLang[saved];
       return;
     }
     const raw = navigator.language || navigator.userLanguage || 'zh';
     const browser = raw.toLowerCase();
     let detected = 'zh';
-    if (browser.startsWith('zh')) detected = 'zh';
+    if (/^zh-(hant|tw|hk|mo)/.test(browser)) detected = 'zh-Hant';
+    else if (browser.startsWith('zh')) detected = 'zh';
     else if (browser.startsWith('ja')) detected = 'ja';
+    else if (browser.startsWith('ko')) detected = 'ko';
+    else if (browser.startsWith('es')) detected = 'es';
     else detected = 'en';
     applyLang(detected);
-    document.documentElement.lang = detected === 'ja' ? 'ja' : detected === 'en' ? 'en' : 'zh-Hans';
+    document.documentElement.lang = htmlLang[detected];
   })();
 
   /* ═══════════════════════════════════════════════════════════
@@ -1668,9 +1675,11 @@
         started = true;
         observer.disconnect();
         // Get current language text
-        const saved = localStorage.getItem('lang') || 'zh';
+        const saved = window.SiteI18n?.normalizeLanguage(localStorage.getItem('lang')) || 'zh';
         const t = i18n[saved] || i18n.zh;
-        const text = t.aiResponse || i18n.zh.aiResponse;
+        const text = i18n[saved]?.aiResponse
+          || window.SiteI18n?.translate(t.aiResponse || i18n.zh.aiResponse, saved)
+          || i18n.zh.aiResponse;
         let i = 0;
         function type() {
           if (i < text.length) {
@@ -1709,7 +1718,11 @@
       // Downloading state
       btn.classList.add('downloading');
       const originalHTML = btn.innerHTML;
-      btn.innerHTML = '<svg class="dl-spinner" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> <span>' + (i18n[localStorage.getItem('lang')||'zh']?.dlBtn || '下载中...') + '</span>';
+      const saved = window.SiteI18n?.normalizeLanguage(localStorage.getItem('lang')) || 'zh';
+      const downloadLabel = i18n[saved]?.dlBtn
+        || window.SiteI18n?.translate(i18n.zh.dlBtn, saved)
+        || i18n.zh.dlBtn;
+      btn.innerHTML = '<svg class="dl-spinner" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> <span>' + downloadLabel + '</span>';
       setTimeout(() => {
         btn.classList.remove('downloading');
         btn.innerHTML = originalHTML;

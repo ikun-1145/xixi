@@ -182,8 +182,7 @@ img { max-width: 100%; }
   top: var(--space-4);
   right: var(--space-4);
   z-index: 50;
-  display: flex;
-  gap: 2px;
+  display: block;
   padding: 3px;
   border-radius: var(--r-full);
   background: var(--glass-bg);
@@ -208,6 +207,69 @@ img { max-width: 100%; }
               box-shadow var(--dur-fast) var(--ease);
 }
 
+.lang-switcher .language-menu-toggle,
+.lang-switcher .language-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.lang-switcher .language-menu-toggle {
+  min-width: 128px;
+  justify-content: flex-start;
+}
+
+.language-flag {
+  width: 20px;
+  height: 15px;
+  flex: 0 0 auto;
+  border-radius: 2px;
+  object-fit: cover;
+  box-shadow: 0 0 0 1px rgba(20, 28, 40, 0.12);
+}
+
+.language-menu-chevron {
+  width: 12px;
+  height: 12px;
+  margin-left: auto;
+  transition: transform var(--dur-fast) var(--ease);
+}
+
+.language-menu-toggle[aria-expanded="true"] .language-menu-chevron {
+  transform: rotate(180deg);
+}
+
+.language-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 176px;
+  padding: 4px;
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  background: var(--glass-bg);
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+  box-shadow: var(--shadow-md);
+}
+
+.language-menu[hidden] { display: none; }
+
+.lang-switcher .language-menu-item {
+  width: 100%;
+  justify-content: flex-start;
+  padding: 8px 10px;
+  border-radius: var(--r-md);
+  white-space: nowrap;
+}
+
+.lang-switcher .language-menu-item.active::after {
+  content: "✓";
+  margin-left: auto;
+  color: var(--brand);
+  font-weight: 700;
+}
+
 .lang-switcher button:hover { color: var(--text); }
 
 .lang-switcher button.active {
@@ -219,6 +281,8 @@ img { max-width: 100%; }
 @media (max-width: 480px) {
   .lang-switcher { top: var(--space-2); right: var(--space-2); }
   .lang-switcher button { padding: 5px 10px; font-size: var(--text-xs); }
+  .lang-switcher .language-menu-toggle { min-width: 116px; }
+  .lang-switcher .language-menu-item { padding: 8px 10px; }
 }
 
 /* ---------- 页脚 ---------- */
@@ -297,7 +361,8 @@ body.fade-out {
 
 /* ---------- 玻璃降级 ---------- */
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
-  .lang-switcher { background: var(--surface); }
+  .lang-switcher,
+  .language-menu { background: var(--surface); }
   .modal { background: rgba(10, 12, 16, 0.62); }
 }
 

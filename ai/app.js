@@ -1,3 +1,9 @@
+function uiText(text) {
+  return typeof window.SiteI18n?.translate === "function"
+    ? window.SiteI18n.translate(text)
+    : text;
+}
+
 // ===== PWA Service Worker 注册 + 更新检测 =====
 if ('serviceWorker' in navigator && location.protocol === 'https:' && location.hostname !== '127.0.0.1') {
   navigator.serviceWorker.register('/sw.js')
@@ -982,7 +988,10 @@ function renderChatList() {
 
   if (!filtered.length) {
     const empty = document.createElement("div");
-    empty.innerHTML = "<div style='opacity:0.7;'>🔍 没找到相关对话</div>";
+    const emptyLabel = document.createElement("div");
+    emptyLabel.style.opacity = "0.7";
+    emptyLabel.textContent = `🔍 ${uiText("没找到相关对话")}`;
+    empty.appendChild(emptyLabel);
     empty.style.color = "#999";
     empty.style.fontSize = "12px";
     empty.style.textAlign = "center";
@@ -996,13 +1005,14 @@ function renderChatList() {
     div.className = "chat-list-item";
 
     const title = c.title || "新对话";
+    const visibleTitle = title === "新对话" ? uiText(title) : title;
     const titleEl = document.createElement("span");
     titleEl.className = "chat-list-title";
 
     if (chatSearchKeyword) {
-      renderHighlightedTitle(titleEl, title, chatSearchKeyword);
+      renderHighlightedTitle(titleEl, visibleTitle, chatSearchKeyword);
     } else {
-      titleEl.innerText = title;
+      titleEl.innerText = visibleTitle;
     }
     div.appendChild(titleEl);
 
@@ -1010,8 +1020,8 @@ function renderChatList() {
     deleteBtn.type = "button";
     deleteBtn.className = "delete-chat";
     deleteBtn.innerText = "×";
-    deleteBtn.setAttribute("aria-label", `删除对话：${title}`);
-    deleteBtn.title = "删除对话";
+    deleteBtn.setAttribute("aria-label", uiText(`删除对话：${visibleTitle}`));
+    deleteBtn.title = uiText("删除对话");
     deleteBtn.disabled = isConversationDeleting(c);
     deleteBtn.onclick = async (e) => {
       e.stopPropagation();
@@ -2306,7 +2316,7 @@ function updateRequestUiState() {
   input.readOnly = sendingLock;
   document.body.classList.toggle("thinking-mode", sendingLock);
   sendBtn.innerText = sendingLock ? "■" : "↑";
-  sendBtn.setAttribute("aria-label", sendingLock ? "停止当前对话生成" : "发送消息");
+  sendBtn.setAttribute("aria-label", uiText(sendingLock ? "停止当前对话生成" : "发送消息"));
 }
 
 function stopRequest(requestContext, reason = "user") {
@@ -2795,7 +2805,7 @@ function addMessage(text, type, options = {}) {
     if (options.imageSrc && SAFE_INLINE_IMAGE_PATTERN.test(options.imageSrc)) {
       const img = document.createElement("img");
       img.src = options.imageSrc;
-      img.alt = String(text || "用户上传的图片");
+      img.alt = String(text || uiText("用户上传的图片"));
       img.style.maxWidth = "100%";
       img.style.borderRadius = "10px";
       img.style.marginTop = "4px";
@@ -2950,7 +2960,7 @@ function checkInputModeration(text) {
 function refuseModeratedInput(result) {
   console.warn("前端审核拦截:", result);
   showToast("内容未通过审核，请修改后再发送");
-  addMessage(MODERATION_REFUSAL_TEXT, "ai");
+  addMessage(uiText(MODERATION_REFUSAL_TEXT), "ai");
   if (!window._isMobile) input.focus();
 }
 
@@ -3049,7 +3059,7 @@ function addRegenerateButton(requestContext, fullText) {
 }
 
 async function sendSunlandMessage(requestContext) {
-  const errorMessage = "Sunland AI · Beta 暂时出了点问题，请稍后重试";
+  const errorMessage = uiText("Sunland AI · Beta 暂时出了点问题，请稍后重试");
   try {
     if (isRequestVisible(requestContext)) requestContext.bubble.innerHTML = "";
     const provider = providerRegistry.get("sunland");
@@ -3071,7 +3081,7 @@ async function sendSunlandMessage(requestContext) {
     });
 
     if (result.blocked) {
-      renderRequestMarkdown(requestContext, requestContext.bubble, result.content);
+      renderRequestMarkdown(requestContext, requestContext.bubble, uiText(result.content));
       return;
     }
     const saved = requestCoordinator.appendMessageWithSemanticContext(
@@ -3111,11 +3121,11 @@ function decorateVisibleCodeBlocks(requestContext) {
     }
     const btn = document.createElement("button");
     btn.className = "copy-btn";
-    btn.innerText = "复制";
+    btn.innerText = uiText("复制");
     btn.onclick = () => {
       navigator.clipboard.writeText(el.innerText).then(() => {
-        btn.innerText = "已复制 ✓";
-        setTimeout(() => btn.innerText = "复制", 1500);
+        btn.innerText = uiText("已复制 ✓");
+        setTimeout(() => btn.innerText = uiText("复制"), 1500);
       });
     };
     el.parentElement.style.position = "relative";
@@ -3132,7 +3142,7 @@ async function runDeepSeekRequest(requestContext) {
     let softTimeoutShown = false;
     const timeoutId = setTimeout(() => {
       if (!softTimeoutShown && isRequestVisible(requestContext) && !fullText) {
-        requestContext.bubble.textContent = "响应较慢，请稍等…";
+        requestContext.bubble.textContent = uiText("响应较慢，请稍等…");
         softTimeoutShown = true;
       }
     }, 15000);
@@ -3142,7 +3152,7 @@ async function runDeepSeekRequest(requestContext) {
 
     try {
       if (!localStorage.getItem("token")) {
-        const message = "登录状态已失效，请重新登录";
+        const message = uiText("登录状态已失效，请重新登录");
         appendRequestMessage(requestContext, { role: "assistant", content: message });
         renderRequestMarkdown(requestContext, requestContext.bubble, message);
         goToLogin();
@@ -3160,7 +3170,7 @@ async function runDeepSeekRequest(requestContext) {
 
       if (res.status === 429) {
         if (currentId === requestContext.conversationId) showLimitModal();
-        const message = "今天的使用次数已达上限，请稍后再试";
+        const message = uiText("今天的使用次数已达上限，请稍后再试");
         appendRequestMessage(requestContext, { role: "assistant", content: message });
         renderRequestMarkdown(requestContext, requestContext.bubble, message);
         return;
@@ -3169,7 +3179,7 @@ async function runDeepSeekRequest(requestContext) {
       if (!res.ok) {
         const errText = await res.text();
         console.error("API错误:", res.status, errText);
-        const message = `请求失败（${res.status}），请稍后重试`;
+        const message = uiText(`请求失败（${res.status}），请稍后重试`);
         appendRequestMessage(requestContext, { role: "assistant", content: message });
         renderRequestMarkdown(requestContext, requestContext.bubble, message);
         return;
@@ -3220,7 +3230,7 @@ async function runDeepSeekRequest(requestContext) {
                 reasoningDiv = document.createElement("div");
                 reasoningDiv.style.cssText = "font-size:12px;color:#888;margin-bottom:8px;border-left:3px solid #22d3ee;padding-left:8px;line-height:1.5;";
                 const title = document.createElement("div");
-                title.innerText = "🧠 思考过程";
+                title.innerText = uiText("🧠 思考过程");
                 title.style.marginBottom = "4px";
                 reasoningContent = document.createElement("div");
                 reasoningDiv.appendChild(title);
@@ -3265,7 +3275,7 @@ async function runDeepSeekRequest(requestContext) {
       }
 
       console.error("真实错误:", err);
-      const message = "请求异常，请稍后重试";
+      const message = uiText("请求异常，请稍后重试");
       if (requestCoordinator.canWrite(requestContext)) {
         appendRequestMessage(requestContext, { role: "assistant", content: message });
         renderRequestMarkdown(requestContext, requestContext.bubble, message);
@@ -3352,7 +3362,7 @@ async function send() {
     sendingConversation?.provider === "sunland" &&
     !isSameUserIdentity(verifiedUserId, sendingConversation.userId)
   ) {
-    addMessage(SUNLAND_LOGIN_STATE_MESSAGE, "ai");
+    addMessage(uiText(SUNLAND_LOGIN_STATE_MESSAGE), "ai");
     hideGlobalLoading();
     return;
   }
@@ -3507,7 +3517,7 @@ async function send() {
     }
   } catch (err) {
     console.error("发送流程出错:", err);
-    const message = "消息处理失败，请稍后重试";
+    const message = uiText("消息处理失败，请稍后重试");
     if (requestCoordinator.canWrite(requestContext)) {
       appendRequestMessage(requestContext, { role: "assistant", content: message });
       renderRequestMarkdown(requestContext, requestContext.bubble, message);

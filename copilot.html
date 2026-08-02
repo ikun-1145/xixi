@@ -3,6 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<script src="p/js/site-i18n-extra.js"></script>
+<script src="p/js/site-i18n.js"></script>
 <title>护福宝 HuFuBao · 福瑞评论区 AI 嘴替</title>
 <meta name="description" content="护福宝是一款为福瑞（Furry）创作者打造的 AI 评论助手，帮你识别评论意图、看懂互联网黑话、分析攻击方式，给出更聪明、更高情商的回复建议，让每一次回应都更从容。">
 <meta name="keywords" content="护福宝,HuFuBao,福瑞,furry,评论助手,AI 回复,黑话识别,评论区">
@@ -1059,7 +1061,10 @@ function renderTurn(comment, image, result, turnNo){
   no.textContent = '第 ' + turnCount + ' 轮';
   const quote = document.createElement('div');
   quote.className = 'turn-quote';
-  if(comment){ quote.textContent = comment; }
+  if(comment){
+    quote.textContent = comment;
+    quote.setAttribute('data-site-i18n-ignore', '');
+  }
   else { quote.textContent = '🖼️ 仅图片'; quote.classList.add('img-only'); }
   head.appendChild(no); head.appendChild(quote);
   turn.appendChild(head);
@@ -1083,7 +1088,9 @@ function renderTurn(comment, image, result, turnNo){
       const tag = document.createElement('span');
       tag.className = 'type-tag';
       const ck = document.createElement('span'); ck.textContent = '✔';
-      const tt = document.createElement('span'); tt.textContent = tp;
+      const tt = document.createElement('span');
+      tt.textContent = tp;
+      tt.setAttribute('data-site-i18n-ignore', '');
       tag.appendChild(ck); tag.appendChild(tt);
       typesWrap.appendChild(tag);
     });
@@ -1097,6 +1104,7 @@ function renderTurn(comment, image, result, turnNo){
   if(a.detail){
     const d = document.createElement('div');
     d.className = 'analysis-text'; d.textContent = a.detail;
+    d.setAttribute('data-site-i18n-ignore', '');
     c1.appendChild(d);
   }
   turn.appendChild(c1);
@@ -1113,6 +1121,7 @@ function renderTurn(comment, image, result, turnNo){
   if(ad.reason){
     const r = document.createElement('div');
     r.className = 'advice-text'; r.textContent = ad.reason;
+    r.setAttribute('data-site-i18n-ignore', '');
     c2.appendChild(r);
   }
   turn.appendChild(c2);
@@ -1124,6 +1133,7 @@ function renderTurn(comment, image, result, turnNo){
     const box = document.createElement('div');
     box.className = 'reply-box';
     box.textContent = rp.reply_text.trim();
+    box.setAttribute('data-site-i18n-ignore', '');
     c3.appendChild(box);
 
     const actions = document.createElement('div');
@@ -1157,10 +1167,14 @@ function renderTurn(comment, image, result, turnNo){
     const tx = document.createElement('div'); tx.className = 'nr-text';
     const b = document.createElement('b'); b.textContent = '建议不要回复。';
     tx.appendChild(b);
-    const reason = (rp.empty_reason && rp.empty_reason.trim())
-      ? ('　' + rp.empty_reason.trim())
-      : '　继续回应没有意义，留给它一个安静的角落即可。';
-    tx.appendChild(document.createTextNode(reason));
+    if(rp.empty_reason && rp.empty_reason.trim()){
+      const reason = document.createElement('span');
+      reason.textContent = '　' + rp.empty_reason.trim();
+      reason.setAttribute('data-site-i18n-ignore', '');
+      tx.appendChild(reason);
+    }else{
+      tx.appendChild(document.createTextNode('　继续回应没有意义，留给它一个安静的角落即可。'));
+    }
     nr.appendChild(ico); nr.appendChild(tx);
     c3.appendChild(nr);
   }

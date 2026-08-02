@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <script src="p/js/site-i18n-extra.js"></script>
+  <script src="p/js/site-i18n.js"></script>
   <title id="pageTitle">捐赠支持 - 霜蓝</title>
   <meta name="theme-color" content="#f7f9fa" media="(prefers-color-scheme: light)">
   <meta name="theme-color" content="#13151e" media="(prefers-color-scheme: dark)">
@@ -757,11 +759,77 @@
         back: "ホームへ戻る",
         logout: "ログアウト",
         greeting: (name) => `ようこそ、${name || "友達"} 💙`
+      },
+      "zh-Hant": {
+        pageTitle: "捐贈支持 - 霜藍",
+        title: "感謝你的支持！",
+        supportDesc: "如果你喜歡本站內容，可以選擇一種方式支持我：",
+        tierCoffee: "請你喝杯咖啡",
+        tierMeal: "請你吃頓飯",
+        tierBiglove: "大力支持一下",
+        tierHint: "選擇檔位後，掃碼支付即可～",
+        wxPay: "微信支付",
+        aliPay: "支付寶",
+        boardTitle: "💖 粉絲鳴謝榜",
+        boardDesc: "感謝每一位支持霜藍的朋友（按時間倒序）",
+        loadMore: "載入更多",
+        formTitle: "✍ 留下你的支持留言",
+        namePh: "你的暱稱（可留空）",
+        msgPh: "想對霜藍說的話（可選）",
+        submit: "提交到鳴謝榜",
+        tip: "提交後會顯示在榜單中 💙",
+        back: "返回主頁",
+        logout: "登出",
+        greeting: (name) => `歡迎你，${name || "朋友"} 💙`
+      },
+      ko: {
+        pageTitle: "후원 - Frost",
+        title: "응원해 주셔서 감사합니다!",
+        supportDesc: "이 사이트가 마음에 드셨다면 다음 방법으로 후원해 주세요:",
+        tierCoffee: "커피 한 잔 사주기",
+        tierMeal: "식사 한 끼 사주기",
+        tierBiglove: "크게 응원하기",
+        tierHint: "금액을 선택한 뒤 QR 코드를 스캔해 결제해 주세요.",
+        wxPay: "WeChat Pay",
+        aliPay: "Alipay",
+        boardTitle: "💖 후원자 명단",
+        boardDesc: "Frost를 응원해 주신 모든 분께 감사드립니다(최신순)",
+        loadMore: "더 보기",
+        formTitle: "✍ 응원 메시지 남기기",
+        namePh: "닉네임(선택 사항)",
+        msgPh: "Frost에게 남길 메시지(선택 사항)",
+        submit: "명단에 등록",
+        tip: "등록한 메시지는 후원자 명단에 표시됩니다 💙",
+        back: "홈으로 돌아가기",
+        logout: "로그아웃",
+        greeting: (name) => `환영합니다, ${name || "친구"} 💙`
+      },
+      es: {
+        pageTitle: "Apoya a Frost",
+        title: "¡Gracias por tu apoyo!",
+        supportDesc: "Si te gusta este sitio, puedes apoyarme de una de estas formas:",
+        tierCoffee: "Invítame a un café",
+        tierMeal: "Invítame a comer",
+        tierBiglove: "¡Dame un gran apoyo!",
+        tierHint: "Elige un importe y escanea el código para pagar.",
+        wxPay: "WeChat Pay",
+        aliPay: "Alipay",
+        boardTitle: "💖 Lista de colaboradores",
+        boardDesc: "Gracias a todos los que apoyan a Frost (más recientes primero)",
+        loadMore: "Cargar más",
+        formTitle: "✍ Deja tu mensaje de apoyo",
+        namePh: "Tu apodo (opcional)",
+        msgPh: "Mensaje para Frost (opcional)",
+        submit: "Publicar en la lista",
+        tip: "Tu mensaje aparecerá en la lista 💙",
+        back: "Volver al inicio",
+        logout: "Cerrar sesión",
+        greeting: (name) => `Te damos la bienvenida, ${name || "amigo"} 💙`
       }
     };
 
     function applyLangDonate(nameForGreeting) {
-      const lang = localStorage.getItem("lang") || "zh";
+      const lang = window.SiteI18n?.normalizeLanguage(localStorage.getItem("lang")) || "zh";
       const t = i18n[lang] || i18n.zh;
 
       document.title = t.pageTitle;
@@ -848,6 +916,13 @@ window.addEventListener('load', () => {
   <script type="module">
     import { supabase } from '/p/js/supabaseClient.js';
     import { clearSupabaseAuthStorage } from '/p/js/authState.js';
+
+    function uiText(text) {
+      return typeof window.SiteI18n?.translate === "function"
+        ? window.SiteI18n.translate(text)
+        : text;
+    }
+
       // ===== donate 页面登录守门 =====
   const {
     data: { session: initialSession }
@@ -867,13 +942,22 @@ window.addEventListener('load', () => {
       const now = new Date();
       const diff = (now - t) / 1000;
 
-      if (diff < 60) return "刚刚";
-      if (diff < 3600) return Math.floor(diff / 60) + " 分钟前";
-      if (diff < 86400) return Math.floor(diff / 3600) + " 小时前";
+      if (diff < 60) return uiText("刚刚");
+      if (diff < 3600) return uiText(Math.floor(diff / 60) + " 分钟前");
+      if (diff < 86400) return uiText(Math.floor(diff / 3600) + " 小时前");
 
       const isToday = now.toDateString() === t.toDateString();
       if (isToday) {
-        return "今天 " + pad(t.getHours()) + ":" + pad(t.getMinutes());
+        return uiText("今天") + " " + pad(t.getHours()) + ":" + pad(t.getMinutes());
+      }
+
+      if (window.SiteI18n?.getLanguage?.() === "en") {
+        return (
+          pad(t.getMonth() + 1) + "/" +
+          pad(t.getDate()) + " " +
+          pad(t.getHours()) + ":" +
+          pad(t.getMinutes())
+        );
       }
 
       return (
@@ -918,7 +1002,8 @@ window.addEventListener('load', () => {
 
       if (error || !data) {
         if (thanksList && reset) {
-          thanksList.innerHTML = '<div class="thanks-item"><div class="msg">暂无鸣谢记录，期待你的第一份支持 💙</div></div>';
+          thanksList.innerHTML = '<div class="thanks-item"><div class="msg">' +
+            uiText('暂无鸣谢记录，期待你的第一份支持 💙') + '</div></div>';
         }
         return;
       }
@@ -931,7 +1016,7 @@ window.addEventListener('load', () => {
           return `
           <div class="thanks-item ${isMine ? "mine" : ""}" data-id="${item.id}">
             <div class="name">${item.name || ""}</div>
-            <div class="msg">${item.message || "感谢支持！"}</div>
+            <div class="msg">${item.message || uiText("感谢支持！")}</div>
             <div class="like-row">
               <div class="time">${formatTime(item.created_at)}</div>
               <button class="like-btn">

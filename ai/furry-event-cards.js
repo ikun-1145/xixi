@@ -4,6 +4,11 @@ import {
   safeHttpUrl,
 } from "./furry-events.js";
 
+function uiText(text) {
+  const i18n = globalThis.SiteI18n;
+  return typeof i18n?.translate === "function" ? i18n.translate(text) : text;
+}
+
 function externalLink(documentRef, url, label, className) {
   const safeUrl = safeHttpUrl(url);
   if (!safeUrl) return null;
@@ -17,15 +22,15 @@ function externalLink(documentRef, url, label, className) {
 }
 
 function weatherText(weather) {
-  if (!weather) return "天气待临近活动时更新";
+  if (!weather) return uiText("天气待临近活动时更新");
   const temperatures = weather.tempMin != null && weather.tempMax != null
     ? ` ${Math.round(weather.tempMin)}~${Math.round(weather.tempMax)}°C`
     : "";
-  return `${weather.label || "天气"}${temperatures}`;
+  return `${weather.label || uiText("天气")}${temperatures}`;
 }
 
 function eventLocation(event) {
-  return [event.city, event.address].filter(Boolean).join(" · ") || "地点待公布";
+  return [event.city, event.address].filter(Boolean).join(" · ") || uiText("地点待公布");
 }
 
 function createEventCard(documentRef, event) {
@@ -45,7 +50,7 @@ function createEventCard(documentRef, event) {
     const image = documentRef.createElement("img");
     image.className = "furry-event-cover";
     image.src = event.cover;
-    image.alt = `${event.name}活动封面`;
+    image.alt = uiText(`${event.name}活动封面`);
     image.loading = "lazy";
     image.decoding = "async";
     image.referrerPolicy = "no-referrer";
@@ -82,7 +87,7 @@ function createEventCard(documentRef, event) {
   const meta = documentRef.createElement("div");
   meta.className = "furry-event-meta";
   const date = documentRef.createElement("span");
-  date.textContent = `📅 ${formatFurryEventDateRange(event)}`;
+  date.textContent = `📅 ${uiText(formatFurryEventDateRange(event))}`;
   const location = documentRef.createElement("span");
   location.textContent = `📍 ${eventLocation(event)}`;
   meta.append(date, location);
@@ -107,19 +112,19 @@ function createEventCard(documentRef, event) {
   const detailLink = externalLink(
     documentRef,
     event.source_url,
-    "活动详情",
+    uiText("活动详情"),
     "furry-event-action detail",
   );
   const ctripLink = externalLink(
     documentRef,
     event.hotels?.ctripUrl,
-    "携程住宿",
+    uiText("携程住宿"),
     "furry-event-action ctrip",
   );
   const meituanLink = externalLink(
     documentRef,
     event.hotels?.meituanUrl,
-    "美团住宿",
+    uiText("美团住宿"),
     "furry-event-action meituan",
   );
   [detailLink, ctripLink, meituanLink].filter(Boolean).forEach(link => {
@@ -134,7 +139,7 @@ function createEventCard(documentRef, event) {
 function renderLoading(documentRef, content) {
   const label = documentRef.createElement("div");
   label.className = "furry-event-loading-label";
-  label.textContent = "🐾 正在获取兽聚活动…";
+  label.textContent = uiText("🐾 正在获取兽聚活动…");
   content.appendChild(label);
 
   const track = documentRef.createElement("div");
@@ -152,14 +157,14 @@ function renderResult(documentRef, content, message) {
   if (message?.furryError) {
     const error = documentRef.createElement("div");
     error.className = "furry-event-empty";
-    error.textContent = "🐾 兽聚信息暂时获取失败，请稍后再试";
+    error.textContent = uiText("🐾 兽聚信息暂时获取失败，请稍后再试");
     content.appendChild(error);
     return;
   }
   if (!events.length) {
     const empty = documentRef.createElement("div");
     empty.className = "furry-event-empty";
-    empty.textContent = "🐾 没有找到相关兽聚活动";
+    empty.textContent = uiText("🐾 没有找到相关兽聚活动");
     content.appendChild(empty);
     return;
   }
@@ -167,17 +172,17 @@ function renderResult(documentRef, content, message) {
   const header = documentRef.createElement("div");
   header.className = "furry-event-header";
   const title = documentRef.createElement("span");
-  title.textContent = "🐾 相关兽聚活动";
+  title.textContent = uiText("🐾 相关兽聚活动");
   const count = documentRef.createElement("span");
   count.className = "furry-event-count";
-  count.textContent = `${events.length} 场 · 横向滑动查看更多`;
+  count.textContent = uiText(`${events.length} 场 · 横向滑动查看更多`);
   header.append(title, count);
   content.appendChild(header);
 
   const track = documentRef.createElement("div");
   track.className = "furry-event-track";
   track.tabIndex = 0;
-  track.setAttribute("aria-label", `相关兽聚活动，共 ${events.length} 场`);
+  track.setAttribute("aria-label", uiText(`相关兽聚活动，共 ${events.length} 场`));
   events.forEach(event => track.appendChild(createEventCard(documentRef, event)));
   content.appendChild(track);
 }
