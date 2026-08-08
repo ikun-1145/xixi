@@ -1661,6 +1661,26 @@
     "ko": "명확한 맥락",
     "es": "🧹 Clear context"
   },
+  "清空上下文": {
+    "zh-Hant": "清空上下文",
+    "ko": "컨텍스트 지우기",
+    "es": "Borrar contexto"
+  },
+  "仅图片": {
+    "zh-Hant": "僅圖片",
+    "ko": "이미지만",
+    "es": "Solo imagen"
+  },
+  "Pro · 无限": {
+    "zh-Hant": "Pro · 無限",
+    "ko": "Pro · 무제한",
+    "es": "Pro · Ilimitado"
+  },
+  "待配置": {
+    "zh-Hant": "待設定",
+    "ko": "설정 필요",
+    "es": "Configuración pendiente"
+  },
   "请输入对方评论": {
     "zh-Hant": "請輸入對方評論",
     "ko": "다른 사람의 의견을 입력하십시오.",

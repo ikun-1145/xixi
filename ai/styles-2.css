@@ -262,6 +262,49 @@ body.thinking-mode button {
   letter-spacing: 0.3px;       /* ⭐ 更易读 */
 }
 
+#copilotEntry {
+  width: 100%;
+  min-height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 10px;
+  padding: 8px;
+  color: #334155;
+  background: rgba(255,255,255,0.58);
+  border: 1px solid rgba(15,23,42,0.12);
+  border-radius: 10px;
+  box-sizing: border-box;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 1;
+  text-decoration: none;
+  transition: background .15s ease, border-color .15s ease, color .15s ease;
+}
+
+#copilotEntry:hover {
+  color: #0e7490;
+  background: rgba(34,211,238,0.10);
+  border-color: rgba(14,154,167,0.45);
+}
+
+#copilotEntry:focus-visible {
+  outline: 2px solid #14c8d4;
+  outline-offset: 2px;
+}
+
+body.night #copilotEntry {
+  color: #cbd5e1;
+  background: rgba(255,255,255,0.05);
+  border-color: rgba(255,255,255,0.12);
+}
+
+body.night #copilotEntry:hover {
+  color: #6ff3ee;
+  background: rgba(62,237,231,0.08);
+  border-color: rgba(62,237,231,0.35);
+}
+
 #chatList div {
   padding: 8px;
   border-radius: 8px;
