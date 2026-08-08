@@ -877,10 +877,12 @@
     const details = LANGUAGE_DETAILS[currentLanguage];
     const currentLabel = global.document?.querySelector("#languageMenuToggle [data-language-current-label]");
     const currentFlag = global.document?.querySelector("#languageMenuToggle [data-language-current-flag]");
-    if (currentLabel && details) currentLabel.textContent = details.label;
+    if (currentLabel && details && currentLabel.textContent !== details.label) {
+      currentLabel.textContent = details.label;
+    }
     if (currentFlag && details) {
-      currentFlag.src = details.flag;
-      currentFlag.alt = "";
+      if (currentFlag.getAttribute("src") !== details.flag) currentFlag.src = details.flag;
+      if (currentFlag.alt !== "") currentFlag.alt = "";
     }
   }
 
@@ -1014,7 +1016,6 @@
   global.SiteI18n = api;
   if (global.document?.documentElement) global.document.documentElement.lang = HTML_LANG[currentLanguage];
   wrapNativeDialogs();
-  startObserver();
 
   global.addEventListener?.("storage", (event) => {
     if (event.key === STORAGE_KEY && event.newValue) setLanguage(event.newValue, { persist: false });
@@ -1023,6 +1024,7 @@
   const onReady = () => {
     apply(global.document);
     bindSwitcher();
+    startObserver();
   };
   if (global.document?.readyState === "loading") {
     global.document.addEventListener("DOMContentLoaded", onReady, { once: true });

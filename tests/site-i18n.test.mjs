@@ -1,6 +1,8 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { spawn } from "node:child_process";
 import fs from "node:fs";
+import { fileURLToPath } from "node:url";
 
 import { JSDOM } from "../symbolic-ai/node_modules/jsdom/lib/api.js";
 import { appendFurryEventMessage } from "../ai/furry-event-cards.js";
@@ -52,8 +54,14 @@ function createDom(html, language = "en") {
 test("all public pages load the shared language runtime and inherit the saved language", () => {
   for (const [page, expectedTitle] of publicPageTitles) {
     const html = fs.readFileSync(new URL(`../${page}`, import.meta.url), "utf8");
-    const additionalCatalogPosition = html.indexOf('src="p/js/site-i18n-extra.js"');
-    const runtimePosition = html.indexOf('src="p/js/site-i18n.js"');
+    const additionalCatalog = html.match(
+      /<script defer src="p\/js\/site-i18n-extra\.js\?v=[^"]+"><\/script>/u,
+    );
+    const runtime = html.match(
+      /<script defer src="p\/js\/site-i18n\.js\?v=[^"]+"><\/script>/u,
+    );
+    const additionalCatalogPosition = additionalCatalog?.index ?? -1;
+    const runtimePosition = runtime?.index ?? -1;
     assert.ok(additionalCatalogPosition >= 0, `${page} should load the additional language catalog`);
     assert.ok(additionalCatalogPosition < runtimePosition, `${page} should load language data before the runtime`);
     assert.ok(runtimePosition >= 0, `${page} should load the shared i18n runtime`);
@@ -81,6 +89,54 @@ test("all public pages load the shared language runtime and inherit the saved la
     assert.deepEqual([...untranslated], [], `${page} should not leave Chinese interface copy in English mode`);
     dom.window.close();
   }
+});
+
+test("language observer yields back to the browser after initialization", { timeout: 3000 }, async () => {
+  const projectDirectory = fileURLToPath(new URL("..", import.meta.url));
+  const probe = String.raw`
+    const fs = require("node:fs");
+    const { JSDOM } = require("./symbolic-ai/node_modules/jsdom/lib/api.js");
+    const dom = new JSDOM(fs.readFileSync("index.html", "utf8"), {
+      runScripts: "outside-only",
+      url: "https://sunland.dev/",
+    });
+    dom.window.eval(fs.readFileSync("p/js/site-i18n-extra.js", "utf8"));
+    dom.window.eval(fs.readFileSync("p/js/site-i18n.js", "utf8"));
+    dom.window.document.dispatchEvent(new dom.window.Event("DOMContentLoaded"));
+    dom.window.setTimeout(() => {
+      process.stdout.write("event-loop-yielded");
+      dom.window.close();
+    }, 25);
+  `;
+
+  const result = await new Promise((resolve, reject) => {
+    const child = spawn(process.execPath, ["-e", probe], {
+      cwd: projectDirectory,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    let stdout = "";
+    let stderr = "";
+    const timer = setTimeout(() => {
+      child.kill("SIGKILL");
+      reject(new Error("site i18n starved the browser event loop"));
+    }, 1500);
+
+    child.stdout.setEncoding("utf8");
+    child.stderr.setEncoding("utf8");
+    child.stdout.on("data", chunk => { stdout += chunk; });
+    child.stderr.on("data", chunk => { stderr += chunk; });
+    child.once("error", error => {
+      clearTimeout(timer);
+      reject(error);
+    });
+    child.once("close", code => {
+      clearTimeout(timer);
+      resolve({ code, stdout, stderr });
+    });
+  });
+
+  assert.equal(result.code, 0, result.stderr);
+  assert.equal(result.stdout, "event-loop-yielded");
 });
 
 test("language changes restore source text and update switcher state", () => {

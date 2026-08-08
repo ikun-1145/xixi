@@ -78,3 +78,10 @@ test('optional third-party scripts cannot block AI page parsing', () => {
   assert.match(downloadHtml, /<link\s+rel="preload"[^>]+fonts\.googleapis\.com[^>]+as="style"/);
   assert.doesNotMatch(downloadHtml, /<link\s+[^>]*href="https:\/\/fonts\.googleapis\.com[^>]*rel="stylesheet"/);
 });
+
+test('home localization scripts do not block HTML parsing and bypass stale mobile caches', () => {
+  const homeHtml = readProjectFile('index.html');
+
+  assert.match(homeHtml, /<script defer src="p\/js\/site-i18n-extra\.js\?v=[^"]+"><\/script>/);
+  assert.match(homeHtml, /<script defer src="p\/js\/site-i18n\.js\?v=[^"]+"><\/script>/);
+});
