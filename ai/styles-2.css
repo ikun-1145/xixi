@@ -440,11 +440,21 @@ body.night #newChatBtn {
     transition: margin-left .25s ease;
   }
 
+  .chat-container {
+    width: calc(100% - 220px);
+    box-sizing: border-box;
+    transition: margin-left .25s ease, width .25s ease;
+  }
+
   /* 当 sidebar 收起时，让内容恢复全宽 */
   #sidebar.collapsed ~ .header,
   #sidebar.collapsed ~ .chat-container,
   #sidebar.collapsed ~ .input-area {
     margin-left: 0;
+  }
+
+  #sidebar.collapsed ~ .chat-container {
+    width: 100%;
   }
 }
 #uploadPreview > div {
