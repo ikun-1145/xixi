@@ -3110,7 +3110,7 @@ async function sendSunlandMessage(requestContext) {
 function decorateVisibleCodeBlocks(requestContext) {
   if (currentId !== requestContext.conversationId) return;
   document.querySelectorAll("pre code").forEach(el => {
-    hljs.highlightElement(el);
+    if (window.hljs?.highlightElement) window.hljs.highlightElement(el);
     if (el.parentElement.querySelector(".copy-btn")) return;
     const lang = el.className.match(/language-(\w+)/)?.[1];
     if (lang) {

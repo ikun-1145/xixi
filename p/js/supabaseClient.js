@@ -1,5 +1,10 @@
 // supabaseClient.js
-import { createClient } from 'https://cdn.jsdelivr.net/npm/@supabase/supabase-js/+esm'
+// Supabase 运行时由页面从同源 p/vendor 加载，避免外部 CDN 不可用时阻塞页面启动。
+const createClient = globalThis.supabase?.createClient
+
+if (typeof createClient !== 'function') {
+  throw new Error('Supabase browser runtime is unavailable')
+}
 
 // Supabase 项目配置信息
 const SUPABASE_URL = 'https://klyrasrqgxijwrxuoevj.supabase.co'

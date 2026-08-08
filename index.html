@@ -544,6 +544,49 @@
 
   <footer class="site-footer">© 2024–2026 霜蓝 · All Rights Reserved.</footer>
 
+  <script>
+    /* 页面启动不能依赖登录服务或外部网络，任何增强功能失败时都必须正常显示正文。 */
+    (function () {
+      var finished = false;
+      var skipSplashBySession = false;
+
+      try {
+        skipSplashBySession = sessionStorage.getItem("skipSplash") === "1";
+        if (skipSplashBySession) sessionStorage.removeItem("skipSplash");
+      } catch (e) {}
+
+      var navEntry = typeof performance.getEntriesByType === "function"
+        ? performance.getEntriesByType("navigation")[0]
+        : null;
+      var isBackForward =
+        (navEntry && navEntry.type === "back_forward") || skipSplashBySession;
+
+      function markReady(immediate) {
+        if (finished) return;
+        finished = true;
+
+        var splash = document.getElementById("loading");
+        if (splash && !immediate) splash.classList.add("fade");
+
+        setTimeout(function () {
+          if (splash) splash.remove();
+          document.body.classList.add("ready");
+          document.dispatchEvent(new Event("app-ready"));
+        }, immediate ? 0 : 400);
+      }
+
+      window.addEventListener("pageshow", function (event) {
+        if (event.persisted || isBackForward) markReady(true);
+      });
+
+      if (isBackForward) {
+        markReady(true);
+      } else {
+        setTimeout(function () { markReady(false); }, 900);
+      }
+    })();
+  </script>
+  <script src="p/vendor/supabase-2.110.7.js"></script>
   <script type="module">
     import { supabase } from './p/js/supabaseClient.js';
 
@@ -674,64 +717,11 @@
       });
     };
 
-    /* ===== 稳定版 Splash 控制（支持返回不重播） ===== */
-
     // 站内跳转时标记，返回首页不重播 Splash
     document.querySelectorAll('.buttons a').forEach(link => {
       link.addEventListener('click', () => {
         sessionStorage.setItem("skipSplash", "1");
       });
-    });
-
-    const navEntry = performance.getEntriesByType("navigation")[0];
-
-    // 站内跳转返回控制（避免重播 Splash）
-    const skipSplashBySession = sessionStorage.getItem("skipSplash") === "1";
-    if (skipSplashBySession) {
-      sessionStorage.removeItem("skipSplash");
-    }
-
-    const isBackForward =
-      (navEntry && navEntry.type === "back_forward") || skipSplashBySession;
-
-    // Safari BFCache 处理
-    window.addEventListener("pageshow", (event) => {
-      if (event.persisted || isBackForward) {
-        const splash = document.getElementById("loading");
-        if (splash) splash.remove();
-        document.body.classList.add("ready");
-        document.dispatchEvent(new Event("app-ready"));
-      }
-    });
-
-    window.addEventListener('load', () => {
-      if (isBackForward) return;
-
-      const splash = document.getElementById('loading');
-
-      if (!splash) {
-        document.body.classList.add('ready');
-        document.dispatchEvent(new Event('app-ready'));
-        return;
-      }
-
-      let finished = false;
-
-      function finishSplash() {
-        if (finished) return;
-        finished = true;
-
-        splash.classList.add('fade');
-
-        setTimeout(() => {
-          splash.remove();
-          document.body.classList.add('ready');
-          document.dispatchEvent(new Event('app-ready'));
-        }, 400);
-      }
-
-      // 固定时间结束（更稳定）
-      setTimeout(finishSplash, 900);
     });
 </script>
 

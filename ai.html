@@ -20,11 +20,12 @@
 <link rel="shortcut icon" href="p/ailogo.png">
 
 <!-- Markdown & Highlight -->
-<script src="https://cdn.jsdelivr.net/npm/marked@18.0.6/lib/marked.umd.js" integrity="sha384-uGn1eBC40GtuBgao0epc/cz9O4Lo8/flg/10SW+69UjLI5nP31iT4UPc65Xz10Le" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/dompurify@3.4.12/dist/purify.min.js" integrity="sha384-piCcpDdJ7qVeK4Tv8Z6Hpcr3ZBIgP16TxQTPVfsLFdZ5uDgwc3Y8Ho7oUnqf12qu" crossorigin="anonymous"></script>
-<script src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/highlight.js/styles/github.min.css">
-<script src="https://cdn.jsdelivr.net/npm/highlight.js/highlight.min.js"></script>
+<script src="p/vendor/marked-18.0.6.umd.js"></script>
+<script src="p/vendor/dompurify-3.4.12.min.js"></script>
+<script src="p/vendor/supabase-2.110.7.js"></script>
+<script async src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
+<link rel="preload" href="https://cdn.jsdelivr.net/npm/highlight.js/styles/github.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+<script async src="https://cdn.jsdelivr.net/npm/highlight.js/highlight.min.js"></script>
 
 <link rel="stylesheet" href="ai/styles-1.css">
 <link rel="stylesheet" href="ai/styles-2.css">
@@ -65,8 +66,6 @@ child-src *;
 })();
 </script>
 </head>
-<script src="https://static.geetest.com/v4/gt4.js"></script>
-
 <body class="preload">
 <div id="app">
   <button id="scrollBottomBtn" style="
