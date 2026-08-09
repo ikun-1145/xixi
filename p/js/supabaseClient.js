@@ -12,6 +12,7 @@ const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBh
 
 // 创建并导出 Supabase 客户端
 export const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+  accessToken: () => globalThis.SunlandDatabaseToken?.get() ?? null,
   auth: {
     persistSession: true,
     autoRefreshToken: true,

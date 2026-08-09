@@ -1183,10 +1183,12 @@ body.dark .usage-hint {
   </div>
 
   <script src="/p/vendor/supabase-2.110.7.js"></script>
+  <script src="/ai/database-token-client.js"></script>
   <script>
     window._supabaseClient = window._supabaseClient || window.supabase.createClient(
       "https://klyrasrqgxijwrxuoevj.supabase.co",
-      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtseXJhc3JxZ3hpandyeHVvZXZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4ODUyMzcsImV4cCI6MjA2ODQ2MTIzN30.qjeTrLp_QquSwvF09HrrQd-stPtgu6H51-Zdb4JUeSM"
+      "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImtseXJhc3JxZ3hpandyeHVvZXZqIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTI4ODUyMzcsImV4cCI6MjA2ODQ2MTIzN30.qjeTrLp_QquSwvF09HrrQd-stPtgu6H51-Zdb4JUeSM",
+      { accessToken: () => window.SunlandDatabaseToken.get() }
     );
     var supabase = window._supabaseClient;
     const PROFILE_META_ID = "__xixi_user_profile__";
@@ -1297,12 +1299,12 @@ body.dark .usage-hint {
     async function saveProfileToCloud(user, profile) {
   const { error } = await supabase
     .from("user_profiles")
-    .upsert({
-      user_id: user.id,
+    .update({
       avatar_url: profile.avatar_url || "",
       avatar_path: profile.avatar_path || "",
       updated_at: new Date().toISOString()
-    }, { onConflict: "user_id" });
+    })
+    .eq("user_id", user.id);
 
   if (error) throw error;
 }
@@ -1316,11 +1318,11 @@ async function editNickname() {
   if (!name || !name.trim()) return;
 
   try {
-    await supabase.from("user_profiles").upsert({
-      user_id: user.id,
+    const { error } = await supabase.from("user_profiles").update({
       name: name.trim(),
       updated_at: new Date().toISOString()
-    }, { onConflict: "user_id" });
+    }).eq("user_id", user.id);
+    if (error) throw error;
 
     // UI同步
     document.getElementById("userName").innerText = name.trim();

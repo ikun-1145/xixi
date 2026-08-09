@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 
-import { JSDOM } from '../symbolic-ai/node_modules/jsdom/lib/api.js';
+import { JSDOM } from 'jsdom';
 
 const copilotHtml = fs.readFileSync(new URL('../copilot.html', import.meta.url), 'utf8');
 const copilotCss = fs.readFileSync(new URL('../p/css/copilot.css', import.meta.url), 'utf8');

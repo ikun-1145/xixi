@@ -1,69 +1,35 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs";
 import { createRequire } from "node:module";
 
-import {
-  createSunlandDataControlsController,
-} from "../ai/sunland-data-controls.js";
+import { createSunlandDataControlsController } from "../ai/sunland-data-controls.js";
 import { IdentityAuthority } from "../ai/verified-identity.js";
 
-const symbolicRequire = createRequire(
-  new URL("../symbolic-ai/package.json", import.meta.url),
-);
-const { JSDOM } = symbolicRequire("jsdom");
-const settingsSource = fs.readFileSync(
+const projectRequire = createRequire(new URL("../package.json", import.meta.url));
+const { JSDOM } = projectRequire("jsdom");
+const settingsSource = projectRequire("node:fs").readFileSync(
   new URL("../ai_settings.html", import.meta.url),
   "utf8",
 );
-const appSource = fs.readFileSync(
-  new URL("../ai/app.js", import.meta.url),
-  "utf8",
-);
 
-function tokenFor(userId) {
-  const encode = value =>
-    Buffer.from(JSON.stringify(value)).toString("base64url");
+function tokenFor(userId, suffix = "initial") {
+  const encode = value => Buffer.from(JSON.stringify(value)).toString("base64url");
   return `${encode({ alg: "test" })}.${encode({
     sub: userId,
     exp: Math.floor(Date.now() / 1000) + 3600,
+    suffix,
   })}.signature`;
 }
 
 function userIdFromToken(token) {
-  return JSON.parse(
-    Buffer.from(token.split(".")[1], "base64url").toString("utf8"),
-  ).sub;
-}
-
-function createIdentityAuthority() {
-  return new IdentityAuthority({
-    fetchImpl: async (_url, options) => {
-      const token = String(
-        options?.headers?.Authorization ?? "",
-      ).replace(/^Bearer\s+/u, "");
-      const userId = userIdFromToken(token);
-      return {
-        ok: true,
-        status: 200,
-        json: async () => ({
-          token,
-          user: { id: userId, email: `${userId}@example.com` },
-        }),
-      };
-    },
-  });
+  return JSON.parse(Buffer.from(token.split(".")[1], "base64url").toString("utf8")).sub;
 }
 
 function createStorage(initial = {}) {
-  const values = new Map(
-    Object.entries(initial).map(([key, value]) => [
-      key,
-      String(value),
-    ]),
-  );
+  const values = new Map(Object.entries(initial).map(([key, value]) => [key, String(value)]));
   const reads = [];
   return {
+    reads,
     getItem(key) {
       reads.push(key);
       return values.has(key) ? values.get(key) : null;
@@ -74,31 +40,66 @@ function createStorage(initial = {}) {
     removeItem(key) {
       values.delete(key);
     },
-    reads,
-    dump() {
-      return Object.fromEntries(values);
-    },
   };
 }
 
-function knowledgeRecord({
-  id,
-  subject,
-  relation,
-  object,
-  source = "user",
-  confidence = 0.42,
-  createdAt = "2026-07-26T00:00:00.000Z",
-}) {
+function createIdentityAuthority() {
+  return new IdentityAuthority({
+    fetchImpl: async (_url, options) => {
+      const token = String(options?.headers?.Authorization ?? "").replace(/^Bearer\s+/u, "");
+      const userId = userIdFromToken(token);
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ token, user: { id: userId, email: `${userId}@example.com` } }),
+      };
+    },
+  });
+}
+
+function record(id, subject, relation, object, negated = false) {
+  return { id, subject, relation, object, negated, confidence: 1, source: "user" };
+}
+
+function createRemoteApi(seed = {}) {
+  const records = new Map(Object.entries(seed).map(([userId, value]) => [userId, structuredClone(value)]));
+  const requests = [];
+  let failFirstWith401 = false;
+  const fetchImpl = async (url, init = {}) => {
+    const parsed = new URL(url);
+    const auth = new Headers(init.headers).get("authorization") ?? "";
+    const token = auth.replace(/^Bearer\s+/u, "");
+    const userId = userIdFromToken(token);
+    requests.push({ path: parsed.pathname, method: init.method ?? "GET", userId, token });
+    if (failFirstWith401) {
+      failFirstWith401 = false;
+      return { ok: false, status: 401, json: async () => ({}) };
+    }
+    const own = records.get(userId) ?? [];
+    if ((init.method ?? "GET") === "GET" && parsed.pathname === "/v1/knowledge") {
+      return { ok: true, status: 200, json: async () => ({ items: structuredClone(own), nextCursor: null }) };
+    }
+    if (init.method === "DELETE" && parsed.pathname === "/v1/knowledge") {
+      records.set(userId, []);
+      return { ok: true, status: 204, json: async () => ({}) };
+    }
+    const match = /^\/v1\/knowledge\/([^/]+)$/u.exec(parsed.pathname);
+    if (init.method === "DELETE" && match?.[1]) {
+      records.set(userId, own.filter(item => item.id !== decodeURIComponent(match[1])));
+      return { ok: true, status: 204, json: async () => ({}) };
+    }
+    if (init.method === "DELETE" && parsed.pathname === "/v1/memory/name") {
+      return { ok: true, status: 204, json: async () => ({}) };
+    }
+    return { ok: false, status: 404, json: async () => ({}) };
+  };
   return {
-    id,
-    subject,
-    relation,
-    object,
-    negated: false,
-    source,
-    confidence,
-    createdAt,
+    fetchImpl,
+    requests,
+    records,
+    failNextWith401() {
+      failFirstWith401 = true;
+    },
   };
 }
 
@@ -112,10 +113,7 @@ function createSyncHub() {
       return {
         notify(userId) {
           notifications.push(userId);
-          for (const listener of [...listeners]) {
-            queueMicrotask(() => listener(userId));
-          }
-          return true;
+          for (const listener of [...listeners]) queueMicrotask(() => listener(userId));
         },
         subscribe(listener) {
           ownListener = listener;
@@ -124,378 +122,141 @@ function createSyncHub() {
         },
         dispose() {
           if (ownListener) listeners.delete(ownListener);
-          ownListener = null;
-          return true;
         },
       };
     },
   };
 }
 
-function createPage({
-  storage,
-  confirmations = [],
-  syncChannel,
-} = {}) {
-  const dom = new JSDOM(settingsSource, {
-    url: "https://sunland.example/ai_settings.html",
-  });
+function createPage({ userId, remote, confirmations = [], syncChannel } = {}) {
+  const storage = createStorage(userId ? {
+    token: tokenFor(userId),
+    user: JSON.stringify({ id: "untrusted-cache", email: "forged@example.com" }),
+  } : {});
+  const dom = new JSDOM(settingsSource, { url: "https://sunland.dev/ai_settings.html" });
   const confirmMessages = [];
   const controller = createSunlandDataControlsController({
     documentRef: dom.window.document,
     windowRef: dom.window,
     storageRef: storage,
     identityAuthority: createIdentityAuthority(),
+    fetchImpl: remote?.fetchImpl,
     syncChannel: syncChannel ?? {
-      notify: () => false,
-      subscribe: () => () => {},
-      dispose: () => true,
+      notify() {},
+      subscribe() { return () => {}; },
+      dispose() {},
     },
     confirmImpl(message) {
       confirmMessages.push(message);
       return confirmations.length ? confirmations.shift() : false;
     },
   });
-  return {
-    dom,
-    window: dom.window,
-    controller,
-    confirmMessages,
-  };
+  return { dom, storage, controller, confirmMessages };
 }
 
-function storedRecords(storage, key) {
-  const value = storage.getItem(key);
-  return value ? JSON.parse(value) : [];
-}
-
-async function waitForUi() {
+async function settle() {
   await new Promise(resolve => setTimeout(resolve, 20));
 }
 
-test("settings lists only the Verified Identity user's teaching knowledge", async () => {
-  const userA = "knowledge-user-a";
-  const userB = "knowledge-user-b";
-  const keyA = `sunland_knowledge_${userA}`;
-  const keyB = `sunland_knowledge_${userB}`;
-  const tokenA = tokenFor(userA);
-  const storage = createStorage({
-    token: tokenA,
-    user: JSON.stringify({
-      id: userB,
-      email: "forged@example.com",
-    }),
-    [keyA]: JSON.stringify([
-      knowledgeRecord({
-        id: "a-cat",
-        subject: "猫",
-        relation: "属于",
-        object: "动物",
-      }),
-      knowledgeRecord({
-        id: "a-bird",
-        subject: "鸟",
-        relation: "有",
-        object: "翅膀",
-        source: undefined,
-      }),
-      knowledgeRecord({
-        id: "system-self",
-        subject: "Sunland AI · Beta",
-        relation: "是",
-        object: "系统知识",
-        source: "seed",
-      }),
-    ]),
-    [`${keyA}::memory`]: JSON.stringify([
-      { id: "memory-name", key: "name", value: "小明" },
-    ]),
-    [keyB]: JSON.stringify([
-      knowledgeRecord({
-        id: "b-secret",
-        subject: "用户B",
-        relation: "有",
-        object: "私有知识",
-      }),
-    ]),
+test("settings lists only records returned by the authenticated remote user endpoint", async () => {
+  const userId = "knowledge-user-a";
+  const remote = createRemoteApi({
+    [userId]: [
+      record("cat", "猫", "属于", "动物"),
+      record("bird", "鸟", "有", "翅膀"),
+    ],
+    "knowledge-user-b": [record("secret", "用户B", "有", "私有知识")],
   });
-  const page = createPage({ storage });
+  const page = createPage({ userId, remote });
 
   const result = await page.controller.initialize();
-  const visibleText = page.window.document
-    .getElementById("sunlandKnowledgeList").textContent;
+  const visible = page.dom.window.document.getElementById("sunlandKnowledgeList").textContent;
+
+  assert.deepEqual(result, { ok: true, count: 2 });
+  assert.match(visible, /猫 属于 动物/u);
+  assert.match(visible, /鸟 有 翅膀/u);
+  assert.doesNotMatch(visible, /用户B|私有知识|confidence|diagnostics/iu);
+  assert.equal(page.controller.getState().knowledgeCount, 2);
+  assert.deepEqual(remote.requests.map(request => request.userId), [userId]);
+  assert.equal(page.storage.reads.some(key => key.startsWith("sunland_knowledge_")), false);
+});
+
+test("single deletion is confirmed, sent remotely and followed by a fresh list", async () => {
+  const userId = "knowledge-delete-user";
+  const remote = createRemoteApi({
+    [userId]: [record("cat", "猫", "属于", "动物"), record("bird", "鸟", "有", "翅膀")],
+  });
+  const page = createPage({ userId, remote, confirmations: [true] });
+  await page.controller.initialize();
+
+  const result = await page.controller.deleteKnowledgeRecord("cat", "猫 属于 动物");
 
   assert.equal(result.ok, true);
-  assert.equal(page.controller.getState().knowledgeCount, 2);
-  assert.match(visibleText, /猫 属于 动物/u);
-  assert.match(visibleText, /鸟 有 翅膀/u);
-  assert.doesNotMatch(visibleText, /系统知识|用户B|私有知识|小明/u);
-  assert.doesNotMatch(visibleText, /confidence|reasoning|diagnostics|0\.42/iu);
-  assert.equal(
-    page.window.document.querySelectorAll(
-      "#sunlandKnowledgeList .knowledge-delete-btn",
-    ).length,
-    2,
-  );
-});
-
-test("single deletion is confirmed, immediate, cumulative and resistant to stale snapshot restore", async () => {
-  const userId = "knowledge-delete-user";
-  const key = `sunland_knowledge_${userId}`;
-  const original = [
-    knowledgeRecord({
-      id: "delete-cat",
-      subject: "猫",
-      relation: "属于",
-      object: "动物",
-    }),
-    knowledgeRecord({
-      id: "delete-bird",
-      subject: "鸟",
-      relation: "有",
-      object: "翅膀",
-    }),
-    knowledgeRecord({
-      id: "keep-seed",
-      subject: "系统",
-      relation: "是",
-      object: "内置知识",
-      source: "seed",
-    }),
-  ];
-  const userBKey = "sunland_knowledge_knowledge-delete-user-b";
-  const memoryKey = `${key}::memory`;
-  const storage = createStorage({
-    token: tokenFor(userId),
-    [key]: JSON.stringify(original),
-    [userBKey]: JSON.stringify([
-      knowledgeRecord({
-        id: "user-b-record",
-        subject: "B",
-        relation: "有",
-        object: "知识",
-      }),
-    ]),
-    [memoryKey]: JSON.stringify([
-      { id: "memory-name", key: "name", value: "小明" },
-    ]),
-  });
-  const syncHub = createSyncHub();
-  const page = createPage({
-    storage,
-    confirmations: [true, true],
-    syncChannel: syncHub.endpoint(),
-  });
-  await page.controller.initialize();
-
-  const first = await page.controller.deleteKnowledgeRecord(
-    "delete-cat",
-    "猫 属于 动物",
-  );
-  assert.equal(first.ok, true);
-  assert.equal(first.removedCount, 1);
-  assert.match(page.confirmMessages[0], /猫 属于 动物/u);
-  assert.match(page.confirmMessages[0], /删除后无法恢复/u);
-  assert.deepEqual(
-    storedRecords(storage, key).map(record => record.id),
-    ["delete-bird", "keep-seed"],
-  );
-  assert.equal(page.controller.getState().knowledgeCount, 1);
-
-  const second = await page.controller.deleteKnowledgeRecord(
-    "delete-bird",
-    "鸟 有 翅膀",
-  );
-  assert.equal(second.removedCount, 1);
-  assert.deepEqual(
-    storedRecords(storage, key).map(record => record.id),
-    ["keep-seed"],
-  );
-
-  storage.setItem(key, JSON.stringify(original));
-  page.window.dispatchEvent(
-    new page.window.StorageEvent("storage", { key }),
-  );
-  await waitForUi();
-
-  assert.deepEqual(
-    storedRecords(storage, key).map(record => record.id),
-    ["keep-seed"],
-  );
-  assert.equal(page.controller.getState().knowledgeCount, 0);
-  assert.equal(storage.getItem(memoryKey).includes("小明"), true);
-  assert.equal(storage.getItem(userBKey).includes("user-b-record"), true);
-  assert.deepEqual(syncHub.notifications, [userId, userId]);
-});
-
-test("open settings pages refresh through the existing data-control sync channel", async () => {
-  const userId = "knowledge-sync-user";
-  const key = `sunland_knowledge_${userId}`;
-  const storage = createStorage({
-    token: tokenFor(userId),
-    [key]: JSON.stringify([
-      knowledgeRecord({
-        id: "sync-cat",
-        subject: "猫",
-        relation: "属于",
-        object: "动物",
-      }),
-      knowledgeRecord({
-        id: "sync-bird",
-        subject: "鸟",
-        relation: "有",
-        object: "翅膀",
-      }),
-    ]),
-  });
-  const syncHub = createSyncHub();
-  const firstPage = createPage({
-    storage,
-    confirmations: [true],
-    syncChannel: syncHub.endpoint(),
-  });
-  const secondPage = createPage({
-    storage,
-    syncChannel: syncHub.endpoint(),
-  });
-  await Promise.all([
-    firstPage.controller.initialize(),
-    secondPage.controller.initialize(),
+  assert.match(page.confirmMessages[0], /猫 属于 动物.*无法恢复/u);
+  assert.deepEqual(remote.records.get(userId).map(item => item.id), ["bird"]);
+  assert.deepEqual(remote.requests.map(item => [item.method, item.path]), [
+    ["GET", "/v1/knowledge"],
+    ["DELETE", "/v1/knowledge/cat"],
+    ["GET", "/v1/knowledge"],
   ]);
-
-  await firstPage.controller.deleteKnowledgeRecord(
-    "sync-cat",
-    "猫 属于 动物",
-  );
-  await waitForUi();
-
-  assert.equal(firstPage.controller.getState().knowledgeCount, 1);
-  assert.equal(secondPage.controller.getState().knowledgeCount, 1);
-  assert.doesNotMatch(
-    secondPage.window.document
-      .getElementById("sunlandKnowledgeList").textContent,
-    /猫 属于 动物/u,
-  );
+  assert.equal(page.controller.getState().knowledgeCount, 1);
 });
 
-test("clear-all keeps seed knowledge, Memory and other users untouched", async () => {
+test("clear-all and forget-name use separate remote endpoints", async () => {
   const userId = "knowledge-clear-user";
-  const key = `sunland_knowledge_${userId}`;
-  const memoryKey = `${key}::memory`;
-  const otherKey = "sunland_knowledge_knowledge-clear-other";
-  const storage = createStorage({
-    token: tokenFor(userId),
-    [key]: JSON.stringify([
-      knowledgeRecord({
-        id: "clear-user-record",
-        subject: "猫",
-        relation: "属于",
-        object: "动物",
-      }),
-      knowledgeRecord({
-        id: "keep-system-record",
-        subject: "系统",
-        relation: "是",
-        object: "内置知识",
-        source: "seed",
-      }),
-    ]),
-    [memoryKey]: JSON.stringify([
-      { id: "memory-name", key: "name", value: "小明" },
-    ]),
-    [otherKey]: JSON.stringify([
-      knowledgeRecord({
-        id: "other-user-record",
-        subject: "其他用户",
-        relation: "有",
-        object: "知识",
-      }),
-    ]),
-  });
-  const page = createPage({
-    storage,
-    confirmations: [true],
-  });
+  const remote = createRemoteApi({ [userId]: [record("cat", "猫", "属于", "动物")] });
+  const page = createPage({ userId, remote, confirmations: [true, true] });
   await page.controller.initialize();
 
-  page.window.document
-    .getElementById("clearSunlandKnowledgeBtn")
-    .click();
-  await waitForUi();
+  page.dom.window.document.getElementById("clearSunlandKnowledgeBtn").click();
+  await settle();
+  page.dom.window.document.getElementById("clearSunlandNameBtn").click();
+  await settle();
 
-  assert.deepEqual(
-    storedRecords(storage, key).map(record => record.id),
-    ["keep-system-record"],
-  );
-  assert.equal(storage.getItem(memoryKey).includes("小明"), true);
-  assert.equal(storage.getItem(otherKey).includes("other-user-record"), true);
-  assert.equal(page.controller.getState().knowledgeCount, 0);
+  assert.deepEqual(remote.records.get(userId), []);
+  assert.equal(remote.requests.some(item => item.method === "DELETE" && item.path === "/v1/knowledge"), true);
+  assert.equal(remote.requests.some(item => item.method === "DELETE" && item.path === "/v1/memory/name"), true);
 });
 
-test("invalid identity and damaged knowledge fail closed without deleting data", async () => {
-  const protectedKey = "sunland_knowledge_protected-user";
-  const invalidStorage = createStorage({
-    user: JSON.stringify({ id: "protected-user" }),
-    [protectedKey]: JSON.stringify([
-      knowledgeRecord({
-        id: "protected-record",
-        subject: "秘密",
-        relation: "是",
-        object: "数据",
-      }),
-    ]),
+test("open settings pages refresh after a remote mutation through the sync channel", async () => {
+  const userId = "knowledge-sync-user";
+  const remote = createRemoteApi({
+    [userId]: [record("cat", "猫", "属于", "动物"), record("bird", "鸟", "有", "翅膀")],
   });
-  const invalidPage = createPage({ storage: invalidStorage });
-  const invalidResult = await invalidPage.controller.initialize();
+  const hub = createSyncHub();
+  const first = createPage({ userId, remote, confirmations: [true], syncChannel: hub.endpoint() });
+  const second = createPage({ userId, remote, syncChannel: hub.endpoint() });
+  await Promise.all([first.controller.initialize(), second.controller.initialize()]);
 
-  assert.equal(invalidResult.ok, false);
-  assert.equal(
-    invalidStorage.reads.includes(protectedKey),
-    false,
-  );
-  assert.equal(
-    invalidPage.window.document
-      .getElementById("clearSunlandKnowledgeBtn").disabled,
-    true,
-  );
+  await first.controller.deleteKnowledgeRecord("cat", "猫 属于 动物");
+  await settle();
 
-  const userId = "damaged-knowledge-user";
-  const damagedKey = `sunland_knowledge_${userId}`;
-  const damagedStorage = createStorage({
-    token: tokenFor(userId),
-    [damagedKey]: "{damaged",
-  });
-  const damagedPage = createPage({
-    storage: damagedStorage,
-    confirmations: [true],
-  });
-  const damagedResult = await damagedPage.controller.initialize();
-
-  assert.equal(damagedResult.ok, false);
-  assert.equal(damagedStorage.getItem(damagedKey), "{damaged");
-  assert.equal(
-    damagedPage.window.document
-      .getElementById("clearSunlandKnowledgeBtn").disabled,
-    true,
-  );
-  assert.match(
-    damagedPage.window.document
-      .getElementById("sunlandKnowledgeEmpty").textContent,
-    /暂时无法读取/u,
-  );
+  assert.equal(first.controller.getState().knowledgeCount, 1);
+  assert.equal(second.controller.getState().knowledgeCount, 1);
+  assert.deepEqual(hub.notifications, [userId]);
 });
 
-test("chat runtime aborts active Sunland requests and rebuilds engines on knowledge deletion", () => {
-  assert.match(
-    appSource,
-    /requestCoordinator\.abort\(activeRequest,\s*"sunland-data-cleared"\)/u,
-  );
-  assert.match(
-    appSource,
-    /providerRegistry\s*=\s*createProviderRegistry\(\{\s*sendRequest:\s*apiFetch\s*\}\)/u,
-  );
-  assert.match(
-    appSource,
-    /event\.data\?\.type\s*===\s*"sunland-data-cleared"/u,
-  );
+test("a 401 refreshes verified identity once and retries the remote request once", async () => {
+  const userId = "knowledge-refresh-user";
+  const remote = createRemoteApi({ [userId]: [record("cat", "猫", "属于", "动物")] });
+  remote.failNextWith401();
+  const page = createPage({ userId, remote });
+
+  const result = await page.controller.initialize();
+
+  assert.equal(result.ok, true);
+  assert.equal(remote.requests.length, 2);
+  assert.deepEqual(remote.requests.map(item => item.userId), [userId, userId]);
+});
+
+test("invalid identity fails closed before AI data is read or deleted", async () => {
+  const remote = createRemoteApi({ protected: [record("secret", "秘密", "是", "数据")] });
+  const page = createPage({ remote, confirmations: [true] });
+
+  const result = await page.controller.initialize();
+
+  assert.equal(result.reason, "invalid-identity");
+  assert.deepEqual(remote.requests, []);
+  assert.equal(page.dom.window.document.getElementById("clearSunlandKnowledgeBtn").disabled, true);
+  assert.match(page.dom.window.document.getElementById("sunlandKnowledgeEmpty").textContent, /登录/u);
 });

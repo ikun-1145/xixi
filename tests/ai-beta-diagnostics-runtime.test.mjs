@@ -519,7 +519,7 @@ test("production wiring is Sunland-only and never logs or uploads summaries", ()
     providerSource,
     /observationMode:\s*observationMode\s*===\s*["']summary["']\s*\?\s*["']summary["']\s*:\s*["']off["']/u,
   );
-  assert.match(providerSource, /processed\.observationSummary/u);
+  assert.match(providerSource, /payload\.observationSummary/u);
   assert.doesNotMatch(
     providerSource,
     /localStorage.*observation|saveSnapshot|createBetaDiagnosticsAggregator|console\.(?:log|debug|info).*observation/iu,

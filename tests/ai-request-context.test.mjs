@@ -266,5 +266,6 @@ test('live app binds async writes, title generation, abort, and delayed renderin
   assert.match(titleBlock, /_autoTitleRequestId = titleRequestId/);
   assert.match(loadBlock, /renderVersion !== chatRenderVersion \|\| currentId !== id/);
   assert.match(loadBlock, /conversations\.find\(item => item\.id === id\)/);
-  assert.match(aiApp, /apiFetch\(body, true, signal\)/);
+  assert.match(aiApp, /authenticatedFetch\(url, init, true,/);
+  assert.match(aiApp, /\.\.\.init,[\s\S]*?signal/);
 });

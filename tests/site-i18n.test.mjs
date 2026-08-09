@@ -4,7 +4,7 @@ import { spawn } from "node:child_process";
 import fs from "node:fs";
 import { fileURLToPath } from "node:url";
 
-import { JSDOM } from "../symbolic-ai/node_modules/jsdom/lib/api.js";
+import { JSDOM } from "jsdom";
 import { appendFurryEventMessage } from "../ai/furry-event-cards.js";
 
 const runtimeSource = fs.readFileSync(
@@ -95,7 +95,7 @@ test("language observer yields back to the browser after initialization", { time
   const projectDirectory = fileURLToPath(new URL("..", import.meta.url));
   const probe = String.raw`
     const fs = require("node:fs");
-    const { JSDOM } = require("./symbolic-ai/node_modules/jsdom/lib/api.js");
+    const { JSDOM } = require("jsdom");
     const dom = new JSDOM(fs.readFileSync("index.html", "utf8"), {
       runScripts: "outside-only",
       url: "https://sunland.dev/",

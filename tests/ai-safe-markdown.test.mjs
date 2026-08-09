@@ -4,10 +4,10 @@ import fs from 'node:fs';
 import { createRequire } from 'node:module';
 import { pathToFileURL } from 'node:url';
 
-const symbolicRequire = createRequire(new URL('../symbolic-ai/package.json', import.meta.url));
-const { JSDOM } = symbolicRequire('jsdom');
-const createDOMPurify = symbolicRequire('dompurify');
-const markedEntry = symbolicRequire.resolve('marked');
+const projectRequire = createRequire(new URL('../package.json', import.meta.url));
+const { JSDOM } = projectRequire('jsdom');
+const createDOMPurify = projectRequire('dompurify');
+const markedEntry = projectRequire.resolve('marked');
 const { marked } = await import(pathToFileURL(markedEntry).href);
 const safeMarkdownSource = fs.readFileSync(new URL('../ai/safe-markdown.js', import.meta.url), 'utf8');
 const safeMarkdownModuleUrl = `data:text/javascript;base64,${Buffer.from(safeMarkdownSource).toString('base64')}`;

@@ -13,10 +13,8 @@ import { createSunlandDiagnosticsRuntime } from "../ai/beta-diagnostics/runtime.
 import { createSunlandBetaDiagnosticsController } from "../ai/sunland-beta-diagnostics.js";
 import { IdentityAuthority } from "../ai/verified-identity.js";
 
-const symbolicRequire = createRequire(
-  new URL("../symbolic-ai/package.json", import.meta.url),
-);
-const { JSDOM } = symbolicRequire("jsdom");
+const projectRequire = createRequire(new URL("../package.json", import.meta.url));
+const { JSDOM } = projectRequire("jsdom");
 const settingsSource = fs.readFileSync(
   new URL("../ai_settings.html", import.meta.url),
   "utf8",

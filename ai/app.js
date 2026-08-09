@@ -224,16 +224,23 @@ window.goToLogin = goToLogin;
 window.showLoginPrompt = goToLogin;
 
 // ===== ⭐ 全局API封装（使用本地token）=====
-async function apiFetch(body, _retried = false, signal = undefined) {
-  let token = localStorage.getItem("token");
+async function authenticatedFetch(url, init = {}, _retried = false, requestIdentity = null) {
+  let token = requestIdentity?.token || localStorage.getItem("token");
   if (!token) return null;
+
+  if (
+    requestIdentity?.userId &&
+    requestIdentity.userId !== getCurrentUserId()
+  ) {
+    return null;
+  }
 
   async function refreshToken() {
     const old = localStorage.getItem("token");
     if (!old) return null;
     const identity = await resolveAndStoreIdentity({
       token: old,
-      expectedUserId: session?.userId ?? null,
+      expectedUserId: requestIdentity?.userId ?? session?.userId ?? null,
       force: true,
     });
     return getVerifiedToken(identity);
@@ -241,29 +248,34 @@ async function apiFetch(body, _retried = false, signal = undefined) {
 
   // Session 中的身份与 Token 必须来自同一次服务端验证。
   const currentIdentity = getCurrentVerifiedIdentity();
-  if (token && (!currentIdentity || getVerifiedToken(currentIdentity) !== token)) {
+  if (!requestIdentity && token && (!currentIdentity || getVerifiedToken(currentIdentity) !== token)) {
     const newToken = await refreshToken();
     if (!newToken) return null;
     token = newToken;
   }
 
-  const res = await fetch("https://api.sunland.dev", {
-    method: "POST",
+  const headers = new Headers(init.headers);
+  if (token) headers.set("Authorization", "Bearer " + token);
+  const res = await fetch(url, {
+    ...init,
+    method: init.method || "POST",
     headers: {
-      "Content-Type": "application/json",
-      ...(token ? { "Authorization": "Bearer " + token } : {})
+      ...Object.fromEntries(headers.entries()),
     },
-    body: JSON.stringify(body),
-    signal,
   });
 
   // ⭐ 如果401 → 尝试刷新一次
   if (res.status === 401 && !_retried) {
+    if (requestIdentity?.userId && requestIdentity.userId !== getCurrentUserId()) {
+      return null;
+    }
     // 只重试一次，防止死循环
     const newToken = await refreshToken();
 
     if (newToken) {
-      return apiFetch(body, true, signal);
+      return authenticatedFetch(url, init, true, requestIdentity
+        ? { ...requestIdentity, token: newToken }
+        : null);
     }
     // refresh 失败才真正登出
     localStorage.removeItem("token");
@@ -275,6 +287,9 @@ async function apiFetch(body, _retried = false, signal = undefined) {
 
   // ⭐ fallback 401 guard after retry
   if (res.status === 401 && _retried) {
+    if (requestIdentity?.userId && requestIdentity.userId !== getCurrentUserId()) {
+      return null;
+    }
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     alert("登录已过期，请重新登录");
@@ -283,6 +298,15 @@ async function apiFetch(body, _retried = false, signal = undefined) {
   }
 
   return res;
+}
+
+async function apiFetch(body, _retried = false, signal = undefined) {
+  return authenticatedFetch("https://api.sunland.dev", {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+    signal,
+  }, _retried);
 }
 /* ===== 页面进入动画触发 ===== */
 document.body.classList.add("ai-entering");
@@ -709,7 +733,6 @@ import {
   isRequestVisibleForConversation,
 } from './request-context.js';
 import {
-  getSunlandKnowledgeStorageKey,
   isSameUserIdentity,
   SUNLAND_LOGIN_STATE_MESSAGE,
 } from './user-identity.js';
@@ -728,6 +751,7 @@ import {
   isVerifiedIdentity,
 } from './verified-identity.js';
 import { createSunlandDiagnosticsRuntime } from './beta-diagnostics/runtime.js';
+import { preserveSunlandLegacyState } from './sunland-legacy-migration.js';
 
 const identityAuthority = new IdentityAuthority();
 const sunlandDiagnosticsRuntime = createSunlandDiagnosticsRuntime({
@@ -738,7 +762,11 @@ const sunlandDiagnosticsRuntime = createSunlandDiagnosticsRuntime({
 
 // `apiFetch` is a hoisted function declaration (defined below), so it's
 // already safely referenceable here at module-eval time.
-let providerRegistry = createProviderRegistry({ sendRequest: apiFetch });
+let providerRegistry = createProviderRegistry({
+  sendRequest: apiFetch,
+  sendSunlandRequest: (path, init = {}, requestIdentity = null) =>
+    authenticatedFetch(`https://ai-core.sunland.dev${path}`, init, false, requestIdentity),
+});
 
 function createOfflineSupabaseClient() {
   const offlineResult = () => Promise.resolve({ data: null, error: null });
@@ -851,6 +879,7 @@ async function resolveAndStoreIdentity(options = {}) {
 
 function setSession(identity) {
   const previousUserId = session?.userId ?? null;
+  window.SunlandDatabaseToken?.clear?.();
   // ⭐ 清理旧订阅（不然会叠加）
   stopRealtime();
   realtimeChannels.forEach(ch => {
@@ -1744,6 +1773,7 @@ async function checkLogin(options = {}) {
         lastIdentityErrorReason = "";
         persistVerifiedIdentity(resolution.identity);
         if (session?.identity !== resolution.identity) setSession(resolution.identity);
+        preserveSunlandLegacyState({ identity: resolution.identity, storage: localStorage });
         await sunlandDiagnosticsRuntime.initialize();
       }
 
@@ -2013,12 +2043,14 @@ setTimeout(() => {
     const code = modal.querySelector("#codeInput").value.trim().toUpperCase();
     const msg = modal.querySelector("#codeMsg");
     const btn = modal.querySelector("#submitCodeBtn");
-    if (btn.disabled) return; // 防止重复点击
+    if (btn.disabled) return;
     btn.disabled = true;
     btn.innerText = "激活中...";
 
-    // ⭐ 登录校验（防止未登录报错）
-    if (!session || !session.user) {
+    const identity = getCurrentVerifiedIdentity();
+    const userId = getVerifiedUserId(identity);
+    const token = getVerifiedToken(identity);
+    if (!userId || !token) {
       msg.innerText = "请先登录";
       msg.style.color = "#ef4444";
       btn.disabled = false;
@@ -2026,23 +2058,9 @@ setTimeout(() => {
       return;
     }
 
-    // ⭐ 检查当前用户是否已经激活过
-    const { data: exist } = await supabase
-      .from("activation_codes")
-      .select("code")
-      .eq("used_by", session.userId)
-      .maybeSingle();
-
-    if (exist) {
-      msg.innerText = "你已经激活过了";
-      msg.style.color = "#ef4444";
-      btn.disabled = false;
-      btn.innerText = "激活";
-      return;
-    }
-
-    if (!code) {
+    if (!/^[A-Z0-9_-]{4,64}$/.test(code)) {
       msg.innerText = "请输入激活码";
+      msg.style.color = "#ef4444";
       btn.disabled = false;
       btn.innerText = "激活";
       return;
@@ -2051,109 +2069,40 @@ setTimeout(() => {
     msg.innerText = "验证中...";
     msg.style.color = "#999";
 
-    const { data, error } = await supabase
-      .from("activation_codes")
-      .select("code, used_by")
-      .eq("code", code)
-      .limit(1)
-      .single();
-
-    if (error) {
-      console.error("查询激活码失败:", error);
-      msg.innerText = "激活码查询失败";
-      msg.style.color = "#ef4444";
-      btn.disabled = false;
-      btn.innerText = "激活";
-      return;
-    }
-
-    if (!data) {
-      msg.innerText = "激活码不存在";
-      msg.style.color = "#ef4444";
-      btn.disabled = false;
-      btn.innerText = "激活";
-      return;
-    }
-
-    if (data.used_by) {
-      if (data.used_by === session.userId) {
-  isActivated = true;
-
-  await supabase.from("user_profiles").upsert({
-    user_id: session.userId,
-    pro: true,
-    updated_at: new Date().toISOString()
-  }, { onConflict: "user_id" });
-
-  await checkActivation();
-  updateDeepButton();
+    try {
+      const response = await authenticatedFetch(
+        "https://api.sunland.dev/v1/activation/claim",
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ code }),
+        },
+        false,
+        { userId, token },
+      );
+      if (!response || getCurrentUserId() !== userId) return;
+      const payload = await response.json().catch(() => ({}));
+      if (response.ok && ["success", "already_activated"].includes(payload.result)) {
+        isActivated = true;
+        await checkActivation();
+        updateDeepButton();
         showActivationSuccess(modal, closeModal);
-      } else {
-        msg.innerText = "已被他人使用";
-        msg.style.color = "#ef4444";
-        btn.disabled = false;
-        btn.innerText = "激活";
-      }
-      return;
-    }
-
-    // ====== 新的 update 代码块（带 error 和唯一约束处理）======
-    const { data: updated, error: updateError } = await supabase
-      .from("activation_codes")
-      .update({
-        used_by: session.userId,
-        used_at: new Date().toISOString()
-      })
-      .eq("code", code)
-      .is("used_by", null)
-      .select();
-
-    // ⭐ 数据库报错处理（唯一约束等）
-    if (updateError) {
-      if (
-        updateError.message.includes("duplicate key") ||
-        updateError.message.includes("unique")
-      ) {
-        msg.innerText = "你已经激活过了";
-        msg.style.color = "#ef4444";
-        btn.disabled = false;
-        btn.innerText = "激活";
         return;
       }
-
-      msg.innerText = "激活失败，请稍后再试";
+      msg.innerText = payload.result === "used_by_other"
+        ? "激活码已被他人使用"
+        : payload.result === "invalid_code"
+          ? "激活码不存在"
+          : "激活服务暂时不可用，请稍后重试";
       msg.style.color = "#ef4444";
-      console.error(updateError);
+    } catch (error) {
+      console.warn("激活请求失败:", error);
+      msg.innerText = "激活服务暂时不可用，请稍后重试";
+      msg.style.color = "#ef4444";
+    } finally {
       btn.disabled = false;
       btn.innerText = "激活";
-      return;
     }
-
-    // ⭐ 没有更新成功（可能被抢先使用）
-    if (!updated || updated.length === 0) {
-      console.warn("激活失败：未更新任何行，可能被占用或RLS限制");
-      msg.innerText = "激活失败（可能被占用或权限限制）";
-      msg.style.color = "#ef4444";
-      btn.disabled = false;
-      btn.innerText = "激活";
-      return;
-    }
-
-isActivated = true;
-
-await supabase.from("user_profiles").upsert({
-  user_id: session.userId,
-  pro: true,
-  updated_at: new Date().toISOString()
-}, { onConflict: "user_id" });
-
-await checkActivation();
-
-    const hintEl = document.getElementById("usageHint");
-    if (hintEl) hintEl.innerText = "已激活 ∞";
-
-    updateDeepButton();
-    showActivationSuccess(modal, closeModal);
   };
 
   // ⭐ 跳转支付
@@ -2268,41 +2217,6 @@ const requestCoordinator = new RequestCoordinator({
     updateProviderCapabilityUI();
   },
 });
-
-function resetSunlandRuntimeCache(userId) {
-  if (!userId || getCurrentUserId() !== userId) return;
-
-  conversations.forEach(conversation => {
-    if (conversation.provider !== "sunland") return;
-    const activeRequest = requestCoordinator.activeForConversation(conversation.id);
-    if (!activeRequest) return;
-    requestCoordinator.abort(activeRequest, "sunland-data-cleared");
-    requestCoordinator.finish(activeRequest, "aborted");
-  });
-
-  providerRegistry = createProviderRegistry({ sendRequest: apiFetch });
-  updateRequestUiState();
-}
-
-window.addEventListener("storage", (event) => {
-  const userId = getCurrentUserId();
-  const knowledgeKey = getSunlandKnowledgeStorageKey(userId);
-  if (!knowledgeKey) return;
-  if (event.key !== knowledgeKey && event.key !== `${knowledgeKey}::memory`) return;
-  resetSunlandRuntimeCache(userId);
-});
-
-if (typeof BroadcastChannel === "function") {
-  const sunlandDataChannel = new BroadcastChannel("sunland-data-control-v1");
-  sunlandDataChannel.addEventListener("message", event => {
-    if (
-      event.data?.type === "sunland-data-cleared" &&
-      event.data.userId === getCurrentUserId()
-    ) {
-      resetSunlandRuntimeCache(event.data.userId);
-    }
-  });
-}
 
 function getVisibleRequest() {
   return requestCoordinator.activeForConversation(currentId);
@@ -2610,6 +2524,20 @@ async function deleteConversationForCurrentUser(targetConversation) {
     });
     replacement.history = systemMessage ? [{ ...systemMessage }] : [];
     nextConversations.push(replacement);
+  }
+
+  if (target.provider === "sunland") {
+    const contextDeleted = await authenticatedFetch(
+      `https://ai-core.sunland.dev/v1/conversations/${encodeURIComponent(targetKey)}/context`,
+      { method: "DELETE" },
+    );
+    if (!contextDeleted?.ok || getCurrentUserId() !== userId) {
+      deletedConversationIds.delete(targetKey);
+      deletingConversationIds.delete(targetKey);
+      renderChatList();
+      showToast("暂时无法清理这个对话的 AI 上下文，请稍后再试。");
+      return false;
+    }
   }
 
   clearTimeout(syncTimer);
@@ -2965,10 +2893,10 @@ function refuseModeratedInput(result) {
 }
 
 /**
- * Sunland AI 的发送路径：完全在浏览器本地运行（符号推理，无 LLM、无网络
- * 请求），通过统一的 providerRegistry 调用，不复用/不触碰 DeepSeek 的
- * apiFetch/SSE 逻辑。`history`（本对话的聊天记录）与 Sunland 的知识图谱
- * （跨对话共享的"大脑"）是两回事：这里只把最新一句用户输入交给引擎。
+ * Sunland AI 的发送路径：由远程 Symbolic Core 执行，不使用 DeepSeek，
+ * 通过统一的 providerRegistry 调用，不复用 DeepSeek 的 apiFetch/SSE
+ * 逻辑。`history`（本对话的聊天记录）与 Sunland 的知识图谱（跨对话共享
+ * 的“大脑”）是两回事：这里只发送最新一句用户输入和稳定会话标识。
  */
 function isRequestVisible(requestContext) {
   return requestCoordinator.canWrite(requestContext) && isRequestVisibleForConversation(

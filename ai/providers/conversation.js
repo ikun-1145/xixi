@@ -23,11 +23,31 @@
  *     updatedAt: number,
  *   }
  */
-import {
-  applySemanticContextUpdate,
-  createEmptySemanticContext,
-  normalizeSemanticContext,
-} from "../vendor/sunland-core.js";
+// Legacy-only Context envelope helpers. New turns keep Context on the remote
+// service; these functions exist solely to import pre-migration conversations
+// without loading or executing Symbolic Core in the browser.
+function createEmptySemanticContext() {
+  return { schemaVersion: 1, version: 0, recentTurns: [] };
+}
+
+function normalizeSemanticContext(value) {
+  if (!hasValidSemanticContextEnvelope(value)) return createEmptySemanticContext();
+  return {
+    schemaVersion: 1,
+    version: value.version,
+    recentTurns: value.recentTurns.slice(-6),
+  };
+}
+
+function applySemanticContextUpdate(currentValue, update) {
+  const current = normalizeSemanticContext(currentValue);
+  if (
+    update?.kind !== "replace" || update.baseVersion !== current.version ||
+    update.nextVersion !== current.version + 1 ||
+    update.context?.version !== update.nextVersion
+  ) return current;
+  return normalizeSemanticContext(update.context);
+}
 
 export const SUPPORTED_PROVIDER_IDS = Object.freeze(["deepseek", "sunland"]);
 const SUPPORTED_PROVIDERS = new Set(SUPPORTED_PROVIDER_IDS);

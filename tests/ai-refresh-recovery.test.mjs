@@ -230,7 +230,7 @@ test('bootstrap initializes every recovery state before checkLogin can call load
   assert.notEqual(bootstrap, -1);
 
   const requiredInitializers = [
-    ['Provider Registry', /\blet\s+providerRegistry\s*=\s*createProviderRegistry\(\{\s*sendRequest:\s*apiFetch\s*\}\);/],
+    ['Provider Registry', /\blet\s+providerRegistry\s*=\s*createProviderRegistry\(\{[\s\S]*?sendRequest:\s*apiFetch,[\s\S]*?sendSunlandRequest:[\s\S]*?\}\);/],
     ['session', /\blet\s+session\s*=\s*null\b/],
     ['conversations', /\blet\s+conversations\s*=\s*\[\s*\]/],
     ['currentId', /\blet\s+currentId\s*=\s*null\b/],

@@ -1,67 +1,43 @@
 import { AIProvider } from "./AIProvider.js";
-import { createSunlandEngine } from "../vendor/sunland-core.js";
-import {
-  getSunlandKnowledgeStorageKey,
-  SUNLAND_LOGIN_STATE_MESSAGE,
-} from "../user-identity.js";
-import {
-  getVerifiedUserId,
-  isVerifiedIdentity,
-} from "../verified-identity.js";
+import { getVerifiedToken, getVerifiedUserId } from "../verified-identity.js";
+import { SUNLAND_LOGIN_STATE_MESSAGE } from "../user-identity.js";
 import { answerFurryEventQuestion } from "../furry-events.js";
+import { ensureSunlandLegacyMigration } from "../sunland-legacy-migration.js";
+
+const DEFAULT_BASE_URL = "https://ai-core.sunland.dev";
+
+function newTurnId() {
+  return typeof globalThis.crypto?.randomUUID === "function"
+    ? globalThis.crypto.randomUUID()
+    : `turn-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
+function remoteErrorMessage(status) {
+  if (status === 429) return "请求有点频繁，请稍后再试。";
+  if (status === 503) return "Sunland AI 的记忆服务暂时不可用，请稍后重试。";
+  return "Sunland AI 暂时无法回答，请稍后重试。";
+}
 
 /**
- * Sunland AI provider -- runs the Sunland Core engine (Parser -> Knowledge
- * -> Personality; a Reasoner lands later behind the same engine, Stage 4)
- * entirely IN THE BROWSER. No network round-trip, no external LLM: this is
- * the actual point of Sunland AI being a separate system, not a chatbot
- * skin over someone else's model.
- *
- * SHARED BRAIN, INDEPENDENT CONVERSATIONS: exactly one `SunlandEngine`
- * (and therefore exactly one `KnowledgeStore`) is created per logged-in
- * user and cached here for the lifetime of the page -- every Sunland
- * conversation that user has talks to the SAME evolving brain. `messages`
- * (the per-conversation chat transcript) is never fed back into the
- * engine wholesale: Sunland has no LLM-style rolling context window, so
- * only the latest user turn is parsed. This is a structural difference
- * from DeepSeek, not just a policy -- there is no code path by which one
- * provider's state can leak into the other's.
- *
- * Persistence uses `window.localStorage` directly -- it already satisfies
- * Core's `StorageAdapter` shape (`getItem`/`setItem`/`removeItem`) with zero
- * wrapper code. Swapping to Supabase later means swapping this one adapter
- * argument, nothing else.
+ * Remote-only Sunland provider. Symbolic Core runs inside the authenticated
+ * Worker; no engine, knowledge graph or semantic Context executes in the
+ * browser. The injected requester owns the app-token refresh-once policy.
  */
 export class SunlandProvider extends AIProvider {
-  constructor() {
+  constructor({
+    sendRequest = (path, init, auth) => {
+      const headers = new Headers(init?.headers);
+      if (auth?.token) headers.set("authorization", `Bearer ${auth.token}`);
+      return fetch(`${DEFAULT_BASE_URL}${path}`, { ...init, headers });
+    },
+    storage = globalThis.localStorage,
+  } = {}) {
     super();
     this.id = "sunland";
     this.displayName = "Sunland AI";
-    // Free for every regular logged-in user -- never gated behind Pro.
     this.requiresPro = false;
-    /** @type {Map<string, ReturnType<typeof createSunlandEngine>>} */
-    this._engines = new Map();
-  }
-
-  /** One shared engine per user, created lazily, never demo-seeded. */
-  _getEngine(identity) {
-    const userId = getVerifiedUserId(identity);
-    const storageKey = getSunlandKnowledgeStorageKey(userId);
-    if (!isVerifiedIdentity(identity) || !userId || !storageKey) {
-      throw new TypeError("Sunland engine requires a verified identity");
-    }
-
-    let engine = this._engines.get(userId);
-    if (!engine) {
-      engine = createSunlandEngine({
-        storage: { adapter: window.localStorage, key: storageKey },
-        semanticMode: "passive",
-        semanticDebug: false,
-        semanticContextMode: "enabled",
-      });
-      this._engines.set(userId, engine);
-    }
-    return engine;
+    this.sendRequest = sendRequest;
+    this.storage = storage;
   }
 
   async send({
@@ -69,59 +45,65 @@ export class SunlandProvider extends AIProvider {
     messages,
     onDelta,
     identity,
-    semanticContext,
     furryContext,
     furryContextActive = false,
     turnId,
-    canCommitSemanticContext,
     observationMode = "off",
     signal,
   }) {
     const userId = getVerifiedUserId(identity);
-    if (!userId || userId !== conversation?.userId) {
+    const token = getVerifiedToken(identity);
+    if (!userId || !token || userId !== conversation?.userId) {
       onDelta?.(SUNLAND_LOGIN_STATE_MESSAGE);
       return { content: SUNLAND_LOGIN_STATE_MESSAGE, blocked: true };
     }
+    const lastUserMessage = [...messages].reverse().find((message) => message.role === "user");
+    const input = lastUserMessage?.content?.trim() ?? "";
+    if (!input || signal?.aborted) return { content: "", blocked: true };
 
-    const lastUserMessage = [...messages].reverse().find((m) => m.role === "user");
-    const input = lastUserMessage?.content ?? "";
-    if (signal?.aborted) {
-      return { content: "", blocked: true, semanticContextUpdate: null };
-    }
-
-    // 兽聚查询是一个独立、可解释的原生领域能力。查询结果以结构化上下文
-    // 传入，而不是写进知识图谱或依赖外部 LLM；因此不会污染用户长期知识，
-    // 同时能与 DeepSeek 使用同一份卡片数据回答当前问题。
     if (furryContextActive && furryContext) {
       const content = answerFurryEventQuestion(input, furryContext);
       onDelta?.(content);
-      return { content, semanticContextUpdate: null };
+      return { content };
     }
 
-    const engine = this._getEngine(identity);
-
-    // Symbolic reasoning is effectively instant -- no real stream to read,
-    // but we still go through `onDelta` so the UI's rendering path is
-    // identical regardless of which provider answered.
-    const processed = engine.process(input, {
-      semanticContext,
-      turnId,
-      observationMode: observationMode === "summary" ? "summary" : "off",
-      canCommitSemanticContext: () => (
-        signal?.aborted !== true &&
-        canCommitSemanticContext?.() !== false
-      ),
+    const migration = await ensureSunlandLegacyMigration({
+      identity,
+      storage: this.storage,
+      sendRequest: this.sendRequest,
+      signal,
     });
-    const content = processed.response;
-    onDelta?.(content);
+    if (signal?.aborted) return { content: "", blocked: true };
 
-    const result = {
-      content,
-      semanticContextUpdate: processed.semanticContextUpdate,
-    };
-    if (processed.observationSummary) {
-      result.observationSummary = processed.observationSummary;
+    const response = await this.sendRequest("/v1/turns", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        conversationId: String(conversation.id),
+        turnId: String(turnId || newTurnId()),
+        input,
+        observationMode: observationMode === "summary" ? "summary" : "off",
+      }),
+      signal,
+    }, { token, userId });
+    if (!response?.ok) {
+      const content = remoteErrorMessage(response?.status);
+      onDelta?.(content);
+      return { content, blocked: true };
     }
-    return result;
+    const payload = await response.json();
+    if (typeof payload?.response !== "string") {
+      const content = remoteErrorMessage(502);
+      onDelta?.(content);
+      return { content, blocked: true };
+    }
+    onDelta?.(payload.response);
+    return {
+      content: payload.response,
+      ...(payload.observationSummary ? { observationSummary: payload.observationSummary } : {}),
+      ...(!migration.ok && migration.reason === "invalid-local-state"
+        ? { migrationWarning: "检测到损坏的旧 Sunland 数据，已保留在本机以便恢复。" }
+        : {}),
+    };
   }
 }

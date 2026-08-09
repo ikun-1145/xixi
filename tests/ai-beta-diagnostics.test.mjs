@@ -9,6 +9,7 @@ import {
   createEmptyDiagnosticsSnapshot,
   DEVICE_SECRET_STORAGE_KEY,
   MAX_DIAGNOSTIC_COUNT,
+  SUPPORTED_OBSERVATION_VERSIONS,
   validateDiagnosticsSnapshot,
 } from "../ai/beta-diagnostics/index.js";
 import { IdentityAuthority } from "../ai/verified-identity.js";
@@ -490,14 +491,11 @@ test("diagnostics modules contain no network path or production integration", ()
   assert.doesNotMatch(source, /SunlandProvider|DeepSeek|ai\/app\.js|sunland-core\.js/u);
 });
 
-test("browser schema versions remain aligned with the Phase 1 Core source", () => {
-  const coreTypes = fs.readFileSync(
-    new URL("../symbolic-ai/src/observation/types.ts", import.meta.url),
-    "utf8",
-  );
-
-  assert.match(coreTypes, /SUNLAND_CORE_VERSION = "0\.1\.0"/u);
-  assert.match(coreTypes, /SEMANTIC_SCHEMA_VERSION = 1/u);
-  assert.match(coreTypes, /CONTEXT_SCHEMA_VERSION = 1/u);
-  assert.match(coreTypes, /OBSERVATION_SCHEMA_VERSION = 1/u);
+test("browser diagnostics accepts only the deployed 0.1.0 remote contract", () => {
+  assert.deepEqual(SUPPORTED_OBSERVATION_VERSIONS, {
+    sunlandCoreVersion: "0.1.0",
+    semanticSchemaVersion: 1,
+    contextSchemaVersion: 1,
+    observationSchemaVersion: 1,
+  });
 });

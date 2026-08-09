@@ -3,8 +3,8 @@ import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { createRequire } from 'node:module';
 
-const symbolicRequire = createRequire(new URL('../symbolic-ai/package.json', import.meta.url));
-const { JSDOM, VirtualConsole } = symbolicRequire('jsdom');
+const projectRequire = createRequire(new URL('../package.json', import.meta.url));
+const { JSDOM, VirtualConsole } = projectRequire('jsdom');
 
 const readProjectFile = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 

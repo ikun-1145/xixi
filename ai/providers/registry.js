@@ -12,13 +12,16 @@ import { SunlandProvider } from "./SunlandProvider.js";
  * Adding a third provider in the future = one new class + one new line in
  * the `Map` below. Nothing calling `getProvider()` ever needs to change.
  *
- * @param {{ sendRequest: (body: object) => Promise<Response> }} deps
- *   `sendRequest` is `app.js`'s existing `apiFetch`, injected.
+ * @param {{
+ *   sendRequest: (body: object) => Promise<Response>,
+ *   sendSunlandRequest: (path: string, init: RequestInit, identity: object) => Promise<Response>
+ * }} deps
+ *   DeepSeek and Sunland use separate injected transports and contracts.
  */
-export function createProviderRegistry({ sendRequest }) {
+export function createProviderRegistry({ sendRequest, sendSunlandRequest }) {
   const providers = new Map([
     ["deepseek", new DeepSeekProvider({ sendRequest })],
-    ["sunland", new SunlandProvider()],
+    ["sunland", new SunlandProvider({ sendRequest: sendSunlandRequest })],
   ]);
 
   return {

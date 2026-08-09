@@ -3,10 +3,6 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import { createRequire } from "node:module";
 
-import {
-  createSunlandEngine,
-} from "../ai/vendor/sunland-core.js";
-
 const aiHtml = fs.readFileSync(
   new URL("../ai.html", import.meta.url),
   "utf8",
@@ -27,10 +23,8 @@ const identitySource = fs.readFileSync(
   new URL("../ai/user-identity.js", import.meta.url),
   "utf8",
 );
-const symbolicRequire = createRequire(
-  new URL("../symbolic-ai/package.json", import.meta.url),
-);
-const { JSDOM } = symbolicRequire("jsdom");
+const projectRequire = createRequire(new URL("../package.json", import.meta.url));
+const { JSDOM } = projectRequire("jsdom");
 
 test("first launch provides a usable login path and creates an empty chat", () => {
   assert.match(loginHtml, /登录 Sunland AI · Beta/u);
@@ -73,17 +67,20 @@ test("login, identity and request failures give a recoverable next action", () =
   assert.match(appSource, /消息处理失败，请稍后重试/u);
 });
 
-test("published Core and settings distinguish Knowledge from name Memory", () => {
-  const engine = createSunlandEngine();
-  const missingName = engine.respond("我叫什么");
-  const remembered = engine.respond("我叫小蓝");
-  const learned = engine.respond("星尘兽会唱歌");
-  const recalled = engine.respond("我叫什么");
+test("remote AI contract and settings distinguish Knowledge from name Memory", () => {
+  const providerSource = fs.readFileSync(
+    new URL("../ai/providers/SunlandProvider.js", import.meta.url),
+    "utf8",
+  );
+  const controlsSource = fs.readFileSync(
+    new URL("../ai/sunland-data-controls.js", import.meta.url),
+    "utf8",
+  );
 
-  assert.match(missingName, /还没有告诉|还不知道/u);
-  assert.match(remembered, /小蓝/u);
-  assert.match(learned, /记|知识/u);
-  assert.match(recalled, /小蓝/u);
+  assert.match(providerSource, /\/v1\/turns/u);
+  assert.match(controlsSource, /\/v1\/knowledge/u);
+  assert.match(controlsSource, /\/v1\/memory\/name/u);
+  assert.doesNotMatch(providerSource, /createSunlandEngine|sunland-core\.js/u);
   assert.match(settingsHtml, /姓名记忆/u);
   assert.match(settingsHtml, /只让 Sunland AI 忘记你的名字/u);
   assert.match(settingsHtml, /用户教学知识/u);
