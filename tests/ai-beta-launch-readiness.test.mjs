@@ -76,11 +76,23 @@ test("remote AI contract and settings distinguish Knowledge from name Memory", (
     new URL("../ai/sunland-data-controls.js", import.meta.url),
     "utf8",
   );
+  const supabaseClientSource = fs.readFileSync(
+    new URL("../p/js/supabaseClient.js", import.meta.url),
+    "utf8",
+  );
+  const copilotSource = fs.readFileSync(
+    new URL("../copilot.html", import.meta.url),
+    "utf8",
+  );
 
   assert.match(providerSource, /\/v1\/turns/u);
   assert.match(controlsSource, /\/v1\/knowledge/u);
   assert.match(controlsSource, /\/v1\/memory\/name/u);
   assert.doesNotMatch(providerSource, /createSunlandEngine|sunland-core\.js/u);
+  for (const clientSource of [supabaseClientSource, copilotSource, settingsHtml]) {
+    assert.match(clientSource, /sb_publishable_/u);
+    assert.doesNotMatch(clientSource, /eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9/u);
+  }
   assert.match(settingsHtml, /姓名记忆/u);
   assert.match(settingsHtml, /只让 Sunland AI 忘记你的名字/u);
   assert.match(settingsHtml, /用户教学知识/u);
