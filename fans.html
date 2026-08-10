@@ -167,14 +167,14 @@
     document.getElementById("thanksText").textContent = t.thanks;
     document.getElementById("backBtn").textContent = t.back;
 
-    const fanCount = 28519;
+    const fanCount = 30181;
     const updateTime = new Intl.DateTimeFormat(currentLang === "zh-Hant" ? "zh-Hant" : currentLang, {
       year: "numeric",
       month: "long",
       day: "numeric",
       hour: "2-digit",
       minute: "2-digit",
-    }).format(new Date("2026-07-06T11:42:00+08:00"));
+    }).format(new Date("2026-08-10T14:36:00+08:00"));
 
     // 更新时间
     document.getElementById('updateTime').textContent = `${t.updatePrefix}${updateTime}`;
