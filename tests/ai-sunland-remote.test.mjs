@@ -320,6 +320,7 @@ test("production web code contains no Symbolic Core runtime import or vendor scr
   const conversationSource = fs.readFileSync(new URL("../ai/providers/conversation.js", import.meta.url), "utf8");
   const migrationSource = fs.readFileSync(new URL("../ai/sunland-legacy-migration.js", import.meta.url), "utf8");
   const html = fs.readFileSync(new URL("../ai.html", import.meta.url), "utf8");
+  const redirects = fs.readFileSync(new URL("../_redirects", import.meta.url), "utf8");
 
   assert.doesNotMatch(providerSource, /sunland-core|createSunlandEngine|_getEngine/u);
   assert.doesNotMatch(conversationSource, /sunland-core/u);
@@ -327,6 +328,10 @@ test("production web code contains no Symbolic Core runtime import or vendor scr
   assert.equal(fs.existsSync(new URL("../symbolic-ai/", import.meta.url)), false);
   assert.equal(fs.existsSync(new URL("../ai/vendor/sunland-core.js", import.meta.url)), false);
   assert.equal(fs.existsSync(new URL("../ai/vendor/sunland-core.manifest.json", import.meta.url)), false);
+  assert.match(redirects, /^\/ai\/vendor\/sunland-core\.js \/ai 308$/mu);
+  assert.match(redirects, /^\/ai\/vendor\/sunland-core\.manifest\.json \/ai 308$/mu);
+  assert.match(redirects, /^\/symbolic-ai \/ 308$/mu);
+  assert.match(redirects, /^\/symbolic-ai\/\* \/ 308$/mu);
   assert.match(providerSource, /\/v1\/turns/u);
   assert.match(migrationSource, /\/v1\/migrations\/local-state/u);
 });
