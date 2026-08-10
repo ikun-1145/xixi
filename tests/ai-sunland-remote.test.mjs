@@ -324,6 +324,9 @@ test("production web code contains no Symbolic Core runtime import or vendor scr
   assert.doesNotMatch(providerSource, /sunland-core|createSunlandEngine|_getEngine/u);
   assert.doesNotMatch(conversationSource, /sunland-core/u);
   assert.doesNotMatch(html, /ai\/vendor\/sunland-core/u);
+  assert.equal(fs.existsSync(new URL("../symbolic-ai/", import.meta.url)), false);
+  assert.equal(fs.existsSync(new URL("../ai/vendor/sunland-core.js", import.meta.url)), false);
+  assert.equal(fs.existsSync(new URL("../ai/vendor/sunland-core.manifest.json", import.meta.url)), false);
   assert.match(providerSource, /\/v1\/turns/u);
   assert.match(migrationSource, /\/v1\/migrations\/local-state/u);
 });
