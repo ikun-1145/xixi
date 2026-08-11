@@ -74,7 +74,7 @@ test('an invalid stored provider is rejected without discarding a legal in-memor
   assert.equal(result.conversations[0].provider, 'sunland');
 });
 
-test('cloud and realtime collection merges preserve provider while accepting mutable updates', () => {
+test('cloud collection merges preserve provider while accepting mutable updates', () => {
   const local = conversation({ provider: 'deepseek', model: 'deepseek-v4-flash' });
   const remote = conversation({
     provider: 'sunland',
@@ -150,22 +150,23 @@ test('provider selection is allowed only before the conversation starts', () => 
   assert.equal(setConversationProvider(fresh, 'unknown'), false);
 });
 
-test('live local, cloud, and realtime code all use the centralized provider merge policy', () => {
+test('live local and cloud code use the centralized provider merge policy', () => {
   const assignments = [...aiApp.matchAll(/\.provider\s*=(?!=)/g)];
   assert.equal(assignments.length, 0);
   assert.match(aiApp, /setConversationProvider\(c, "sunland", "frost"\)/);
   assert.match(aiApp, /setConversationProvider\(c, "deepseek", currentModel\)/);
   assert.match(aiApp, /const hasStarted = hasConversationStarted\(c\)/);
   assert.match(aiApp, /latest && !hasConversationStarted\(latest\)/);
-  assert.ok((aiApp.match(/mergeConversationCollections\(conversations,/g) || []).length >= 2);
+  assert.match(aiApp, /mergeConversationCollections\(conversations, cloudConversations\)/);
   assert.match(aiApp, /!isSupportedProviderId\(sendingConversation\.provider\)/);
 });
 
-test('web deletion survives realtime object replacement and mixed id types', () => {
+test('web deletion survives cloud object replacement and mixed id types', () => {
   assert.match(aiApp, /const targetKey = conversationIdKey\(targetConversation\?\.id\)/);
   assert.match(aiApp, /deletedConversationIds\.add\(targetKey\)/);
-  assert.ok(
-    (aiApp.match(/mergeConversationCollections\(conversations, (?:cloudConversations|cloudData)\)\s*\.filter\(conversation => !isConversationDeleted\(conversation\)\)/g) || []).length >= 2,
+  assert.match(
+    aiApp,
+    /mergeConversationCollections\(conversations, cloudConversations\)\s*\.filter\(conversation => !isConversationDeleted\(conversation\)\)/,
   );
   assert.doesNotMatch(aiApp, /conversation !== target/);
 });

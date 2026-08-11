@@ -2696,10 +2696,10 @@
     "ko": "이 정책에 대한 질문이있는 경우, 저희에게 연락하십시오 :",
     "es": "Si tiene preguntas sobre esta política, contáctenos en:"
   },
-  "邮箱：sunlandccc@outlook.com": {
-    "zh-Hant": "郵箱：sunlandccc@outlook.com",
-    "ko": "이메일: sunlandccc@outlook.com",
-    "es": "Correo electrónico: sunlandccc@outlook.com"
+  "邮箱：support@sunland.dev": {
+    "zh-Hant": "郵箱：support@sunland.dev",
+    "ko": "이메일: support@sunland.dev",
+    "es": "Correo electrónico: support@sunland.dev"
   },
   "若您不同意本政策，请停止使用本服务。": {
     "zh-Hant": "若您不同意本政策，請停止使用本服務。",

@@ -10,12 +10,16 @@ if (typeof createClient !== 'function') {
 const SUPABASE_URL = 'https://klyrasrqgxijwrxuoevj.supabase.co'
 const SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_4ZIHfHr8wI0QFusEf_m7wA_pthBhxsI'
 
-// 创建并导出 Supabase 客户端
+// Supabase Auth 客户端：仅负责 OAuth / Session，不能配置自定义 accessToken。
 export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
-  accessToken: () => globalThis.SunlandDatabaseToken?.get() ?? null,
   auth: {
     persistSession: true,
     autoRefreshToken: true,
     detectSessionInUrl: true
   }
+})
+
+// AI 数据客户端：只携带 Sunland 短期数据库 Token，不访问 supabase.auth。
+export const supabaseData = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
+  accessToken: () => globalThis.SunlandDatabaseToken?.get() ?? null
 })

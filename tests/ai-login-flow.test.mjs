@@ -123,5 +123,7 @@ test('ai app does not block local login rendering on Supabase CDN load failure',
   assert.doesNotMatch(aiAppJs, /import\s+\{\s*supabase\s*\}\s+from\s+['"]\.\.\/p\/js\/supabaseClient\.js['"]/);
   assert.match(aiAppJs, /function createOfflineSupabaseClient\(/);
   assert.match(aiAppJs, /import\(['"]\.\.\/p\/js\/supabaseClient\.js['"]\)/);
+  assert.match(aiAppJs, /module\?\.supabaseData/);
+  assert.match(aiAppJs, /supabase\s*=\s*module\.supabaseData/);
   assert.match(aiAppJs, /Supabase 客户端加载失败，已启用本地离线模式/);
 });

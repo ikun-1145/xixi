@@ -63,6 +63,46 @@ test('vendored browser runtimes expose the APIs used by production pages', () =>
   }
 });
 
+test('Supabase Auth and Sunland database-token clients stay separated', async () => {
+  const clientSource = readProjectFile('p/js/supabaseClient.js');
+  const authClientStart = clientSource.indexOf('export const supabase =');
+  const dataClientStart = clientSource.indexOf('export const supabaseData =');
+
+  assert.ok(authClientStart >= 0);
+  assert.ok(dataClientStart > authClientStart);
+  assert.doesNotMatch(clientSource.slice(authClientStart, dataClientStart), /accessToken/);
+  assert.match(clientSource.slice(dataClientStart), /accessToken:\s*\(\)\s*=>\s*globalThis\.SunlandDatabaseToken/);
+
+  const dom = new JSDOM('<!doctype html><body></body>', {
+    runScripts: 'outside-only',
+    url: 'https://sunland.example/',
+  });
+
+  try {
+    dom.window.eval(readProjectFile('p/vendor/supabase-2.110.7.js'));
+    const authClient = dom.window.supabase.createClient(
+      'https://project.supabase.co',
+      'sb_publishable_test',
+      { auth: { persistSession: false, autoRefreshToken: false, detectSessionInUrl: false } },
+    );
+    const { data, error } = await authClient.auth.getSession();
+    assert.equal(error, null);
+    assert.equal(data.session, null);
+
+    const dataClient = dom.window.supabase.createClient(
+      'https://project.supabase.co',
+      'sb_publishable_test',
+      { accessToken: async () => 'database-token' },
+    );
+    assert.throws(
+      () => dataClient.auth.getSession(),
+      /configured with the accessToken option/,
+    );
+  } finally {
+    dom.window.close();
+  }
+});
+
 test('optional third-party scripts cannot block AI page parsing', () => {
   const aiHtml = readProjectFile('ai.html');
   const loginHtml = readProjectFile('login.html');

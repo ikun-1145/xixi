@@ -196,10 +196,12 @@ test('verified user A restores only A conversations even when B cache and data r
   assert.equal(storage.reads.includes('conversations_user-b'), false);
 });
 
-test('cloud and realtime paths capture the verified user and reject stale-user callbacks', () => {
+test('cloud refresh captures the verified user, coalesces requests, and rejects stale responses', () => {
+  assert.match(aiApp, /async function syncFromCloudForUser\(userId\)/);
   assert.match(aiApp, /async function syncFromCloud\(\) \{\s*const userId = getCurrentUserId\(\)/);
   assert.match(aiApp, /if \(getCurrentUserId\(\) !== userId\) return;/);
-  assert.match(aiApp, /filter: `user_id=eq\.\$\{userId\}`/);
-  assert.match(aiApp, /payload\.new\?\.user_id != null && payload\.new\.user_id !== userId/);
+  assert.match(aiApp, /\.eq\("user_id", userId\)/);
+  assert.match(aiApp, /cloudSyncRequest\?\.userId === userId/);
+  assert.doesNotMatch(aiApp, /postgres_changes|payload\.new/);
   assert.doesNotMatch(aiApp, /session\.user\.id|normalizeStoredUser|getIdentityFromJwtPayload/);
 });
