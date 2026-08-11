@@ -596,7 +596,7 @@
     ["我们可能会不定期更新本隐私政策，更新后继续使用即视为同意最新版本。", "We may update this policy from time to time. Continuing to use the service after an update means you accept the latest version.", "本ポリシーは随時更新される場合があります。更新後も利用を継続した場合、最新版に同意したものとみなされます。"],
     ["十、联系我们", "10. Contact Us", "10. お問い合わせ"],
     ["如您对本政策有任何疑问，可通过以下方式联系我们：", "If you have questions about this policy, contact us at:", "本ポリシーに関するご質問は、次の連絡先までお問い合わせください："],
-    ["邮箱：sunlandccc@outlook.com", "Email: sunlandccc@outlook.com", "メール：sunlandccc@outlook.com"],
+    ["邮箱：support@sunland.dev", "Email: support@sunland.dev", "メール：support@sunland.dev"],
     ["若您不同意本政策，请停止使用本服务。", "If you do not agree with this policy, stop using the service.", "本ポリシーに同意しない場合は、サービスの利用を中止してください。"],
 
     // Terms of Service.
