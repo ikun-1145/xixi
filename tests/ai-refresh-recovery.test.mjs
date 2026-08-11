@@ -240,9 +240,9 @@ test('bootstrap initializes every recovery state before checkLogin can call load
     ['isStreaming', /\blet\s+isStreaming\s*=\s*false\b/],
     ['hasTypedOnce', /\blet\s+hasTypedOnce\s*=\s*false\b/],
     ['isLoadingHistory', /\blet\s+isLoadingHistory\s*=\s*false\b/],
-    ['realtimeSub', /\blet\s+realtimeSub\s*=\s*null\b/],
     ['lastUserMessage', /\blet\s+lastUserMessage\s*=\s*null\b/],
     ['syncTimer', /\blet\s+syncTimer\s*=\s*null\b/],
+    ['cloudSyncRequest', /\blet\s+cloudSyncRequest\s*=\s*null\b/],
     ['SAFE_INLINE_IMAGE_PATTERN', /\bconst\s+SAFE_INLINE_IMAGE_PATTERN\s*=/],
   ];
 
@@ -256,9 +256,12 @@ test('bootstrap initializes every recovery state before checkLogin can call load
     bootstrap,
     aiApp.indexOf('const sidebar = document.getElementById("sidebar")', bootstrap),
   );
-  assert.match(bootstrapBlock, /await checkLogin\(\);\s*startRealtime\(\);\s*scheduleRenderUser\(\);/);
+  assert.match(bootstrapBlock, /await checkLogin\(\);\s*scheduleRenderUser\(\);/);
   assert.match(bootstrapBlock, /updateProviderCapabilityUI\(\)/);
   assert.doesNotMatch(bootstrapBlock, /setTimeout/);
+  assert.doesNotMatch(aiApp, /postgres_changes|startRealtime|realtimeSub/);
+  assert.match(aiApp, /cloudSyncRequest\?\.userId === userId/);
+  assert.match(aiApp, /const CLOUD_SYNC_INTERVAL_MS = 60_000/);
 
   const checkLoginStart = aiApp.indexOf('async function checkLogin');
   const checkLoginEnd = aiApp.indexOf('function renderUserCore', checkLoginStart);

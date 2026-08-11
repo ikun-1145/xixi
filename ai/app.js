@@ -792,15 +792,7 @@ function createOfflineSupabaseClient() {
 
   return {
     __offline: true,
-    from: () => createQuery(),
-    channel: () => {
-      const channel = {
-        on: () => channel,
-        subscribe: () => channel
-      };
-      return channel;
-    },
-    removeChannel: () => {}
+    from: () => createQuery()
   };
 }
 
@@ -808,8 +800,8 @@ let supabase = createOfflineSupabaseClient();
 
 import('../p/js/supabaseClient.js')
   .then((module) => {
-    if (module?.supabase) {
-      supabase = module.supabase;
+    if (module?.supabaseData) {
+      supabase = module.supabaseData;
       if (session?.userId) {
         const identity = getCurrentVerifiedIdentity();
         if (identity) setSession(identity);
@@ -824,8 +816,6 @@ import('../p/js/supabaseClient.js')
 let session = null;
 const PROFILE_META_ID = "__xixi_user_profile__";
 const PROFILE_CACHE_PREFIX = "xixi_profile_";
-
-let realtimeChannels = [];
 
 function getCurrentVerifiedIdentity() {
   const identity = identityAuthority.current();
@@ -880,12 +870,6 @@ async function resolveAndStoreIdentity(options = {}) {
 function setSession(identity) {
   const previousUserId = session?.userId ?? null;
   window.SunlandDatabaseToken?.clear?.();
-  // ⭐ 清理旧订阅（不然会叠加）
-  stopRealtime();
-  realtimeChannels.forEach(ch => {
-    try { supabase.removeChannel(ch); } catch {}
-  });
-  realtimeChannels = [];
 
   if (identity != null && !isVerifiedIdentity(identity)) {
     throw new TypeError("Session requires a verified identity");
@@ -900,45 +884,6 @@ function setSession(identity) {
     deletingConversationIds.clear();
   }
 
-  if (!userId) return;
-
-    const profileChannel = supabase
-      .channel('profile-sync-' + userId)
-      .on('postgres_changes', {
-        event: 'UPDATE',
-        schema: 'public',
-        table: 'user_profiles',
-        filter: `user_id=eq.${userId}`
-      }, (payload) => {
-        if (getCurrentUserId() !== userId) return;
-        try {
-          const profile = payload.new;
-          if (profile?.avatar_url) {
-            cacheProfile(userId, profile);
-            currentProfile = profile;
-            scheduleRenderUser();
-          }
-        } catch {}
-      })
-      .subscribe();
-
-    const chatChannel = supabase
-      .channel('chat-sync-' + userId)
-      .on('postgres_changes', {
-        event: '*',
-        schema: 'public',
-        table: 'conversations',
-        filter: `user_id=eq.${userId}`
-      }, async () => {
-        if (getCurrentUserId() !== userId) return;
-        try {
-          await syncFromCloud();
-          if (getCurrentUserId() === userId && currentId) loadChat(currentId);
-        } catch {}
-      })
-      .subscribe();
-
-    realtimeChannels.push(profileChannel, chatChannel);
 }
 
 function clearVerifiedSession() {
@@ -2198,7 +2143,6 @@ let isStreaming = false;
 let hasTypedOnce = false;       // ⭐ 只允许一次打字动画
 let isLoadingHistory = false;   // ⭐ 是否在加载历史记录
 let chatRenderVersion = 0;
-let realtimeSub = null;
 const sendBtn = document.getElementById("sendBtn");
 sendBtn.type = "button"; // 防止被当成提交按钮
 sendBtn.innerText = "↑";
@@ -2288,11 +2232,9 @@ let lastUserMessage = null;
 
 
 let syncTimer = null;
+let cloudSyncRequest = null;
 
-async function syncFromCloud() {
-  const userId = getCurrentUserId();
-  if (!userId) return;
-
+async function syncFromCloudForUser(userId) {
   try {
     const { data, error } = await supabase
       .from("conversations")
@@ -2356,6 +2298,20 @@ if (currentId) {
   }
 }
 
+async function syncFromCloud() {
+  const userId = getCurrentUserId();
+  if (!userId) return;
+  if (cloudSyncRequest?.userId === userId) return cloudSyncRequest.promise;
+
+  const promise = syncFromCloudForUser(userId);
+  cloudSyncRequest = { userId, promise };
+  try {
+    await promise;
+  } finally {
+    if (cloudSyncRequest?.promise === promise) cloudSyncRequest = null;
+  }
+}
+
 async function writeConversationsToCloud(
   expectedUserId,
   sourceConversations = conversations,
@@ -2387,65 +2343,6 @@ async function writeConversationsToCloud(
 
 async function syncToCloud(expectedUserId = getCurrentUserId()) {
   await writeConversationsToCloud(expectedUserId);
-}
-
-// ===== Realtime 同步 =====
-
-
-function startRealtime() {
-  const userId = getCurrentUserId();
-  if (!userId) return;
-  if (realtimeSub) return;
-
-  realtimeSub = supabase
-    .channel('conversations-' + userId)
-    .on(
-      'postgres_changes',
-      {
-        event: '*',
-        schema: 'public',
-        table: 'conversations',
-        filter: `user_id=eq.${userId}`
-      },
-      (payload) => {
-        if (getCurrentUserId() !== userId) return;
-        if (payload.new?.user_id != null && payload.new.user_id !== userId) return;
-        const cloudData = filterConversationsForUser(
-          normalizeCloudData(payload.new?.data, userId),
-          userId,
-        ).filter(conversation => !isConversationDeleted(conversation));
-        scheduleRenderUser();
-
-        conversations = mergeConversationCollections(conversations, cloudData)
-          .filter(conversation => !isConversationDeleted(conversation))
-          .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-
-        if (getCurrentUserId() === userId) {
-  localStorage.setItem(
-    "conversations_" + userId,
-    JSON.stringify(conversations)
-  );
-}
-        renderChatList();
-        updateProviderCapabilityUI();
-
-        // 如果当前对话存在 → 刷新内容
-        if (currentId) {
-          const current = conversations.find(c => c.id === currentId);
-          if (current) {
-            history = JSON.parse(JSON.stringify(current.history));
-          }
-        }
-      }
-    )
-    .subscribe();
-}
-
-function stopRealtime() {
-  if (realtimeSub) {
-    supabase.removeChannel(realtimeSub);
-    realtimeSub = null;
-  }
 }
 
 function persistConversationStateLocally(userId) {
@@ -3484,7 +3381,6 @@ document.getElementById("newChatBtn").onclick = createNewChat;
 // 所有恢复流程可能访问的模块状态与事件处理器均已初始化，之后才开始登录、
 // Provider/会话恢复。这里故意不依赖定时器，也不吞掉初始化 ReferenceError。
 await checkLogin();
-startRealtime();
 scheduleRenderUser();
 
 if (getCurrentVerifiedIdentity() && !conversations.length) {
@@ -3543,13 +3439,17 @@ scrollBtn.style.transform = "translateY(8px) scale(0.9)";
     chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
   };
 }
-// ⭐ 定时兜底同步
+// 前台低频同步；页面刷新、重新聚焦和重新可见时还会立即同步。
+const CLOUD_SYNC_INTERVAL_MS = 60_000;
 setInterval(async () => {
-  if (getCurrentVerifiedIdentity()) {
-    await syncFromCloud();
+  if (document.visibilityState !== "hidden" && getCurrentVerifiedIdentity()) {
+    await Promise.all([
+      syncFromCloud(),
+      loadUserProfileFromCloud(),
+    ]);
     scheduleRenderUser();
   }
-}, 15000);
+}, CLOUD_SYNC_INTERVAL_MS);
 
 // ===== Pro按钮点击事件绑定 =====
 const proBtn = document.getElementById("proBtn");
