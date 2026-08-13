@@ -1,0 +1,12 @@
+interface:
+  display_name: "霜蓝认证与数据安全"
+  short_description: "保护双登录体系、Supabase、API、会话持久化与支付数据安全边界"
+  default_prompt: "Use $xixi-auth-data-safety to assess and safely handle this auth or data change."
+
+dependencies:
+  tools:
+    - type: "mcp"
+      value: "supabase"
+      description: "Project-scoped, read-only Supabase MCP server"
+      transport: "streamable_http"
+      url: "https://mcp.supabase.com/mcp?project_ref=klyrasrqgxijwrxuoevj&read_only=true&features=database,debugging,docs,functions"

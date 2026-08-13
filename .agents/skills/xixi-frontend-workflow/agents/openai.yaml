@@ -1,0 +1,4 @@
+interface:
+  display_name: "霜蓝前端工作流"
+  short_description: "以最小改动维护原生 HTML、CSS、JavaScript、移动端交互和多语言界面"
+  default_prompt: "Use $xixi-frontend-workflow to implement this frontend change with minimal risk."

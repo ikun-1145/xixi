@@ -90,6 +90,76 @@ Then:
 
 ---
 
+# CODEX TEAM ENVIRONMENT
+
+This repository uses project-scoped Codex Skills, MCP servers, and custom subagents.
+
+## Required Project Context
+
+Before cross-module analysis or implementation:
+
+1. Read `docs/project_overview.md`, `CLAUDE.md`, and this file completely.
+2. Verify potentially stale documentation against current files, `package.json`, tests, and call sites.
+3. Treat `api.sunland.dev` and the Flutter client as external contract boundaries; their source is not in this repository.
+4. Classify the task by subsystem and risk before editing.
+
+## Repository Skills
+
+Load the smallest matching set from `.agents/skills/`:
+
+- `$xixi-repo-orientation`: architecture mapping, onboarding, cross-module impact analysis, and implementation planning.
+- `$xixi-frontend-workflow`: native HTML/CSS/JavaScript, responsive UI, touch interaction, PWA, safe DOM, and six-language UI changes.
+- `$xixi-auth-data-safety`: authentication, token/session, Supabase, API, Realtime, payment, Pro entitlement, RLS, and user-data work.
+- `$xixi-release-gate`: final self-review, regression tests, configuration validation, and release readiness.
+
+Skills supplement this file; they never override security, compatibility, or user scope.
+
+## Custom Subagent Team
+
+Project agents live in `.codex/agents/`:
+
+- `system_architect`: read-only architecture and risk analysis.
+- `frontend_engineer`: targeted frontend implementation.
+- `backend_guardian`: conservative Supabase, Edge Function, Worker, and API-contract implementation or review.
+- `qa_reviewer`: read-only tests, regression analysis, and release gate.
+- `security_reviewer`: read-only auth, permissions, secrets, XSS, CORS, payment, and data-exposure review.
+
+## Orchestration Rules
+
+- Keep small, single-file, well-understood fixes in the primary agent.
+- Use subagents when the user explicitly asks for delegation or when a complex task has independent exploration, implementation, test, or security lanes.
+- Run at most three subagents concurrently.
+- Prefer parallel read-only work. Never assign two write agents to overlapping files.
+- Use a staged flow for risky work: `system_architect` maps the path, one implementation agent owns the edit, then `qa_reviewer` and/or `security_reviewer` independently review it.
+- Give every subagent a bounded task, explicit files or subsystem, read/write authority, expected evidence, and a concise return format.
+- The primary agent owns requirements, integration, conflict resolution, final diff review, and the user-facing answer.
+- Subagents must not commit, push, deploy, mutate production data, change auth/RLS/schema, or perform real payment actions unless the user explicitly requests and authorizes that exact action.
+
+## MCP Policy
+
+Project MCP configuration lives in `.codex/config.toml`.
+
+- Supabase must remain scoped to project `klyrasrqgxijwrxuoevj` and read-only by default.
+- Use OpenAI Docs and other documentation tools for current API facts instead of relying on memory.
+- Cloudflare and GitHub write-capable tools require write approval; read access does not imply authorization to publish or change external state.
+- Keep PATs, OAuth tokens, service-role keys, model keys, and secrets in environment variables or the platform credential store, never in repository files.
+- MCP availability is optional (`required = false`) so a missing login or network outage does not block local coding.
+
+## Team Definition of Done
+
+Before presenting a completed change:
+
+1. Review the complete relevant diff and preserve user-owned unrelated changes.
+2. Run `git diff --check`.
+3. Run focused tests; run `npm test` for shared frontend or cross-cutting JavaScript/HTML/CSS changes.
+4. Validate changed Skills with the repository's installed `skill-creator` validator.
+5. Parse changed TOML and confirm the current Codex CLI can load project MCP configuration.
+6. Report automated checks, manual checks, and anything not verified.
+7. Do not claim real-device, OAuth, production, deployment, or payment verification unless it was actually performed.
+
+
+---
+
 # TASK MODES
 
 ---

@@ -1,0 +1,4 @@
+interface:
+  display_name: "霜蓝项目导览"
+  short_description: "快速识别霜蓝项目架构、数据流、系统边界、高风险区域和相关测试"
+  default_prompt: "Use $xixi-repo-orientation to map the affected subsystem and risks before planning changes."
