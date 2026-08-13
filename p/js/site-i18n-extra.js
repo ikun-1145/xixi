@@ -31,6 +31,11 @@
     "ko": "로드 중 ...",
     "es": "Cargando..."
   },
+  "页面加载失败，请刷新重试": {
+    "zh-Hant": "頁面載入失敗，請重新整理後再試。",
+    "ko": "페이지를 불러오지 못했습니다. 새로고침 후 다시 시도해 주세요.",
+    "es": "No se pudo cargar la página. Actualiza e inténtalo de nuevo."
+  },
   "← 返回主页": {
     "zh-Hant": "← 返回主頁",
     "ko": "← 집으로 돌아 가기",

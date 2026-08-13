@@ -3,9 +3,6 @@
 !Readme.md
 !docs/codex_agent_environment.md
 !.agents/skills/**/SKILL.md
-!symbolic-ai/CHANGELOG.md
-!symbolic-ai/docs/
-!symbolic-ai/docs/*.md
 
 # Local environment and secrets.
 .env

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-Hans">
+<html lang="zh-Hans" class="preload app-loading">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -10,6 +10,65 @@
 <link rel="manifest" href="/manifest.json">
 
 <meta name="theme-color" content="#71f8fc">
+<script>
+(function () {
+  var hour = new Date().getHours();
+  var isNight = hour >= 18 || hour < 6;
+  var themeColor = document.querySelector('meta[name="theme-color"]');
+
+  document.documentElement.classList.toggle("night", isNight);
+  if (themeColor) themeColor.content = isNight ? "#020617" : "#71f8fc";
+
+  window.__SUNLAND_AI_RESOURCES_READY__ = new Promise(function (resolve) {
+    if (document.readyState === "complete") {
+      resolve();
+      return;
+    }
+    window.addEventListener("load", resolve, { once: true });
+  });
+
+  window.__SUNLAND_AI_REVEAL__ = function () {
+    var root = document.documentElement;
+    var body = document.body;
+    var app = document.getElementById("app");
+    var loadingScreen = document.getElementById("aiBootScreen");
+
+    if (!body || !app || !loadingScreen || root.classList.contains("app-ready")) return;
+
+    requestAnimationFrame(function () {
+      requestAnimationFrame(function () {
+        app.removeAttribute("aria-hidden");
+        app.removeAttribute("inert");
+        body.removeAttribute("aria-busy");
+        body.classList.remove("preload");
+        root.classList.remove("preload", "app-loading");
+        root.classList.add("app-ready");
+        loadingScreen.classList.add("is-hidden");
+        setTimeout(function () { loadingScreen.remove(); }, 240);
+      });
+    });
+  };
+
+  window.__SUNLAND_AI_BOOT_FAILED__ = function () {
+    var loadingScreen = document.getElementById("aiBootScreen");
+    var loadingText = document.getElementById("appLoadingText");
+    var message = "页面加载失败，请刷新重试";
+
+    if (!loadingScreen || !loadingText) return;
+    if (typeof window.SiteI18n?.translate === "function") {
+      message = window.SiteI18n.translate(message);
+    }
+    loadingText.textContent = message;
+    loadingScreen.classList.add("has-error");
+  };
+
+  setTimeout(function () {
+    if (!document.documentElement.classList.contains("app-ready")) {
+      window.__SUNLAND_AI_BOOT_FAILED__();
+    }
+  }, 15000);
+})();
+</script>
 
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -32,6 +91,72 @@
 <link rel="stylesheet" href="ai/styles-2.css">
 
 <link rel="stylesheet" href="ai/model-menu.css">
+
+<style>
+html.app-loading,
+html.app-loading body {
+  background: #eef2ff !important;
+}
+html.app-loading.night,
+html.app-loading.night body {
+  background: #020617 !important;
+}
+html.app-loading #app {
+  visibility: hidden;
+}
+#aiBootScreen {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #eef2ff, #e0f2fe, #f0fdfa);
+  color: #334155;
+  opacity: 1;
+  visibility: visible;
+  transition: opacity .2s ease, visibility .2s ease;
+}
+html.night #aiBootScreen {
+  background: linear-gradient(135deg, #020617, #0b1220, #020617);
+  color: #cbd5e1;
+}
+#aiBootScreen.is-hidden {
+  opacity: 0;
+  visibility: hidden;
+  pointer-events: none;
+}
+.app-loading-content {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 14px;
+  font: 13px/1.5 -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", sans-serif;
+}
+.app-loading-spinner {
+  width: 34px;
+  height: 34px;
+  box-sizing: border-box;
+  border: 3px solid rgba(14, 154, 167, .18);
+  border-top-color: #0e9aa7;
+  border-radius: 50%;
+  animation: app-loading-spin .8s linear infinite;
+}
+html.night .app-loading-spinner {
+  border-color: rgba(62, 237, 231, .18);
+  border-top-color: #3eede7;
+}
+#aiBootScreen.has-error .app-loading-spinner {
+  display: none;
+}
+@keyframes app-loading-spin {
+  to { transform: rotate(360deg); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .app-loading-spinner { animation-duration: 1.6s; }
+  #aiBootScreen { transition: none; }
+}
+</style>
 
 <!-- CSP for GeeTest -->
 <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;
@@ -67,8 +192,14 @@ child-src *;
 })();
 </script>
 </head>
-<body class="preload">
-<div id="app">
+<body class="preload" aria-busy="true">
+<div id="aiBootScreen" role="status" aria-live="polite" aria-label="页面加载中">
+  <div class="app-loading-content">
+    <div class="app-loading-spinner" aria-hidden="true"></div>
+    <div id="appLoadingText">加载中...</div>
+  </div>
+</div>
+<div id="app" aria-hidden="true" inert>
   <button id="scrollBottomBtn" style="
     position: fixed;
     bottom: 90px;
@@ -226,6 +357,9 @@ if (window.__SUNLAND_AI_AUTH_OK__) {
   const appScript = document.createElement("script");
   appScript.type = "module";
   appScript.src = "ai/app.js";
+  appScript.addEventListener("error", () => {
+    window.__SUNLAND_AI_BOOT_FAILED__?.();
+  }, { once: true });
   document.currentScript.after(appScript);
 }
 </script>

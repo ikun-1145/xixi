@@ -316,7 +316,11 @@ setTimeout(() => {
 function applyAutoTheme() {
   const hour = new Date().getHours();
   const isNight = hour >= 18 || hour < 6;
+  const themeColor = document.querySelector('meta[name="theme-color"]');
+
+  document.documentElement.classList.toggle('night', isNight);
   document.body.classList.toggle('night', isNight);
+  if (themeColor) themeColor.content = isNight ? '#020617' : '#71f8fc';
 }
 
 applyAutoTheme();
@@ -798,7 +802,7 @@ function createOfflineSupabaseClient() {
 
 let supabase = createOfflineSupabaseClient();
 
-import('../p/js/supabaseClient.js')
+const supabaseReady = import('../p/js/supabaseClient.js')
   .then((module) => {
     if (module?.supabaseData) {
       supabase = module.supabaseData;
@@ -1658,6 +1662,7 @@ async function checkLogin(options = {}) {
   const {
     skipCloudSync = false,
     skipChatReload = false,
+    waitForUserState = false,
     restoreVersion: expectedVersion = null,
   } = options;
 
@@ -1732,8 +1737,10 @@ async function checkLogin(options = {}) {
 
       scheduleRenderUser();
 
+      let profileRequest = Promise.resolve();
       if (session?.userId) {
-        loadUserProfileFromCloud().catch(() => {});
+        profileRequest = loadUserProfileFromCloud();
+        if (!waitForUserState) profileRequest.catch(() => {});
 
         const sameUserFallback = previousUserId === session.userId
           ? conversations
@@ -1762,7 +1769,12 @@ async function checkLogin(options = {}) {
         renderChatList();
       }
 
-      checkActivation().catch(() => {});
+      const activationRequest = checkActivation();
+      if (waitForUserState) {
+        await Promise.allSettled([profileRequest, activationRequest]);
+      } else {
+        activationRequest.catch(() => {});
+      }
 
       if (expectedVersion == null || !isRestoreStale(expectedVersion)) {
         scheduleRenderUser();
@@ -2143,6 +2155,7 @@ let isStreaming = false;
 let hasTypedOnce = false;       // ⭐ 只允许一次打字动画
 let isLoadingHistory = false;   // ⭐ 是否在加载历史记录
 let chatRenderVersion = 0;
+let currentChatRender = Promise.resolve();
 const sendBtn = document.getElementById("sendBtn");
 sendBtn.type = "button"; // 防止被当成提交按钮
 sendBtn.innerText = "↑";
@@ -2528,6 +2541,11 @@ function loadChat(id) {
   const c = conversations.find(x => x.id === id);
   if (!c) return false;
 
+  let finishChatRender;
+  currentChatRender = new Promise(resolve => {
+    finishChatRender = resolve;
+  });
+
   isLoadingHistory = true;
   const renderVersion = ++chatRenderVersion;
 
@@ -2545,11 +2563,15 @@ function loadChat(id) {
   updateRequestUiState();
 
   setTimeout(() => {
-    if (renderVersion !== chatRenderVersion || currentId !== id) return;
+    if (renderVersion !== chatRenderVersion || currentId !== id) {
+      finishChatRender();
+      return;
+    }
     const latestConversation = conversations.find(item => item.id === id);
     if (!latestConversation) {
       isLoadingHistory = false;
       chatInner.style.opacity = "1";
+      finishChatRender();
       return;
     }
     const renderHistory = cloneRequestHistory(latestConversation.history);
@@ -2585,6 +2607,7 @@ function loadChat(id) {
     });
 
     isLoadingHistory = false;
+    finishChatRender();
   }, 120);
 
   // ⭐ 重新渲染侧边栏（更新选中高亮）
@@ -3379,8 +3402,10 @@ window.addEventListener("pagehide", () => {
 document.getElementById("newChatBtn").onclick = createNewChat;
 
 // 所有恢复流程可能访问的模块状态与事件处理器均已初始化，之后才开始登录、
-// Provider/会话恢复。这里故意不依赖定时器，也不吞掉初始化 ReferenceError。
-await checkLogin();
+// Provider/会话恢复。首屏会等待同源数据客户端、用户资料、权益与当前历史
+// 全部落到 DOM，再与 window.load 汇合，一次性揭示完整页面。
+await supabaseReady;
+await checkLogin({ waitForUserState: true });
 scheduleRenderUser();
 
 if (getCurrentVerifiedIdentity() && !conversations.length) {
@@ -3389,6 +3414,12 @@ if (getCurrentVerifiedIdentity() && !conversations.length) {
 
 renderChatList();
 updateProviderCapabilityUI();
+await Promise.all([
+  currentChatRender,
+  window.__SUNLAND_AI_RESOURCES_READY__ || Promise.resolve(),
+]);
+await Promise.resolve();
+window.__SUNLAND_AI_REVEAL__?.();
 const sidebar = document.getElementById("sidebar");
 const toggle = document.getElementById("menuToggle");
 const overlay = document.getElementById("sidebarOverlay");

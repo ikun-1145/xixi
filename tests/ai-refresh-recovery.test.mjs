@@ -240,6 +240,7 @@ test('bootstrap initializes every recovery state before checkLogin can call load
     ['isStreaming', /\blet\s+isStreaming\s*=\s*false\b/],
     ['hasTypedOnce', /\blet\s+hasTypedOnce\s*=\s*false\b/],
     ['isLoadingHistory', /\blet\s+isLoadingHistory\s*=\s*false\b/],
+    ['currentChatRender', /\blet\s+currentChatRender\s*=\s*Promise\.resolve\(\)/],
     ['lastUserMessage', /\blet\s+lastUserMessage\s*=\s*null\b/],
     ['syncTimer', /\blet\s+syncTimer\s*=\s*null\b/],
     ['cloudSyncRequest', /\blet\s+cloudSyncRequest\s*=\s*null\b/],
@@ -256,8 +257,10 @@ test('bootstrap initializes every recovery state before checkLogin can call load
     bootstrap,
     aiApp.indexOf('const sidebar = document.getElementById("sidebar")', bootstrap),
   );
-  assert.match(bootstrapBlock, /await checkLogin\(\);\s*scheduleRenderUser\(\);/);
+  assert.match(bootstrapBlock, /await supabaseReady;\s*await checkLogin\(\{ waitForUserState: true \}\);\s*scheduleRenderUser\(\);/);
   assert.match(bootstrapBlock, /updateProviderCapabilityUI\(\)/);
+  assert.match(bootstrapBlock, /window\.__SUNLAND_AI_RESOURCES_READY__/);
+  assert.match(bootstrapBlock, /window\.__SUNLAND_AI_REVEAL__/);
   assert.doesNotMatch(bootstrapBlock, /setTimeout/);
   assert.doesNotMatch(aiApp, /postgres_changes|startRealtime|realtimeSub/);
   assert.match(aiApp, /cloudSyncRequest\?\.userId === userId/);

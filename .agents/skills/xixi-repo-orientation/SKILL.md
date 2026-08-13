@@ -18,8 +18,8 @@ description: 快速建立霜蓝个人主页与 Sunland AI 仓库的架构认知�
    - Supabase Auth 捐赠体系；
    - 自建 JWT 登录与 `api.sunland.dev` 契约；
    - Supabase Edge Functions、Cloudflare Functions / Workers；
-   - `symbolic-ai/` 独立子项目。
-5. 明确仓库外部边界：`api.sunland.dev` 后端和 Flutter 客户端不在本仓库，不能假设可同步修改。
+   - 外部 `sunland-ai` 仓库及 `ai-core.sunland.dev` Symbolic Core 服务。
+5. 明确仓库外部边界：`api.sunland.dev` 后端、`sunland-ai` 仓库和 Flutter 客户端不在本仓库，不能假设可同步修改。
 
 ## 评估风险
 

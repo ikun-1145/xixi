@@ -26,6 +26,7 @@
       `sunland_knowledge_${userId}`, `sunland_knowledge_${userId}::memory`,
     ];
     const preserve = params.get('preserve') === '1';
+    const refreshDelayMs = Math.min(Math.max(Number(params.get('delayMs')) || 0, 0), 5000);
     if (params.get('autoConfirm') === '1') window.confirm = () => true;
     if (!preserve) {
       keys.forEach(key => localStorage.removeItem(key));
@@ -36,6 +37,27 @@
     const shellResponse = await nativeFetch('../../ai.html');
     const shellText = await shellResponse.text();
     const shell = new DOMParser().parseFromString(shellText, 'text/html');
+    const loadingBootstrap = [...shell.querySelectorAll('script')]
+      .find(script => script.textContent.includes('window.__SUNLAND_AI_RESOURCES_READY__'))
+      ?.textContent;
+    const loadingStyles = [...shell.head.querySelectorAll('style')]
+      .find(style => style.textContent.includes('#aiBootScreen'))
+      ?.textContent;
+    document.documentElement.className = shell.documentElement.className;
+    document.body.className = shell.body.className;
+    for (const attribute of shell.body.attributes) {
+      if (attribute.name !== 'class') document.body.setAttribute(attribute.name, attribute.value);
+    }
+    if (loadingBootstrap) {
+      const bootstrapScript = document.createElement('script');
+      bootstrapScript.textContent = loadingBootstrap;
+      document.head.appendChild(bootstrapScript);
+    }
+    if (loadingStyles) {
+      const loadingStyle = document.createElement('style');
+      loadingStyle.textContent = loadingStyles;
+      document.head.appendChild(loadingStyle);
+    }
     shell.body.querySelectorAll('script').forEach(script => script.remove());
     document.body.innerHTML = shell.body.innerHTML;
 
@@ -44,6 +66,9 @@
     window.fetch = async (url, options = {}) => {
       const target = String(url);
       if (target === 'https://api.sunland.dev/refresh') {
+        if (refreshDelayMs) {
+          await new Promise(resolve => setTimeout(resolve, refreshDelayMs));
+        }
         try {
           JSON.parse(options.body);
         } catch {
@@ -56,6 +81,12 @@
           token,
           user: { id: userId, email: userEmail },
         }), { status: 200, headers: { 'Content-Type': 'application/json' } });
+      }
+      if (target.startsWith('https://klyrasrqgxijwrxuoevj.supabase.co/')) {
+        return new Response('[]', {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        });
       }
       if (target === 'https://api.sunland.dev') {
         const body = JSON.parse(options.body || '{}');
