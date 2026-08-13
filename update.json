@@ -1,7 +1,7 @@
 {
-  "version": "1.2.1",
-  "build": 27,
+  "version": "1.4.1",
+  "build": 30,
   "force": false,
-  "url": "https://download-worker.liuxizekali.workers.dev/",
-  "desc": "优化 Sunland AI 霜蓝人格表达，改进知识教学、记忆提示与回复自然度。"
+  "url": "https://sunland.dev/apk?v=1.4.1%2B30",
+  "desc": "修复 Android 选择图片后点击发送时可能闪退的问题，并提升中文图片文字识别稳定性。"
 }
