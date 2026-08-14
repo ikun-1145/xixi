@@ -6,7 +6,8 @@ export const VERIFY_LIMITS = Object.freeze({
   maxQueriesPerClaim: 3,
   maxTotalSearches: 8,
   maxResultsPerQuery: 5,
-  maxEvidenceResults: 30,
+  // Evidence Judge 保留足够的独立来源，同时限制模型请求体与 Pages CPU 开销。
+  maxEvidenceResults: 8,
   searchTimeoutMs: 6_000,
   modelTimeoutMs: 40_000,
   pipelineTimeoutMs: 90_000,
@@ -32,4 +33,3 @@ export const AI_DETECTION_UNAVAILABLE = Object.freeze({
   methods: [],
   limitations: ["当前版本尚未接入可靠的 AI 生成检测器。"],
 });
-

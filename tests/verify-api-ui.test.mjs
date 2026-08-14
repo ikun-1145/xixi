@@ -1,6 +1,7 @@
 import test from "node:test";
 import assert from "node:assert/strict";
 import fs from "node:fs";
+import vm from "node:vm";
 import { JSDOM } from "jsdom";
 
 import { onRequestGet, onRequestPost } from "../functions/api/verify.js";
@@ -142,4 +143,39 @@ test("verify page is independent, responsive, localized, and does not expose a m
   assert.match(css, /@media \(max-width: 760px\)/u);
   assert.match(client, /tesseract\.js@7\.0\.0/u);
   assert.doesNotMatch(`${html}\n${client}`, /DEEPSEEK_API_KEY|sk-[A-Za-z0-9]/u);
+});
+
+test("verify page redirects missing local sessions to login before loading its client", () => {
+  const html = fs.readFileSync(new URL("../verify.html", import.meta.url), "utf8");
+  const scripts = [...html.matchAll(/<script>([\s\S]*?)<\/script>/gu)].map(match => match[1]);
+  const guard = scripts.find(script => script.includes("login.html?return=verify.html"));
+  const redirects = [];
+
+  assert.ok(guard);
+  assert.ok(html.indexOf(guard) < html.indexOf('verifyScript.src = "verify/verify.js'));
+  assert.match(html, /if \(window\.__SUNLAND_VERIFY_AUTH_OK__\)/u);
+  const missingSessionContext = {
+    localStorage: { getItem() { return null; } },
+    location: { replace(target) { redirects.push(target); } },
+  };
+  missingSessionContext.window = missingSessionContext;
+  vm.runInNewContext(guard, missingSessionContext);
+  assert.deepEqual(redirects, ["login.html?return=verify.html"]);
+
+  redirects.length = 0;
+  const existingSessionContext = {
+    localStorage: { getItem() { return "existing-token"; } },
+    location: { replace(target) { redirects.push(target); } },
+  };
+  existingSessionContext.window = existingSessionContext;
+  vm.runInNewContext(guard, existingSessionContext);
+  assert.deepEqual(redirects, []);
+  assert.equal(existingSessionContext.window.__SUNLAND_VERIFY_AUTH_OK__, true);
+});
+
+test("verify client redirects sessions that disappear or receive an authentication failure", () => {
+  const client = fs.readFileSync(new URL("../verify/verify.js", import.meta.url), "utf8");
+  assert.match(client, /function redirectToLogin\(\)/u);
+  assert.match(client, /if \(!token\) \{\s*redirectToLogin\(\);/u);
+  assert.match(client, /response\.status === 401 \|\| code === "AUTH_REQUIRED"/u);
 });

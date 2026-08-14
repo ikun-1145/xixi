@@ -15,6 +15,20 @@
   <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://api.sunland.dev https://cdn.jsdelivr.net https://tessdata.projectnaptha.com; worker-src 'self' blob: https://cdn.jsdelivr.net; child-src 'self' blob:;">
   <script>
     (function () {
+      window.__SUNLAND_VERIFY_AUTH_OK__ = false;
+      try {
+        if (!localStorage.getItem("token")) {
+          location.replace("login.html?return=verify.html");
+          return;
+        }
+        window.__SUNLAND_VERIFY_AUTH_OK__ = true;
+      } catch (_) {
+        location.replace("login.html?return=verify.html");
+      }
+    })();
+  </script>
+  <script>
+    (function () {
       try {
         var hour = new Date().getHours();
         document.documentElement.classList.toggle("night", hour < 6 || hour >= 18);
@@ -142,6 +156,13 @@
   </div>
 
   <div id="toast" role="status" aria-live="polite"></div>
-  <script type="module" src="verify/verify.js?v=20260814-1"></script>
+  <script>
+    if (window.__SUNLAND_VERIFY_AUTH_OK__) {
+      const verifyScript = document.createElement("script");
+      verifyScript.type = "module";
+      verifyScript.src = "verify/verify.js?v=20260814-1";
+      document.currentScript.after(verifyScript);
+    }
+  </script>
 </body>
 </html>

@@ -2,6 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { parseModelJson } from "../verify/server/json-utils.js";
+import { callDeepSeek } from "../verify/server/model-adapter.js";
 import { normalizeClaims } from "../verify/server/claim-extractor.js";
 import {
   BraveSearchProvider,
@@ -73,6 +74,22 @@ function tinyPng(type = "image/png") {
 test("model JSON parser tolerates markdown fences and surrounding prose", () => {
   assert.deepEqual(parseModelJson("```json\n{\"claims\":[]}\n```"), { claims: [] });
   assert.deepEqual(parseModelJson("Result: {\"claims\":[]}"), { claims: [] });
+});
+
+test("verify model calls use bounded non-streaming JSON responses", async () => {
+  const output = await callDeepSeek({
+    authorization: "Bearer valid-test-token",
+    messages: [{ role: "user", content: "Return JSON" }],
+    fetchImpl: async (request) => {
+      assert.equal(request.headers.get("accept"), "application/json");
+      const body = await request.json();
+      assert.equal(body.stream, false);
+      return new Response(JSON.stringify({ choices: [{ message: { content: '{"claims":[]}' } }] }), {
+        headers: { "content-type": "application/json" },
+      });
+    },
+  });
+  assert.equal(output, '{"claims":[]}');
 });
 
 test("claim normalization limits count, queries, ids, and control characters", () => {
@@ -390,6 +407,43 @@ test("full pipeline uses real search results and two bounded model calls", async
   assert.equal(result.process.provider, "brave");
   assert.equal(result.claims[0].supporting_evidence[0].url, realUrl);
   assert.ok(result.overallScore >= 60 && result.overallScore <= 95);
+});
+
+test("full pipeline bounds the Evidence Judge source package", async () => {
+  const modelRequests = [];
+  const gateway = {
+    async fetch(request) {
+      modelRequests.push(await request.json());
+      const content = modelRequests.length === 1
+        ? '{"claims":[{"text":"A bounded public fact","subject":"Agency","type":"event","search_queries":["query one","query two","query three"]}]}'
+        : '{"summary":"Bounded evidence","claims":[{"id":"claim_1","verdict":"uncertain","confidence":0.5,"reason":"Review required","supporting_evidence":[],"contradicting_evidence":[],"limitations":[]}]}';
+      return new Response(JSON.stringify({ choices: [{ message: { content } }] }), {
+        headers: { "content-type": "application/json" },
+      });
+    },
+  };
+  await verifyInput({
+    inputType: "text",
+    content: "A bounded public fact.",
+    env: { AI_GATEWAY: gateway, BRAVE_SEARCH_API_KEY: "search-secret" },
+    authorization: "Bearer valid-test-token",
+    fetchImpl: async (request) => {
+      const query = new URL(request.url || request).searchParams.get("q").replaceAll(" ", "-");
+      return new Response(JSON.stringify({
+        web: {
+          results: Array.from({ length: 5 }, (_, index) => ({
+            title: `Source ${query} ${index}`,
+            url: `https://example.gov/${query}/${index}`,
+            description: "Direct public evidence.",
+          })),
+        },
+      }), { headers: { "content-type": "application/json" } });
+    },
+  });
+  const evidenceMessage = modelRequests[1].messages.find(message => message.role === "user").content;
+  const serializedEvidence = evidenceMessage.match(/<untrusted_evidence>\n([\s\S]+)\n<\/untrusted_evidence>/u)?.[1];
+  const evidencePackage = JSON.parse(serializedEvidence);
+  assert.equal(evidencePackage[0].evidence.length, 8);
 });
 
 test("absurd claims with zero search results remain uncertain rather than zero", async () => {

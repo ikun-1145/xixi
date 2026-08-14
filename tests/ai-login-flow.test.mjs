@@ -69,6 +69,23 @@ function runAiGuard(initialStorage) {
   };
 }
 
+function getLoginTarget(search) {
+  const script = [...loginHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)]
+    .map(match => match[1])
+    .find(source => source.includes('function getPostLoginTarget()'));
+  const context = {
+    URLSearchParams,
+    atob(input) {
+      return Buffer.from(input, 'base64').toString('binary');
+    },
+    localStorage: createMockStorage(),
+    location: { search, replace() {} },
+  };
+  context.window = context;
+  vm.runInNewContext(script, context);
+  return context.getPostLoginTarget();
+}
+
 test('ai.html checks local login before loading app logic', () => {
   assert.ok(
     aiHtml.indexOf('window.__SUNLAND_AI_AUTH_OK__ = false') > -1,
@@ -108,6 +125,11 @@ test('login.html stores a normalized user object after successful login', () => 
   assert.match(loginHtml, /data\?\.userId/);
   assert.match(loginHtml, /payload\?\.email/);
   assert.doesNotMatch(loginHtml, /localStorage\.setItem\("user",\s*JSON\.stringify\(data\.user\)\)/);
+});
+
+test('login.html safely returns a completed login to verify.html', () => {
+  assert.equal(getLoginTarget('?return=verify.html'), 'verify.html');
+  assert.equal(getLoginTarget('?return=https://evil.example/verify.html'), 'ai.html');
 });
 
 test('ai app resolves one verified identity before restoring user data', () => {

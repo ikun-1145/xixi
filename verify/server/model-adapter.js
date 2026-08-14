@@ -93,13 +93,15 @@ export async function callDeepSeek({
     method: "POST",
     headers: {
       "content-type": "application/json",
-      accept: "text/event-stream",
+      accept: "application/json",
       authorization,
     },
     body: JSON.stringify({
       model: "deepseek-v4-flash",
       deep: false,
-      stream: true,
+      // 核验接口只在完整流水线结束后返回报告，无需把模型分片转发给浏览器。
+      // 使用 JSON 响应可避免 Pages Function 为两次模型调用持续解析 SSE 分片。
+      stream: false,
       temperature,
       max_tokens: maxTokens,
       messages,
@@ -131,4 +133,3 @@ export async function callDeepSeek({
   if (!content) throw new VerifyError("MODEL_EMPTY_RESPONSE", "DeepSeek 未返回可用结果。", 502);
   return content;
 }
-

@@ -19,6 +19,15 @@ let toastTimer = 0;
 
 function translate(key) { return t(key, getLocale()); }
 
+function clearLocalSession() {
+  try { localStorage.removeItem("token"); } catch {}
+  try { localStorage.removeItem("user"); } catch {}
+}
+
+function redirectToLogin() {
+  location.replace("login.html?return=verify.html");
+}
+
 function showToast(message) {
   elements.toast.textContent = message;
   elements.toast.classList.add("show");
@@ -150,7 +159,7 @@ async function submitVerification() {
   elements.reportSection.hidden = true;
   const token = localStorage.getItem("token") || "";
   if (!token) {
-    showError(translate("authRequired"), "AUTH_REQUIRED");
+    redirectToLogin();
     return;
   }
   if (inputType === "text" && !elements.verifyText.value.trim()) {
@@ -193,6 +202,11 @@ async function submitVerification() {
     const payload = await response.json().catch(() => null);
     if (!response.ok || !payload?.success) {
       const code = payload?.error?.code || "REQUEST_FAILED";
+      if (response.status === 401 || code === "AUTH_REQUIRED") {
+        clearLocalSession();
+        redirectToLogin();
+        return;
+      }
       throw Object.assign(new Error(localizedError(code, payload?.error?.message || `HTTP ${response.status}`)), { code });
     }
     completeProgress();
