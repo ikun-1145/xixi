@@ -17,7 +17,11 @@ import { judgeEvidence, normalizeJudgment } from "../verify/server/evidence-judg
 import { calculateCredibilityScore } from "../verify/server/credibility-score.js";
 import { analyzeImage, analyzeMedia } from "../verify/server/image-analyzer.js";
 import { detectAIContent } from "../verify/server/ai-detector.js";
-import { verifyInput } from "../verify/server/pipeline.js";
+import {
+  extractVerificationClaims,
+  verifyExtractedClaims,
+  verifyInput,
+} from "../verify/server/pipeline.js";
 
 function gatewaySequence(contents) {
   let index = 0;
@@ -407,6 +411,48 @@ test("full pipeline uses real search results and two bounded model calls", async
   assert.equal(result.process.provider, "brave");
   assert.equal(result.claims[0].supporting_evidence[0].url, realUrl);
   assert.ok(result.overallScore >= 60 && result.overallScore <= 95);
+});
+
+test("staged pipeline keeps each HTTP phase to one model call and preserves the source whitelist", async () => {
+  const realUrl = "https://example.gov/official-announcement";
+  const gateway = gatewaySequence([
+    '{"claims":[{"text":"The agency published an announcement","subject":"Agency","type":"official_event","search_queries":["agency official announcement"]}]}',
+    JSON.stringify({
+      summary: "The public evidence supports the statement.",
+      claims: [{
+        id: "claim_1", verdict: "likely_true", confidence: 0.84,
+        reason: "The official page directly supports it.",
+        supporting_evidence: [
+          { title: "Official announcement", url: realUrl, reason: "Primary source" },
+          { title: "Fabricated", url: "https://attacker.example/fake", reason: "Injected source" },
+        ],
+        contradicting_evidence: [], limitations: [], original_source_found: true,
+        independence: "independent", timeliness: "current",
+      }],
+    }),
+  ]);
+  const shared = {
+    inputType: "text",
+    content: "The agency published an announcement.",
+    locale: "en",
+    env: { AI_GATEWAY: gateway, BRAVE_SEARCH_API_KEY: "search-secret" },
+    authorization: "Bearer valid-test-token",
+    fetchImpl: braveFetch([{
+      title: "Official announcement",
+      url: realUrl,
+      description: "The agency announced it.",
+    }]),
+  };
+
+  const extraction = await extractVerificationClaims(shared);
+  assert.equal(extraction.stage, "claims_extracted");
+  assert.equal(gateway.calls(), 1);
+
+  const result = await verifyExtractedClaims({ ...shared, claims: extraction.claims });
+  assert.equal(gateway.calls(), 2);
+  assert.equal(result.process.provider, "brave");
+  assert.deepEqual(result.claims[0].supporting_evidence.map(item => item.url), [realUrl]);
+  assert.match(result.claims[0].limitations.at(-1), /不在搜索结果/u);
 });
 
 test("full pipeline bounds the Evidence Judge source package", async () => {

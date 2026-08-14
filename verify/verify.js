@@ -113,11 +113,15 @@ function setLoading(loading) {
   elements.progressSection.hidden = !loading;
   if (loading) {
     elements.progressNote.textContent = translate("progressNote");
-    document.querySelectorAll("#analysisSteps li").forEach((step, index) => {
-      step.classList.toggle("active", index === 0);
-      step.classList.remove("complete");
-    });
+    setProgressStage(0);
   }
+}
+
+function setProgressStage(activeIndex) {
+  document.querySelectorAll("#analysisSteps li").forEach((step, index) => {
+    step.classList.toggle("active", index === activeIndex);
+    step.classList.toggle("complete", index < activeIndex);
+  });
 }
 
 function completeProgress() {
@@ -176,44 +180,72 @@ async function submitVerification() {
   const controller = new AbortController();
   const timeout = window.setTimeout(() => controller.abort(), 95_000);
   try {
-    let body;
-    const headers = { authorization: `Bearer ${token}` };
+    let ocrText = "";
+    let ocrStatus = "complete";
+    const textContent = inputType === "text" ? elements.verifyText.value.trim() : "";
     if (inputType === "image") {
-      let ocrText = "";
-      let ocrStatus = "complete";
       try {
         ocrText = await extractImageText(selectedFile);
       } catch {
         ocrStatus = "failed";
       }
-      const form = new FormData();
-      form.set("type", "image");
-      form.set("locale", getLocale());
-      form.set("file", selectedFile, selectedFile.name);
-      form.set("ocrText", ocrText);
-      form.set("ocrStatus", ocrStatus);
-      body = form;
-    } else {
-      headers["content-type"] = "application/json";
-      body = JSON.stringify({ type: "text", content: elements.verifyText.value.trim(), locale: getLocale() });
     }
 
-    const response = await fetch("/api/verify", { method: "POST", headers, body, signal: controller.signal });
-    const payload = await response.json().catch(() => null);
-    if (!response.ok || !payload?.success) {
-      const code = payload?.error?.code || "REQUEST_FAILED";
-      if (response.status === 401 || code === "AUTH_REQUIRED") {
-        clearLocalSession();
-        redirectToLogin();
-        return;
+    const runStage = async (stage, claims) => {
+      const headers = { authorization: `Bearer ${token}` };
+      let body;
+      if (inputType === "image") {
+        const form = new FormData();
+        form.set("type", "image");
+        form.set("locale", getLocale());
+        form.set("stage", stage);
+        form.set("file", selectedFile, selectedFile.name);
+        form.set("ocrText", ocrText);
+        form.set("ocrStatus", ocrStatus);
+        if (claims) form.set("claims", JSON.stringify(claims));
+        body = form;
+      } else {
+        headers["content-type"] = "application/json";
+        body = JSON.stringify({
+          type: "text",
+          content: textContent,
+          locale: getLocale(),
+          stage,
+          ...(claims ? { claims } : {}),
+        });
       }
-      throw Object.assign(new Error(localizedError(code, payload?.error?.message || `HTTP ${response.status}`)), { code });
+
+      const response = await fetch("/api/verify", { method: "POST", headers, body, signal: controller.signal });
+      const payload = await response.json().catch(() => null);
+      if (!response.ok || !payload?.success) {
+        const code = payload?.error?.code || "REQUEST_FAILED";
+        if (response.status === 401 || code === "AUTH_REQUIRED") {
+          clearLocalSession();
+          redirectToLogin();
+          throw Object.assign(new Error("Authentication required"), { code, redirected: true });
+        }
+        throw Object.assign(new Error(localizedError(
+          code,
+          payload?.error?.message || `HTTP ${response.status}`,
+        )), { code });
+      }
+      return payload;
+    };
+
+    setProgressStage(1);
+    const extraction = await runStage("extract");
+    let payload = extraction;
+    if (extraction.stage === "claims_extracted") {
+      setProgressStage(2);
+      payload = await runStage("judge", extraction.claims);
     }
+    setProgressStage(4);
     completeProgress();
     renderReport(elements.reportRoot, payload, translate);
     elements.reportSection.hidden = false;
     elements.reportSection.scrollIntoView({ behavior: "smooth", block: "start" });
   } catch (error) {
+    if (error?.redirected) return;
     const message = error?.name === "AbortError" ? translate("requestTimeout") : error.message;
     showError(message, error.code);
   } finally {

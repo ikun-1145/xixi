@@ -1,7 +1,11 @@
 import { VERIFY_LIMITS } from "../../verify/server/constants.js";
 import { VerifyError, toPublicError } from "../../verify/server/errors.js";
 import { createSearchProvider } from "../../verify/server/search-provider.js";
-import { verifyInput } from "../../verify/server/pipeline.js";
+import {
+  extractVerificationClaims,
+  verifyExtractedClaims,
+  verifyInput,
+} from "../../verify/server/pipeline.js";
 
 const JSON_HEADERS = Object.freeze({
   "content-type": "application/json; charset=utf-8",
@@ -42,6 +46,8 @@ async function parseInput(request) {
       inputType: payload?.type,
       content: payload?.content,
       locale: payload?.locale,
+      stage: payload?.stage,
+      claims: payload?.claims,
     };
   }
 
@@ -52,12 +58,23 @@ async function parseInput(request) {
     } catch {
       throw new VerifyError("INVALID_FORM", "图片上传表单无法解析。", 400);
     }
+    let claims;
+    const serializedClaims = form.get("claims");
+    if (typeof serializedClaims === "string" && serializedClaims) {
+      try {
+        claims = JSON.parse(serializedClaims);
+      } catch {
+        throw new VerifyError("CLAIMS_INVALID", "声明数据格式无效。", 400);
+      }
+    }
     return {
       inputType: form.get("type"),
       file: form.get("file"),
       ocrText: form.get("ocrText"),
       ocrStatus: form.get("ocrStatus"),
       locale: form.get("locale"),
+      stage: form.get("stage"),
+      claims,
     };
   }
   throw new VerifyError("CONTENT_TYPE_INVALID", "请使用 JSON 或 multipart/form-data 提交。", 415);
@@ -99,18 +116,24 @@ export async function onRequestPost(context) {
     const input = await parseInput(context.request);
     const authorization = context.request.headers.get("authorization") || "";
     if (!authorization) throw new VerifyError("AUTH_REQUIRED", "请先登录霜蓝账号后再开始核验。", 401);
-    // Pages production does not enable Cloudflare's `enable_request_signal`
-    // compatibility flag. Do not propagate that unsupported incoming signal to
-    // the Worker-to-Worker model requests: it can cancel a still-valid upstream
-    // response before the Evidence Judge returns. The pipeline and each model
-    // request retain their own bounded server-side timeouts.
     const signal = AbortSignal.timeout(VERIFY_LIMITS.pipelineTimeoutMs);
-    const result = await verifyInput({
+    const pipelineInput = {
       ...input,
       env: context.env,
       authorization,
       signal,
-    });
+    };
+    let result;
+    if (input.stage === "extract") {
+      result = await extractVerificationClaims(pipelineInput);
+    } else if (input.stage === "judge") {
+      result = await verifyExtractedClaims(pipelineInput);
+    } else if (input.stage == null || input.stage === "") {
+      // 保留原有单请求契约，现有客户端不会因分阶段浏览器流程而失效。
+      result = await verifyInput(pipelineInput);
+    } else {
+      throw new VerifyError("VERIFY_STAGE_INVALID", "核验阶段无效。", 400);
+    }
     return json(result);
   } catch (error) {
     const publicError = toPublicError(error);

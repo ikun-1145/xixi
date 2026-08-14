@@ -2,7 +2,7 @@ import { VERIFY_LIMITS } from "./constants.js";
 import { VerifyError } from "./errors.js";
 import { cleanText } from "./json-utils.js";
 import { callDeepSeek } from "./model-adapter.js";
-import { extractClaims } from "./claim-extractor.js";
+import { extractClaims, normalizeClaims } from "./claim-extractor.js";
 import { createSearchProvider, deduplicateResults } from "./search-provider.js";
 import { attachSourceEvaluation } from "./source-evaluator.js";
 import { judgeEvidence } from "./evidence-judge.js";
@@ -84,6 +84,43 @@ function deterministicSummary(score, claims) {
   return `公开证据的综合评估为“${label}”。${hasLimitations ? "部分结论仍受现有证据范围限制。" : "请结合各项证据和来源等级阅读。"}`;
 }
 
+async function prepareInput({ inputType, content, file, ocrText, ocrStatus }) {
+  if (!["text", "image"].includes(inputType)) {
+    throw new VerifyError("INPUT_TYPE_INVALID", "仅支持文字或图片核验。", 400);
+  }
+
+  if (inputType === "image") {
+    const imageInput = await analyzeMedia("image", { file, ocrText, ocrStatus });
+    return {
+      inputType,
+      normalizedContent: imageInput.content,
+      inputMetadata: imageInput.metadata,
+      initialLimitations: imageInput.limitations,
+      insufficientReport: imageInput.content.length < 3 ? unavailableImageReport(imageInput) : null,
+    };
+  }
+
+  return {
+    inputType,
+    normalizedContent: validateText(content),
+    inputMetadata: undefined,
+    initialLimitations: [],
+    insufficientReport: null,
+  };
+}
+
+function createModelCaller({ env, authorization, fetchImpl, signal }) {
+  return (messages, options) => callDeepSeek({
+    env,
+    authorization,
+    messages,
+    maxTokens: options.maxTokens,
+    temperature: options.temperature,
+    fetchImpl,
+    signal,
+  });
+}
+
 async function runSearches(claims, provider) {
   const tasks = [];
   for (let queryIndex = 0; queryIndex < VERIFY_LIMITS.maxQueriesPerClaim; queryIndex += 1) {
@@ -151,49 +188,16 @@ async function runSearches(claims, provider) {
   return { searches, resultsByClaim, duplicatesRemoved };
 }
 
-export async function verifyInput({
-  inputType,
-  content,
-  file,
-  ocrText,
-  ocrStatus,
-  locale = "zh",
-  env = {},
+async function completeVerification({
+  prepared,
+  claims,
+  locale,
+  env,
   authorization,
-  fetchImpl = fetch,
+  fetchImpl,
   signal,
 }) {
-  if (!['text', 'image'].includes(inputType)) {
-    throw new VerifyError("INPUT_TYPE_INVALID", "仅支持文字或图片核验。", 400);
-  }
-
-  let normalizedContent;
-  let inputMetadata;
-  let initialLimitations = [];
-  if (inputType === "image") {
-    const imageInput = await analyzeMedia("image", { file, ocrText, ocrStatus });
-    if (imageInput.content.length < 3) return unavailableImageReport(imageInput);
-    normalizedContent = imageInput.content;
-    inputMetadata = imageInput.metadata;
-    initialLimitations = imageInput.limitations;
-  } else {
-    normalizedContent = validateText(content);
-  }
-
-  const model = (messages, options) => callDeepSeek({
-    env,
-    authorization,
-    messages,
-    maxTokens: options.maxTokens,
-    temperature: options.temperature,
-    fetchImpl,
-    signal,
-  });
-
-  const claims = await extractClaims(normalizedContent, model);
-  if (claims.length === 0) return emptyClaimsReport(inputType, inputMetadata, initialLimitations);
-
-  // 只有存在客观 Claim 时才要求搜索服务；纯观点无需联网即可明确告知“不适合事实核验”。
+  const model = createModelCaller({ env, authorization, fetchImpl, signal });
   const searchProvider = createSearchProvider(env, fetchImpl);
   const searchRun = await runSearches(claims, searchProvider);
   const normalizedLocale = ["zh", "zh-Hant", "en", "ja", "ko", "es"].includes(locale) ? locale : "zh";
@@ -211,13 +215,16 @@ export async function verifyInput({
   const noEvidenceClaims = scoredClaims.filter((claim) => (
     claim.supporting_evidence.length === 0 && claim.contradicting_evidence.length === 0
   )).length;
-  const limitations = [...initialLimitations, "当前版本仅分析搜索结果的标题与摘要，未抓取网页正文。"];
+  const limitations = [
+    ...prepared.initialLimitations,
+    "当前版本仅分析搜索结果的标题与摘要，未抓取网页正文。",
+  ];
   if (failedSearches) limitations.push(`${failedSearches} 次搜索请求失败，其余结果仍已继续分析。`);
   if (noEvidenceClaims) limitations.push(`${noEvidenceClaims} 个声明未找到可直接引用的支持或反对证据；搜不到不代表虚假。`);
 
   return {
     success: true,
-    inputType,
+    inputType: prepared.inputType,
     overallScore,
     scoreLabel: scoreLabel(overallScore),
     outcome: "verified",
@@ -232,8 +239,104 @@ export async function verifyInput({
       duplicatesRemoved: searchRun.duplicatesRemoved + allSourcesRun.duplicatesRemoved,
       provider: searchProvider.name,
     },
-    ...(inputMetadata ? { inputMetadata } : {}),
-    aiDetection: await detectAIContent({ inputType, content: normalizedContent, metadata: inputMetadata }),
+    ...(prepared.inputMetadata ? { inputMetadata: prepared.inputMetadata } : {}),
+    aiDetection: await detectAIContent({
+      inputType: prepared.inputType,
+      content: prepared.normalizedContent,
+      metadata: prepared.inputMetadata,
+    }),
     limitations,
   };
+}
+
+export async function extractVerificationClaims({
+  inputType,
+  content,
+  file,
+  ocrText,
+  ocrStatus,
+  env = {},
+  authorization,
+  fetchImpl = fetch,
+  signal,
+}) {
+  const prepared = await prepareInput({ inputType, content, file, ocrText, ocrStatus });
+  if (prepared.insufficientReport) return prepared.insufficientReport;
+
+  const model = createModelCaller({ env, authorization, fetchImpl, signal });
+  const claims = await extractClaims(prepared.normalizedContent, model);
+  if (claims.length === 0) {
+    return emptyClaimsReport(inputType, prepared.inputMetadata, prepared.initialLimitations);
+  }
+
+  return {
+    success: true,
+    stage: "claims_extracted",
+    inputType,
+    claims,
+  };
+}
+
+export async function verifyExtractedClaims({
+  inputType,
+  content,
+  file,
+  ocrText,
+  ocrStatus,
+  claims,
+  locale = "zh",
+  env = {},
+  authorization,
+  fetchImpl = fetch,
+  signal,
+}) {
+  const prepared = await prepareInput({ inputType, content, file, ocrText, ocrStatus });
+  if (prepared.insufficientReport) return prepared.insufficientReport;
+
+  const normalizedClaims = normalizeClaims({ claims });
+  if (normalizedClaims.length === 0) {
+    throw new VerifyError("CLAIMS_REQUIRED", "没有可用于证据搜索的声明。", 400);
+  }
+
+  return completeVerification({
+    prepared,
+    claims: normalizedClaims,
+    locale,
+    env,
+    authorization,
+    fetchImpl,
+    signal,
+  });
+}
+
+export async function verifyInput({
+  inputType,
+  content,
+  file,
+  ocrText,
+  ocrStatus,
+  locale = "zh",
+  env = {},
+  authorization,
+  fetchImpl = fetch,
+  signal,
+}) {
+  const prepared = await prepareInput({ inputType, content, file, ocrText, ocrStatus });
+  if (prepared.insufficientReport) return prepared.insufficientReport;
+
+  const model = createModelCaller({ env, authorization, fetchImpl, signal });
+  const claims = await extractClaims(prepared.normalizedContent, model);
+  if (claims.length === 0) {
+    return emptyClaimsReport(inputType, prepared.inputMetadata, prepared.initialLimitations);
+  }
+
+  return completeVerification({
+    prepared,
+    claims,
+    locale,
+    env,
+    authorization,
+    fetchImpl,
+    signal,
+  });
 }
