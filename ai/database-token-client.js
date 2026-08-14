@@ -37,12 +37,30 @@
     return next;
   }
 
-  async function requestToken(appToken, retried, requestGeneration) {
+  async function exchangeRequest(appToken) {
     const response = await fetch("https://api.sunland.dev/v1/database-token", {
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${appToken}` },
       body: "{}",
     });
+    const data = await response.json().catch(() => null);
+    return { response, data };
+  }
+
+  function validateDatabaseToken(data, userId) {
+    const claims = payload(data?.token);
+    if (
+      typeof data?.token !== "string" || claims?.role !== "authenticated" ||
+      claims?.aud !== "authenticated" || claims?.id !== userId ||
+      typeof claims?.exp !== "number" || claims.exp * 1000 <= Date.now()
+    ) {
+      throw new Error("invalid-database-token");
+    }
+    return { token: data.token, userId, expiresAt: claims.exp * 1000 };
+  }
+
+  async function requestToken(appToken, retried, requestGeneration) {
+    const { response, data } = await exchangeRequest(appToken);
     if (response.status === 401 && !retried) {
       if (localStorage.getItem("token") !== appToken) {
         throw new Error("database-token-identity-changed");
@@ -54,19 +72,22 @@
     if (generation !== requestGeneration) {
       throw new Error("database-token-identity-changed");
     }
-    const data = await response.json();
-    const claims = payload(data?.token);
     const appClaims = payload(localStorage.getItem("token"));
     const userId = appClaims?.id || appClaims?.sub;
-    if (
-      typeof data?.token !== "string" || claims?.role !== "authenticated" ||
-      claims?.aud !== "authenticated" || claims?.id !== userId ||
-      typeof claims?.exp !== "number" || claims.exp * 1000 <= Date.now()
-    ) {
+    cached = validateDatabaseToken(data, userId);
+    return cached.token;
+  }
+
+  async function exchange(appToken, expectedUserId) {
+    const userId = String(expectedUserId || "").trim();
+    const appClaims = payload(appToken);
+    const appUserId = appClaims?.id || appClaims?.sub;
+    if (!appToken || !userId || (appUserId && appUserId !== userId)) {
       throw new Error("invalid-database-token");
     }
-    cached = { token: data.token, userId, expiresAt: claims.exp * 1000 };
-    return cached.token;
+    const { response, data } = await exchangeRequest(appToken);
+    if (!response.ok) throw new Error("database-token-unavailable");
+    return validateDatabaseToken(data, userId).token;
   }
 
   async function get() {
@@ -87,5 +108,5 @@
   global.addEventListener?.("storage", (event) => {
     if (event.key === "token") clear();
   });
-  global.SunlandDatabaseToken = Object.freeze({ get, clear });
+  global.SunlandDatabaseToken = Object.freeze({ get, clear, exchange });
 })(globalThis);

@@ -1,0 +1,30 @@
+{
+  "feature": "login-account-ban",
+  "currentStage": "verified",
+  "nextAllowedStage": "released",
+  "flowProfile": "strict-fullstack",
+  "approvals": {
+    "requirementsApproved": true,
+    "visualDesignApproved": null,
+    "implementationApproved": true,
+    "evidence": "用户于 2026-08-14 明确要求为 login.html 加入封号机制，并指定使用现有 Supabase 列、禁止登录及弹窗说明。"
+  },
+  "visualDesign": {
+    "required": false,
+    "reason": "复用 login.html 现有原生错误弹窗，不新增布局、组件或视觉样式。"
+  },
+  "lifecycleHooks": {
+    "available": false,
+    "fallback": "当前会话未提供 full-stack-development MCP 生命周期工具；采用仓库规则、人工契约审查和可复现测试证据。"
+  },
+  "blockedGates": [],
+  "verification": {
+    "focusedTests": "23/23 passed",
+    "fullTests": "217/217 passed",
+    "browser": "desktop 1280x720 and mobile 390x844 passed without overflow or console errors",
+    "onlineContracts": "database-token without auth returned 401; anonymous user_profiles SELECT returned 401",
+    "releaseConclusion": "有条件可发布：login.html 正常流程已封禁；系统级不可绕过封禁仍需外部 api.sunland.dev 服务端执行。"
+  },
+  "changePolicy": "需求变化时回退到最早受影响阶段并重新验证认证、数据和 UI 契约。",
+  "latestChangeId": null
+}

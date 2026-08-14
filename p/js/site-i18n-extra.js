@@ -1078,6 +1078,31 @@
     "ko": "서버는 일시적으로 사용할 수 없습니다",
     "es": "El servidor no está disponible temporalmente"
   },
+  "正在检查账号状态...": {
+    "zh-Hant": "正在檢查帳號狀態...",
+    "ko": "계정 상태를 확인하는 중...",
+    "es": "Comprobando el estado de la cuenta..."
+  },
+  "暂时无法确认账号状态，请稍后再试": {
+    "zh-Hant": "暫時無法確認帳號狀態，請稍後再試",
+    "ko": "계정 상태를 확인할 수 없습니다. 잠시 후 다시 시도해 주세요.",
+    "es": "No se puede comprobar el estado de la cuenta. Inténtalo de nuevo más tarde."
+  },
+  "账号已被封禁": {
+    "zh-Hant": "帳號已被封禁",
+    "ko": "이 계정은 차단되었습니다",
+    "es": "Esta cuenta ha sido bloqueada"
+  },
+  "封禁原因：": {
+    "zh-Hant": "封禁原因：",
+    "ko": "차단 사유: ",
+    "es": "Motivo del bloqueo: "
+  },
+  "如有疑问，请联系管理员。": {
+    "zh-Hant": "如有疑問，請聯絡管理員。",
+    "ko": "문의 사항이 있으면 관리자에게 연락해 주세요.",
+    "es": "Si tienes alguna pregunta, ponte en contacto con el administrador."
+  },
   "登录成功": {
     "zh-Hant": "登入成功",
     "ko": "이름 *",

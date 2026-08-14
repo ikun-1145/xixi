@@ -127,6 +127,18 @@ test('login.html stores a normalized user object after successful login', () => 
   assert.doesNotMatch(loginHtml, /localStorage\.setItem\("user",\s*JSON\.stringify\(data\.user\)\)/);
 });
 
+test('login.html checks the own-profile ban status before persisting a new session', () => {
+  assert.match(loginHtml, /<script src="ai\/database-token-client\.js"><\/script>/);
+  assert.match(loginHtml, /<script src="ai\/login-ban-status\.js"><\/script>/);
+  const banCheck = loginHtml.indexOf('await window.SunlandLoginBanStatus.check');
+  const tokenWrite = loginHtml.indexOf('localStorage.setItem("token", data.token)');
+  assert.ok(banCheck >= 0 && tokenWrite > banCheck, 'ban status must be checked before the token is persisted');
+  assert.match(loginHtml, /let loginPending = false;[\s\S]*?if \(loginPending\) return;[\s\S]*?loginPending = true;/u);
+  assert.match(loginHtml, /if \(banStatus\.isBanned\) \{[\s\S]*?showBannedAccount\(banStatus\.reason\);[\s\S]*?return;/u);
+  assert.match(loginHtml, /暂时无法确认账号状态，请稍后再试/u);
+  assert.doesNotMatch(loginHtml, /console\.log\("verify-code 返回:",\s*res\.status,\s*data\)/u);
+});
+
 test('login.html safely returns a completed login to verify.html', () => {
   assert.equal(getLoginTarget('?return=verify.html'), 'verify.html');
   assert.equal(getLoginTarget('?return=https://evil.example/verify.html'), 'ai.html');

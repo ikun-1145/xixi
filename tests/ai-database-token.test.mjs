@@ -72,6 +72,32 @@ test("database token is validated, cached and bound to the current application u
   assert.equal(new Headers(calls[0].init.headers).get("authorization"), `Bearer ${appToken}`);
 });
 
+test("a fresh login can exchange a database token without persisting or caching it", async () => {
+  const now = Math.floor(Date.now() / 1000);
+  const appToken = jwt({ id: "user-a", exp: now + 3600 });
+  const databaseToken = jwt({
+    id: "user-a",
+    role: "authenticated",
+    aud: "authenticated",
+    exp: now + 900,
+  });
+  const calls = [];
+  const instance = runtime({
+    appToken,
+    fetchImpl: async (url, init) => {
+      calls.push({ url, init });
+      return response({ token: databaseToken, expiresIn: 900 });
+    },
+  });
+
+  assert.equal(await instance.api.exchange(appToken, "user-a"), databaseToken);
+  assert.equal(await instance.api.exchange(appToken, "user-a"), databaseToken);
+  assert.equal(instance.values.get("token"), appToken);
+  assert.equal(calls.length, 2, "fresh-login exchanges must not populate the signed-in token cache");
+  assert.equal(new Headers(calls[0].init.headers).get("authorization"), `Bearer ${appToken}`);
+  await assert.rejects(instance.api.exchange(appToken, "user-b"), /invalid-database-token/u);
+});
+
 test("expired or cross-user database tokens are rejected", async () => {
   const now = Math.floor(Date.now() / 1000);
   const appToken = jwt({ id: "user-a", exp: now + 3600 });

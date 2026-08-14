@@ -352,12 +352,22 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
 })();
 </script>
 
+<script src="ai/database-token-client.js"></script>
+<script src="ai/login-ban-status.js"></script>
 <script>
 (function () {
   // ====== 占位函数：保持与原 app.js 调用接口一致，避免登录逻辑报错 ======
   function showError(title, opt) {
     const detail = opt && (opt.detail || opt.code) ? `\n${opt.detail || ""} ${opt.code || ""}`.trim() : "";
     alert(title + (detail ? "\n" + detail : ""));
+  }
+
+  function showBannedAccount(reason) {
+    const translate = (text) => window.SiteI18n?.translate?.(text) || text;
+    const detail = reason
+      ? `${translate("封禁原因：")}${reason}`
+      : translate("如有疑问，请联系管理员。");
+    alert(`${translate("账号已被封禁")}\n${detail}`);
   }
 
   function showLoginPrompt() {
@@ -509,12 +519,13 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
     const loginBtn = modal.querySelector("#loginBtn");
     const msg = modal.querySelector("#loginMsg");
     const agreeCheck = modal.querySelector("#agreeCheck");
+    let loginPending = false;
     loginBtn.disabled = true;
     loginBtn.style.opacity = "0.6";
 
     agreeCheck.onchange = () => {
-      loginBtn.disabled = !agreeCheck.checked;
-      loginBtn.style.opacity = agreeCheck.checked ? "1" : "0.6";
+      loginBtn.disabled = loginPending || !agreeCheck.checked;
+      loginBtn.style.opacity = loginPending || !agreeCheck.checked ? "0.6" : "1";
     };
 
     let cooldown = 0;
@@ -568,7 +579,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
 
         const data = await res.json().catch(() => ({}));
 
-        console.log("send-code 返回:", res.status, data);
+        console.log("send-code 返回状态:", res.status);
 
         if (!res.ok) {
           let errMsg = "服务器异常";
@@ -618,6 +629,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
 
     // ===== 登录 =====
     loginBtn.onclick = async () => {
+      if (loginPending) return;
       msg.classList.remove("ok"); // 复位为错误色，成功时再标记
       if (!agreeCheck.checked) {
         msg.innerText = "请先同意用户协议";
@@ -631,6 +643,10 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
         return;
       }
 
+      loginPending = true;
+      loginBtn.disabled = true;
+      loginBtn.style.opacity = "0.6";
+      let keepLocked = false;
       try {
         const res = await fetch("https://api.sunland.dev/verify-code", {
           method: "POST",
@@ -652,7 +668,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
           return;
         }
 
-        console.log("verify-code 返回:", res.status, data);
+        console.log("verify-code 返回状态:", res.status);
 
         if (!res.ok) {
           let errMsg = data?.error || "服务器异常";
@@ -684,8 +700,34 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
           return;
         }
 
-        localStorage.setItem("token", data.token);
         const loginUser = normalizeLoginUser(data, email);
+        if (!loginUser?.id) {
+          msg.innerText = "暂时无法确认账号状态，请稍后再试";
+          return;
+        }
+
+        msg.innerText = "正在检查账号状态...";
+        let banStatus;
+        try {
+          banStatus = await window.SunlandLoginBanStatus.check({
+            appToken: data.token,
+            userId: loginUser.id,
+          });
+        } catch (statusError) {
+          console.error("账号状态检查失败:", statusError);
+          msg.innerText = "暂时无法确认账号状态，请稍后再试";
+          return;
+        }
+
+        if (banStatus.isBanned) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          msg.innerText = "账号已被封禁";
+          showBannedAccount(banStatus.reason);
+          return;
+        }
+
+        localStorage.setItem("token", data.token);
         if (loginUser) {
           localStorage.setItem("user", JSON.stringify(loginUser));
         } else {
@@ -694,6 +736,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
 
         msg.innerText = "登录成功";
         msg.classList.add("ok"); // 成功提示用绿色
+        keepLocked = true;
 
         // 登录成功后回到来源页（默认 ai.html），由目标页的 app.js 完成会话恢复与云端同步
         var postTarget = getPostLoginTarget();
@@ -715,6 +758,12 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
           showError("登录异常", {
             detail: e.message
           });
+        }
+      } finally {
+        if (!keepLocked) {
+          loginPending = false;
+          loginBtn.disabled = !agreeCheck.checked;
+          loginBtn.style.opacity = agreeCheck.checked ? "1" : "0.6";
         }
       }
     };
