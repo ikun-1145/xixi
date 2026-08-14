@@ -2,7 +2,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import { parseModelJson } from "../verify/server/json-utils.js";
-import { callDeepSeek } from "../verify/server/model-adapter.js";
+import { callDeepSeek, readGatewayResponse } from "../verify/server/model-adapter.js";
 import { normalizeClaims } from "../verify/server/claim-extractor.js";
 import {
   BraveSearchProvider,
@@ -94,6 +94,39 @@ test("verify model calls use bounded non-streaming JSON responses", async () => 
     },
   });
   assert.equal(output, '{"claims":[]}');
+});
+
+test("SSE transport overhead does not count as decoded model content", async () => {
+  const encoder = new TextEncoder();
+  const event = `data: ${JSON.stringify({
+    choices: [{ delta: { content: "x" } }],
+    transportPadding: "p".repeat(220),
+  })}\n\n`;
+  const response = new Response(new ReadableStream({
+    start(controller) {
+      for (let index = 0; index < 1_000; index += 1) controller.enqueue(encoder.encode(event));
+      controller.enqueue(encoder.encode("data: [DONE]\n\n"));
+      controller.close();
+    },
+  }), { headers: { "content-type": "text/event-stream" } });
+
+  assert.equal((await readGatewayResponse(response, 2_000, 500_000)).length, 1_000);
+});
+
+test("SSE model content and transport remain independently bounded", async () => {
+  const makeResponse = (content, padding = "") => new Response(
+    `data: ${JSON.stringify({ choices: [{ delta: { content } }], padding })}\n\n`,
+    { headers: { "content-type": "text/event-stream" } },
+  );
+
+  await assert.rejects(
+    () => readGatewayResponse(makeResponse("x".repeat(101)), 100, 10_000),
+    error => error.code === "MODEL_RESPONSE_TOO_LARGE",
+  );
+  await assert.rejects(
+    () => readGatewayResponse(makeResponse("ok", "p".repeat(2_000)), 100, 1_000),
+    error => error.code === "MODEL_RESPONSE_TOO_LARGE",
+  );
 });
 
 test("claim normalization limits count, queries, ids, and control characters", () => {

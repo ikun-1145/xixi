@@ -11,6 +11,9 @@ export const VERIFY_LIMITS = Object.freeze({
   searchTimeoutMs: 6_000,
   modelTimeoutMs: 40_000,
   pipelineTimeoutMs: 90_000,
+  // api.sunland.dev 以 SSE 返回模型结果；协议事件包装会显著大于解码后的正文。
+  // 分开限制传输字节和正文，避免把正常 SSE 包装误判为超大模型输出。
+  maxModelTransportBytes: 1_000_000,
   maxModelResponseBytes: 160_000,
 });
 

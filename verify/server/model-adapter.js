@@ -21,7 +21,11 @@ function parseSseEvent(rawEvent) {
   return result;
 }
 
-export async function readGatewayResponse(response, maxBytes = VERIFY_LIMITS.maxModelResponseBytes) {
+export async function readGatewayResponse(
+  response,
+  maxBytes = VERIFY_LIMITS.maxModelResponseBytes,
+  maxTransportBytes = VERIFY_LIMITS.maxModelTransportBytes,
+) {
   const contentType = response.headers.get("content-type") || "";
   if (!contentType.includes("text/event-stream")) {
     const text = await response.text();
@@ -42,25 +46,36 @@ export async function readGatewayResponse(response, maxBytes = VERIFY_LIMITS.max
   if (!response.body) return "";
   const reader = response.body.getReader();
   const decoder = new TextDecoder();
+  const encoder = new TextEncoder();
   let buffered = "";
   let output = "";
   let receivedBytes = 0;
+  let outputBytes = 0;
+
+  const appendEvent = (event) => {
+    const content = parseSseEvent(event);
+    outputBytes += encoder.encode(content).byteLength;
+    if (outputBytes > maxBytes) {
+      throw new VerifyError("MODEL_RESPONSE_TOO_LARGE", "模型响应超出安全限制。", 502);
+    }
+    output += content;
+  };
 
   try {
     while (true) {
       const { done, value } = await reader.read();
       if (done) break;
       receivedBytes += value.byteLength;
-      if (receivedBytes > maxBytes) {
+      if (receivedBytes > maxTransportBytes) {
         throw new VerifyError("MODEL_RESPONSE_TOO_LARGE", "模型响应超出安全限制。", 502);
       }
       buffered += decoder.decode(value, { stream: true });
       const events = buffered.split(/\r?\n\r?\n/);
       buffered = events.pop() || "";
-      for (const event of events) output += parseSseEvent(event);
+      for (const event of events) appendEvent(event);
     }
     buffered += decoder.decode();
-    if (buffered) output += parseSseEvent(buffered);
+    if (buffered) appendEvent(buffered);
     return output.trim();
   } finally {
     reader.releaseLock();
