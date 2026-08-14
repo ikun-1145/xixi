@@ -69,6 +69,33 @@ test("verify API handles pure opinion without a search provider", async () => {
   assert.equal(payload.claims.length, 0);
 });
 
+test("verify API does not propagate an unsupported incoming request signal to model calls", async () => {
+  const incoming = new AbortController();
+  incoming.abort();
+  const request = {
+    headers: new Headers({
+      "content-type": "application/json",
+      authorization: "Bearer valid-test-token",
+    }),
+    signal: incoming.signal,
+    async json() {
+      return { type: "text", content: "我觉得夏天很讨厌。" };
+    },
+  };
+  const gateway = {
+    async fetch(modelRequest) {
+      assert.equal(modelRequest.signal.aborted, false);
+      return new Response(JSON.stringify({ choices: [{ message: { content: '{"claims":[]}' } }] }), {
+        headers: { "content-type": "application/json" },
+      });
+    },
+  };
+
+  const response = await onRequestPost({ request, env: { AI_GATEWAY: gateway } });
+  assert.equal(response.status, 200);
+  assert.equal((await response.json()).success, true);
+});
+
 test("optional request limiter fails closed before model and search calls", async () => {
   const request = new Request("https://sunland.dev/api/verify", {
     method: "POST",

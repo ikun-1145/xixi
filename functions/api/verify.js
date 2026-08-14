@@ -99,8 +99,12 @@ export async function onRequestPost(context) {
     const input = await parseInput(context.request);
     const authorization = context.request.headers.get("authorization") || "";
     if (!authorization) throw new VerifyError("AUTH_REQUIRED", "请先登录霜蓝账号后再开始核验。", 401);
-    const pipelineTimeout = AbortSignal.timeout(VERIFY_LIMITS.pipelineTimeoutMs);
-    const signal = AbortSignal.any([context.request.signal, pipelineTimeout]);
+    // Pages production does not enable Cloudflare's `enable_request_signal`
+    // compatibility flag. Do not propagate that unsupported incoming signal to
+    // the Worker-to-Worker model requests: it can cancel a still-valid upstream
+    // response before the Evidence Judge returns. The pipeline and each model
+    // request retain their own bounded server-side timeouts.
+    const signal = AbortSignal.timeout(VERIFY_LIMITS.pipelineTimeoutMs);
     const result = await verifyInput({
       ...input,
       env: context.env,
