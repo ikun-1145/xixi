@@ -2406,10 +2406,10 @@
     "ko": "Android 다운로드",
     "es": "Android descarga"
   },
-  "适用于 Android 5.0 (Lollipop) 及以上版本": {
-    "zh-Hant": "適用於 Android 5.0 (Lollipop) 及以上版本",
-    "ko": "안드로이드 5.0 (Lollipop) 이상",
-    "es": "Para Android 5.0 (Lollipop) y arriba"
+  "适用于 Android 7.0 (Nougat) 及以上版本": {
+    "zh-Hant": "適用於 Android 7.0 (Nougat) 及以上版本",
+    "ko": "안드로이드 7.0 (Nougat) 이상",
+    "es": "Para Android 7.0 (Nougat) y versiones posteriores"
   },
   "仅支持 Android · Android Only": {
     "zh-Hant": "僅支援 Android · Android Only",

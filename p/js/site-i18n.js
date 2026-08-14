@@ -536,7 +536,7 @@
     ["获取 Sunland AI · Beta", "Get Sunland AI · Beta", "Sunland AI · Beta を入手"],
     ["开启你的智能对话之旅", "Start your intelligent conversation journey", "インテリジェントな対話の旅を始めよう"],
     ["Android 版下载", "Android download", "Android版ダウンロード"],
-    ["适用于 Android 5.0 (Lollipop) 及以上版本", "For Android 5.0 (Lollipop) and above", "Android 5.0 (Lollipop) 以降に対応"],
+    ["适用于 Android 7.0 (Nougat) 及以上版本", "For Android 7.0 (Nougat) and above", "Android 7.0 (Nougat) 以降に対応"],
     ["仅支持 Android · Android Only", "Android only", "Android のみ対応"],
     ["立即下载 APK", "Download APK", "APK をダウンロード"],
     ["直链下载", "Direct link", "直接ダウンロード"],
