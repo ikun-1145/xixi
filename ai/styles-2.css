@@ -262,14 +262,20 @@ body.thinking-mode button {
   letter-spacing: 0.3px;       /* ⭐ 更易读 */
 }
 
-#copilotEntry {
-  width: 100%;
+.sidebar-feature-links {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.sidebar-feature-link {
+  min-width: 0;
   min-height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 10px;
-  padding: 8px;
+  padding: 8px 4px;
   color: #334155;
   background: rgba(255,255,255,0.58);
   border: 1px solid rgba(15,23,42,0.12);
@@ -282,24 +288,24 @@ body.thinking-mode button {
   transition: background .15s ease, border-color .15s ease, color .15s ease;
 }
 
-#copilotEntry:hover {
+.sidebar-feature-link:hover {
   color: #0e7490;
   background: rgba(34,211,238,0.10);
   border-color: rgba(14,154,167,0.45);
 }
 
-#copilotEntry:focus-visible {
+.sidebar-feature-link:focus-visible {
   outline: 2px solid #14c8d4;
   outline-offset: 2px;
 }
 
-body.night #copilotEntry {
+body.night .sidebar-feature-link {
   color: #cbd5e1;
   background: rgba(255,255,255,0.05);
   border-color: rgba(255,255,255,0.12);
 }
 
-body.night #copilotEntry:hover {
+body.night .sidebar-feature-link:hover {
   color: #6ff3ee;
   background: rgba(62,237,231,0.08);
   border-color: rgba(62,237,231,0.35);

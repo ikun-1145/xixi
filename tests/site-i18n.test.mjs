@@ -33,6 +33,7 @@ const publicPageTitles = new Map([
   ["ai.html", "Sunland AI · Beta"],
   ["ai_settings.html", "Settings - Sunland AI · Beta"],
   ["copilot.html", "HuFuBao · AI Reply Copilot for Furry Communities"],
+  ["verify.html", "Information Verification · Sunland"],
   ["download.html", "Sunland AI · Beta — Redefining Intelligent Interaction"],
   ["oauth-callback.html", "Signing you in…"],
   ["privacy.html", "Sunland AI · Beta Privacy Policy"],

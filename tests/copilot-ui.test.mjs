@@ -81,16 +81,24 @@ test('copilot exposes semantic controls and accessible live regions', () => {
   assert.doesNotMatch(copilotHtml, /setAttribute\('data-theme'/u);
 });
 
-test('AI sidebar links to HuFuBao directly below the new-chat action', () => {
+test('AI sidebar groups HuFuBao and information verification below the new-chat action', () => {
   const document = createDocument(aiHtml);
   const newChatButton = document.getElementById('newChatBtn');
+  const featureLinks = document.querySelector('.sidebar-feature-links');
   const copilotEntry = document.getElementById('copilotEntry');
+  const verifyEntry = document.getElementById('verifyEntry');
 
+  assert.ok(featureLinks);
   assert.ok(copilotEntry);
+  assert.ok(verifyEntry);
   assert.equal(copilotEntry.tagName, 'A');
   assert.equal(copilotEntry.getAttribute('href'), 'copilot.html');
   assert.equal(copilotEntry.textContent.trim(), '护福宝');
-  assert.equal(newChatButton.nextElementSibling, copilotEntry);
+  assert.equal(verifyEntry.tagName, 'A');
+  assert.equal(verifyEntry.getAttribute('href'), 'verify.html');
+  assert.equal(verifyEntry.textContent.trim(), '信息鉴真');
+  assert.equal(newChatButton.nextElementSibling, featureLinks);
+  assert.deepEqual([...featureLinks.children], [copilotEntry, verifyEntry]);
 });
 
 test('copilot page styles keep the restrained v0 and CleanUI constraints', () => {

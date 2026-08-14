@@ -6,6 +6,13 @@
   "use strict";
 
   const generatedCatalog = {
+  "信息鉴真 · Sunland": {
+    "zh-Hant": "資訊鑑真 · Sunland",
+    "en": "Information Verification · Sunland",
+    "ja": "情報検証 · Sunland",
+    "ko": "정보 검증 · Sunland",
+    "es": "Verificación de información · Sunland"
+  },
   "页面加载中": {
     "zh-Hant": "頁面載入中",
     "ko": "페이지 로딩",
@@ -1655,6 +1662,11 @@
     "zh-Hant": "護福寶",
     "ko": "프로모션",
     "es": "HuFubao"
+  },
+  "信息鉴真": {
+    "zh-Hant": "資訊鑑真",
+    "ko": "정보 검증",
+    "es": "Verificación de información"
   },
   "你的福瑞评论区 AI 嘴替。复制评论，剩下的交给 AI —— 评论分析、黑话识别、图片识别、回复建议、连续上下文，让每一次回应都更从容。": {
     "zh-Hant": "你的福瑞評論區 AI 嘴替。複製評論，剩下的交給 AI —— 評論分析、黑話識別、圖片識別、回覆建議、連續上下文，讓每一次回應都更從容。",

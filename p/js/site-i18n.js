@@ -31,6 +31,7 @@
     // Common shell and navigation.
     ["页面加载中", "Page loading", "ページを読み込み中"],
     ["语言切换", "Language selector", "言語切り替え"],
+    ["信息鉴真 · Sunland", "Information Verification · Sunland", "情報検証 · Sunland"],
     ["加载中", "Loading", "読み込み中"],
     ["加载中...", "Loading...", "読み込み中..."],
     ["加载中…", "Loading…", "読み込み中…"],
@@ -380,6 +381,7 @@
     // HuFuBao copilot.
     ["护福宝 HuFuBao · 福瑞评论区 AI 嘴替", "HuFuBao · AI Reply Copilot for Furry Communities", "HuFuBao · ファーリー向けAI返信アシスタント"],
     ["护福宝", "HuFuBao", "HuFuBao"],
+    ["信息鉴真", "Information Verification", "情報検証"],
     ["你的福瑞评论区 AI 嘴替。复制评论，剩下的交给 AI —— 评论分析、黑话识别、图片识别、回复建议、连续上下文，让每一次回应都更从容。", "Your AI reply copilot for furry communities. Paste a comment and let AI analyze intent, slang, images, response options, and ongoing context.", "ファーリーコミュニティ向けのAI返信アシスタント。コメントを貼り付ければ、意図・スラング・画像・返信案・継続文脈を分析します。"],
     ["🧹 清空上下文", "🧹 Clear context", "🧹 文脈を消去"],
     ["清空上下文", "Clear context", "文脈を消去"],

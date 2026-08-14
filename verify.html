@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <script defer src="p/js/site-i18n-extra.js?v=20260808-2"></script>
+  <script defer src="p/js/site-i18n.js?v=20260808-2"></script>
+  <title>信息鉴真 · Sunland</title>
+  <meta name="description" content="基于公开证据的 AI 事实核验与信息鉴真工具。">
+  <meta name="theme-color" content="#14c8d4">
+  <link rel="icon" type="image/png" href="p/ailogo.png">
+  <link rel="stylesheet" href="p/css/tokens.css">
+  <link rel="stylesheet" href="p/css/base.css">
+  <link rel="stylesheet" href="verify/verify.css?v=20260814-1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; base-uri 'self'; object-src 'none'; form-action 'self'; script-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; connect-src 'self' https://api.sunland.dev https://cdn.jsdelivr.net https://tessdata.projectnaptha.com; worker-src 'self' blob: https://cdn.jsdelivr.net; child-src 'self' blob:;">
+  <script>
+    (function () {
+      try {
+        var hour = new Date().getHours();
+        document.documentElement.classList.toggle("night", hour < 6 || hour >= 18);
+      } catch (_) {}
+    })();
+  </script>
+</head>
+<body>
+  <div id="langSwitcher" class="lang-switcher" role="navigation" aria-label="语言切换">
+    <button id="languageMenuToggle" class="language-menu-toggle" type="button"
+      aria-haspopup="menu" aria-expanded="false" aria-controls="languageMenu">
+      <img class="language-flag" src="p/flags/cn.svg" alt="" data-language-current-flag>
+      <span data-language-current-label>简体中文</span>
+      <svg class="language-menu-chevron" viewBox="0 0 12 12" aria-hidden="true">
+        <path d="m2 4 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+      </svg>
+    </button>
+    <div id="languageMenu" class="language-menu" role="menu" aria-labelledby="languageMenuToggle" hidden>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="zh" aria-checked="true"><img class="language-flag" src="p/flags/cn.svg" alt="">简体中文</button>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="zh-Hant" aria-checked="false"><img class="language-flag" src="p/flags/cn.svg" alt="">繁體中文</button>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="en" aria-checked="false"><img class="language-flag" src="p/flags/gb.svg" alt="">English</button>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="ja" aria-checked="false"><img class="language-flag" src="p/flags/jp.svg" alt="">日本語</button>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="ko" aria-checked="false"><img class="language-flag" src="p/flags/kr.svg" alt="">한국어</button>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="es" aria-checked="false"><img class="language-flag" src="p/flags/es.svg" alt="">Español</button>
+    </div>
+  </div>
+
+  <div class="verify-shell">
+    <header class="verify-topbar">
+      <a class="verify-brand" href="index.html" aria-label="返回首页" data-t-aria="homeAria">
+        <img src="p/ailogo.png" alt="" aria-hidden="true">
+        <span>Sunland Verify</span>
+      </a>
+      <span class="beta-chip">PUBLIC EVIDENCE · BETA</span>
+    </header>
+
+    <main data-site-i18n-ignore>
+      <section class="verify-hero" aria-labelledby="pageTitle">
+        <p class="eyebrow" data-t="eyebrow">AI 事实核验 / 信息鉴真</p>
+        <h1 id="pageTitle" data-t="title">信息鉴真</h1>
+        <p class="hero-copy" data-t="subtitle">上传你看到的内容，我们会尝试追溯来源、搜索证据并分析可信度。</p>
+        <div class="disclaimer" role="note">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"></circle><path d="M12 11v5"></path><path d="M12 8h.01"></path></svg>
+          <span data-t="disclaimer">结果仅代表基于公开证据的可信度分析，不构成绝对事实认定。</span>
+        </div>
+      </section>
+
+      <div id="capabilityNotice" class="service-notice" role="status" aria-live="polite" hidden></div>
+
+      <section class="input-workbench card" aria-labelledby="inputTitle">
+        <div class="section-heading">
+          <div>
+            <p class="step-label" data-t="inputStep">01 · 提交线索</p>
+            <h2 id="inputTitle" data-t="inputTitle">选择待核验内容</h2>
+          </div>
+          <span class="limit-copy" data-t="limitCopy">最多 12,000 字 · 图片 5 MB</span>
+        </div>
+
+        <div class="input-tabs" role="tablist" aria-label="输入类型" data-t-aria="inputTypeAria">
+          <button id="textTab" class="input-tab active" type="button" role="tab" aria-selected="true" aria-controls="textPanel" data-input="text">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16"></path><path d="M4 12h16"></path><path d="M4 19h10"></path></svg>
+            <span data-t="textTab">文字</span>
+          </button>
+          <button id="imageTab" class="input-tab" type="button" role="tab" aria-selected="false" aria-controls="imagePanel" data-input="image">
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"></rect><circle cx="9" cy="10" r="2"></circle><path d="m21 15-5-4-8 7"></path></svg>
+            <span data-t="imageTab">图片</span>
+          </button>
+        </div>
+
+        <div id="textPanel" class="input-panel" role="tabpanel" aria-labelledby="textTab">
+          <label class="field-label" for="verifyText" data-t="textLabel">粘贴新闻、帖子、传言或具体事实描述</label>
+          <textarea id="verifyText" maxlength="12000" data-t-placeholder="textPlaceholder" placeholder="例如：某公司将在下个月停止销售某款产品……"></textarea>
+          <div class="field-meta"><span data-t="textHint">请尽量保留时间、人物和出处等上下文。</span><span id="charCount">0 / 12,000</span></div>
+        </div>
+
+        <div id="imagePanel" class="input-panel" role="tabpanel" aria-labelledby="imageTab" hidden>
+          <button id="dropzone" class="image-dropzone" type="button">
+            <span class="drop-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4"></path><path d="m7 9 5-5 5 5"></path><path d="M5 20h14"></path></svg></span>
+            <span><strong data-t="uploadTitle">点击或拖拽上传图片</strong><small data-t="uploadHint">JPG、JPEG、PNG、WEBP · 最大 5 MB</small></span>
+          </button>
+          <input id="imageInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+          <div id="imagePreview" class="image-preview" hidden>
+            <img id="previewImage" alt="图片预览" data-t-alt="previewAlt">
+            <div class="preview-info"><strong id="previewName"></strong><span id="previewMeta"></span></div>
+            <button id="removeImage" class="icon-button" type="button" aria-label="移除图片" data-t-aria="removeImage">×</button>
+          </div>
+          <p class="privacy-note" data-t="ocrNote">图片仅在浏览器中进行 OCR；后端只把识别出的文字交给 DeepSeek，原图不会发送给模型。</p>
+        </div>
+
+        <div class="submit-row">
+          <p class="auth-hint" data-t="authHint">核验会使用你的霜蓝账号额度，每次最多调用 2 次 DeepSeek。</p>
+          <button id="verifyButton" class="btn btn-primary verify-button" type="button">
+            <span class="button-spinner" aria-hidden="true"></span>
+            <span data-t="start">开始核验</span>
+          </button>
+        </div>
+      </section>
+
+      <section id="progressSection" class="progress-panel card" aria-labelledby="progressTitle" aria-live="polite" hidden>
+        <div class="section-heading compact"><div><p class="step-label" data-t="analysisStep">02 · 分析中</p><h2 id="progressTitle" data-t="analysisTitle">正在建立证据链</h2></div><span class="working-chip"><span></span><b data-t="working">处理中</b></span></div>
+        <ol id="analysisSteps" class="analysis-steps">
+          <li data-stage="understand"><span>1</span><div><strong data-t="stageUnderstand">正在理解内容</strong><small data-t="stageUnderstandHint">读取输入与可用上下文</small></div></li>
+          <li data-stage="extract"><span>2</span><div><strong data-t="stageExtract">正在提取待核验信息</strong><small data-t="stageExtractHint">只保留可客观验证的 Claim</small></div></li>
+          <li data-stage="search"><span>3</span><div><strong data-t="stageSearch">正在搜索公开来源</strong><small data-t="stageSearchHint">真实联网，限制查询次数</small></div></li>
+          <li data-stage="judge"><span>4</span><div><strong data-t="stageJudge">正在交叉验证证据</strong><small data-t="stageJudgeHint">检查支持、反对、转载与时效</small></div></li>
+          <li data-stage="report"><span>5</span><div><strong data-t="stageReport">正在生成报告</strong><small data-t="stageReportHint">计算可信度并整理限制</small></div></li>
+        </ol>
+        <p id="progressNote" class="progress-note" data-t="progressNote">后端按以上步骤处理，完成后统一返回；这里不显示推测出来的百分比。</p>
+      </section>
+
+      <section id="errorPanel" class="error-panel card" role="alert" hidden>
+        <div class="error-icon">!</div>
+        <div><h2 data-t="errorTitle">暂时无法完成核验</h2><p id="errorMessage"></p><a id="loginLink" class="text-link" href="login.html?return=verify.html" data-t="loginAction" hidden>前往登录</a></div>
+      </section>
+
+      <section id="reportSection" class="report" aria-labelledby="reportTitle" aria-live="polite" hidden>
+        <div class="report-heading"><p class="step-label" data-t="reportStep">03 · 核验报告</p><h2 id="reportTitle" data-t="reportTitle">公开证据分析</h2></div>
+        <div id="reportRoot"></div>
+      </section>
+    </main>
+
+    <footer class="site-footer" data-site-i18n-ignore>
+      <span data-t="footer">Sunland Verify · 公开证据辅助判断，不替代专业调查</span>
+    </footer>
+  </div>
+
+  <div id="toast" role="status" aria-live="polite"></div>
+  <script type="module" src="verify/verify.js?v=20260814-1"></script>
+</body>
+</html>

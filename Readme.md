@@ -52,5 +52,36 @@
 - 将页面级样式与组件样式拆分整理
 - 根据需要接入 Supabase / 自建后端以实现完整数据流
 
+### 信息鉴真工具
+
+独立页面为 `/verify.html`，Pages Function 接口为 `GET /api/verify`（能力探测）和 `POST /api/verify`（核验）。DeepSeek 复用现有 `api.sunland.dev` Worker；Secret 仍只存在于该 Worker 的 `DEEPSEEK_API_KEY`，Pages 和浏览器都不保存副本。API 转发当前用户的 Bearer token，沿用现有 Worker 的 JWT 校验、每日额度和 KV 限流。
+
+生产环境必须配置以下一种真实搜索服务；未配置时接口返回 `SEARCH_UNAVAILABLE`，不会让 DeepSeek 代替联网搜索：
+
+```text
+# Brave Search
+SEARCH_PROVIDER=brave
+BRAVE_SEARCH_API_KEY=<Cloudflare Pages Secret>
+
+# 或 SearXNG
+SEARCH_PROVIDER=searxng
+SEARXNG_BASE_URL=https://search.example.com
+SEARXNG_API_KEY=<可选 Cloudflare Pages Secret>
+```
+
+SearXNG 实例必须开放 `/search?format=json`。建议在 Cloudflare Pages 项目 `sunland` 中增加 `AI_GATEWAY` Service binding，目标 Worker 为 `ai`；未绑定时 Pages Function 会回退到服务端请求 `https://api.sunland.dev/`，契约不变。仓库当前没有 Pages Wrangler 配置，Cloudflare Dashboard 仍是配置来源，不应新增不完整的 `wrangler.toml` 覆盖生产设置。
+
+图片使用 `multipart/form-data`，允许 `image/jpeg`、`image/png`、`image/webp`，最大 5 MB。Tesseract.js 在浏览器端 OCR，后端校验文件魔数，只把 OCR 文字交给 DeepSeek。OCR 失败时返回“不足以判断”，不会调用模型猜图。
+
+本地检查：
+
+```bash
+npm test
+npx wrangler pages functions build --outdir /tmp/sunland-verify-build
+npx wrangler pages dev . --port 8788 --compatibility-date=2026-06-24
+```
+
+当前只预留了视频、反向搜图、C2PA / Content Credentials 和 AI 生成检测接口；这些能力不会输出伪造概率。
+
 示例网站：https://sunland.dev
 <img src="https://raw.githubusercontent.com/ikun-1145/xixi/main/follow.svg" width="300" />
