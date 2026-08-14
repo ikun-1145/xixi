@@ -8,11 +8,14 @@ import { onRequestGet, onRequestPost } from "../functions/api/verify.js";
 import { t } from "../verify/i18n.js";
 import { renderReport, safeExternalUrl } from "../verify/render.js";
 
-function opinionGateway() {
+function opinionGateway(remaining = null) {
   return {
     async fetch() {
       return new Response(JSON.stringify({ choices: [{ message: { content: '{"claims":[]}' } }] }), {
-        headers: { "content-type": "application/json" },
+        headers: {
+          "content-type": "application/json",
+          ...(remaining == null ? {} : { "x-remain": String(remaining) }),
+        },
       });
     },
   };
@@ -80,6 +83,19 @@ test("verify API supports a bounded claim-extraction stage", async () => {
   const payload = await response.json();
   assert.equal(response.status, 200);
   assert.equal(payload.outcome, "no_claims");
+});
+
+test("verify API exposes only the AI gateway's authoritative Pro usage signal", async () => {
+  const request = new Request("https://sunland.dev/api/verify", {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization: "Bearer valid-test-token" },
+    body: JSON.stringify({ type: "text", content: "我觉得夏天很讨厌。", stage: "extract" }),
+  });
+  const response = await onRequestPost({ request, env: { AI_GATEWAY: opinionGateway(-1) } });
+  const payload = await response.json();
+  assert.equal(response.status, 200);
+  assert.deepEqual(payload.usage, { unlimited: true });
+  assert.doesNotMatch(JSON.stringify(payload), /valid-test-token/u);
 });
 
 test("verify API rejects unknown stages before model or search work", async () => {
@@ -195,7 +211,16 @@ test("verify page is independent, responsive, localized, and does not expose a m
   assert.match(client, /tesseract\.js@7\.0\.0/u);
   assert.match(client, /runStage\("extract"\)/u);
   assert.match(client, /runStage\("judge", extraction\.claims\)/u);
+  assert.match(client, /applyUsage\(extraction\.usage\)/u);
+  assert.match(client, /usageState\?\.unlimited \? "proAuthHint" : "authHint"/u);
   assert.doesNotMatch(`${html}\n${client}`, /DEEPSEEK_API_KEY|sk-[A-Za-z0-9]/u);
+});
+
+test("verify Pro policy is localized in every supported language", () => {
+  for (const locale of ["zh", "zh-Hant", "en", "ja", "ko", "es"]) {
+    assert.notEqual(t("proAuthHint", locale), "proAuthHint");
+    assert.match(t("proAuthHint", locale), /Pro/u);
+  }
 });
 
 test("verify page redirects missing local sessions to login before loading its client", () => {

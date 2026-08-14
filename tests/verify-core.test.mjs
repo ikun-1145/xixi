@@ -81,19 +81,48 @@ test("model JSON parser tolerates markdown fences and surrounding prose", () => 
 });
 
 test("verify model calls use bounded non-streaming JSON responses", async () => {
+  let usage = null;
   const output = await callDeepSeek({
     authorization: "Bearer valid-test-token",
     messages: [{ role: "user", content: "Return JSON" }],
+    onUsage(value) { usage = value; },
     fetchImpl: async (request) => {
       assert.equal(request.headers.get("accept"), "application/json");
       const body = await request.json();
       assert.equal(body.stream, false);
       return new Response(JSON.stringify({ choices: [{ message: { content: '{"claims":[]}' } }] }), {
-        headers: { "content-type": "application/json" },
+        headers: { "content-type": "application/json", "x-remain": "-1" },
       });
     },
   });
   assert.equal(output, '{"claims":[]}');
+  assert.deepEqual(usage, { unlimited: true });
+});
+
+test("verify model usage keeps bounded non-Pro remaining counts", async () => {
+  let usage = null;
+  await callDeepSeek({
+    authorization: "Bearer valid-test-token",
+    messages: [{ role: "user", content: "Return JSON" }],
+    onUsage(value) { usage = value; },
+    fetchImpl: async () => new Response('{"content":"ok"}', {
+      headers: { "content-type": "application/json", "x-remain": "17" },
+    }),
+  });
+  assert.deepEqual(usage, { unlimited: false, remaining: 17 });
+});
+
+test("verify model usage ignores unsupported negative values", async () => {
+  let usage = null;
+  await callDeepSeek({
+    authorization: "Bearer valid-test-token",
+    messages: [{ role: "user", content: "Return JSON" }],
+    onUsage(value) { usage = value; },
+    fetchImpl: async () => new Response('{"content":"ok"}', {
+      headers: { "content-type": "application/json", "x-remain": "-2" },
+    }),
+  });
+  assert.equal(usage, null);
 });
 
 test("SSE transport overhead does not count as decoded model content", async () => {

@@ -97,6 +97,7 @@ export async function callDeepSeek({
   temperature = 0.1,
   fetchImpl = fetch,
   signal,
+  onUsage,
 }) {
   if (!/^Bearer\s+\S{10,4096}$/i.test(authorization || "")) {
     throw new VerifyError("AUTH_REQUIRED", "请先登录霜蓝账号后再开始核验。", 401);
@@ -142,6 +143,13 @@ export async function callDeepSeek({
       throw new VerifyError("RATE_LIMITED", "今日使用次数已达上限或请求过于频繁。", 429);
     }
     throw new VerifyError("MODEL_UNAVAILABLE", "DeepSeek 分析服务暂时不可用。", 502);
+  }
+
+  const remainingHeader = response.headers.get("x-remain");
+  if (typeof onUsage === "function" && /^-?\d+$/u.test(remainingHeader || "")) {
+    const remaining = Number.parseInt(remainingHeader, 10);
+    if (remaining === -1) onUsage({ unlimited: true });
+    if (remaining >= 0) onUsage({ unlimited: false, remaining });
   }
 
   const content = await readGatewayResponse(response);

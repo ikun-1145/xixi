@@ -1,4 +1,4 @@
-import { applyTranslations, getLocale, t } from "./i18n.js";
+import { applyTranslations, getLocale, t } from "./i18n.js?v=20260814-2";
 import { renderReport } from "./render.js";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
@@ -8,7 +8,7 @@ const elements = Object.fromEntries([
   "textTab", "imageTab", "textPanel", "imagePanel", "verifyText", "charCount", "dropzone", "imageInput",
   "imagePreview", "previewImage", "previewName", "previewMeta", "removeImage", "verifyButton",
   "progressSection", "progressNote", "errorPanel", "errorMessage", "loginLink", "reportSection",
-  "reportRoot", "capabilityNotice", "toast",
+  "reportRoot", "capabilityNotice", "usageHint", "toast",
 ].map((id) => [id, document.getElementById(id)]));
 
 let inputType = "text";
@@ -16,8 +16,19 @@ let selectedFile = null;
 let previewUrl = "";
 let tesseractPromise = null;
 let toastTimer = 0;
+let usageState = null;
 
 function translate(key) { return t(key, getLocale()); }
+
+function renderUsageHint() {
+  elements.usageHint.textContent = translate(usageState?.unlimited ? "proAuthHint" : "authHint");
+}
+
+function applyUsage(usage) {
+  if (!usage || typeof usage.unlimited !== "boolean") return;
+  usageState = usage.unlimited ? { unlimited: true } : { unlimited: false };
+  renderUsageHint();
+}
 
 function clearLocalSession() {
   try { localStorage.removeItem("token"); } catch {}
@@ -234,10 +245,12 @@ async function submitVerification() {
 
     setProgressStage(1);
     const extraction = await runStage("extract");
+    applyUsage(extraction.usage);
     let payload = extraction;
     if (extraction.stage === "claims_extracted") {
       setProgressStage(2);
       payload = await runStage("judge", extraction.claims);
+      applyUsage(payload.usage);
     }
     setProgressStage(4);
     completeProgress();
@@ -280,9 +293,11 @@ elements.verifyButton.addEventListener("click", submitVerification);
 
 window.addEventListener("site-language-change", () => {
   applyTranslations();
+  renderUsageHint();
   if (!elements.capabilityNotice.hidden) elements.capabilityNotice.textContent = translate("searchUnavailable");
 });
 window.addEventListener("beforeunload", () => { if (previewUrl) URL.revokeObjectURL(previewUrl); });
 
 applyTranslations();
+renderUsageHint();
 checkCapabilities();

@@ -109,7 +109,15 @@ async function prepareInput({ inputType, content, file, ocrText, ocrStatus }) {
   };
 }
 
-function createModelCaller({ env, authorization, fetchImpl, signal }) {
+function createModelUsageState() {
+  return { value: null };
+}
+
+function usagePayload(usageState) {
+  return usageState?.value ? { usage: usageState.value } : {};
+}
+
+function createModelCaller({ env, authorization, fetchImpl, signal, usageState }) {
   return (messages, options) => callDeepSeek({
     env,
     authorization,
@@ -118,6 +126,9 @@ function createModelCaller({ env, authorization, fetchImpl, signal }) {
     temperature: options.temperature,
     fetchImpl,
     signal,
+    onUsage(usage) {
+      if (usageState) usageState.value = usage;
+    },
   });
 }
 
@@ -196,8 +207,9 @@ async function completeVerification({
   authorization,
   fetchImpl,
   signal,
+  usageState = createModelUsageState(),
 }) {
-  const model = createModelCaller({ env, authorization, fetchImpl, signal });
+  const model = createModelCaller({ env, authorization, fetchImpl, signal, usageState });
   const searchProvider = createSearchProvider(env, fetchImpl);
   const searchRun = await runSearches(claims, searchProvider);
   const normalizedLocale = ["zh", "zh-Hant", "en", "ja", "ko", "es"].includes(locale) ? locale : "zh";
@@ -232,6 +244,7 @@ async function completeVerification({
     claims: scoredClaims,
     sources: allSources,
     searches: searchRun.searches,
+    ...usagePayload(usageState),
     process: {
       claimsExtracted: claims.length,
       queriesRun: searchRun.searches.length,
@@ -263,10 +276,14 @@ export async function extractVerificationClaims({
   const prepared = await prepareInput({ inputType, content, file, ocrText, ocrStatus });
   if (prepared.insufficientReport) return prepared.insufficientReport;
 
-  const model = createModelCaller({ env, authorization, fetchImpl, signal });
+  const usageState = createModelUsageState();
+  const model = createModelCaller({ env, authorization, fetchImpl, signal, usageState });
   const claims = await extractClaims(prepared.normalizedContent, model);
   if (claims.length === 0) {
-    return emptyClaimsReport(inputType, prepared.inputMetadata, prepared.initialLimitations);
+    return {
+      ...emptyClaimsReport(inputType, prepared.inputMetadata, prepared.initialLimitations),
+      ...usagePayload(usageState),
+    };
   }
 
   return {
@@ -274,6 +291,7 @@ export async function extractVerificationClaims({
     stage: "claims_extracted",
     inputType,
     claims,
+    ...usagePayload(usageState),
   };
 }
 
@@ -324,10 +342,14 @@ export async function verifyInput({
   const prepared = await prepareInput({ inputType, content, file, ocrText, ocrStatus });
   if (prepared.insufficientReport) return prepared.insufficientReport;
 
-  const model = createModelCaller({ env, authorization, fetchImpl, signal });
+  const usageState = createModelUsageState();
+  const model = createModelCaller({ env, authorization, fetchImpl, signal, usageState });
   const claims = await extractClaims(prepared.normalizedContent, model);
   if (claims.length === 0) {
-    return emptyClaimsReport(inputType, prepared.inputMetadata, prepared.initialLimitations);
+    return {
+      ...emptyClaimsReport(inputType, prepared.inputMetadata, prepared.initialLimitations),
+      ...usagePayload(usageState),
+    };
   }
 
   return completeVerification({
@@ -338,5 +360,6 @@ export async function verifyInput({
     authorization,
     fetchImpl,
     signal,
+    usageState,
   });
 }

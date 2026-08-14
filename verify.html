@@ -119,7 +119,7 @@
         </div>
 
         <div class="submit-row">
-          <p class="auth-hint" data-t="authHint">核验会使用你的霜蓝账号额度，每次最多调用 2 次 DeepSeek。</p>
+          <p id="usageHint" class="auth-hint" data-t="authHint">核验会使用你的霜蓝账号额度，每次最多调用 2 次 DeepSeek；Pro 用户不限每日次数。</p>
           <button id="verifyButton" class="btn btn-primary verify-button" type="button">
             <span class="button-spinner" aria-hidden="true"></span>
             <span data-t="start">开始核验</span>
@@ -160,7 +160,7 @@
     if (window.__SUNLAND_VERIFY_AUTH_OK__) {
       const verifyScript = document.createElement("script");
       verifyScript.type = "module";
-      verifyScript.src = "verify/verify.js?v=20260814-1";
+      verifyScript.src = "verify/verify.js?v=20260814-2";
       document.currentScript.after(verifyScript);
     }
   </script>
