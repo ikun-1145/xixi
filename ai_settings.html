@@ -335,6 +335,24 @@ body.dark .usage-hint {
       background-clip: text;
       font-weight: 700;
     }
+    #userId {
+      max-width: none;
+      flex: 1 1 auto;
+      min-width: 0;
+      overflow-x: auto;
+      overflow-y: hidden;
+      text-align: right;
+      text-overflow: clip;
+      white-space: nowrap;
+      -webkit-overflow-scrolling: touch;
+      -webkit-user-select: text;
+      user-select: text;
+      cursor: ew-resize;
+      scrollbar-width: none;
+    }
+    #userId::-webkit-scrollbar {
+      display: none;
+    }
 
     /* Usage bar */
     .usage-wrap {
