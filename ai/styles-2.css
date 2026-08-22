@@ -62,6 +62,91 @@
     }
   }
 
+/* ===== 深度思考状态与折叠面板（与普通三点动画分离） ===== */
+.reasoning-bubble {
+  gap: 0;
+}
+
+.reasoning-disclosure {
+  width: 100%;
+  margin: 0;
+  padding-left: 7px;
+  box-sizing: border-box;
+  border-left: 2px solid rgba(34, 211, 238, 0.8);
+  color: #64748b;
+  font-size: 12px;
+  line-height: 1.35;
+}
+
+.reasoning-toggle {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  width: 100%;
+  min-height: 20px;
+  margin: 0;
+  padding: 0 2px 0 0;
+  border: 0;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  line-height: 1.35;
+  text-align: left;
+  cursor: pointer;
+}
+
+.reasoning-toggle:active {
+  transform: none;
+}
+
+.reasoning-status.is-thinking {
+  animation: reasoningStatusBlink 1.1s ease-in-out infinite;
+}
+
+.reasoning-chevron {
+  margin-left: auto;
+  line-height: 1;
+  transition: transform 0.16s ease;
+  transform-origin: center;
+}
+
+.reasoning-disclosure.is-expanded .reasoning-chevron {
+  transform: rotate(90deg);
+}
+
+.reasoning-content {
+  margin: 1px 0 0;
+  padding: 0 2px 1px 0;
+  white-space: normal;
+}
+
+.reasoning-content[hidden] {
+  display: none;
+}
+
+.reasoning-content > :first-child {
+  margin-top: 0;
+}
+
+.reasoning-content > :last-child {
+  margin-bottom: 0;
+}
+
+.reasoning-disclosure + .ai-answer-content {
+  margin-top: 4px;
+}
+
+body.night .reasoning-disclosure {
+  color: #94a3b8;
+  border-left-color: rgba(62, 237, 231, 0.7);
+}
+
+@keyframes reasoningStatusBlink {
+  0%, 100% { opacity: 0.42; }
+  50% { opacity: 1; }
+}
+
 /* ===== AI 输出渐显（逐字柔化） ===== */
 .typing {
   display: inline;

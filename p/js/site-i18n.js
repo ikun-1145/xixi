@@ -212,6 +212,8 @@
     ["内容未通过审核，请修改后再发送", "This message did not pass the safety check. Please revise it and try again.", "このメッセージは安全確認を通過しませんでした。修正して再送してください。"],
     ["Sunland AI · Beta 暂时出了点问题，请稍后重试", "Sunland AI · Beta encountered a temporary problem. Please try again later.", "Sunland AI · Beta で一時的な問題が発生しました。後でもう一度お試しください。"],
     ["响应较慢，请稍等…", "The response is taking longer than usual…", "応答に時間がかかっています…"],
+    ["正在思考", "Thinking", "思考中"],
+    ["思考过程", "Reasoning", "思考過程"],
     ["登录状态已失效，请重新登录", "Your session is no longer valid. Please sign in again.", "ログイン状態が無効です。再度ログインしてください。"],
     ["登录状态好像出了点问题，请重新登录后再试一下。", "There seems to be a problem with your session. Please sign in again.", "ログイン状態に問題があるようです。再度ログインしてください。"],
     ["今天的使用次数已达上限，请稍后再试", "You have reached today's usage limit. Please try again later.", "本日の利用上限に達しました。後でもう一度お試しください。"],

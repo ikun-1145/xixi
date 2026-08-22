@@ -150,7 +150,7 @@ test("vision messages attach the image to the latest user turn without mutating 
   const messages = [
     { role: "system", content: "Follow the system rules" },
     { role: "user", content: "old question" },
-    { role: "assistant", content: "old answer" },
+    { role: "assistant", content: "old answer", reasoningContent: "private reasoning" },
     { role: "user", content: "Describe this image" },
   ];
   const output = buildVisionMessages(messages, {
@@ -160,6 +160,8 @@ test("vision messages attach the image to the latest user turn without mutating 
 
   assert.equal(messages[3].content, "Describe this image");
   assert.equal(output[1].content, "old question");
+  assert.equal("reasoningContent" in output[2], false);
+  assert.equal(messages[2].reasoningContent, "private reasoning");
   assert.deepEqual(output[3].content[0], { type: "text", text: "Describe this image" });
   assert.equal(output[3].content[1].type, "image_url");
   assert.equal(output[3].content[1].image_url.url, image.dataUrl);

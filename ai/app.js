@@ -736,7 +736,11 @@ import {
   getVisionHistoryPreviews,
   prepareChatImage,
   validateChatImage,
-} from './multimodal.js?v=20260822-3';
+} from './multimodal.js?v=20260822-4';
+import {
+  createAssistantHistoryMessage,
+  getAssistantReasoning,
+} from './reasoning.js?v=20260822-4';
 import {
   filterConversationsForUser,
   persistCurrentConversationId,
@@ -924,6 +928,8 @@ function clearVerifiedSession() {
   conversations = [];
   currentId = null;
   history = history.length ? [history[0]] : [];
+  deepMode = false;
+  updateDeepButton();
 }
 window.clearVerifiedSession = clearVerifiedSession;
 let isActivated = false;
@@ -1036,6 +1042,10 @@ function renderChatList() {
       e.stopPropagation();
 
       if (typeof loadChat === "function") {
+        if (conversationIdKey(currentId) !== conversationIdKey(c.id)) {
+          deepMode = false;
+          updateDeepButton();
+        }
         loadChat(c.id);
       }
 
@@ -1170,10 +1180,12 @@ function updateDeepButton() {
   const btn = document.getElementById("deepBtn");
   if (!btn) return;
 
+  const enabled = providerCapabilityState.deepThinking && deepMode;
   btn.classList.toggle(
     "active",
-    providerCapabilityState.deepThinking && deepMode,
+    enabled,
   );
+  btn.setAttribute("aria-pressed", String(enabled));
 }
 
 function updateProviderCapabilityUI() {
@@ -1303,6 +1315,7 @@ function getProviderBindingMessage(conversation) {
           }
           saveConversations();
         }
+        deepMode = false;
         updateModelUI();
         modelMenu.classList.remove("show");
         return;
@@ -2531,6 +2544,8 @@ function createNewChat() {
     showToast(SUNLAND_LOGIN_STATE_MESSAGE);
     return;
   }
+  deepMode = false;
+  updateDeepButton();
   // ⭐ 如果最新对话是空的（只有 system），直接跳转，不新建
   if (conversations.length) {
     const latest = conversations[0];
@@ -2624,12 +2639,21 @@ function loadChat(id) {
       getVisionHistoryPreviews(m).forEach(preview => {
         addMessage(preview.name, "user", { imageSrc: preview.dataUrl });
       });
-      if (m.content || messageType === "ai") addMessage(m.content, messageType);
+      if (m.content || messageType === "ai") {
+        addMessage(m.content, messageType, {
+          reasoningContent: getAssistantReasoning(m),
+        });
+      }
     });
 
     const activeRequest = requestCoordinator.activeForConversation(id);
     if (activeRequest) {
-      addMessage("", "ai", { thinking: true });
+      addMessage("", "ai", {
+        thinking: true,
+        deepThinking: activeRequest.deep,
+        reasoningContent: activeRequest.reasoningContent,
+        partialContent: activeRequest.partialContent,
+      });
       const pendingMessage = chatInner.lastElementChild;
       activeRequest.bubble = pendingMessage?.querySelector(".bubble") ?? null;
     }
@@ -2657,6 +2681,121 @@ input.addEventListener("input", () => {
 
 const SAFE_INLINE_IMAGE_PATTERN = /^data:image\/(?:avif|gif|jpeg|png|webp);base64,/i;
 
+function getReasoningDisclosureView(bubble) {
+  const panel = bubble?.querySelector(".reasoning-disclosure");
+  if (!panel) return null;
+  return {
+    panel,
+    toggle: panel.querySelector(".reasoning-toggle"),
+    status: panel.querySelector(".reasoning-status"),
+    content: panel.querySelector(".reasoning-content"),
+  };
+}
+
+function setReasoningExpanded(view, expanded) {
+  if (!view?.toggle || !view.content) return;
+  const nextExpanded = Boolean(expanded);
+  view.toggle.setAttribute("aria-expanded", String(nextExpanded));
+  view.content.hidden = !nextExpanded;
+  view.panel.classList.toggle("is-expanded", nextExpanded);
+}
+
+function updateReasoningStatus(view, thinking) {
+  if (!view?.status || !view.toggle) return;
+  const label = uiText(thinking ? "正在思考" : "思考过程");
+  view.status.textContent = label;
+  view.status.classList.toggle("is-thinking", Boolean(thinking));
+  view.toggle.setAttribute("aria-label", label);
+}
+
+function createReasoningDisclosure(
+  bubble,
+  { reasoningContent = "", thinking = false } = {},
+) {
+  const panel = document.createElement("div");
+  panel.className = "reasoning-disclosure";
+
+  const toggle = document.createElement("button");
+  toggle.type = "button";
+  toggle.className = "reasoning-toggle";
+  toggle.setAttribute("aria-expanded", "false");
+
+  const status = document.createElement("span");
+  status.className = "reasoning-status";
+  const chevron = document.createElement("span");
+  chevron.className = "reasoning-chevron";
+  chevron.textContent = ">";
+  chevron.setAttribute("aria-hidden", "true");
+
+  const content = document.createElement("div");
+  content.className = "reasoning-content";
+  content.hidden = true;
+
+  toggle.appendChild(status);
+  toggle.appendChild(chevron);
+  panel.appendChild(toggle);
+  panel.appendChild(content);
+  bubble.classList.add("reasoning-bubble");
+  bubble.appendChild(panel);
+
+  const view = { panel, toggle, status, content };
+  updateReasoningStatus(view, thinking);
+  if (reasoningContent) renderSafeMarkdown(content, reasoningContent);
+  toggle.addEventListener("click", () => {
+    setReasoningExpanded(view, toggle.getAttribute("aria-expanded") !== "true");
+  });
+  return view;
+}
+
+function ensureReasoningDisclosure(
+  bubble,
+  { reasoningContent, thinking = false } = {},
+) {
+  const view = getReasoningDisclosureView(bubble)
+    || createReasoningDisclosure(bubble, { reasoningContent, thinking });
+  updateReasoningStatus(view, thinking);
+  if (typeof reasoningContent === "string") {
+    renderSafeMarkdown(view.content, reasoningContent);
+  }
+  return view;
+}
+
+function completeReasoningDisclosure(bubble, reasoningContent) {
+  const reasoning = typeof reasoningContent === "string" ? reasoningContent : "";
+  const existing = getReasoningDisclosureView(bubble);
+  if (!reasoning.trim()) {
+    existing?.panel.remove();
+    if (!bubble?.querySelector(".reasoning-disclosure")) {
+      bubble?.classList.remove("reasoning-bubble");
+    }
+    return null;
+  }
+
+  return ensureReasoningDisclosure(bubble, {
+    reasoningContent: reasoning,
+    thinking: false,
+  });
+}
+
+function ensureAssistantContent(bubble) {
+  let content = bubble?.querySelector(".ai-answer-content");
+  if (content || !bubble) return content;
+  content = document.createElement("div");
+  content.className = "ai-answer-content";
+  bubble.appendChild(content);
+  return content;
+}
+
+function renderCompletedDeepSeekResponse(requestContext, content, reasoningContent) {
+  if (!isRequestVisible(requestContext) || !requestContext.bubble) return;
+  if (requestContext.deep) {
+    completeReasoningDisclosure(requestContext.bubble, reasoningContent);
+    renderSafeMarkdown(ensureAssistantContent(requestContext.bubble), content);
+    return;
+  }
+  renderSafeMarkdown(requestContext.bubble, content);
+}
+
 function addMessage(text, type, options = {}) {
   const div = document.createElement("div");
   div.className = "message " + type;
@@ -2669,17 +2808,33 @@ function addMessage(text, type, options = {}) {
       bubble.style.animation = "fadeInBubble 0.2s ease";
       bubble.style.opacity = "0.8";
 
-      const thinking = document.createElement("span");
-      thinking.className = "thinking";
-      for (let index = 0; index < 3; index += 1) {
-        const dot = document.createElement("span");
-        dot.className = "dot";
-        thinking.appendChild(dot);
+      if (options.deepThinking === true) {
+        ensureReasoningDisclosure(bubble, {
+          reasoningContent: options.reasoningContent || "",
+          thinking: true,
+        });
+        if (options.partialContent) {
+          renderSafeMarkdown(ensureAssistantContent(bubble), options.partialContent);
+        }
+      } else {
+        const thinking = document.createElement("span");
+        thinking.className = "thinking";
+        for (let index = 0; index < 3; index += 1) {
+          const dot = document.createElement("span");
+          dot.className = "dot";
+          thinking.appendChild(dot);
+        }
+        bubble.appendChild(thinking);
       }
-      bubble.appendChild(thinking);
     } else {
       // 实时回复与历史恢复统一走白名单 Markdown 渲染入口。
-      const result = renderSafeMarkdown(bubble, text, {
+      const reasoningContent = getAssistantReasoning({
+        role: "assistant",
+        reasoningContent: options.reasoningContent,
+      });
+      if (reasoningContent) completeReasoningDisclosure(bubble, reasoningContent);
+      const contentTarget = reasoningContent ? ensureAssistantContent(bubble) : bubble;
+      const result = renderSafeMarkdown(contentTarget, text, {
         animateText: !hasTypedOnce && !isLoadingHistory,
       });
       if (result.animated) hasTypedOnce = true;
@@ -3022,14 +3177,21 @@ function decorateVisibleCodeBlocks(requestContext) {
 
 async function runDeepSeekRequest(requestContext) {
   let fullText = "";
+  let reasoning = "";
   let attempt = 0;
 
   while (attempt < (window._isMobile ? 2 : 1)) {
     attempt += 1;
+    fullText = "";
+    reasoning = "";
+    requestContext.partialContent = "";
+    requestContext.reasoningContent = "";
     let softTimeoutShown = false;
     const timeoutId = setTimeout(() => {
       if (!softTimeoutShown && isRequestVisible(requestContext) && !fullText) {
-        requestContext.bubble.textContent = uiText("响应较慢，请稍等…");
+        if (!requestContext.deep) {
+          requestContext.bubble.textContent = uiText("响应较慢，请稍等…");
+        }
         softTimeoutShown = true;
       }
     }, 15000);
@@ -3040,8 +3202,11 @@ async function runDeepSeekRequest(requestContext) {
     try {
       if (!localStorage.getItem("token")) {
         const message = uiText("登录状态已失效，请重新登录");
-        appendRequestMessage(requestContext, { role: "assistant", content: message });
-        renderRequestMarkdown(requestContext, requestContext.bubble, message);
+        appendRequestMessage(
+          requestContext,
+          createAssistantHistoryMessage(message, reasoning),
+        );
+        renderCompletedDeepSeekResponse(requestContext, message, reasoning);
         goToLogin();
         return;
       }
@@ -3065,8 +3230,11 @@ async function runDeepSeekRequest(requestContext) {
       if (res.status === 429) {
         if (currentId === requestContext.conversationId) showLimitModal();
         const message = uiText("今天的使用次数已达上限，请稍后再试");
-        appendRequestMessage(requestContext, { role: "assistant", content: message });
-        renderRequestMarkdown(requestContext, requestContext.bubble, message);
+        appendRequestMessage(
+          requestContext,
+          createAssistantHistoryMessage(message, reasoning),
+        );
+        renderCompletedDeepSeekResponse(requestContext, message, reasoning);
         return;
       }
 
@@ -3074,8 +3242,11 @@ async function runDeepSeekRequest(requestContext) {
         const errText = await res.text();
         console.error("API错误:", res.status, errText);
         const message = uiText(`请求失败（${res.status}），请稍后重试`);
-        appendRequestMessage(requestContext, { role: "assistant", content: message });
-        renderRequestMarkdown(requestContext, requestContext.bubble, message);
+        appendRequestMessage(
+          requestContext,
+          createAssistantHistoryMessage(message, reasoning),
+        );
+        renderCompletedDeepSeekResponse(requestContext, message, reasoning);
         return;
       }
 
@@ -3087,11 +3258,14 @@ async function runDeepSeekRequest(requestContext) {
 
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
-      let reasoning = "";
-      let reasoningDiv = null;
-      let reasoningContent = null;
-      let contentDiv = null;
-      if (isRequestVisible(requestContext)) requestContext.bubble.innerHTML = "";
+      if (isRequestVisible(requestContext)) {
+        if (requestContext.deep) {
+          ensureReasoningDisclosure(requestContext.bubble, { thinking: true });
+          requestContext.bubble.querySelector(".ai-answer-content")?.remove();
+        } else {
+          requestContext.bubble.textContent = "";
+        }
+      }
 
       while (true) {
         if (abortMissingTarget(requestContext)) {
@@ -3117,32 +3291,25 @@ async function runDeepSeekRequest(requestContext) {
           if (!requestCoordinator.canWrite(requestContext)) continue;
           const delta = parsed.choices?.[0]?.delta || {};
 
-          if (delta.reasoning_content) {
+          if (requestContext.deep && delta.reasoning_content) {
             reasoning += delta.reasoning_content;
+            requestContext.reasoningContent = reasoning;
             if (isRequestVisible(requestContext)) {
-              if (!reasoningDiv || !reasoningDiv.isConnected) {
-                reasoningDiv = document.createElement("div");
-                reasoningDiv.style.cssText = "font-size:12px;color:#888;margin-bottom:8px;border-left:3px solid #22d3ee;padding-left:8px;line-height:1.5;";
-                const title = document.createElement("div");
-                title.innerText = uiText("🧠 思考过程");
-                title.style.marginBottom = "4px";
-                reasoningContent = document.createElement("div");
-                reasoningDiv.appendChild(title);
-                reasoningDiv.appendChild(reasoningContent);
-                requestContext.bubble.appendChild(reasoningDiv);
-              }
-              renderSafeMarkdown(reasoningContent, reasoning);
+              ensureReasoningDisclosure(requestContext.bubble, {
+                reasoningContent: reasoning,
+                thinking: true,
+              });
             }
           }
 
           if (delta.content) {
             fullText += delta.content;
+            requestContext.partialContent = fullText;
             if (isRequestVisible(requestContext)) {
-              if (!contentDiv || !contentDiv.isConnected) {
-                contentDiv = document.createElement("div");
-                requestContext.bubble.appendChild(contentDiv);
-              }
-              renderSafeMarkdown(contentDiv, fullText);
+              const contentTarget = requestContext.deep
+                ? ensureAssistantContent(requestContext.bubble)
+                : requestContext.bubble;
+              renderSafeMarkdown(contentTarget, fullText);
               if (isNearBottom()) chat.scrollTop = chat.scrollHeight;
             }
           }
@@ -3150,7 +3317,11 @@ async function runDeepSeekRequest(requestContext) {
       }
 
       if (!requestCoordinator.canWrite(requestContext)) return;
-      if (!appendRequestMessage(requestContext, { role: "assistant", content: fullText })) return;
+      if (!appendRequestMessage(
+        requestContext,
+        createAssistantHistoryMessage(fullText, reasoning),
+      )) return;
+      renderCompletedDeepSeekResponse(requestContext, fullText, reasoning);
       scheduleRequestTitle(requestContext, fullText);
       addRegenerateButton(requestContext, fullText);
       decorateVisibleCodeBlocks(requestContext);
@@ -3158,12 +3329,26 @@ async function runDeepSeekRequest(requestContext) {
     } catch (err) {
       if (requestContext.controller.signal.aborted || err?.name === "AbortError") return;
       if (fullText && requestCoordinator.canWrite(requestContext)) {
-        appendRequestMessage(requestContext, { role: "assistant", content: fullText });
-        renderRequestMarkdown(requestContext, requestContext.bubble, fullText);
+        appendRequestMessage(
+          requestContext,
+          createAssistantHistoryMessage(fullText, reasoning),
+        );
+        renderCompletedDeepSeekResponse(requestContext, fullText, reasoning);
         return;
       }
       if (window._isMobile && attempt < 2 && requestCoordinator.canWrite(requestContext)) {
         console.warn("移动端自动重试一次...");
+        if (isRequestVisible(requestContext)) {
+          if (requestContext.deep) {
+            ensureReasoningDisclosure(requestContext.bubble, {
+              reasoningContent: "",
+              thinking: true,
+            });
+            requestContext.bubble.querySelector(".ai-answer-content")?.remove();
+          } else {
+            requestContext.bubble.textContent = "";
+          }
+        }
         await new Promise(resolve => setTimeout(resolve, 500));
         continue;
       }
@@ -3171,8 +3356,11 @@ async function runDeepSeekRequest(requestContext) {
       console.error("真实错误:", err);
       const message = uiText("请求异常，请稍后重试");
       if (requestCoordinator.canWrite(requestContext)) {
-        appendRequestMessage(requestContext, { role: "assistant", content: message });
-        renderRequestMarkdown(requestContext, requestContext.bubble, message);
+        appendRequestMessage(
+          requestContext,
+          createAssistantHistoryMessage(message, reasoning),
+        );
+        renderCompletedDeepSeekResponse(requestContext, message, reasoning);
       }
       return;
     } finally {
@@ -3329,6 +3517,8 @@ async function send() {
   requestContext.userText = visionPrompt;
   requestContext.visionImages = visionImages;
   requestContext.visionPrompt = visionPrompt;
+  requestContext.reasoningContent = "";
+  requestContext.partialContent = "";
   clearPendingAttachments();
   updateRequestUiState();
 
@@ -3412,7 +3602,10 @@ async function send() {
     input.value = "";
     input.style.height = "auto";
     if (currentId === requestContext.conversationId) {
-      addMessage("", "ai", { thinking: true });
+      addMessage("", "ai", {
+        thinking: true,
+        deepThinking: requestContext.deep,
+      });
       requestContext.bubble = chatInner.lastElementChild?.querySelector(".bubble") ?? null;
     }
 
@@ -3426,8 +3619,20 @@ async function send() {
     console.error("发送流程出错:", err);
     const message = uiText("消息处理失败，请稍后重试");
     if (requestCoordinator.canWrite(requestContext)) {
-      appendRequestMessage(requestContext, { role: "assistant", content: message });
-      renderRequestMarkdown(requestContext, requestContext.bubble, message);
+      if (requestContext.providerId === "deepseek") {
+        appendRequestMessage(
+          requestContext,
+          createAssistantHistoryMessage(message, requestContext.reasoningContent),
+        );
+        renderCompletedDeepSeekResponse(
+          requestContext,
+          message,
+          requestContext.reasoningContent,
+        );
+      } else {
+        appendRequestMessage(requestContext, { role: "assistant", content: message });
+        renderRequestMarkdown(requestContext, requestContext.bubble, message);
+      }
     }
   } finally {
     const shouldReload = (
