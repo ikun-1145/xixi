@@ -741,6 +741,7 @@ import {
   createAssistantHistoryMessage,
   getAssistantReasoning,
 } from './reasoning.js?v=20260822-4';
+import { installSidebarTouchScrollGuard } from './sidebar-touch.js?v=20260822-1';
 import {
   filterConversationsForUser,
   persistCurrentConversationId,
@@ -1442,6 +1443,8 @@ function setupSidebarByDevice() {
   }
 
   if (!sidebar) return;
+
+  installSidebarTouchScrollGuard(sidebar);
 
   // 阻止侧边栏内部点击冒泡
   sidebar.addEventListener("click", (e) => {
