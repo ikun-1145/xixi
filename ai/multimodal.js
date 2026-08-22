@@ -4,6 +4,11 @@ export const MAX_CHAT_IMAGE_BYTES = 8 * 1024 * 1024;
 // enough to leave ample room for prompts and conversation history in the Worker request.
 export const MAX_PREPARED_CHAT_IMAGE_BYTES = 1536 * 1024;
 export const MAX_CHAT_IMAGE_DIMENSION = 2048;
+// Conversation history stores a display-only thumbnail, never the full image
+// sent to the vision model. 48 KiB keeps JSONB/localStorage growth bounded while
+// still covering the 220px mobile bubble at roughly retina resolution.
+export const MAX_CHAT_IMAGE_PREVIEW_BYTES = 48 * 1024;
+export const MAX_CHAT_IMAGE_PREVIEW_DIMENSION = 480;
 export const MAX_CHAT_IMAGES = 1;
 
 export const SUPPORTED_CHAT_IMAGE_TYPES = Object.freeze([
@@ -14,6 +19,8 @@ export const SUPPORTED_CHAT_IMAGE_TYPES = Object.freeze([
 ]);
 
 const SUPPORTED_TYPE_SET = new Set(SUPPORTED_CHAT_IMAGE_TYPES);
+const SAFE_PREVIEW_DATA_URL_PATTERN = /^data:image\/(?:gif|jpeg|png|webp);base64,[a-z0-9+/]+={0,2}$/i;
+const MAX_PREVIEW_DATA_URL_LENGTH = Math.ceil(MAX_CHAT_IMAGE_PREVIEW_BYTES * 4 / 3) + 128;
 
 export function validateChatImage(file, currentCount = 0) {
   if (!file || typeof file.arrayBuffer !== "function") return "IMAGE_REQUIRED";
@@ -188,18 +195,110 @@ export async function prepareChatImage(
     throw imagePreparationError(compressed ? "IMAGE_COMPRESSION_FAILED" : "IMAGE_SIGNATURE_INVALID");
   }
 
+  let previewFile = preparedFile.size <= MAX_CHAT_IMAGE_PREVIEW_BYTES
+    ? preparedFile
+    : null;
+  if (preparedFile.size > MAX_CHAT_IMAGE_PREVIEW_BYTES) {
+    try {
+      previewFile = await compressImage(preparedFile, {
+        targetBytes: MAX_CHAT_IMAGE_PREVIEW_BYTES,
+        maxDimension: MAX_CHAT_IMAGE_PREVIEW_DIMENSION,
+      });
+    } catch {
+      // A display thumbnail is optional. Never fail a valid model upload only
+      // because a browser cannot create the smaller persistence preview.
+      previewFile = null;
+    }
+  }
+
+  let previewBytes = null;
+  if (
+    previewFile
+    && typeof previewFile.arrayBuffer === "function"
+    && SUPPORTED_TYPE_SET.has(previewFile.type)
+    && Number.isFinite(previewFile.size)
+    && previewFile.size > 0
+    && previewFile.size <= MAX_CHAT_IMAGE_PREVIEW_BYTES
+  ) {
+    const candidateBytes = previewFile === preparedFile
+      ? bytes
+      : new Uint8Array(await previewFile.arrayBuffer());
+    if (detectImageMime(candidateBytes) === previewFile.type) {
+      previewBytes = candidateBytes;
+    }
+  }
+
+  const safeName = String(file.name || "image")
+    .replace(/[\u0000-\u001f\u007f]+/gu, " ")
+    .trim()
+    .slice(0, 160) || "image";
+
   return {
-    name: String(file.name || "image").replace(/[\u0000-\u001f\u007f]+/gu, " ").trim().slice(0, 160) || "image",
+    name: safeName,
     mimeType: preparedFile.type,
     dataUrl: `data:${preparedFile.type};base64,${bytesToBase64(bytes)}`,
     size: preparedFile.size,
     originalSize: file.size,
     compressed,
+    previewMimeType: previewBytes ? previewFile.type : "",
+    previewDataUrl: previewBytes
+      ? `data:${previewFile.type};base64,${bytesToBase64(previewBytes)}`
+      : "",
+    previewSize: previewBytes ? previewFile.size : 0,
   };
 }
 
+export function getVisionHistoryPreviews(message) {
+  if (message?.role !== "user" || !Array.isArray(message.imagePreviews)) return [];
+
+  return message.imagePreviews.slice(0, MAX_CHAT_IMAGES).flatMap(preview => {
+    const mimeType = String(preview?.mimeType || "").toLowerCase();
+    const dataUrl = typeof preview?.dataUrl === "string" ? preview.dataUrl : "";
+    if (
+      !SUPPORTED_TYPE_SET.has(mimeType)
+      || dataUrl.length > MAX_PREVIEW_DATA_URL_LENGTH
+      || !SAFE_PREVIEW_DATA_URL_PATTERN.test(dataUrl)
+      || !dataUrl.startsWith(`data:${mimeType};base64,`)
+    ) return [];
+
+    return [{
+      type: "image",
+      name: String(preview?.name || "image")
+        .replace(/[\u0000-\u001f\u007f]+/gu, " ")
+        .trim()
+        .slice(0, 160) || "image",
+      mimeType,
+      dataUrl,
+    }];
+  });
+}
+
+export function createVisionHistoryMessage(content, images = []) {
+  const message = {
+    role: "user",
+    content: String(content ?? ""),
+  };
+  const imagePreviews = images.slice(0, MAX_CHAT_IMAGES).map(image => ({
+    type: "image",
+    name: image?.name,
+    mimeType: image?.previewMimeType,
+    dataUrl: image?.previewDataUrl,
+  }));
+  const safePreviews = getVisionHistoryPreviews({ ...message, imagePreviews });
+  if (safePreviews.length) message.imagePreviews = safePreviews;
+  return message;
+}
+
 export function buildVisionMessages(messages, { images = [], prompt = "", detail = "original" } = {}) {
-  const output = Array.isArray(messages) ? messages.map(message => ({ ...message })) : [];
+  const output = Array.isArray(messages)
+    ? messages.map(message => {
+      if (!message || typeof message !== "object") return message;
+      // imagePreviews is client-only persistence metadata. Never send it to an
+      // OpenAI-compatible upstream, which may reject unknown message fields.
+      const { imagePreviews: _imagePreviews, ...modelMessage } = message;
+      return modelMessage;
+    })
+    : [];
   if (!images.length) return output;
 
   let userIndex = -1;

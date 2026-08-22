@@ -731,10 +731,12 @@ item.style.borderRadius = "12px";
 import { createProviderRegistry } from './providers/registry.js';
 import {
   buildVisionMessages,
+  createVisionHistoryMessage,
   DEEPSEEK_VISION_MODEL,
+  getVisionHistoryPreviews,
   prepareChatImage,
   validateChatImage,
-} from './multimodal.js?v=20260822-2';
+} from './multimodal.js?v=20260822-3';
 import {
   filterConversationsForUser,
   persistCurrentConversationId,
@@ -2311,11 +2313,8 @@ if (currentId) {
 }
 
       if (getCurrentUserId() === userId) {
-  localStorage.setItem(
-    "conversations_" + userId,
-    JSON.stringify(conversations)
-  );
-}
+        persistConversationStateLocally(userId);
+      }
       renderChatList();
 
       // ⭐ 同步后强制刷新当前对话（否则UI不会更新）
@@ -2383,15 +2382,24 @@ async function syncToCloud(expectedUserId = getCurrentUserId()) {
 
 function persistConversationStateLocally(userId) {
   if (!userId || getCurrentUserId() !== userId) return false;
-  localStorage.setItem(
-    "conversations_" + userId,
-    JSON.stringify(conversations)
-  );
-  return persistCurrentConversationId(
+  let conversationsSaved = false;
+  try {
+    localStorage.setItem(
+      "conversations_" + userId,
+      JSON.stringify(conversations)
+    );
+    conversationsSaved = true;
+  } catch (error) {
+    // A long image-heavy chat can exhaust the browser quota. Keep the in-memory
+    // conversation alive and still allow the independent cloud save to run.
+    console.warn("本地对话缓存保存失败:", error);
+  }
+  const currentIdSaved = persistCurrentConversationId(
     localStorage,
     userId,
     currentId,
   );
+  return conversationsSaved && currentIdSaved;
 }
 
 function saveConversations() {
@@ -2612,7 +2620,11 @@ function loadChat(id) {
         appendFurryEventMessage({ target: chatInner, message: m });
         return;
       }
-      addMessage(m.content, m.role === "user" ? "user" : "ai");
+      const messageType = m.role === "user" ? "user" : "ai";
+      getVisionHistoryPreviews(m).forEach(preview => {
+        addMessage(preview.name, "user", { imageSrc: preview.dataUrl });
+      });
+      if (m.content || messageType === "ai") addMessage(m.content, messageType);
     });
 
     const activeRequest = requestCoordinator.activeForConversation(id);
@@ -3324,7 +3336,9 @@ async function send() {
     for (const image of visionImages) {
       if (abortMissingTarget(requestContext)) return;
       if (currentId === requestContext.conversationId) {
-        addMessage(`🖼️ ${image.name}`, "user", { imageSrc: image.dataUrl });
+        addMessage(image.name, "user", {
+          imageSrc: image.previewDataUrl || image.dataUrl,
+        });
       }
     }
 
@@ -3336,10 +3350,10 @@ async function send() {
 
     if (text && currentId === requestContext.conversationId) addMessage(text, "user");
     if (navigator.vibrate) navigator.vibrate(10);
-    const persistedUserContent = visionImages.length
-      ? `${visionPrompt}\n\n${uiText("[本轮包含图片；原图未写入对话历史]")}`
-      : text;
-    if (!appendRequestMessage(requestContext, { role: "user", content: persistedUserContent })) return;
+    const persistedUserMessage = visionImages.length
+      ? createVisionHistoryMessage(visionPrompt, visionImages)
+      : { role: "user", content: text };
+    if (!appendRequestMessage(requestContext, persistedUserMessage)) return;
 
     requestContext.furryContext = furryContextFollowUp ? previousFurryCard : null;
     requestContext.furryContextActive = Boolean(requestContext.furryContext);
