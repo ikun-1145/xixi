@@ -310,6 +310,12 @@ body.thinking-mode button {
   width: 220px;
   height: 100dvh;
 
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-y;
+
   transform: translateX(-100%);
   transition: transform .25s ease;
 
