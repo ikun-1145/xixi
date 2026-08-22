@@ -87,7 +87,7 @@
 <link rel="preload" href="https://cdn.jsdelivr.net/npm/highlight.js/styles/github.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
 <script async src="https://cdn.jsdelivr.net/npm/highlight.js/highlight.min.js"></script>
 
-<link rel="stylesheet" href="ai/styles-1.css">
+<link rel="stylesheet" href="ai/styles-1.css?v=20260822-2">
 <link rel="stylesheet" href="ai/styles-2.css">
 
 <link rel="stylesheet" href="ai/model-menu.css">
@@ -360,7 +360,7 @@ if (window.__SUNLAND_AI_AUTH_OK__) {
   const appScript = document.createElement("script");
   appScript.type = "module";
   appScript.src = "ai/app.js";
-  appScript.src += "?v=20260822-1";
+  appScript.src += "?v=20260822-2";
   appScript.addEventListener("error", () => {
     window.__SUNLAND_AI_BOOT_FAILED__?.();
   }, { once: true });

@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import test from "node:test";
 
 import { onRequestGet, onRequestPost } from "../functions/api/verify.js";
@@ -50,4 +51,13 @@ test("verify multipart API forwards a validated image to the vision model withou
   );
   assert.doesNotMatch(body, /data:image\/png;base64/u);
   assert.equal(JSON.parse(body).inputMetadata.extractionMethod, "deepseek-vision+browser-ocr");
+});
+
+test("verify client compresses large uploads before OCR and multipart forwarding", () => {
+  const client = fs.readFileSync(new URL("../verify/verify.js", import.meta.url), "utf8");
+
+  assert.match(client, /prepareVerificationImage\(selectedFile\)/u);
+  assert.match(client, /MAX_PREPARED_CHAT_IMAGE_BYTES/u);
+  assert.match(client, /extractImageText\(requestImageFile\)/u);
+  assert.match(client, /form\.set\("file", requestImageFile, requestImageFile\.name\)/u);
 });
