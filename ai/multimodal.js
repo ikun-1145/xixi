@@ -293,9 +293,13 @@ export function buildVisionMessages(messages, { images = [], prompt = "", detail
   const output = Array.isArray(messages)
     ? messages.map(message => {
       if (!message || typeof message !== "object") return message;
-      // imagePreviews is client-only persistence metadata. Never send it to an
-      // OpenAI-compatible upstream, which may reject unknown message fields.
-      const { imagePreviews: _imagePreviews, ...modelMessage } = message;
+      // Client-only persistence metadata must never reach an OpenAI-compatible
+      // upstream, which may reject unknown message fields.
+      const {
+        imagePreviews: _imagePreviews,
+        reasoningContent: _reasoningContent,
+        ...modelMessage
+      } = message;
       return modelMessage;
     })
     : [];

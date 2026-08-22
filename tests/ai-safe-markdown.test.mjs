@@ -162,9 +162,10 @@ test('all dynamic AI and history Markdown paths use the shared renderer', () => 
   assert.doesNotMatch(aiApp, /marked\.parse/);
   assert.match(aiApp, /renderHistory\.slice\(1\)[\s\S]*?addMessage\(m\.content/);
   assert.match(aiApp, /renderRequestMarkdown\(requestContext, requestContext\.bubble, text/);
-  assert.match(aiApp, /renderSafeMarkdown\(reasoningContent, reasoning\)/);
-  assert.match(aiApp, /renderSafeMarkdown\(contentDiv, fullText\)/);
+  assert.match(aiApp, /renderSafeMarkdown\(view\.content, reasoningContent\)/);
+  assert.match(aiApp, /renderSafeMarkdown\(contentTarget, fullText\)/);
   assert.match(aiApp, /options\.thinking === true/);
+  assert.doesNotMatch(aiApp, /reasoningDiv\.style\.cssText/);
   assert.doesNotMatch(aiApp, /title\.replace\([^\n]+<mark/);
   assert.doesNotMatch(aiApp, /wrapper\.innerHTML = text/);
 });

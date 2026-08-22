@@ -878,6 +878,16 @@
     "ko": "응답은 평소보다 오래 걸릴 것입니다 ...",
     "es": "La respuesta está tomando más tiempo de lo habitual..."
   },
+  "正在思考": {
+    "zh-Hant": "正在思考",
+    "ko": "생각하는 중",
+    "es": "Pensando"
+  },
+  "思考过程": {
+    "zh-Hant": "思考過程",
+    "ko": "사고 과정",
+    "es": "Proceso de razonamiento"
+  },
   "登录状态已失效，请重新登录": {
     "zh-Hant": "登入狀態已失效，請重新登入",
     "ko": "세션은 더 이상 유효하지 않습니다. 다시 로그인하십시오.",
@@ -3431,6 +3441,14 @@
   "🧠 思考过程": {
     "es": "🧠 Proceso de razonamiento",
     "ko": "🧠 사고 과정"
+  },
+  "正在思考": {
+    "es": "Pensando",
+    "ko": "생각하는 중"
+  },
+  "思考过程": {
+    "es": "Proceso de razonamiento",
+    "ko": "사고 과정"
   },
   "正在删除这个对话，请稍候。": {
     "es": "Eliminar este chat…",

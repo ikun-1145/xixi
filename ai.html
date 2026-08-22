@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<script defer src="p/js/site-i18n-extra.js?v=20260822-1"></script>
-<script defer src="p/js/site-i18n.js?v=20260822-1"></script>
+<script defer src="p/js/site-i18n-extra.js?v=20260822-2"></script>
+<script defer src="p/js/site-i18n.js?v=20260822-2"></script>
 
 <title>Sunland AI · Beta</title>
 <link rel="manifest" href="/manifest.json">
@@ -88,7 +88,7 @@
 <script async src="https://cdn.jsdelivr.net/npm/highlight.js/highlight.min.js"></script>
 
 <link rel="stylesheet" href="ai/styles-1.css?v=20260822-2">
-<link rel="stylesheet" href="ai/styles-2.css">
+<link rel="stylesheet" href="ai/styles-2.css?v=20260822-4">
 
 <link rel="stylesheet" href="ai/model-menu.css">
 
@@ -311,7 +311,7 @@ child-src *;
     <div class="left-tools">
       <button id="uploadBtn" class="icon-btn" type="button" aria-label="上传图片" data-tooltip="上传图片">＋</button>
 
-      <button id="deepBtn" class="mini-btn" type="button" aria-label="深度思考" data-tooltip="深度思考">
+      <button id="deepBtn" class="mini-btn" type="button" aria-label="深度思考" aria-pressed="false" data-tooltip="深度思考">
         <span class="deep-logo"></span>
       </button>
 
@@ -360,7 +360,7 @@ if (window.__SUNLAND_AI_AUTH_OK__) {
   const appScript = document.createElement("script");
   appScript.type = "module";
   appScript.src = "ai/app.js";
-  appScript.src += "?v=20260822-3";
+  appScript.src += "?v=20260822-4";
   appScript.addEventListener("error", () => {
     window.__SUNLAND_AI_BOOT_FAILED__?.();
   }, { once: true });
