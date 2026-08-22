@@ -17,9 +17,12 @@ export const VERIFY_LIMITS = Object.freeze({
   maxModelResponseBytes: 160_000,
 });
 
+export const DEEPSEEK_VISION_MODEL = "deepseek-v4-flash-vision-exp";
+
 export const ALLOWED_IMAGE_MIME_TYPES = Object.freeze([
   "image/jpeg",
   "image/png",
+  "image/gif",
   "image/webp",
 ]);
 

@@ -3,8 +3,8 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <script defer src="p/js/site-i18n-extra.js?v=20260808-2"></script>
-  <script defer src="p/js/site-i18n.js?v=20260808-2"></script>
+  <script defer src="p/js/site-i18n-extra.js?v=20260822-1"></script>
+  <script defer src="p/js/site-i18n.js?v=20260822-1"></script>
   <title>信息鉴真 · Sunland</title>
   <meta name="description" content="基于公开证据的 AI 事实核验与信息鉴真工具。">
   <meta name="theme-color" content="#14c8d4">
@@ -107,15 +107,15 @@
         <div id="imagePanel" class="input-panel" role="tabpanel" aria-labelledby="imageTab" hidden>
           <button id="dropzone" class="image-dropzone" type="button">
             <span class="drop-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 16V4"></path><path d="m7 9 5-5 5 5"></path><path d="M5 20h14"></path></svg></span>
-            <span><strong data-t="uploadTitle">点击或拖拽上传图片</strong><small data-t="uploadHint">JPG、JPEG、PNG、WEBP · 最大 5 MB</small></span>
+            <span><strong data-t="uploadTitle">点击或拖拽上传图片</strong><small data-t="uploadHint">JPG、JPEG、PNG、GIF、WEBP · 最大 5 MB</small></span>
           </button>
-          <input id="imageInput" type="file" accept="image/jpeg,image/png,image/webp" hidden>
+          <input id="imageInput" type="file" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
           <div id="imagePreview" class="image-preview" hidden>
             <img id="previewImage" alt="图片预览" data-t-alt="previewAlt">
             <div class="preview-info"><strong id="previewName"></strong><span id="previewMeta"></span></div>
             <button id="removeImage" class="icon-button" type="button" aria-label="移除图片" data-t-aria="removeImage">×</button>
           </div>
-          <p class="privacy-note" data-t="ocrNote">图片仅在浏览器中进行 OCR；后端只把识别出的文字交给 DeepSeek，原图不会发送给模型。</p>
+          <p class="privacy-note" data-t="ocrNote">原图会安全发送给 DeepSeek 视觉模型进行本次分析，浏览器 OCR 仅作辅助；图片不会写入对话历史。</p>
         </div>
 
         <div class="submit-row">
@@ -160,7 +160,7 @@
     if (window.__SUNLAND_VERIFY_AUTH_OK__) {
       const verifyScript = document.createElement("script");
       verifyScript.type = "module";
-      verifyScript.src = "verify/verify.js?v=20260814-2";
+      verifyScript.src = "verify/verify.js?v=20260822-1";
       document.currentScript.after(verifyScript);
     }
   </script>

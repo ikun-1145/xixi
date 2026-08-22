@@ -588,6 +588,31 @@
     "ko": "파일 업로드",
     "es": "Cargar archivo"
   },
+  "Sunland AI · Beta 暂不支持图片上传": {
+    "zh-Hant": "Sunland AI · Beta 暫不支援圖片上傳",
+    "ko": "Sunland AI · Beta는 아직 이미지 업로드를 지원하지 않습니다",
+    "es": "Sunland AI · Beta aún no admite la carga de imágenes"
+  },
+  "每次只能上传 1 张图片": {
+    "zh-Hant": "每次只能上傳 1 張圖片",
+    "ko": "이미지는 한 번에 1장만 업로드할 수 있습니다",
+    "es": "Solo puedes cargar una imagen cada vez"
+  },
+  "仅支持 JPG、PNG、GIF 和 WEBP 图片": {
+    "zh-Hant": "僅支援 JPG、PNG、GIF 和 WEBP 圖片",
+    "ko": "JPG, PNG, GIF 및 WEBP 이미지만 지원됩니다",
+    "es": "Solo se admiten imágenes JPG, PNG, GIF y WEBP"
+  },
+  "请描述并分析这张图片。": {
+    "zh-Hant": "請描述並分析這張圖片。",
+    "ko": "이 이미지를 설명하고 분석해 주세요.",
+    "es": "Describe y analiza esta imagen."
+  },
+  "[本轮包含图片；原图未写入对话历史]": {
+    "zh-Hant": "[本輪包含圖片；原圖未寫入對話記錄]",
+    "ko": "[이번 대화에 이미지가 포함되었으며 원본은 대화 기록에 저장되지 않았습니다]",
+    "es": "[Este turno incluyó una imagen; el original no se guardó en el historial]"
+  },
   "深度思考": {
     "zh-Hant": "深度思考",
     "ko": "깊은 생각",

@@ -90,6 +90,7 @@ test("verify model calls use bounded non-streaming JSON responses", async () => 
       assert.equal(request.headers.get("accept"), "application/json");
       const body = await request.json();
       assert.equal(body.stream, false);
+      assert.equal(body.model, "deepseek-v4-flash");
       return new Response(JSON.stringify({ choices: [{ message: { content: '{"claims":[]}' } }] }), {
         headers: { "content-type": "application/json", "x-remain": "-1" },
       });
@@ -390,12 +391,44 @@ test("image analyzer checks signature, reports dimensions, and never invents OCR
   const result = await analyzeImage(tinyPng(), "识别出的公开声明");
   assert.equal(result.metadata.width, 320);
   assert.equal(result.metadata.height, 180);
+  assert.equal(result.metadata.extractionMethod, "deepseek-vision+browser-ocr");
   assert.equal(result.content, "识别出的公开声明");
+  assert.match(result.imageContentPart.image_url.url, /^data:image\/png;base64,/u);
+  assert.equal(result.imageContentPart.image_url.detail, "original");
   await assert.rejects(() => analyzeImage(tinyPng("image/jpeg"), "text"), error => error.code === "IMAGE_SIGNATURE_INVALID");
   await assert.rejects(() => analyzeMedia("video", {}), error => error.code === "VIDEO_NOT_SUPPORTED");
   const failedOcr = await analyzeImage(tinyPng(), "", "failed");
   assert.equal(failedOcr.content, "");
-  assert.ok(failedOcr.limitations.some(item => item.includes("未让 DeepSeek 猜测")));
+  assert.ok(failedOcr.limitations.some(item => item.includes("仅使用视觉模型")));
+});
+
+test("image claim extraction sends the original image only to the DeepSeek vision model", async () => {
+  const requests = [];
+  const gateway = {
+    async fetch(request) {
+      requests.push(await request.json());
+      return new Response(JSON.stringify({ choices: [{ message: { content: '{"claims":[]}' } }] }), {
+        headers: { "content-type": "application/json" },
+      });
+    },
+  };
+
+  const result = await extractVerificationClaims({
+    inputType: "image",
+    file: tinyPng(),
+    ocrText: "",
+    ocrStatus: "failed",
+    env: { AI_GATEWAY: gateway },
+    authorization: "Bearer valid-test-token",
+  });
+
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].model, "deepseek-v4-flash-vision-exp");
+  assert.equal(Array.isArray(requests[0].messages[1].content), true);
+  assert.match(requests[0].messages[1].content[1].image_url.url, /^data:image\/png;base64,/u);
+  assert.equal(requests[0].messages[1].content[1].image_url.detail, "original");
+  assert.equal(result.outcome, "no_claims");
+  assert.doesNotMatch(JSON.stringify(result), /data:image\/png;base64/u);
 });
 
 test("AI detector truthfully reports unknown without a fake probability", async () => {

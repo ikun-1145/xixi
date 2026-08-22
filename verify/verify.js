@@ -1,8 +1,8 @@
-import { applyTranslations, getLocale, t } from "./i18n.js?v=20260814-2";
+import { applyTranslations, getLocale, t } from "./i18n.js?v=20260822-1";
 import { renderReport } from "./render.js";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
-const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
 const TESSERACT_URL = "https://cdn.jsdelivr.net/npm/tesseract.js@7.0.0/dist/tesseract.min.js";
 const elements = Object.fromEntries([
   "textTab", "imageTab", "textPanel", "imagePanel", "verifyText", "charCount", "dropzone", "imageInput",

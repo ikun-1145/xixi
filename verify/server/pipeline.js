@@ -22,34 +22,6 @@ function validateText(content) {
   return value;
 }
 
-function unavailableImageReport(imageInput) {
-  return {
-    success: true,
-    inputType: "image",
-    overallScore: null,
-    scoreLabel: "不足以判断",
-    outcome: "insufficient_input",
-    summary: "图片 OCR 未提取到足够文字，不足以判断其中的事实内容。",
-    claims: [],
-    sources: [],
-    searches: [],
-    process: {
-      claimsExtracted: 0,
-      queriesRun: 0,
-      pagesFound: 0,
-      duplicatesRemoved: 0,
-      provider: null,
-    },
-    inputMetadata: imageInput.metadata,
-    aiDetection: {
-      status: "unknown",
-      methods: [],
-      limitations: ["当前版本尚未接入可靠的 AI 生成检测器。"],
-    },
-    limitations: imageInput.limitations,
-  };
-}
-
 function emptyClaimsReport(inputType, inputMetadata, limitations = []) {
   return {
     success: true,
@@ -94,9 +66,10 @@ async function prepareInput({ inputType, content, file, ocrText, ocrStatus }) {
     return {
       inputType,
       normalizedContent: imageInput.content,
+      imageContentPart: imageInput.imageContentPart,
       inputMetadata: imageInput.metadata,
       initialLimitations: imageInput.limitations,
-      insufficientReport: imageInput.content.length < 3 ? unavailableImageReport(imageInput) : null,
+      insufficientReport: null,
     };
   }
 
@@ -118,10 +91,11 @@ function usagePayload(usageState) {
 }
 
 function createModelCaller({ env, authorization, fetchImpl, signal, usageState }) {
-  return (messages, options) => callDeepSeek({
+  return (messages, options = {}) => callDeepSeek({
     env,
     authorization,
     messages,
+    model: options.model,
     maxTokens: options.maxTokens,
     temperature: options.temperature,
     fetchImpl,
@@ -278,7 +252,9 @@ export async function extractVerificationClaims({
 
   const usageState = createModelUsageState();
   const model = createModelCaller({ env, authorization, fetchImpl, signal, usageState });
-  const claims = await extractClaims(prepared.normalizedContent, model);
+  const claims = await extractClaims(prepared.normalizedContent, model, {
+    imageContentPart: prepared.imageContentPart,
+  });
   if (claims.length === 0) {
     return {
       ...emptyClaimsReport(inputType, prepared.inputMetadata, prepared.initialLimitations),
@@ -344,7 +320,9 @@ export async function verifyInput({
 
   const usageState = createModelUsageState();
   const model = createModelCaller({ env, authorization, fetchImpl, signal, usageState });
-  const claims = await extractClaims(prepared.normalizedContent, model);
+  const claims = await extractClaims(prepared.normalizedContent, model, {
+    imageContentPart: prepared.imageContentPart,
+  });
   if (claims.length === 0) {
     return {
       ...emptyClaimsReport(inputType, prepared.inputMetadata, prepared.initialLimitations),

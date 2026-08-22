@@ -27,6 +27,7 @@ test("capability endpoint explicitly reports unconfigured web search", async () 
   assert.equal(response.status, 200);
   assert.equal(payload.capabilities.search.available, false);
   assert.match(payload.capabilities.search.message, /尚未配置/u);
+  assert.equal(payload.capabilities.vision, true);
   assert.equal(response.headers.get("cache-control"), "no-store");
 });
 
@@ -213,6 +214,8 @@ test("verify page is independent, responsive, localized, and does not expose a m
   assert.match(client, /runStage\("judge", extraction\.claims\)/u);
   assert.match(client, /applyUsage\(extraction\.usage\)/u);
   assert.match(client, /usageState\?\.unlimited \? "proAuthHint" : "authHint"/u);
+  assert.match(html, /accept="image\/jpeg,image\/png,image\/gif,image\/webp"/u);
+  assert.match(html, /DeepSeek 视觉模型/u);
   assert.doesNotMatch(`${html}\n${client}`, /DEEPSEEK_API_KEY|sk-[A-Za-z0-9]/u);
 });
 
@@ -220,6 +223,8 @@ test("verify Pro policy is localized in every supported language", () => {
   for (const locale of ["zh", "zh-Hant", "en", "ja", "ko", "es"]) {
     assert.notEqual(t("proAuthHint", locale), "proAuthHint");
     assert.match(t("proAuthHint", locale), /Pro/u);
+    assert.match(t("uploadHint", locale), /GIF/u);
+    assert.match(t("ocrNote", locale), /DeepSeek/u);
   }
 });
 

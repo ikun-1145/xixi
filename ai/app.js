@@ -648,6 +648,19 @@ async function requireLoginForAction() {
 function handleFile(file) {
   if (!providerCapabilityState.fileUpload) return false;
 
+  const validationError = validateChatImage(file, pendingFiles.length);
+  if (validationError) {
+    const messages = {
+      IMAGE_COUNT_EXCEEDED: "每次只能上传 1 张图片",
+      IMAGE_TOO_LARGE: "图片太大，请选择 8MB 内的图片",
+      IMAGE_TYPE_INVALID: "仅支持 JPG、PNG、GIF 和 WEBP 图片",
+      IMAGE_EMPTY: "图片读取失败",
+      IMAGE_REQUIRED: "图片读取失败",
+    };
+    showToast(uiText(messages[validationError] || "图片处理失败"));
+    return false;
+  }
+
   pendingFiles.push(file);
 
   const item = document.createElement("div");
@@ -699,6 +712,10 @@ item.style.borderRadius = "12px";
   del.addEventListener("click", (e) => {
   e.stopPropagation();
     pendingFiles = pendingFiles.filter(f => f !== file);
+    const image = item.querySelector('img[src^="blob:"]');
+    if (image) {
+      try { URL.revokeObjectURL(image.src); } catch {}
+    }
     item.remove();
   });
 
@@ -712,6 +729,12 @@ item.style.borderRadius = "12px";
 // 统一接口与各 Provider 通信；DeepSeek 现有逻辑保持不变，只有新增的 Sunland
 // 分支会用到这个 registry。
 import { createProviderRegistry } from './providers/registry.js';
+import {
+  buildVisionMessages,
+  DEEPSEEK_VISION_MODEL,
+  prepareChatImage,
+  validateChatImage,
+} from './multimodal.js';
 import {
   filterConversationsForUser,
   persistCurrentConversationId,
@@ -1161,7 +1184,7 @@ function updateProviderCapabilityUI() {
   };
 
   const deepDisabledMessage = "Sunland AI · Beta 暂不支持深度思考";
-  const uploadDisabledMessage = "Sunland AI · Beta 暂不支持文件上传";
+  const uploadDisabledMessage = "Sunland AI · Beta 暂不支持图片上传";
 
   deepBtn.disabled = isSunland;
   deepBtn.setAttribute("aria-disabled", String(isSunland));
@@ -1177,10 +1200,10 @@ function updateProviderCapabilityUI() {
   uploadBtn.setAttribute("aria-disabled", String(isSunland));
   uploadBtn.setAttribute(
     "aria-label",
-    isSunland ? uploadDisabledMessage : "上传文件",
+    isSunland ? uploadDisabledMessage : "上传图片",
   );
-  uploadBtn.title = isSunland ? uploadDisabledMessage : "上传文件";
-  uploadBtn.dataset.tooltip = isSunland ? uploadDisabledMessage : "上传文件";
+  uploadBtn.title = isSunland ? uploadDisabledMessage : "上传图片";
+  uploadBtn.dataset.tooltip = isSunland ? uploadDisabledMessage : "上传图片";
   uploadBtn.classList.toggle("provider-capability-disabled", isSunland);
 
   fileInput.disabled = isSunland;
@@ -2878,7 +2901,12 @@ function scheduleRequestTitle(requestContext, aiText) {
 
 function addRegenerateButton(requestContext, fullText) {
   const bubble = requestContext.bubble;
-  if (!fullText || !isRequestVisible(requestContext) || !bubble) return;
+  if (
+    !fullText ||
+    requestContext.visionImages?.length ||
+    !isRequestVisible(requestContext) ||
+    !bubble
+  ) return;
 
   const regenWrap = document.createElement("div");
   regenWrap.className = "regen";
@@ -3007,11 +3035,18 @@ async function runDeepSeekRequest(requestContext) {
         return;
       }
 
-      const res = await apiFetch({
-        model: requestContext.model,
-        messages: buildFurryEventModelHistory(requestContext.history, {
+      const baseMessages = buildFurryEventModelHistory(requestContext.history, {
           includeCards: requestContext.furryContextActive,
-        }),
+        });
+      const requestMessages = buildVisionMessages(baseMessages, {
+        images: requestContext.visionImages,
+        prompt: requestContext.visionPrompt,
+      });
+      const res = await apiFetch({
+        model: requestContext.visionImages?.length
+          ? DEEPSEEK_VISION_MODEL
+          : requestContext.model,
+        messages: requestMessages,
         deep: requestContext.deep,
       }, false, requestContext.controller.signal);
       if (!res || abortMissingTarget(requestContext)) return;
@@ -3194,6 +3229,11 @@ async function send() {
     updateProviderCapabilityUI();
   }
   const files = isSunlandConversation ? [] : [...pendingFiles];
+  if (!text && files.length === 0) {
+    showToast("好像还没有输入内容呢，可以跟我说点什么。");
+    hideGlobalLoading();
+    return;
+  }
   if (isSunlandConversation && !text) {
     showToast("好像还没有输入内容呢，可以跟我说点什么。");
     hideGlobalLoading();
@@ -3237,7 +3277,22 @@ async function send() {
     hideGlobalLoading();
     return;
   }
+  let visionImages = [];
+  try {
+    visionImages = await Promise.all(files.map(file => prepareChatImage(file)));
+  } catch (error) {
+    const message = error?.code === "IMAGE_TOO_LARGE"
+      ? "图片太大，请选择 8MB 内的图片"
+      : error?.code === "IMAGE_SIGNATURE_INVALID"
+        ? "文件格式异常，请重新选择图片"
+        : "图片读取失败";
+    showToast(uiText(message));
+    hideGlobalLoading();
+    return;
+  }
   lastRealSendByConversation.set(sendingConversation.id, Date.now());
+
+  const visionPrompt = text || uiText("请描述并分析这张图片。");
 
   const diagnostics = sunlandDiagnosticsRuntime.captureRequest(
     sendingConversation.provider,
@@ -3260,41 +3315,32 @@ async function send() {
 
   requestContext.canRecordDiagnostics = () =>
     requestCoordinator.canWrite(requestContext);
-  requestContext.userText = text;
+  requestContext.userText = visionPrompt;
+  requestContext.visionImages = visionImages;
+  requestContext.visionPrompt = visionPrompt;
   clearPendingAttachments();
   updateRequestUiState();
 
   try {
-    for (const file of files) {
-      const reader = new FileReader();
-      const fileData = await new Promise((resolve, reject) => {
-        reader.onload = () => resolve(reader.result);
-        reader.onerror = () => reject(reader.error || new Error("文件读取失败"));
-        reader.readAsDataURL(file);
-      });
+    for (const image of visionImages) {
       if (abortMissingTarget(requestContext)) return;
-
-      if (file.type.startsWith("image/")) {
-        if (currentId === requestContext.conversationId) {
-          addMessage(`🖼️ ${file.name}`, "user", { imageSrc: fileData });
-        }
-        if (!appendRequestMessage(requestContext, { role: "user", content: "[用户发送了一张图片]" })) return;
-      } else {
-        if (currentId === requestContext.conversationId) addMessage(`📄 ${file.name}`, "user");
-        if (!appendRequestMessage(requestContext, { role: "user", content: `[用户上传文件: ${file.name}]` })) return;
+      if (currentId === requestContext.conversationId) {
+        addMessage(`🖼️ ${image.name}`, "user", { imageSrc: image.dataUrl });
       }
     }
 
-    if (!text) return;
     const welcome = document.getElementById("welcome");
     if (welcome && currentId === requestContext.conversationId) {
       welcome.classList.add("hidden");
       setTimeout(() => welcome.remove(), 300);
     }
 
-    if (currentId === requestContext.conversationId) addMessage(text, "user");
+    if (text && currentId === requestContext.conversationId) addMessage(text, "user");
     if (navigator.vibrate) navigator.vibrate(10);
-    if (!appendRequestMessage(requestContext, { role: "user", content: text })) return;
+    const persistedUserContent = visionImages.length
+      ? `${visionPrompt}\n\n${uiText("[本轮包含图片；原图未写入对话历史]")}`
+      : text;
+    if (!appendRequestMessage(requestContext, { role: "user", content: persistedUserContent })) return;
 
     requestContext.furryContext = furryContextFollowUp ? previousFurryCard : null;
     requestContext.furryContextActive = Boolean(requestContext.furryContext);
@@ -3344,12 +3390,12 @@ async function send() {
 
     const target = requestCoordinator.target(requestContext);
     if (target?.title === "新对话") {
-      target.title = text.length > 15 ? text.slice(0, 15) + "…" : text;
+      target.title = visionPrompt.length > 15 ? visionPrompt.slice(0, 15) + "…" : visionPrompt;
       saveConversations();
       renderChatList();
     }
 
-    lastUserMessage = text;
+    lastUserMessage = visionPrompt;
     input.value = "";
     input.style.height = "auto";
     if (currentId === requestContext.conversationId) {
