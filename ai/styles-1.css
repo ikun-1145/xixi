@@ -510,6 +510,22 @@ html, body {
   box-shadow: 0 6px 18px rgba(34,211,238,0.25);
 }
 
+.message.user .bubble.image-bubble {
+  width: min(280px, 68vw);
+  max-width: min(280px, 68vw);
+  padding: 4px;
+}
+
+.chat-upload-image {
+  display: block;
+  width: auto;
+  height: auto;
+  max-width: 100%;
+  max-height: 320px;
+  object-fit: contain;
+  border-radius: 10px;
+}
+
 .bubble p,
 .bubble ul,
 .bubble ol,
@@ -541,6 +557,15 @@ html, body {
 }
 
 @media (max-width: 768px) {
+  .message.user .bubble.image-bubble {
+    width: min(220px, 68vw);
+    max-width: min(220px, 68vw);
+  }
+
+  .chat-upload-image {
+    max-height: 280px;
+  }
+
   .input-area {
     padding: 8px 4px calc(12px + env(safe-area-inset-bottom));
   }

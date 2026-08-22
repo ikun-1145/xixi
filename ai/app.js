@@ -734,7 +734,7 @@ import {
   DEEPSEEK_VISION_MODEL,
   prepareChatImage,
   validateChatImage,
-} from './multimodal.js';
+} from './multimodal.js?v=20260822-2';
 import {
   filterConversationsForUser,
   persistCurrentConversationId,
@@ -2677,9 +2677,8 @@ function addMessage(text, type, options = {}) {
       const img = document.createElement("img");
       img.src = options.imageSrc;
       img.alt = String(text || uiText("用户上传的图片"));
-      img.style.maxWidth = "100%";
-      img.style.borderRadius = "10px";
-      img.style.marginTop = "4px";
+      img.className = "chat-upload-image";
+      bubble.classList.add("image-bubble");
       bubble.appendChild(img);
     } else {
       bubble.textContent = String(text ?? "");

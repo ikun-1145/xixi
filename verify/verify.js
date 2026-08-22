@@ -1,5 +1,9 @@
 import { applyTranslations, getLocale, t } from "./i18n.js?v=20260822-1";
 import { renderReport } from "./render.js";
+import {
+  compressChatImage,
+  MAX_PREPARED_CHAT_IMAGE_BYTES,
+} from "../ai/multimodal.js?v=20260822-2";
 
 const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
 const ALLOWED_TYPES = new Set(["image/jpeg", "image/png", "image/gif", "image/webp"]);
@@ -86,6 +90,18 @@ function selectImage(file) {
   elements.imagePreview.hidden = false;
 }
 
+async function prepareVerificationImage(file) {
+  if (file.size <= MAX_PREPARED_CHAT_IMAGE_BYTES) return file;
+  const compressed = await compressChatImage(file, {
+    targetBytes: MAX_PREPARED_CHAT_IMAGE_BYTES,
+  });
+  const baseName = String(file.name || "image").replace(/\.[^.]*$/u, "").slice(0, 150) || "image";
+  return new File([compressed], `${baseName}.jpg`, {
+    type: compressed.type,
+    lastModified: Number.isFinite(file.lastModified) ? file.lastModified : Date.now(),
+  });
+}
+
 function loadTesseract() {
   if (window.Tesseract) return Promise.resolve(window.Tesseract);
   if (tesseractPromise) return tesseractPromise;
@@ -157,6 +173,7 @@ function localizedError(code, fallback) {
     IMAGE_TOO_LARGE: "imageTooLarge",
     IMAGE_TYPE_INVALID: "invalidImage",
     IMAGE_SIGNATURE_INVALID: "invalidImage",
+    REQUEST_TOO_LARGE: "imageTooLarge",
     SEARCH_UNAVAILABLE: "searchUnavailable",
     SEARCH_AUTH_ERROR: "searchFailed",
     SEARCH_FORBIDDEN: "searchFailed",
@@ -193,10 +210,16 @@ async function submitVerification() {
   try {
     let ocrText = "";
     let ocrStatus = "complete";
+    let requestImageFile = selectedFile;
     const textContent = inputType === "text" ? elements.verifyText.value.trim() : "";
     if (inputType === "image") {
       try {
-        ocrText = await extractImageText(selectedFile);
+        requestImageFile = await prepareVerificationImage(selectedFile);
+      } catch {
+        throw Object.assign(new Error(translate("invalidImage")), { code: "IMAGE_SIGNATURE_INVALID" });
+      }
+      try {
+        ocrText = await extractImageText(requestImageFile);
       } catch {
         ocrStatus = "failed";
       }
@@ -210,7 +233,7 @@ async function submitVerification() {
         form.set("type", "image");
         form.set("locale", getLocale());
         form.set("stage", stage);
-        form.set("file", selectedFile, selectedFile.name);
+        form.set("file", requestImageFile, requestImageFile.name);
         form.set("ocrText", ocrText);
         form.set("ocrStatus", ocrStatus);
         if (claims) form.set("claims", JSON.stringify(claims));
@@ -229,7 +252,7 @@ async function submitVerification() {
       const response = await fetch("/api/verify", { method: "POST", headers, body, signal: controller.signal });
       const payload = await response.json().catch(() => null);
       if (!response.ok || !payload?.success) {
-        const code = payload?.error?.code || "REQUEST_FAILED";
+        const code = payload?.error?.code || (response.status === 413 ? "REQUEST_TOO_LARGE" : "REQUEST_FAILED");
         if (response.status === 401 || code === "AUTH_REQUIRED") {
           clearLocalSession();
           redirectToLogin();
