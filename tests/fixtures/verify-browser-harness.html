@@ -1,0 +1,80 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob:; connect-src 'self';">
+  <title>Verify Browser Harness</title>
+  <link rel="stylesheet" href="../../p/css/tokens.css">
+  <link rel="stylesheet" href="../../p/css/base.css">
+  <link rel="stylesheet" href="../../verify/verify.css">
+</head>
+<body>
+  <div id="harnessStatus">LOADING</div>
+  <script type="module">
+    const nativeFetch = window.fetch.bind(window);
+    const token = "browser-verify-token";
+    localStorage.setItem("token", token);
+
+    const shellResponse = await nativeFetch("../../verify.html");
+    const shellText = await shellResponse.text();
+    const shell = new DOMParser().parseFromString(shellText, "text/html");
+    shell.body.querySelectorAll("script").forEach(script => script.remove());
+    document.body.className = shell.body.className;
+    document.body.innerHTML = shell.body.innerHTML;
+
+    window.__verifyHarness = { lastRequest: null };
+    window.Tesseract = {
+      async createWorker() {
+        return {
+          async recognize() { return { data: { text: "browser OCR fixture" } }; },
+          async terminate() {},
+        };
+      },
+    };
+    window.fetch = async (url, options = {}) => {
+      const target = String(url);
+      if (target.endsWith("/api/verify") || target === "/api/verify") {
+        if ((options.method || "GET").toUpperCase() === "GET") {
+          return Response.json({
+            success: true,
+            capabilities: { vision: true, search: { available: true, provider: "fixture" } },
+          });
+        }
+        const form = options.body instanceof FormData ? options.body : null;
+        const file = form?.get("file");
+        window.__verifyHarness.lastRequest = {
+          stage: form?.get("stage"),
+          type: form?.get("type"),
+          fileType: file?.type || "",
+          fileSize: file?.size || 0,
+          ocrText: form?.get("ocrText"),
+        };
+        return Response.json({
+          success: true,
+          inputType: "image",
+          overallScore: null,
+          scoreLabel: "无可核验声明",
+          outcome: "no_claims",
+          summary: "没有发现适合进行事实核验的客观声明。",
+          claims: [],
+          sources: [],
+          searches: [],
+          process: { claimsExtracted: 0, queriesRun: 0, pagesFound: 0, duplicatesRemoved: 0, provider: null },
+          inputMetadata: { fileName: file?.name || "image", size: file?.size || 0, mimeType: file?.type || "" },
+          aiDetection: { status: "unknown", methods: [], limitations: [] },
+          limitations: [],
+        });
+      }
+      return nativeFetch(url, options);
+    };
+
+    try {
+      await import(`../../verify/verify.js?browser-harness=${Date.now()}`);
+      document.body.dataset.harnessReady = "true";
+    } catch (error) {
+      document.body.dataset.harnessError = String(error?.stack || error);
+    }
+  </script>
+</body>
+</html>

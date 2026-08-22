@@ -99,6 +99,7 @@ export async function onRequestGet(context) {
       reverseImageSearch: false,
       aiDetection: false,
       ocr: "browser",
+      vision: true,
       search,
     },
     limits: {

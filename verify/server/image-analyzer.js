@@ -6,6 +6,7 @@ function detectMime(bytes) {
   if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return "image/jpeg";
   if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47
     && bytes[4] === 0x0d && bytes[5] === 0x0a && bytes[6] === 0x1a && bytes[7] === 0x0a) return "image/png";
+  if (["GIF87a", "GIF89a"].includes(String.fromCharCode(...bytes.slice(0, 6)))) return "image/gif";
   if (String.fromCharCode(...bytes.slice(0, 4)) === "RIFF"
     && String.fromCharCode(...bytes.slice(8, 12)) === "WEBP") return "image/webp";
   return "";
@@ -38,6 +39,20 @@ function webpDimensions(view, bytes) {
   return { width, height };
 }
 
+function gifDimensions(view) {
+  if (view.byteLength < 10) return {};
+  return { width: view.getUint16(6, true), height: view.getUint16(8, true) };
+}
+
+function bytesToBase64(bytes) {
+  let binary = "";
+  const chunkSize = 0x8000;
+  for (let offset = 0; offset < bytes.length; offset += chunkSize) {
+    binary += String.fromCharCode(...bytes.subarray(offset, offset + chunkSize));
+  }
+  return btoa(binary);
+}
+
 export async function analyzeImage(file, ocrText, ocrStatus = "complete") {
   if (!file || typeof file.arrayBuffer !== "function") {
     throw new VerifyError("IMAGE_REQUIRED", "请选择需要核验的图片。", 400);
@@ -46,7 +61,7 @@ export async function analyzeImage(file, ocrText, ocrStatus = "complete") {
     throw new VerifyError("IMAGE_TOO_LARGE", "图片必须小于 5 MB。", 413);
   }
   if (!ALLOWED_IMAGE_MIME_TYPES.includes(file.type)) {
-    throw new VerifyError("IMAGE_TYPE_INVALID", "仅支持 JPG、JPEG、PNG 和 WEBP 图片。", 415);
+    throw new VerifyError("IMAGE_TYPE_INVALID", "仅支持 JPG、JPEG、PNG、GIF 和 WEBP 图片。", 415);
   }
 
   const buffer = await file.arrayBuffer();
@@ -58,22 +73,30 @@ export async function analyzeImage(file, ocrText, ocrStatus = "complete") {
   const view = new DataView(buffer);
   const dimensions = actualMime === "image/png" ? pngDimensions(view)
     : actualMime === "image/jpeg" ? jpegDimensions(view)
-      : webpDimensions(view, bytes);
+      : actualMime === "image/gif" ? gifDimensions(view)
+        : webpDimensions(view, bytes);
   const content = typeof ocrText === "string" ? cleanText(ocrText, VERIFY_LIMITS.maxOcrChars) : "";
-  const limitations = ["图片文字由浏览器端 OCR 提取，可能存在漏字、错字或排版丢失。"];
-  if (ocrStatus === "failed") limitations.push("浏览器端 OCR 运行失败，系统未让 DeepSeek 猜测图片内容。");
+  const limitations = ["图片由 DeepSeek 视觉模型直接分析，浏览器端 OCR 文字仅作辅助；视觉识别和 OCR 都可能出错。"];
+  if (ocrStatus === "failed") limitations.push("浏览器端 OCR 运行失败，本次仅使用视觉模型分析原图。");
   if (!dimensions.width || !dimensions.height) limitations.push("未能从文件头可靠读取图片尺寸。");
-  if (content.length < 3) limitations.push("OCR 未提取到足够文字，不足以判断图片中的事实内容。");
+  if (content.length < 3) limitations.push("OCR 未提取到足够文字，声明提取将主要依赖视觉模型。");
 
   return {
     content,
+    imageContentPart: {
+      type: "image_url",
+      image_url: {
+        url: `data:${actualMime};base64,${bytesToBase64(bytes)}`,
+        detail: "original",
+      },
+    },
     metadata: {
       fileName: cleanText(file.name, 240) || "image",
       size: file.size,
       mimeType: actualMime,
       ...(dimensions.width ? { width: dimensions.width } : {}),
       ...(dimensions.height ? { height: dimensions.height } : {}),
-      extractionMethod: "tesseract.js-browser-ocr",
+      extractionMethod: "deepseek-vision+browser-ocr",
     },
     limitations,
   };
