@@ -2473,25 +2473,30 @@
     "ko": "지능형 대화 여행을 시작",
     "es": "Comience su viaje de conversación inteligente"
   },
-  "Android 版下载": {
-    "zh-Hant": "Android 版下載",
-    "ko": "Android 다운로드",
-    "es": "Android descarga"
+  "Android 与 iOS 下载": {
+    "zh-Hant": "Android 與 iOS 下載",
+    "ko": "Android 및 iOS 다운로드",
+    "es": "Descargas para Android e iOS"
   },
-  "适用于 Android 7.0 (Nougat) 及以上版本": {
-    "zh-Hant": "適用於 Android 7.0 (Nougat) 及以上版本",
-    "ko": "안드로이드 7.0 (Nougat) 이상",
-    "es": "Para Android 7.0 (Nougat) y versiones posteriores"
+  "Android 7.0+；iOS IPA 适用于已注册测试设备或自行签名安装": {
+    "zh-Hant": "Android 7.0+；iOS IPA 適用於已註冊測試裝置或自行重新簽署安裝",
+    "ko": "Android 7.0 이상. iOS IPA는 등록된 테스트 기기 또는 개인 재서명이 필요합니다",
+    "es": "Android 7.0+; el IPA de iOS requiere un dispositivo de prueba registrado o una firma propia"
   },
-  "仅支持 Android · Android Only": {
-    "zh-Hant": "僅支援 Android · Android Only",
-    "ko": "Android 전용",
-    "es": "Android sólo"
+  "Android APK · Apple IPA": {
+    "zh-Hant": "Android APK · Apple IPA",
+    "ko": "Android APK · Apple IPA",
+    "es": "Android APK · Apple IPA"
   },
-  "立即下载 APK": {
-    "zh-Hant": "立即下載 APK",
-    "ko": "APK 다운로드",
-    "es": "Descargar APK"
+  "立即下载 Android APK": {
+    "zh-Hant": "立即下載 Android APK",
+    "ko": "Android APK 다운로드",
+    "es": "Descargar APK de Android"
+  },
+  "立即下载 Apple IPA": {
+    "zh-Hant": "立即下載 Apple IPA",
+    "ko": "Apple IPA 다운로드",
+    "es": "Descargar IPA de Apple"
   },
   "直链下载": {
     "zh-Hant": "直鏈下載",

@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script defer src="p/js/site-i18n-extra.js?v=20260808-2"></script>
-  <script defer src="p/js/site-i18n.js?v=20260808-2"></script>
+  <script defer src="p/js/site-i18n-extra.js?v=20260828-1"></script>
+  <script defer src="p/js/site-i18n.js?v=20260828-1"></script>
   <title data-i18n="pageTitle">Sunland AI · Beta — 重新定义智能交互</title>
   <meta name="description" content="Sunland AI · Beta 公测正式开启，立即下载体验智能对话助手">
   <meta name="theme-color" content="#0c0e1a">
@@ -535,7 +535,7 @@
        AI SHOWCASE (Simulated Chat)
     ═══════════════════════════════════════════════════════════ */
     .showcase-wrap {
-      max-width: 720px;
+      max-width: 520px;
       margin: 0 auto;
       opacity: 0;
       transform: translateY(30px) scale(0.98);
@@ -750,31 +750,6 @@
       33%      { transform: translate(-20px, 18px); }
       66%      { transform: translate(16px,-14px); }
     }
-    .android-wrap {
-      width: 92px; height: 92px;
-      margin: 0 auto 1.8rem;
-      background: linear-gradient(135deg, rgba(113,248,252,0.08), rgba(62,237,231,0.04));
-      border: 1px solid rgba(113,248,252,0.18);
-      border-radius: 24px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      position: relative;
-      transition: all 0.4s ease;
-    }
-    .android-wrap:hover {
-      transform: scale(1.05);
-      border-color: rgba(113,248,252,0.35);
-      box-shadow: 0 0 30px rgba(113,248,252,0.15);
-    }
-    .android-wrap::after {
-      content: '';
-      position: absolute;
-      inset: -8px;
-      border-radius: 32px;
-      border: 1px dashed rgba(113,248,252,0.14);
-      animation: spinRing 20s linear infinite;
-    }
     .dl-title {
       font-family: var(--font-serif);
       font-size: clamp(1.6rem, 3.5vw, 2.1rem);
@@ -790,7 +765,7 @@
       position: relative;
       z-index: 1;
     }
-    .android-badge {
+    .platform-badge {
       display: inline-flex;
       align-items: center;
       gap: 0.45rem;
@@ -805,23 +780,31 @@
       position: relative;
       z-index: 1;
     }
+    .download-actions {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 1rem;
+      width: min(100%, 560px);
+      margin: 0 auto;
+      position: relative;
+      z-index: 5;
+    }
     .btn-dl {
-      display: inline-flex;
+      display: flex;
       align-items: center;
-      gap: 0.85rem;
-      padding: 1.15rem 2.8rem;
-      background: linear-gradient(135deg, var(--accent), var(--accent2));
+      justify-content: center;
+      min-height: 88px;
+      padding: 0.75rem 1.2rem;
+      background: #f7fbff;
       border-radius: 18px;
-      color: #fff;
-      font-size: 1.08rem;
-      font-weight: 700;
+      color: #0b1220;
       text-decoration: none;
       position: relative;
       overflow: hidden;
       transition: all 0.4s cubic-bezier(.16,1,.3,1);
       box-shadow: 0 12px 32px rgba(0,0,0,0.4);
       z-index: 5;
-      border: none;
+      border: 1px solid rgba(255,255,255,0.72);
       cursor: pointer;
     }
     .btn-dl:hover {
@@ -830,6 +813,10 @@
     }
     .btn-dl:active {
       transform: translateY(-1px) scale(0.98);
+    }
+    .btn-dl:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 4px;
     }
     .btn-dl::after {
       content: '';
@@ -844,11 +831,46 @@
     }
     .btn-dl.downloading {
       pointer-events: none;
-      background: linear-gradient(135deg, var(--accent-dim), rgba(62,237,231,0.4));
+      cursor: wait;
     }
-    .btn-dl.downloading .dl-spinner {
-      display: inline-block;
-      animation: spin 1s linear infinite;
+    .btn-dl.downloading .download-badge-img {
+      opacity: 0.32;
+    }
+    .btn-dl.downloading::before {
+      content: '';
+      position: absolute;
+      width: 24px;
+      height: 24px;
+      border: 3px solid rgba(11,18,32,0.18);
+      border-top-color: #0b1220;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      z-index: 2;
+    }
+    .download-badge-img {
+      display: block;
+      width: auto;
+      height: 58px;
+      max-width: 180px;
+      object-fit: contain;
+      transition: opacity 0.2s ease;
+    }
+    .sr-only {
+      position: absolute;
+      width: 1px;
+      height: 1px;
+      padding: 0;
+      margin: -1px;
+      overflow: hidden;
+      clip: rect(0, 0, 0, 0);
+      white-space: nowrap;
+      border: 0;
+    }
+    @media (max-width: 560px) {
+      .dl-card { padding: 2.7rem 1.25rem; }
+      .download-actions { grid-template-columns: 1fr; }
+      .btn-dl { min-height: 82px; }
+      .download-badge-img { height: 54px; }
     }
     @keyframes spin {
       from { transform: rotate(0deg); }
@@ -1138,30 +1160,28 @@
           <div class="dl-orb"></div>
           <div class="dl-orb-2"></div>
 
-          <div class="android-wrap">
-            <svg width="44" height="44" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
-              <path fill="var(--accent)" d="M6.18 15.64a2.18 2.18 0 0 1-2.18-2.18V9.19a2.18 2.18 0 1 1 4.36 0v4.27a2.18 2.18 0 0 1-2.18 2.18M17.82 15.64a2.18 2.18 0 0 1-2.18-2.18V9.19a2.18 2.18 0 1 1 4.36 0v4.27a2.18 2.18 0 0 1-2.18 2.18M15.27 21.36a2.18 2.18 0 0 1-2.18-2.18v-2.72h-2.18v2.72a2.18 2.18 0 1 1-4.36 0v-2.72H5.09a.54.54 0 0 1-.54-.55V9.73a.54.54 0 0 1 .54-.54h13.82c.3 0 .55.24.55.54v8.18c0 .3-.25.55-.55.55h-1.46v2.72a2.18 2.18 0 0 1-2.18 2.18M8.09 3.45 6.72 1.27a.27.27 0 0 0-.38-.09.27.27 0 0 0-.09.37l1.39 2.21c-1.07.48-1.82 1.34-2 2.38h12.72c-.18-1.04-.93-1.9-2-2.38l1.39-2.21a.27.27 0 0 0-.09-.37.27.27 0 0 0-.38.09L15.91 3.45a6.43 6.43 0 0 0-7.82 0M10.36 5.09a.54.54 0 1 1 0-1.09.54.54 0 0 1 0 1.09m3.28 0a.54.54 0 1 1 0-1.09.54.54 0 0 1 0 1.09"/>
-            </svg>
+          <div class="dl-title" data-i18n="dlCardTitle">Android 与 iOS 下载</div>
+          <div class="dl-desc" data-i18n="dlCardDesc">Android 7.0+；iOS IPA 适用于已注册测试设备或自行签名安装</div>
+
+          <div class="platform-badge">
+            <span>📱</span>
+            <span data-i18n="dlBadge">Android APK · Apple IPA</span>
           </div>
 
-          <div class="dl-title" data-i18n="dlCardTitle">Android 版下载</div>
-          <div class="dl-desc" data-i18n="dlCardDesc">适用于 Android 7.0 (Nougat) 及以上版本</div>
-
-          <div class="android-badge">
-            <span>🤖</span>
-            <span data-i18n="dlBadge">仅支持 Android · Android Only</span>
+          <div class="download-actions">
+            <a href="/apk?v=1.4.2%2B31&cache=3"
+               class="btn-dl"
+               data-download-button>
+              <img src="p/logo-android-new.png" alt="" class="download-badge-img" aria-hidden="true">
+              <span class="sr-only" data-i18n="dlAndroidBtn">立即下载 Android APK</span>
+            </a>
+            <a href="https://github.com/ikun-1145/sunland-ai-dart/releases/download/v1.4.2%2B31/sunland-ai-1.4.2%2B31.ipa"
+               class="btn-dl"
+               data-download-button>
+              <img src="p/apple-11.png" alt="" class="download-badge-img" aria-hidden="true">
+              <span class="sr-only" data-i18n="dlIosBtn">立即下载 Apple IPA</span>
+            </a>
           </div>
-
-          <a href="/apk?v=1.4.1%2B30&cache=2"
-             class="btn-dl"
-             id="downloadBtn">
-            <svg class="dl-icon" width="22" height="22" viewBox="0 0 24 24" fill="none"
-                 stroke="currentColor" stroke-width="2.4"
-                 stroke-linecap="round" stroke-linejoin="round">
-              <path d="M12 5v14M5 12l7 7 7-7"/>
-            </svg>
-            <span data-i18n="dlBtn">立即下载 APK</span>
-          </a>
 
           <div class="dl-meta">
             <div class="dl-meta-item">📦 <span data-i18n="dlMeta1">直链下载</span></div>
@@ -1236,10 +1256,11 @@
       dlEyebrow: "下载",
       dlTitle: "获取 Sunland AI · Beta",
       dlDesc: "开启你的智能对话之旅",
-      dlCardTitle: "Android 版下载",
-      dlCardDesc: "适用于 Android 7.0 (Nougat) 及以上版本",
-      dlBadge: "仅支持 Android · Android Only",
-      dlBtn: "立即下载 APK",
+      dlCardTitle: "Android 与 iOS 下载",
+      dlCardDesc: "Android 7.0+；iOS IPA 适用于已注册测试设备或自行签名安装",
+      dlBadge: "Android APK · Apple IPA",
+      dlAndroidBtn: "立即下载 Android APK",
+      dlIosBtn: "立即下载 Apple IPA",
       dlMeta1: "直链下载",
       dlMeta2: "安全可信",
       dlMeta3: "公测免费",
@@ -1281,10 +1302,11 @@
       dlEyebrow: "Download",
       dlTitle: "Get Sunland AI · Beta",
       dlDesc: "Start your intelligent conversation journey",
-      dlCardTitle: "Android Download",
-      dlCardDesc: "For Android 7.0 (Nougat) and above",
-      dlBadge: "Android Only",
-      dlBtn: "Download APK",
+      dlCardTitle: "Android & iOS Downloads",
+      dlCardDesc: "Android 7.0+; the iOS IPA requires a registered test device or personal re-signing",
+      dlBadge: "Android APK · Apple IPA",
+      dlAndroidBtn: "Download Android APK",
+      dlIosBtn: "Download Apple IPA",
       dlMeta1: "Direct Link",
       dlMeta2: "Safe & Trusted",
       dlMeta3: "Free Beta",
@@ -1326,10 +1348,11 @@
       dlEyebrow: "ダウンロード",
       dlTitle: "Sunland AI · Beta を入手",
       dlDesc: "インテリジェントな対話の旅を始めよう",
-      dlCardTitle: "Android 版ダウンロード",
-      dlCardDesc: "Android 7.0 (Nougat) 以降に対応",
-      dlBadge: "Android のみ対応",
-      dlBtn: "APK をダウンロード",
+      dlCardTitle: "Android・iOS 版ダウンロード",
+      dlCardDesc: "Android 7.0 以降。iOS IPA は登録済みテスト端末または再署名が必要です",
+      dlBadge: "Android APK · Apple IPA",
+      dlAndroidBtn: "Android APK をダウンロード",
+      dlIosBtn: "Apple IPA をダウンロード",
       dlMeta1: "直リンク",
       dlMeta2: "安全・信頼",
       dlMeta3: "ベータ無料",
@@ -1700,10 +1723,11 @@
      DOWNLOAD MICRO-INTERACTION
   ═══════════════════════════════════════════════════════════ */
   (function() {
-    const btn = document.getElementById('downloadBtn');
-    if (!btn) return;
-    btn.addEventListener('click', function(e) {
+    const buttons = document.querySelectorAll('[data-download-button]');
+    if (!buttons.length) return;
+    buttons.forEach(btn => btn.addEventListener('click', function(e) {
       e.preventDefault();
+      if (btn.classList.contains('downloading')) return;
       // Add ripple
       const ripple = document.createElement('span');
       ripple.style.cssText = 'position:absolute;border-radius:50%;background:rgba(255,255,255,0.25);transform:scale(0);animation:ripple 0.6s ease-out;pointer-events:none;';
@@ -1717,19 +1741,14 @@
 
       // Downloading state
       btn.classList.add('downloading');
-      const originalHTML = btn.innerHTML;
-      const saved = window.SiteI18n?.normalizeLanguage(localStorage.getItem('lang')) || 'zh';
-      const downloadLabel = i18n[saved]?.dlBtn
-        || window.SiteI18n?.translate(i18n.zh.dlBtn, saved)
-        || i18n.zh.dlBtn;
-      btn.innerHTML = '<svg class="dl-spinner" width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12a9 9 0 1 1-6.219-8.56"/></svg> <span>' + downloadLabel + '</span>';
+      btn.setAttribute('aria-busy', 'true');
       setTimeout(() => {
         btn.classList.remove('downloading');
-        btn.innerHTML = originalHTML;
+        btn.removeAttribute('aria-busy');
         const url = btn.getAttribute('href');
         if (url) window.location.href = url;
-      }, 1500);
-    });
+      }, 650);
+    }));
 
     // Add ripple keyframe
     const style = document.createElement('style');
