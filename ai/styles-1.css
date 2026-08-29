@@ -424,7 +424,8 @@ body.night::before {
 }
 .chat-inner {
   width: 100%;
-  max-width: 680px;
+  max-width: none;
+  box-sizing: border-box;
   margin: 0 auto;
 
   padding: 0 16px;
@@ -496,11 +497,21 @@ html, body {
 }
 
 .message.ai .bubble {
-  background: linear-gradient(145deg,#ffffff,#f1f5f9);
-  border: 1px solid rgba(255,255,255,0.5);
-  
-  box-shadow: 0 4px 16px rgba(0,0,0,0.06);
+  width: 100%;
+  max-width: 100%;
+  box-sizing: border-box;
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  backdrop-filter: none;
+  -webkit-backdrop-filter: none;
+  box-shadow: none;
   color: #1f2937;
+}
+
+body.night .message.ai .bubble {
+  color: #e5e7eb;
 }
 
 .message.user .bubble {
@@ -934,8 +945,7 @@ body > [class*="geetest_"] {
   }
 
   .message.ai {
-    padding-left: 8px;
-    padding-right: 0;
+    padding: 0;
   }
 
   .chat-inner {
