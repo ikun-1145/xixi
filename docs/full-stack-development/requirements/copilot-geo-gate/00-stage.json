@@ -1,0 +1,23 @@
+{
+  "feature": "copilot-geo-gate",
+  "currentStage": "implementation-complete",
+  "nextAllowedStage": "release-ready",
+  "flowProfile": "light-change",
+  "approvals": {
+    "requirementsApproved": true,
+    "visualDesignApproved": null,
+    "implementationApproved": true,
+    "evidence": "用户于 2026-08-29 确认继续采用服务端 VPN 识别，不接受用户自声明放行；聚焦测试 10/10 通过，Wrangler 路由同时生成 /copilot 与 /copilot.html。"
+  },
+  "visualDesign": {
+    "required": false,
+    "reason": "继续使用 copilot.html 既有访问受限页面，不新增前端布局或交互。"
+  },
+  "lifecycleHooks": {
+    "available": false,
+    "fallback": "当前会话未提供 full-stack-development MCP 生命周期工具；采用本地变更记录、人工契约审查和可复现测试证据。"
+  },
+  "blockedGates": [],
+  "changePolicy": "需求变化时回退到最早受影响阶段；访问控制异常默认不放行。",
+  "latestChangeId": "20260829-vpn-verified-access"
+}

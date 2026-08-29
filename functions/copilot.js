@@ -1,4 +1,12 @@
 const BLOCKED_COUNTRIES = new Set(['CN', 'HK', 'MO', 'TW']);
+const TENCENT_RCE_URL = 'https://rce.tencentcloudapi.com';
+const TENCENT_RCE_HOST = 'rce.tencentcloudapi.com';
+const TENCENT_RCE_SERVICE = 'rce';
+const TENCENT_RCE_ACTION = 'ManageIPPortraitRisk';
+const TENCENT_RCE_VERSION = '2025-04-25';
+const TENCENT_RCE_REGION = 'ap-guangzhou';
+const TENCENT_VPN_RISK_TYPE = 730014;
+const VPN_LOOKUP_TIMEOUT_MS = 1_500;
 
 const BLOCK_PAGE_COPY = {
   'zh-Hans': {
@@ -51,23 +59,197 @@ const BLOCK_PAGE_COPY = {
   },
 };
 
-function getBlockPageCopy(request) {
+const UNKNOWN_COUNTRY_COPY = {
+  'zh-Hans': {
+    lang: 'zh-Hans',
+    title: '访问受限',
+    heading: '暂时无法访问',
+    message: '当前网络所在地区无法被可靠确认。为保障访问政策，本页面暂不开放。',
+    hint: '请更换网络后重试。',
+    home: '返回首页',
+  },
+  'zh-Hant': {
+    lang: 'zh-Hant',
+    title: '存取受限',
+    heading: '暫時無法存取',
+    message: '目前網路所在的地區無法被可靠確認。為保障存取政策，本頁面暫不開放。',
+    hint: '請更換網路後重試。',
+    home: '返回首頁',
+  },
+  en: {
+    lang: 'en',
+    title: 'Access restricted',
+    heading: 'This page is temporarily unavailable',
+    message: 'The region of the current network could not be reliably verified. This page is unavailable under the access policy.',
+    hint: 'Please try again from a different network.',
+    home: 'Back to home',
+  },
+  ja: {
+    lang: 'ja',
+    title: 'アクセス制限',
+    heading: '現在このページにはアクセスできません',
+    message: '現在のネットワークの地域を確実に確認できませんでした。アクセス方針により、このページはご利用いただけません。',
+    hint: '別のネットワークからもう一度お試しください。',
+    home: 'ホームに戻る',
+  },
+  ko: {
+    lang: 'ko',
+    title: '접근 제한',
+    heading: '현재 이 페이지에 접근할 수 없습니다',
+    message: '현재 네트워크의 지역을 신뢰할 수 있게 확인할 수 없습니다. 접근 정책에 따라 이 페이지는 이용할 수 없습니다.',
+    hint: '다른 네트워크에서 다시 시도해 주세요.',
+    home: '홈으로 돌아가기',
+  },
+  es: {
+    lang: 'es',
+    title: 'Acceso restringido',
+    heading: 'Esta página no está disponible temporalmente',
+    message: 'No se pudo verificar de forma fiable la región de la red actual. Esta página no está disponible según la política de acceso.',
+    hint: 'Inténtalo de nuevo desde otra red.',
+    home: 'Volver al inicio',
+  },
+};
+
+function getBlockPageCopy(request, reason = 'restricted') {
   const acceptLanguage = String(request.headers?.get?.('accept-language') || '').toLowerCase();
-  if (/(zh-(?:tw|hk|mo)|zh-hant)/u.test(acceptLanguage)) return BLOCK_PAGE_COPY['zh-Hant'];
-  if (acceptLanguage.startsWith('en')) return BLOCK_PAGE_COPY.en;
-  if (acceptLanguage.startsWith('ja')) return BLOCK_PAGE_COPY.ja;
-  if (acceptLanguage.startsWith('ko')) return BLOCK_PAGE_COPY.ko;
-  if (acceptLanguage.startsWith('es')) return BLOCK_PAGE_COPY.es;
-  return BLOCK_PAGE_COPY['zh-Hans'];
+  const locale = /(zh-(?:tw|hk|mo)|zh-hant)/u.test(acceptLanguage)
+    ? 'zh-Hant'
+    : acceptLanguage.startsWith('en')
+      ? 'en'
+      : acceptLanguage.startsWith('ja')
+        ? 'ja'
+        : acceptLanguage.startsWith('ko')
+          ? 'ko'
+          : acceptLanguage.startsWith('es')
+            ? 'es'
+            : 'zh-Hans';
+  return reason === 'unknown' ? UNKNOWN_COUNTRY_COPY[locale] : BLOCK_PAGE_COPY[locale];
 }
 
-function isBlockedRequest(request) {
+function getRequestCountry(request) {
   const country = String(request.cf?.country || '').toUpperCase();
-  return BLOCKED_COUNTRIES.has(country);
+  return country || null;
 }
 
-function blockedPage(request, { headOnly = false } = {}) {
-  const copy = getBlockPageCopy(request);
+function getClientIp(request) {
+  const clientIp = String(request.headers?.get?.('cf-connecting-ip') || '').trim();
+  const octets = clientIp.split('.');
+  if (octets.length !== 4 || octets.some((octet) => (
+    !/^\d{1,3}$/u.test(octet) || Number(octet) > 255
+  ))) return null;
+  return clientIp;
+}
+
+function isConfirmedVpn(payload) {
+  const data = payload?.Response?.Data;
+  return data?.Code === 0
+    && Array.isArray(data?.Value?.RiskType)
+    && data.Value.RiskType.some((riskType) => Number(riskType) === TENCENT_VPN_RISK_TYPE);
+}
+
+function bytesToHex(bytes) {
+  return [...new Uint8Array(bytes)]
+    .map((byte) => byte.toString(16).padStart(2, '0'))
+    .join('');
+}
+
+async function sha256Hex(value) {
+  const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value));
+  return bytesToHex(digest);
+}
+
+async function hmacSha256(key, value) {
+  const keyBytes = typeof key === 'string' ? new TextEncoder().encode(key) : key;
+  const cryptoKey = await crypto.subtle.importKey(
+    'raw',
+    keyBytes,
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign'],
+  );
+  return crypto.subtle.sign('HMAC', cryptoKey, new TextEncoder().encode(value));
+}
+
+async function hmacSha256Hex(key, value) {
+  return bytesToHex(await hmacSha256(key, value));
+}
+
+async function createTencentAuthorization(body, timestamp, secretId, secretKey) {
+  const canonicalHeaders = `content-type:application/json; charset=utf-8\nhost:${TENCENT_RCE_HOST}\n`;
+  const signedHeaders = 'content-type;host';
+  const canonicalRequest = [
+    'POST',
+    '/',
+    '',
+    canonicalHeaders,
+    signedHeaders,
+    await sha256Hex(body),
+  ].join('\n');
+  const date = new Date(timestamp * 1000).toISOString().slice(0, 10);
+  const credentialScope = `${date}/${TENCENT_RCE_SERVICE}/tc3_request`;
+  const stringToSign = [
+    'TC3-HMAC-SHA256',
+    String(timestamp),
+    credentialScope,
+    await sha256Hex(canonicalRequest),
+  ].join('\n');
+  const secretDate = await hmacSha256(`TC3${secretKey}`, date);
+  const secretService = await hmacSha256(secretDate, TENCENT_RCE_SERVICE);
+  const secretSigning = await hmacSha256(secretService, 'tc3_request');
+  const signature = await hmacSha256Hex(secretSigning, stringToSign);
+
+  return `TC3-HMAC-SHA256 Credential=${secretId}/${credentialScope}, SignedHeaders=${signedHeaders}, Signature=${signature}`;
+}
+
+async function isVpnExitNode(context) {
+  const secretId = String(context.env?.COPILOT_TENCENT_SECRET_ID || '').trim();
+  const secretKey = String(context.env?.COPILOT_TENCENT_SECRET_KEY || '').trim();
+  const clientIp = getClientIp(context.request);
+  if (!secretId || !secretKey || !clientIp) return false;
+
+  const timestamp = Math.floor(Date.now() / 1000);
+  const channel = Number(context.env?.COPILOT_TENCENT_CHANNEL || 2);
+  const payload = JSON.stringify({
+    PostTime: timestamp,
+    BusinessSecurityData: {
+      UserIp: clientIp,
+      Channel: Number.isInteger(channel) && channel >= 1 && channel <= 4 ? channel : 2,
+    },
+  });
+  const fetchImpl = typeof context.env?.COPILOT_VPN_FETCH === 'function'
+    ? context.env.COPILOT_VPN_FETCH
+    : fetch;
+
+  let response;
+  try {
+    response = await fetchImpl(TENCENT_RCE_URL, {
+      method: 'POST',
+      headers: {
+        accept: 'application/json',
+        'content-type': 'application/json; charset=utf-8',
+        'x-tc-action': TENCENT_RCE_ACTION,
+        'x-tc-region': TENCENT_RCE_REGION,
+        'x-tc-version': TENCENT_RCE_VERSION,
+        'x-tc-timestamp': String(timestamp),
+        authorization: await createTencentAuthorization(payload, timestamp, secretId, secretKey),
+      },
+      body: payload,
+      signal: AbortSignal.timeout(VPN_LOOKUP_TIMEOUT_MS),
+    });
+  } catch {
+    return false;
+  }
+  if (!response?.ok) return false;
+
+  try {
+    return isConfirmedVpn(await response.json());
+  } catch {
+    return false;
+  }
+}
+
+function blockedPage(request, { headOnly = false, reason = 'restricted' } = {}) {
+  const copy = getBlockPageCopy(request, reason);
   const body = headOnly ? null : `<!doctype html>
 <html lang="${copy.lang}">
 <head>
@@ -122,8 +304,12 @@ function serveStaticAsset(context) {
   });
 }
 
-function handleCopilotRequest(context, options) {
-  if (isBlockedRequest(context.request)) return blockedPage(context.request, options);
+async function handleCopilotRequest(context, options) {
+  const country = getRequestCountry(context.request);
+  if (!country) return blockedPage(context.request, { ...options, reason: 'unknown' });
+  if (BLOCKED_COUNTRIES.has(country) && !(await isVpnExitNode(context))) {
+    return blockedPage(context.request, options);
+  }
   return serveStaticAsset(context);
 }
 
