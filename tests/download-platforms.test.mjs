@@ -6,6 +6,7 @@ import { fileURLToPath } from 'node:url';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const downloadHtml = fs.readFileSync(path.join(projectRoot, 'download.html'), 'utf8');
+const ipaGuidePath = path.join(projectRoot, 'p/video/ipa-install-guide.mp4');
 
 test('download page exposes version-locked Android and iOS release assets', () => {
   assert.match(
@@ -31,6 +32,16 @@ test('platform download buttons expose a visible action, release detail, and dow
   assert.equal((downloadHtml.match(/class="download-detail">(?:APK|IPA) · v1\.4\.2\+31</gu) || []).length, 2);
   assert.equal((downloadHtml.match(/class="download-arrow" aria-hidden="true"/gu) || []).length, 2);
   assert.doesNotMatch(downloadHtml, /class="sr-only" data-i18n="dl(?:Android|Ios)Btn"/u);
+});
+
+test('iOS download option links to the browser-playable IPA installation guide', () => {
+  assert.match(
+    downloadHtml,
+    /<a href="p\/video\/ipa-install-guide\.mp4"[\s\S]*?class="install-guide-link"[\s\S]*?target="_blank"[\s\S]*?rel="noopener"/u,
+  );
+  assert.match(downloadHtml, /data-i18n="dlIosGuide">观看 IPA 安装教程</u);
+  assert.ok(fs.statSync(ipaGuidePath).size > 0, 'IPA guide video must exist');
+  assert.equal(fs.readFileSync(ipaGuidePath).subarray(4, 8).toString('ascii'), 'ftyp');
 });
 
 test('dark mode keeps black platform artwork on a light high-contrast surface', () => {

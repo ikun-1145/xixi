@@ -3,8 +3,8 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script defer src="p/js/site-i18n-extra.js?v=20260828-1"></script>
-  <script defer src="p/js/site-i18n.js?v=20260828-1"></script>
+  <script defer src="p/js/site-i18n-extra.js?v=20260829-1"></script>
+  <script defer src="p/js/site-i18n.js?v=20260829-1"></script>
   <title data-i18n="pageTitle">Sunland AI · Beta — 重新定义智能交互</title>
   <meta name="description" content="Sunland AI · Beta 公测正式开启，立即下载体验智能对话助手">
   <meta name="theme-color" content="#0c0e1a">
@@ -928,11 +928,48 @@
       background: #0d9488;
       transform: translateY(2px);
     }
+    .install-guide-link {
+      grid-column: 2;
+      min-height: 46px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0.5rem;
+      padding: 0.65rem 0.9rem;
+      color: var(--accent);
+      background: rgba(113,248,252,0.07);
+      border: 1px solid rgba(113,248,252,0.2);
+      border-radius: 14px;
+      font-size: 0.78rem;
+      font-weight: 600;
+      line-height: 1.4;
+      text-decoration: none;
+      transition: color 0.3s ease, background 0.3s ease, border-color 0.3s ease, transform 0.3s ease;
+    }
+    .install-guide-link svg {
+      width: 18px;
+      height: 18px;
+      flex: 0 0 auto;
+    }
+    .install-guide-link:hover {
+      color: #ffffff;
+      background: rgba(113,248,252,0.14);
+      border-color: rgba(113,248,252,0.5);
+      transform: translateY(-2px);
+    }
+    .install-guide-link:active {
+      transform: translateY(0) scale(0.985);
+    }
+    .install-guide-link:focus-visible {
+      outline: 3px solid var(--accent);
+      outline-offset: 3px;
+    }
     @media (max-width: 560px) {
       .dl-card { padding: 2.7rem 1rem; }
       .download-actions { grid-template-columns: 1fr; }
       .btn-dl { min-height: 92px; padding: 0.85rem 0.9rem; }
       .download-label { font-size: 0.9rem; }
+      .install-guide-link { grid-column: 1; }
     }
     @keyframes spin {
       from { transform: rotate(0deg); }
@@ -1268,6 +1305,16 @@
                 </svg>
               </span>
             </a>
+            <a href="p/video/ipa-install-guide.mp4"
+               class="install-guide-link"
+               target="_blank"
+               rel="noopener">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <circle cx="12" cy="12" r="9"/>
+                <path d="m10 8 6 4-6 4V8z"/>
+              </svg>
+              <span data-i18n="dlIosGuide">观看 IPA 安装教程</span>
+            </a>
           </div>
 
           <div class="dl-meta">
@@ -1348,6 +1395,7 @@
       dlBadge: "Android APK · Apple IPA",
       dlAndroidBtn: "立即下载 Android APK",
       dlIosBtn: "立即下载 Apple IPA",
+      dlIosGuide: "观看 IPA 安装教程",
       dlMeta1: "直链下载",
       dlMeta2: "安全可信",
       dlMeta3: "公测免费",
@@ -1394,6 +1442,7 @@
       dlBadge: "Android APK · Apple IPA",
       dlAndroidBtn: "Download Android APK",
       dlIosBtn: "Download Apple IPA",
+      dlIosGuide: "Watch the IPA installation guide",
       dlMeta1: "Direct Link",
       dlMeta2: "Safe & Trusted",
       dlMeta3: "Free Beta",
@@ -1440,6 +1489,7 @@
       dlBadge: "Android APK · Apple IPA",
       dlAndroidBtn: "Android APK をダウンロード",
       dlIosBtn: "Apple IPA をダウンロード",
+      dlIosGuide: "IPAインストールガイドを見る",
       dlMeta1: "直リンク",
       dlMeta2: "安全・信頼",
       dlMeta3: "ベータ無料",

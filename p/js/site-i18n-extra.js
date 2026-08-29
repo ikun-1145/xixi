@@ -2498,6 +2498,11 @@
     "ko": "Apple IPA 다운로드",
     "es": "Descargar IPA de Apple"
   },
+  "观看 IPA 安装教程": {
+    "zh-Hant": "觀看 IPA 安裝教學",
+    "ko": "IPA 설치 가이드 보기",
+    "es": "Ver la guía de instalación de IPA"
+  },
   "直链下载": {
     "zh-Hant": "直鏈下載",
     "ko": "연락처",

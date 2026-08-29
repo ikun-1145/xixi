@@ -549,6 +549,7 @@
     ["Android APK · Apple IPA", "Android APK · Apple IPA", "Android APK・Apple IPA"],
     ["立即下载 Android APK", "Download Android APK", "Android APKをダウンロード"],
     ["立即下载 Apple IPA", "Download Apple IPA", "Apple IPAをダウンロード"],
+    ["观看 IPA 安装教程", "Watch the IPA installation guide", "IPAインストールガイドを見る"],
     ["直链下载", "Direct link", "直接ダウンロード"],
     ["安全可信", "Safe & trusted", "安全・信頼"],
     ["公测免费", "Free Beta", "ベータ無料"],
