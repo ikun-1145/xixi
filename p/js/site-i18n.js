@@ -294,6 +294,7 @@
     ["优先响应速度", "Priority response speed", "優先応答"],
     ["永久有效", "Permanent", "永久有効"],
     ["立即升级 · ¥10 永久", "Upgrade now · ¥10 permanent", "今すぐアップグレード · ¥10 永久"],
+    ["下载霜蓝AI客户端", "Download the Sunland AI client", "Sunland AI クライアントをダウンロード"],
     ["Sunland AI · Beta 数据管理", "Sunland AI · Beta Data Management", "Sunland AI · Beta データ管理"],
     ["姓名记忆", "Name memory", "名前の記憶"],
     ["只让 Sunland AI 忘记你的名字", "Only make Sunland AI forget your name", "Sunland AI にあなたの名前だけを忘れさせます"],

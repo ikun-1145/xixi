@@ -1253,6 +1253,11 @@
     "ko": "지금 업그레이드 · 10 엔 영구",
     "es": "Actualización ahora · ¥10 permanente"
   },
+  "下载霜蓝AI客户端": {
+    "zh-Hant": "下載霜藍AI用戶端",
+    "ko": "Sunland AI 클라이언트 다운로드",
+    "es": "Descargar el cliente de Sunland AI"
+  },
   "Sunland AI · Beta 数据管理": {
     "zh-Hant": "Sunland AI · Beta 資料管理",
     "ko": "Sunland AI · 베타 데이터 관리",

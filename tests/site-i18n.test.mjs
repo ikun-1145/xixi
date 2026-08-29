@@ -208,6 +208,22 @@ test("new languages translate every public page and preserve semantic html langu
   }
 });
 
+test("AI settings links to the localized client download page", () => {
+  const html = fs.readFileSync(new URL("../ai_settings.html", import.meta.url), "utf8");
+  const dom = createDom(html, "en");
+  const link = dom.window.document.querySelector('a.settings-link[href="download.html"]');
+
+  assert.ok(link, "settings should expose a native link to download.html");
+  assert.equal(link.querySelector(".row-label")?.textContent.trim(), "Download the Sunland AI client");
+
+  dom.window.SiteI18n.setLanguage("ja", { persist: false });
+  assert.equal(link.querySelector(".row-label")?.textContent.trim(), "Sunland AI クライアントをダウンロード");
+
+  dom.window.SiteI18n.setLanguage("zh-Hant", { persist: false });
+  assert.equal(link.querySelector(".row-label")?.textContent.trim(), "下載霜藍AI用戶端");
+  dom.window.close();
+});
+
 test("language dropdown shows six flagged choices and supports keyboard dismissal", () => {
   const menuPages = ["index.html", "shoushe.html", "banquan.html", "comment.html", "lianxi.html"];
   for (const page of menuPages) {
