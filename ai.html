@@ -156,6 +156,32 @@ html.night .app-loading-spinner {
   .app-loading-spinner { animation-duration: 1.6s; }
   #aiBootScreen { transition: none; }
 }
+
+/* KaTeX 只在 AI 消息容器内生效；长块公式在气泡内部横向滚动。 */
+.message.ai .bubble,
+.message.ai .ai-answer-content,
+.message.ai .reasoning-content {
+  min-width: 0;
+  max-width: 100%;
+}
+.message.ai .katex-display {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin: .55em 0;
+  padding: .12em 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+}
+.message.ai .katex-display > .katex {
+  display: inline-block;
+  min-width: max-content;
+  text-align: initial;
+}
+.math-literal-dollar {
+  display: inline;
+}
 </style>
 
 <!-- CSP for GeeTest -->
@@ -354,6 +380,351 @@ z-index:999;
     Sunland AI · Beta
   </div>
 </div>
+
+<script>
+(function () {
+  "use strict";
+
+  const MATH_IGNORED_SELECTOR = "script,noscript,style,textarea,pre,code,.katex,.math-literal-dollar";
+  const MATH_TARGET_SELECTOR = ".reasoning-content,.ai-answer-content";
+  const mathRenderTimers = new WeakMap();
+
+  function isEscapedAt(text, index) {
+    let slashCount = 0;
+    for (let cursor = index - 1; cursor >= 0 && text[cursor] === "\\"; cursor -= 1) {
+      slashCount += 1;
+    }
+    return slashCount % 2 === 1;
+  }
+
+  function findDelimitedMathRanges(text, left, right) {
+    const ranges = [];
+    let cursor = 0;
+
+    while (cursor < text.length) {
+      const start = text.indexOf(left, cursor);
+      if (start === -1) break;
+      if (isEscapedAt(text, start)) {
+        cursor = start + left.length;
+        continue;
+      }
+
+      let end = text.indexOf(right, start + left.length);
+      while (end !== -1 && isEscapedAt(text, end)) {
+        end = text.indexOf(right, end + right.length);
+      }
+      if (end === -1) break;
+
+      if (text.slice(start + left.length, end).trim()) {
+        ranges.push({ start, end: end + right.length });
+      }
+      cursor = end + right.length;
+    }
+
+    return ranges;
+  }
+
+  function isInsideRange(index, ranges) {
+    return ranges.some(range => index >= range.start && index < range.end);
+  }
+
+  function nextSingleDollar(text, fromIndex, excludedRanges) {
+    let cursor = fromIndex;
+    while (cursor < text.length) {
+      const index = text.indexOf("$", cursor);
+      if (index === -1) return -1;
+      const isDouble = text[index - 1] === "$" || text[index + 1] === "$";
+      if (!isDouble && !isEscapedAt(text, index) && !isInsideRange(index, excludedRanges)) {
+        return index;
+      }
+      cursor = index + 1;
+    }
+    return -1;
+  }
+
+  function isLikelyInlineMath(body) {
+    if (!body || body.trim() !== body || /[\r\n]/.test(body)) return false;
+
+    // 纯数字、金额区间和自然语言价格优先按普通文本处理。
+    if (/^[\d\s.,，。￥¥~～–—-]+$/.test(body)) return false;
+    if (/^\d/.test(body) && !/[A-Za-z\\^_{}=+*/()[\]<>|]/.test(body)) return false;
+
+    return /[A-Za-z\\^_{}=+*/()[\]<>|]|[\u0370-\u03ff\u2200-\u22ff]/.test(body);
+  }
+
+  function findInlineDollarMathRanges(text, excludedRanges) {
+    const ranges = [];
+    let cursor = 0;
+
+    while (cursor < text.length) {
+      const start = nextSingleDollar(text, cursor, excludedRanges);
+      if (start === -1) break;
+      const end = nextSingleDollar(text, start + 1, excludedRanges);
+      if (end === -1) break;
+
+      const body = text.slice(start + 1, end);
+      if (isLikelyInlineMath(body)) {
+        ranges.push({ start, end: end + 1 });
+        cursor = end + 1;
+      } else {
+        cursor = start + 1;
+      }
+    }
+
+    return ranges;
+  }
+
+  function findMathRanges(value) {
+    const text = String(value ?? "");
+    const fixedRanges = [
+      ...findDelimitedMathRanges(text, "$$", "$$"),
+      ...findDelimitedMathRanges(text, "\\[", "\\]"),
+      ...findDelimitedMathRanges(text, "\\(", "\\)"),
+    ];
+    return [
+      ...fixedRanges,
+      ...findInlineDollarMathRanges(text, fixedRanges),
+    ].sort((left, right) => left.start - right.start || right.end - left.end);
+  }
+
+  function containsMathSyntax(text) {
+    return findMathRanges(text).length > 0;
+  }
+
+  function escapeMathText(text) {
+    return text.replace(/[&<>]/g, character => ({
+      "&": "&amp;",
+      "<": "&lt;",
+      ">": "&gt;",
+    })[character]);
+  }
+
+  function installMarkedMathPreservation() {
+    if (!window.marked?.use || window.__SUNLAND_AI_MARKED_MATH__) return;
+    window.__SUNLAND_AI_MARKED_MATH__ = true;
+
+    window.marked.use({
+      extensions: [{
+        name: "sunlandMathSource",
+        level: "inline",
+        start(source) {
+          const candidates = ["$$", "\\[", "\\(", "$"].map(delimiter => source.indexOf(delimiter));
+          const starts = candidates.filter(index => index >= 0);
+          return starts.length ? Math.min(...starts) : undefined;
+        },
+        tokenizer(source) {
+          const range = findMathRanges(source).find(candidate => candidate.start === 0);
+          if (!range) return undefined;
+          return {
+            type: "sunlandMathSource",
+            raw: source.slice(0, range.end),
+          };
+        },
+        renderer(token) {
+          return escapeMathText(token.raw);
+        },
+      }],
+    });
+  }
+
+  function unwrapTypingAnimation(element) {
+    const typingRoots = [];
+    if (element.matches?.(".typing")) typingRoots.push(element);
+    element.querySelectorAll?.(".typing").forEach(root => typingRoots.push(root));
+
+    typingRoots.forEach(root => {
+      if (!containsMathSyntax(root.textContent || "")) return;
+      root.querySelectorAll("span").forEach(span => {
+        if (span.closest(MATH_IGNORED_SELECTOR) || !span.parentNode) return;
+        span.parentNode.replaceChild(document.createTextNode(span.textContent || ""), span);
+      });
+      root.classList.remove("typing");
+      root.normalize();
+    });
+  }
+
+  function collectMathTextNodes(element) {
+    const nodes = [];
+    const walker = document.createTreeWalker(element, NodeFilter.SHOW_TEXT, {
+      acceptNode(node) {
+        return node.parentElement?.closest(MATH_IGNORED_SELECTOR)
+          ? NodeFilter.FILTER_REJECT
+          : NodeFilter.FILTER_ACCEPT;
+      },
+    });
+    while (walker.nextNode()) nodes.push(walker.currentNode);
+    return nodes;
+  }
+
+  function protectLiteralDollars(textNode) {
+    const text = textNode.data;
+    if (!text.includes("$")) return;
+
+    const mathRanges = findMathRanges(text);
+    const literalIndexes = [];
+    for (let index = 0; index < text.length; index += 1) {
+      if (text[index] === "$" && !isInsideRange(index, mathRanges)) literalIndexes.push(index);
+    }
+    if (!literalIndexes.length || !textNode.parentNode) return;
+
+    const fragment = document.createDocumentFragment();
+    let cursor = 0;
+    literalIndexes.forEach(index => {
+      if (index > cursor) fragment.appendChild(document.createTextNode(text.slice(cursor, index)));
+      const dollar = document.createElement("span");
+      dollar.className = "math-literal-dollar";
+      dollar.textContent = "$";
+      fragment.appendChild(dollar);
+      cursor = index + 1;
+    });
+    if (cursor < text.length) fragment.appendChild(document.createTextNode(text.slice(cursor)));
+    textNode.parentNode.replaceChild(fragment, textNode);
+  }
+
+  function renderMathInMessage(element) {
+    if (!element) return false;
+
+    try {
+      unwrapTypingAnimation(element);
+      if (typeof window.renderMathInElement !== "function" || !window.katex) return false;
+
+      const textNodes = collectMathTextNodes(element);
+      if (!textNodes.some(node => containsMathSyntax(node.data))) return false;
+
+      textNodes.forEach(protectLiteralDollars);
+      window.renderMathInElement(element, {
+        delimiters: [
+          { left: "$$", right: "$$", display: true },
+          { left: "\\[", right: "\\]", display: true },
+          { left: "\\(", right: "\\)", display: false },
+          { left: "$", right: "$", display: false },
+        ],
+        ignoredTags: ["script", "noscript", "style", "textarea", "pre", "code"],
+        ignoredClasses: ["katex", "math-literal-dollar"],
+        throwOnError: false,
+        trust: false,
+        errorCallback(message, error) {
+          console.warn("数学公式渲染已安全降级", message, error);
+        },
+      });
+      return true;
+    } catch (error) {
+      console.warn("数学公式渲染失败，已保留原始内容", error);
+      return false;
+    }
+  }
+
+  function addMathTarget(target, targets) {
+    if (!target) return;
+    if (target.matches?.(MATH_TARGET_SELECTOR)) {
+      targets.add(target);
+      return;
+    }
+
+    const nestedTargets = target.querySelectorAll?.(MATH_TARGET_SELECTOR);
+    if (nestedTargets?.length) {
+      nestedTargets.forEach(item => targets.add(item));
+      return;
+    }
+
+    const bubble = target.matches?.(".message.ai .bubble")
+      ? target
+      : target.closest?.(".message.ai .bubble");
+    if (bubble && !bubble.querySelector(MATH_TARGET_SELECTOR)) targets.add(bubble);
+  }
+
+  function scheduleMathRender(target) {
+    if (!target) return;
+    const previousTimer = mathRenderTimers.get(target);
+    if (previousTimer) clearTimeout(previousTimer);
+
+    const typingRoot = target.matches?.(".typing") ? target : target.querySelector?.(".typing");
+    if (typingRoot && containsMathSyntax(typingRoot.textContent || "")) {
+      mathRenderTimers.delete(target);
+      renderMathInMessage(target);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      mathRenderTimers.delete(target);
+      if (target.isConnected) renderMathInMessage(target);
+    }, 120);
+    mathRenderTimers.set(target, timer);
+  }
+
+  function queueMathTargetsFromNode(node) {
+    const targets = new Set();
+    const element = node?.nodeType === Node.ELEMENT_NODE ? node : node?.parentElement;
+    if (!element) return;
+
+    addMathTarget(element, targets);
+    element.querySelectorAll?.(".message.ai .bubble").forEach(bubble => addMathTarget(bubble, targets));
+    targets.forEach(scheduleMathRender);
+  }
+
+  function installMathObserver() {
+    const chatInner = document.getElementById("chatInner");
+    if (!chatInner || window.__SUNLAND_AI_MATH_OBSERVER__) return;
+
+    const observer = new MutationObserver(mutations => {
+      mutations.forEach(mutation => {
+        queueMathTargetsFromNode(mutation.target);
+        mutation.addedNodes.forEach(queueMathTargetsFromNode);
+      });
+    });
+    observer.observe(chatInner, { childList: true, subtree: true });
+    window.__SUNLAND_AI_MATH_OBSERVER__ = observer;
+  }
+
+  function loadOptionalScript(src, integrity) {
+    return new Promise(resolve => {
+      const script = document.createElement("script");
+      script.src = src;
+      script.async = true;
+      script.integrity = integrity;
+      script.crossOrigin = "anonymous";
+      script.onload = () => resolve(true);
+      script.onerror = () => resolve(false);
+      document.head.appendChild(script);
+    });
+  }
+
+  async function loadOptionalMathRenderer() {
+    const version = "0.18.4";
+    const baseUrl = `https://cdn.jsdelivr.net/npm/katex@${version}/dist`;
+    const stylesheet = document.createElement("link");
+    stylesheet.rel = "stylesheet";
+    stylesheet.href = `${baseUrl}/katex.min.css`;
+    stylesheet.integrity = "sha384-u1zONI5gPXUx0UKI62c75/zww972y0v2rSK5ZYlVdS6xEuWDeZWUI66v6t1gvlXJ";
+    stylesheet.crossOrigin = "anonymous";
+    document.head.appendChild(stylesheet);
+
+    const katexLoaded = await loadOptionalScript(
+      `${baseUrl}/katex.min.js`,
+      "sha384-ykMNcWQhhTUb0YV9SPpPUFURHZ+tWmubkakGBP+OgNK/UXdO2gtzglWx0Rj9hnO3",
+    );
+    if (!katexLoaded) return;
+
+    const autoRenderLoaded = await loadOptionalScript(
+      `${baseUrl}/contrib/auto-render.min.js`,
+      "sha384-bjyGPfbij8/NDKJhSGZNP/khQVgtHUE5exjm4Ydllo42FwIgYsdLO2lXGmRBf5Mz",
+    );
+    if (autoRenderLoaded) queueMathTargetsFromNode(document.getElementById("chatInner"));
+  }
+
+  window.containsMathSyntax = containsMathSyntax;
+  window.renderMathInMessage = renderMathInMessage;
+
+  installMarkedMathPreservation();
+  installMathObserver();
+
+  if (document.readyState === "complete") {
+    setTimeout(loadOptionalMathRenderer, 0);
+  } else {
+    window.addEventListener("load", loadOptionalMathRenderer, { once: true });
+  }
+})();
+</script>
 
 <script>
 if (window.__SUNLAND_AI_AUTH_OK__) {
