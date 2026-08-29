@@ -344,6 +344,7 @@ setInterval(applyAutoTheme, 10 * 60 * 1000);
 
 const chat = document.getElementById("chat");
 const chatInner = document.getElementById("chatInner");
+const requestErrorsByConversation = new Map();
 function isNearBottom() {
   return chat.scrollHeight - chat.scrollTop - chat.clientHeight < 80;
 }
@@ -767,6 +768,10 @@ import {
   restoreLocalConversationState,
 } from './conversation-recovery.js';
 import { renderSafeMarkdown } from './safe-markdown.js';
+import {
+  clearChatErrorNotices,
+  showChatErrorNotice,
+} from './chat-error-notice.js?v=20260829-1';
 import { appendFurryEventMessage } from './furry-event-cards.js';
 import {
   buildFurryEventModelHistory,
@@ -2543,6 +2548,7 @@ async function deleteConversationForCurrentUser(targetConversation) {
   );
   if (!conversations.length) conversations = nextConversations;
   deletingConversationIds.delete(targetKey);
+  requestErrorsByConversation.delete(targetKey);
 
   const nextConversation = targetIsCurrent
     ? conversations[0]
@@ -2679,6 +2685,11 @@ function loadChat(id) {
       });
       const pendingMessage = chatInner.lastElementChild;
       activeRequest.bubble = pendingMessage?.querySelector(".bubble") ?? null;
+    }
+
+    const pendingError = requestErrorsByConversation.get(conversationIdKey(id));
+    if (pendingError && !activeRequest) {
+      showChatErrorNotice({ target: chatInner, message: pendingError.message });
     }
 
     chatInner.style.opacity = "1";
@@ -3123,6 +3134,23 @@ function addRegenerateButton(requestContext, fullText) {
   };
 }
 
+function renderRequestError(requestContext, message, { preserveResponse = false } = {}) {
+  if (!requestCoordinator.canWrite(requestContext)) return null;
+  const conversationKey = conversationIdKey(requestContext.conversationId);
+  if (conversationKey != null) {
+    requestErrorsByConversation.set(conversationKey, { message });
+  }
+  if (!isRequestVisible(requestContext)) return null;
+  const notice = showChatErrorNotice({
+    target: chatInner,
+    bubble: requestContext.bubble,
+    message,
+    preserveBubble: preserveResponse,
+  });
+  if (notice && isNearBottom()) chat.scrollTop = chat.scrollHeight;
+  return notice;
+}
+
 async function sendSunlandMessage(requestContext) {
   const errorMessage = uiText("Sunland AI · Beta 暂时出了点问题，请稍后重试");
   try {
@@ -3166,8 +3194,7 @@ async function sendSunlandMessage(requestContext) {
   } catch (err) {
     console.error("Sunland AI 出错:", err);
     if (requestCoordinator.canWrite(requestContext)) {
-      appendRequestMessage(requestContext, { role: "assistant", content: errorMessage });
-      renderRequestMarkdown(requestContext, requestContext.bubble, errorMessage);
+      renderRequestError(requestContext, errorMessage);
     }
   }
 }
@@ -3225,11 +3252,7 @@ async function runDeepSeekRequest(requestContext) {
     try {
       if (!localStorage.getItem("token")) {
         const message = uiText("登录状态已失效，请重新登录");
-        appendRequestMessage(
-          requestContext,
-          createAssistantHistoryMessage(message, reasoning),
-        );
-        renderCompletedDeepSeekResponse(requestContext, message, reasoning);
+        renderRequestError(requestContext, message);
         goToLogin();
         return;
       }
@@ -3253,11 +3276,7 @@ async function runDeepSeekRequest(requestContext) {
       if (res.status === 429) {
         if (currentId === requestContext.conversationId) showLimitModal();
         const message = uiText("今天的使用次数已达上限，请稍后再试");
-        appendRequestMessage(
-          requestContext,
-          createAssistantHistoryMessage(message, reasoning),
-        );
-        renderCompletedDeepSeekResponse(requestContext, message, reasoning);
+        renderRequestError(requestContext, message);
         return;
       }
 
@@ -3265,11 +3284,7 @@ async function runDeepSeekRequest(requestContext) {
         const errText = await res.text();
         console.error("API错误:", res.status, errText);
         const message = uiText(`请求失败（${res.status}），请稍后重试`);
-        appendRequestMessage(
-          requestContext,
-          createAssistantHistoryMessage(message, reasoning),
-        );
-        renderCompletedDeepSeekResponse(requestContext, message, reasoning);
+        renderRequestError(requestContext, message);
         return;
       }
 
@@ -3357,6 +3372,9 @@ async function runDeepSeekRequest(requestContext) {
           createAssistantHistoryMessage(fullText, reasoning),
         );
         renderCompletedDeepSeekResponse(requestContext, fullText, reasoning);
+        renderRequestError(requestContext, uiText("请求异常，请稍后重试"), {
+          preserveResponse: true,
+        });
         return;
       }
       if (window._isMobile && attempt < 2 && requestCoordinator.canWrite(requestContext)) {
@@ -3379,11 +3397,7 @@ async function runDeepSeekRequest(requestContext) {
       console.error("真实错误:", err);
       const message = uiText("请求异常，请稍后重试");
       if (requestCoordinator.canWrite(requestContext)) {
-        appendRequestMessage(
-          requestContext,
-          createAssistantHistoryMessage(message, reasoning),
-        );
-        renderCompletedDeepSeekResponse(requestContext, message, reasoning);
+        renderRequestError(requestContext, message);
       }
       return;
     } finally {
@@ -3625,6 +3639,8 @@ async function send() {
     input.value = "";
     input.style.height = "auto";
     if (currentId === requestContext.conversationId) {
+      requestErrorsByConversation.delete(conversationIdKey(requestContext.conversationId));
+      clearChatErrorNotices(chatInner);
       addMessage("", "ai", {
         thinking: true,
         deepThinking: requestContext.deep,
@@ -3642,20 +3658,7 @@ async function send() {
     console.error("发送流程出错:", err);
     const message = uiText("消息处理失败，请稍后重试");
     if (requestCoordinator.canWrite(requestContext)) {
-      if (requestContext.providerId === "deepseek") {
-        appendRequestMessage(
-          requestContext,
-          createAssistantHistoryMessage(message, requestContext.reasoningContent),
-        );
-        renderCompletedDeepSeekResponse(
-          requestContext,
-          message,
-          requestContext.reasoningContent,
-        );
-      } else {
-        appendRequestMessage(requestContext, { role: "assistant", content: message });
-        renderRequestMarkdown(requestContext, requestContext.bubble, message);
-      }
+      renderRequestError(requestContext, message);
     }
   } finally {
     const shouldReload = (

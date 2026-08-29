@@ -9,6 +9,40 @@
   background: linear-gradient(135deg,#22d3ee,#67e8f9);
 }
 
+.message.ai .bubble.chat-error-notice {
+  display: inline-flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: 8px;
+  width: auto;
+  max-width: min(100%, 680px);
+  padding: 11px 13px;
+  border: 1px solid rgba(220, 38, 38, 0.42);
+  border-left: 4px solid #dc2626;
+  border-radius: 10px;
+  background: rgba(254, 226, 226, 0.96);
+  color: #991b1b;
+  box-shadow: 0 8px 24px rgba(153, 27, 27, 0.16);
+  white-space: normal;
+}
+
+.chat-error-icon {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.chat-error-text {
+  min-width: 0;
+}
+
+body.night .message.ai .bubble.chat-error-notice {
+  border-color: rgba(248, 113, 113, 0.58);
+  border-left-color: #f87171;
+  background: rgba(127, 29, 29, 0.42);
+  color: #fecaca;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.24);
+}
+
 @keyframes floatBg {
   0% { background-position: 0% 50%; }
   50% { background-position: 100% 50%; }

@@ -27,6 +27,9 @@
     ];
     const preserve = params.get('preserve') === '1';
     const refreshDelayMs = Math.min(Math.max(Number(params.get('delayMs')) || 0, 0), 5000);
+    const failFirstAiRequest = params.get('failFirstAiRequest') === '1';
+    const replyDelayMs = Math.min(Math.max(Number(params.get('replyDelayMs')) || 0, 0), 5000);
+    let aiRequestCount = 0;
     if (params.get('autoConfirm') === '1') window.confirm = () => true;
     if (!preserve) {
       keys.forEach(key => localStorage.removeItem(key));
@@ -89,6 +92,16 @@
         });
       }
       if (target === 'https://api.sunland.dev') {
+        aiRequestCount += 1;
+        if (failFirstAiRequest && aiRequestCount === 1) {
+          return new Response(JSON.stringify({ error: 'Mock upstream failure' }), {
+            status: 503,
+            headers: { 'Content-Type': 'application/json' },
+          });
+        }
+        if (replyDelayMs) {
+          await new Promise(resolve => setTimeout(resolve, replyDelayMs));
+        }
         const body = JSON.parse(options.body || '{}');
         const encoder = new TextEncoder();
         const stream = new ReadableStream({
