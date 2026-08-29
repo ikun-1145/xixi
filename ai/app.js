@@ -2932,13 +2932,14 @@ async function generateTitleFromAI(userMsg, aiMsg, { model, signal } = {}) {
     if (!session || !localStorage.getItem("token")) return null;
 
     const res = await apiFetch({
-  model: model || currentModel,
-  messages: [
+      model: model || currentModel,
+      stream: false,
+      messages: [
         { role: "system", content: "你是一个标题生成器，只返回标题本身。" },
         { role: "user", content: prompt }
       ]
     }, false, signal);
-if (!res) return null;
+    if (!res || !res.ok) return null;
     const data = await res.json();
     let title = data.choices?.[0]?.message?.content?.trim() || "";
 
@@ -3071,9 +3072,18 @@ function scheduleRequestTitle(requestContext, aiText) {
   const conversationalHistory = requestContext.history.filter(
     message => !isFurryEventCardMessage(message),
   );
-  if (!conversation || conversationalHistory.length !== 3 || conversation._autoTitle) return;
+  const userMessages = conversationalHistory.filter(message => message.role === "user");
+  const assistantMessages = conversationalHistory.filter(message => message.role === "assistant");
+  if (
+    !conversation ||
+    conversation.provider !== "deepseek" ||
+    userMessages.length !== 1 ||
+    assistantMessages.length !== 1 ||
+    conversation._autoTitle
+  ) return;
 
-  const userMsg = conversationalHistory.find(message => message.role === "user")?.content || "";
+  const userMsg = userMessages[0]?.content || "";
+  const firstAssistantMsg = assistantMessages[0]?.content || aiText || "";
   const titleRequestId = requestContext.requestId;
   const conversationId = requestContext.conversationId;
   const userId = requestContext.userId;
@@ -3082,7 +3092,7 @@ function scheduleRequestTitle(requestContext, aiText) {
   saveConversations();
   renderChatList();
 
-  generateTitleFromAI(userMsg, aiText, { model: requestContext.model }).then(title => {
+  generateTitleFromAI(userMsg, firstAssistantMsg, { model: requestContext.model }).then(title => {
     const fallback = userMsg.slice(0, 12).replace(/\n/g, " ");
     const applied = applyRequestTitle({
       conversations,

@@ -23,6 +23,53 @@ const identityAuthority = new IdentityAuthority({
 });
 const identityA = (await identityAuthority.resolve({ token: identityToken })).identity;
 
+function extractTitleGenerator(dependencies) {
+  const start = aiApp.indexOf('async function generateTitleFromAI');
+  const end = aiApp.indexOf('const MODERATION_REFUSAL_TEXT', start);
+  const source = aiApp.slice(start, end);
+  return new Function(
+    'apiFetch',
+    'session',
+    'localStorage',
+    'currentModel',
+    `${source}; return generateTitleFromAI;`,
+  )(
+    dependencies.apiFetch,
+    dependencies.session,
+    dependencies.localStorage,
+    dependencies.currentModel || 'deepseek-v4-flash',
+  );
+}
+
+function extractScheduleTitle({ conversations, generateTitleFromAI }) {
+  const start = aiApp.indexOf('function scheduleRequestTitle');
+  const end = aiApp.indexOf('function addRegenerateButton', start);
+  const source = aiApp.slice(start, end);
+  const requestCoordinator = {
+    target(requestContext) {
+      return conversations.find(item => item.id === requestContext.conversationId) || null;
+    },
+  };
+  return new Function(
+    'requestCoordinator',
+    'isFurryEventCardMessage',
+    'applyRequestTitle',
+    'saveConversations',
+    'renderChatList',
+    'generateTitleFromAI',
+    'conversations',
+    `${source}; return scheduleRequestTitle;`,
+  )(
+    requestCoordinator,
+    message => message?.type === 'furry-event-card',
+    applyRequestTitle,
+    () => {},
+    () => {},
+    generateTitleFromAI,
+    conversations,
+  );
+}
+
 function conversation(id, provider = 'deepseek') {
   return {
     id,
@@ -192,6 +239,117 @@ test('titles apply only to the captured conversation and request token', () => {
 
   assert.equal(first.title, 'right');
   assert.equal(second.title, '新对话');
+
+  assert.equal(applyRequestTitle({
+    conversations,
+    conversationId: 61,
+    userId: 'user-a',
+    requestId: 'request-60',
+    title: 'wrong conversation',
+  }), false);
+  assert.equal(applyRequestTitle({
+    conversations,
+    conversationId: 60,
+    userId: 'user-b',
+    requestId: 'request-60',
+    title: 'wrong user',
+  }), false);
+
+  const removedConversations = conversations.filter(item => item.id !== 60);
+  assert.equal(applyRequestTitle({
+    conversations: removedConversations,
+    conversationId: 60,
+    userId: 'user-a',
+    requestId: 'request-60',
+    title: 'deleted conversation',
+  }), false);
+});
+
+test('AI title generation requests a non-streaming JSON response', async () => {
+  const requests = [];
+  const generateTitleFromAI = extractTitleGenerator({
+    apiFetch: async body => {
+      requests.push(body);
+      return new Response(JSON.stringify({
+        choices: [{ message: { content: '旅行计划' } }],
+      }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    },
+    session: { userId: 'user-a' },
+    localStorage: { getItem: key => key === 'token' ? identityToken : null },
+  });
+
+  assert.equal(await generateTitleFromAI('下周去哪里旅行', '可以考虑去海边'), '旅行计划');
+  assert.equal(requests.length, 1);
+  assert.equal(requests[0].stream, false);
+});
+
+test('AI title generation runs only after the first user and assistant messages', async () => {
+  const targetConversation = conversation(62);
+  const conversations = [targetConversation];
+  let titleCalls = 0;
+  const scheduleRequestTitle = extractScheduleTitle({
+    conversations,
+    generateTitleFromAI: async () => {
+      titleCalls += 1;
+      return '首轮总结';
+    },
+  });
+  const requestContext = {
+    requestId: 'request-62',
+    conversationId: 62,
+    userId: 'user-a',
+    history: [
+      system,
+      { role: 'user', content: '第一个问题' },
+      { type: 'furry-event-card' },
+      { role: 'assistant', content: '第一个回答' },
+    ],
+  };
+
+  scheduleRequestTitle(requestContext, '不应覆盖首条回答');
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(titleCalls, 1);
+  assert.equal(targetConversation.title, '首轮总结');
+
+  requestContext.history.push(
+    { role: 'user', content: '第二个问题' },
+    { role: 'assistant', content: '第二个回答' },
+  );
+  scheduleRequestTitle(requestContext, '第二轮回答');
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(titleCalls, 1);
+  assert.equal(targetConversation.title, '首轮总结');
+});
+
+test('AI title generation falls back to the first user message when it fails', async () => {
+  const targetConversation = conversation(63);
+  const conversations = [targetConversation];
+  const scheduleRequestTitle = extractScheduleTitle({
+    conversations,
+    generateTitleFromAI: async () => null,
+  });
+
+  scheduleRequestTitle({
+    requestId: 'request-63',
+    conversationId: 63,
+    userId: 'user-a',
+    history: [
+      system,
+      { role: 'user', content: '标题生成失败时保留这个回退' },
+      { role: 'assistant', content: '回答' },
+    ],
+  }, '回答');
+  await Promise.resolve();
+  await Promise.resolve();
+
+  assert.equal(targetConversation.title, '标题生成失败时保留这个回');
 });
 
 test('error messages persist only in the request target', () => {
