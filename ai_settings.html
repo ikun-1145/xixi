@@ -111,6 +111,7 @@
       padding: 28px 0 20px;
       animation: fadeUp .4s ease both;
     }
+    html.dark,
     body.dark {
   background: var(--bg-dark);
   color: var(--text-dark);
@@ -1710,7 +1711,9 @@ async function editNickname() {
       theme = (hour >= 18 || hour < 6) ? "dark" : "light";
     }
 
-    document.body.classList.toggle("dark", theme === "dark");
+    const isDark = theme === "dark";
+    document.documentElement.classList.toggle("dark", isDark);
+    document.body.classList.toggle("dark", isDark);
   }
 
   // 初始执行
