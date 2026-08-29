@@ -20,8 +20,12 @@ button {
   font-size: var(--btn-font);
 }
   #modelSelector::before {
-    content:"⚡";
-    font-size:11px;
+    content:"";
+    width:11px;
+    height:11px;
+    background-color:currentColor;
+    -webkit-mask:url("../p/icons/zap.svg") center / contain no-repeat;
+    mask:url("../p/icons/zap.svg") center / contain no-repeat;
     opacity:0.8;
   }
 
@@ -46,6 +50,7 @@ button {
   }
   #modelSelector.locked::before {
     content:"";
+    display:none;
   }
   #modelSelector.locked:hover {
     box-shadow: none;

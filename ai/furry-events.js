@@ -578,7 +578,7 @@ function selectReferencedEvent(text, events) {
 export function answerFurryEventQuestion(text, cardMessage) {
   const events = normalizeFurryEvents(cardMessage?.furryEvents);
   if (cardMessage?.furryError) {
-    return "这次兽聚数据暂时没有成功取回来，先别急着按空结果做计划，稍后再查一次会更稳妥 🐾";
+    return "这次兽聚数据暂时没有成功取回来，先别急着按空结果做计划，稍后再查一次会更稳妥。";
   }
   if (!events.length) {
     return `我按“${queryDescription(cardMessage?.furryQuery)}”查过了，目前没有符合条件的兽聚活动。你可以换个城市或月份，我再继续找找。`;
@@ -590,7 +590,7 @@ export function answerFurryEventQuestion(text, cardMessage) {
   const date = formatFurryEventDateRange(event);
 
   if (/(多少|几场|几个)/u.test(normalized)) {
-    return `这次一共查到 ${events.length} 场，完整信息都放在上面的卡片里啦 🐾`;
+    return `这次一共查到 ${events.length} 场，完整信息都放在上面的卡片里啦。`;
   }
   if (/(哪里|在哪|地点|地址|城市)/u.test(normalized)) {
     return `${event.name}在${location}，具体位置和详情链接可以直接点上面的卡片查看。`;

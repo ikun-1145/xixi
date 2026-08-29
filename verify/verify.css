@@ -88,6 +88,7 @@ button { -webkit-tap-highlight-color: transparent; }
 
 .submit-row { display: flex; align-items: center; justify-content: space-between; gap: 20px; margin-top: 26px; padding-top: 20px; border-top: 1px solid var(--border); }
 .auth-hint { max-width: 560px; margin: 0; color: var(--text-3); font-size: var(--text-xs); }
+.auth-hint.is-pro { display: inline-flex; align-items: center; gap: 6px; }
 .verify-button { min-width: 142px; }
 .verify-button[disabled] { opacity: .6; cursor: wait; transform: none; }
 .button-spinner { display: none; width: 17px; height: 17px; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .8s linear infinite; }

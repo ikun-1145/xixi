@@ -6,6 +6,7 @@
   <script defer src="p/js/site-i18n-extra.js?v=20260808-2"></script>
   <script defer src="p/js/site-i18n.js?v=20260808-2"></script>
   <title>设置 - Sunland AI · Beta</title>
+  <link rel="stylesheet" href="p/css/icons.css?v=20260829-1">
   <style>
     :root {
       --accent: #22d3ee;
@@ -172,7 +173,7 @@ body.dark .usage-hint {
       box-shadow: 0 0 0 5px rgba(34,211,238,0.18), 0 12px 30px rgba(34,211,238,0.26);
     }
     .avatar-ring::after {
-      content: "📷";
+      content: "";
       position: absolute;
       right: -2px;
       bottom: -2px;
@@ -183,10 +184,23 @@ body.dark .usage-hint {
       align-items: center;
       justify-content: center;
       background: rgba(15,23,42,0.9);
+      box-shadow: 0 4px 12px rgba(15,23,42,0.18);
       color: #fff;
       font-size: 12px;
       border: 2px solid #fff;
-      box-shadow: 0 4px 12px rgba(15,23,42,0.18);
+    }
+    .avatar-ring::before {
+      content: "";
+      position: absolute;
+      right: 4px;
+      bottom: 4px;
+      z-index: 1;
+      width: 12px;
+      height: 12px;
+      background-color: #fff;
+      -webkit-mask: url("p/icons/camera.svg") center / contain no-repeat;
+      mask: url("p/icons/camera.svg") center / contain no-repeat;
+      pointer-events: none;
     }
     .avatar-ring.uploading::before {
       content: "";
@@ -233,6 +247,9 @@ body.dark .usage-hint {
     }
 
     .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
       font-size: 12px;
       padding: 3px 10px;
       border-radius: 20px;
@@ -304,6 +321,7 @@ body.dark .usage-hint {
       font-size: 15px;
       flex-shrink: 0;
     }
+    .row-icon .ui-svg-icon { width: 17px; height: 17px; }
 
     .row-label {
       font-size: 14px;
@@ -446,6 +464,7 @@ body.dark .usage-hint {
       font-size: 20px;
       box-shadow: 0 4px 14px rgba(167,139,250,0.35);
     }
+    .pro-gem .ui-svg-icon { width: 22px; height: 22px; color: #fff; }
 
     .pro-title { font-size: 16px; font-weight: 700; }
     .pro-sub { font-size: 12px; color: var(--subtext); margin-top: 1px; }
@@ -507,7 +526,9 @@ body.dark .usage-hint {
       padding: 14px 16px;
     }
     .activated-icon {
-      font-size: 22px;
+      width: 22px;
+      height: 22px;
+      color: var(--accent);
     }
     .activated-text { font-size: 14px; font-weight: 600; }
     .activated-sub { font-size: 12px; color: var(--subtext); }
@@ -962,7 +983,7 @@ body.dark .usage-hint {
     <!-- 账号 -->
      <div class="row" onclick="editNickname()" style="cursor:pointer;">
   <div class="row-left">
-    <div class="row-icon" style="background:rgba(34,211,238,0.1)">👤</div>
+    <div class="row-icon" style="background:rgba(34,211,238,0.1)"><span class="ui-svg-icon icon-user" aria-hidden="true"></span></div>
     <div class="row-label">昵称</div>
   </div>
   <div class="row-value" id="userName">--</div>
@@ -971,14 +992,14 @@ body.dark .usage-hint {
     <div class="card">
       <div class="row">
         <div class="row-left">
-          <div class="row-icon" style="background:rgba(34,211,238,0.1)">✉️</div>
+          <div class="row-icon" style="background:rgba(34,211,238,0.1)"><span class="ui-svg-icon icon-mail" aria-hidden="true"></span></div>
           <div class="row-label">邮箱</div>
         </div>
         <div class="row-value" id="userEmail">--</div>
       </div>
       <div class="row">
         <div class="row-left">
-          <div class="row-icon" style="background:rgba(99,102,241,0.1)">🪪</div>
+          <div class="row-icon" style="background:rgba(99,102,241,0.1)"><span class="ui-svg-icon icon-id-card" aria-hidden="true"></span></div>
           <div class="row-label">用户 ID<small>你的唯一标识</small></div>
         </div>
         <div class="row-value" id="userId" style="font-size:11px;font-family:monospace;">--</div>
@@ -991,7 +1012,7 @@ body.dark .usage-hint {
       <div class="usage-wrap">
         <div class="usage-top">
           <div class="usage-left">
-            <div class="row-icon" style="background:rgba(34,211,238,0.1)">📊</div>
+            <div class="row-icon" style="background:rgba(34,211,238,0.1)"><span class="ui-svg-icon icon-chart" aria-hidden="true"></span></div>
             <span class="usage-label">剩余次数</span>
           </div>
           <span class="usage-count" id="usageCount">--</span>
@@ -1008,7 +1029,7 @@ body.dark .usage-hint {
     <div class="card pro-card" id="proCard">
       <div class="pro-inner">
         <div class="pro-header">
-          <div class="pro-gem">💎</div>
+          <div class="pro-gem"><span class="ui-svg-icon icon-gem" aria-hidden="true"></span></div>
           <div>
             <div class="pro-title">霜蓝 Pro</div>
             <div class="pro-sub">一次付费，永久解锁</div>
@@ -1028,7 +1049,7 @@ body.dark .usage-hint {
     <div class="card">
       <div class="row">
         <div class="row-left">
-          <div class="row-icon" style="background:rgba(34,211,238,0.1)">👤</div>
+          <div class="row-icon" style="background:rgba(34,211,238,0.1)"><span class="ui-svg-icon icon-user" aria-hidden="true"></span></div>
           <div class="row-label">
             姓名记忆
             <small>只让 Sunland AI 忘记你的名字</small>
@@ -1038,7 +1059,7 @@ body.dark .usage-hint {
       </div>
       <div class="row">
         <div class="row-left">
-          <div class="row-icon" style="background:rgba(99,102,241,0.1)">🧠</div>
+          <div class="row-icon" style="background:rgba(99,102,241,0.1)"><span class="ui-svg-icon icon-brain" aria-hidden="true"></span></div>
           <div class="row-label">
             用户教学知识
             <small>清除你主动教给 Sunland AI 的知识</small>
@@ -1509,7 +1530,7 @@ async function editNickname() {
     function renderActivated() {
       // 头像徽章
       const badge = document.getElementById("heroBadge");
-      badge.innerText = "💎 Pro 会员";
+      badge.innerHTML = '<span class="ui-svg-icon icon-gem" aria-hidden="true"></span>Pro 会员';
       badge.className = "hero-badge pro";
 
       // 使用情况
@@ -1523,7 +1544,7 @@ async function editNickname() {
       proCard.classList.add("activated");
       proCard.innerHTML = `
         <div class="activated-banner">
-          <div class="activated-icon">🎉</div>
+          <span class="activated-icon ui-svg-icon icon-party" aria-hidden="true"></span>
           <div>
             <div class="activated-text">已是 Pro 会员</div>
             <div class="activated-sub">深度思考与无限对话已解锁</div>

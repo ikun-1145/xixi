@@ -816,6 +816,26 @@ body:not(.night) #loadingBar img {
   font-weight: 600;
 }
 
+.furry-event-loading-label,
+.furry-event-empty,
+.furry-event-meta span,
+.furry-event-weather,
+.furry-event-header > span:first-child {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+}
+
+.furry-event-results .ui-svg-icon {
+  width: 1em;
+  height: 1em;
+}
+
+.furry-event-cover-link.is-placeholder .ui-svg-icon {
+  width: 30px;
+  height: 30px;
+}
+
 .furry-event-count {
   color: #94a3b8;
   font-size: 11px;

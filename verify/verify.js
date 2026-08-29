@@ -25,7 +25,18 @@ let usageState = null;
 function translate(key) { return t(key, getLocale()); }
 
 function renderUsageHint() {
-  elements.usageHint.textContent = translate(usageState?.unlimited ? "proAuthHint" : "authHint");
+  const unlimited = Boolean(usageState?.unlimited);
+  const usageKey = usageState?.unlimited ? "proAuthHint" : "authHint";
+  const text = translate(usageKey);
+  elements.usageHint.classList.toggle("is-pro", unlimited);
+  if (!unlimited) {
+    elements.usageHint.textContent = text;
+    return;
+  }
+  const icon = document.createElement("span");
+  icon.className = "ui-svg-icon icon-gem";
+  icon.setAttribute("aria-hidden", "true");
+  elements.usageHint.replaceChildren(icon, document.createTextNode(text));
 }
 
 function applyUsage(usage) {

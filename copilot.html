@@ -21,6 +21,7 @@
 <link rel="icon" type="image/png" href="/p/ailogo.png">
 <link rel="stylesheet" href="p/css/tokens.css">
 <link rel="stylesheet" href="p/css/base.css">
+<link rel="stylesheet" href="p/css/icons.css?v=20260829-1">
 <link rel="stylesheet" href="p/css/copilot.css?v=20260808">
 
 <!-- 主题（深/浅色）：按当前时间自动判定，在首屏渲染前设定，避免闪烁 -->
@@ -129,7 +130,7 @@ child-src *;
       <span>回复语气</span>
     </h2>
     <div class="tone-display">
-      <span class="tone-emoji" id="toneEmoji">🧐</span>
+      <span class="tone-emoji" id="toneEmoji"><span class="tone-glyph ui-svg-icon icon-scale" id="toneEmojiIcon" aria-hidden="true"></span></span>
       <div class="tone-meta">
         <span class="tone-name" id="toneName">理性</span>
         <span class="tone-desc" id="toneDesc">就事论事，冷静讲道理</span>
@@ -142,7 +143,7 @@ child-src *;
         <div class="cc-track"></div>
         <div class="cc-veil" id="ccVeil"></div>
         <div class="cc-ticks" id="ccTicks"></div>
-        <div class="cc-thumb" id="ccThumb">🧐</div>
+        <div class="cc-thumb" id="ccThumb"><span class="tone-thumb-glyph ui-svg-icon icon-scale" id="ccThumbIcon" aria-hidden="true"></span></div>
       </div>
     </div>
     <div class="cc-scale"><span>弱 · 温和</span><span>火力 · 强</span></div>
@@ -323,6 +324,7 @@ const preview = $('preview');
 const previewImg = $('previewImg');
 const removeImg = $('removeImg');
 const toneEmoji = $('toneEmoji');
+const toneEmojiIcon = $('toneEmojiIcon');
 const toneName = $('toneName');
 const toneDesc = $('toneDesc');
 const toneModel = $('toneModel');
@@ -331,6 +333,7 @@ const ccInner = $('ccInner');
 const ccVeil = $('ccVeil');
 const ccTicks = $('ccTicks');
 const ccThumb = $('ccThumb');
+const ccThumbIcon = $('ccThumbIcon');
 const ccLabels = $('ccLabels');
 const generateBtn = $('generateBtn');
 const genLabel = $('genLabel');
@@ -345,13 +348,13 @@ let busy = false;
 
 /* ---------- 语气滑块（7 档可拖动，弱 → 强）---------- */
 const TONES = [
-  { key:'reconcile', emoji:'🤝', label:'和解',     desc:'主动示好，化解矛盾',     model:'sonnet' },
-  { key:'polite',    emoji:'😊', label:'礼貌',     desc:'客气得体，给彼此留面子', model:'sonnet' },
-  { key:'rational',  emoji:'🧐', label:'理性',     desc:'就事论事，冷静讲道理',   model:'sonnet' },
-  { key:'humor',     emoji:'😂', label:'幽默',     desc:'轻松调侃，一笑而过',     model:'grok' },
-  { key:'sarcasm',   emoji:'😏', label:'阴阳',     desc:'绵里藏针，阴阳怪气',     model:'sonnet' },
-  { key:'savage',    emoji:'😈', label:'毒舌',     desc:'犀利反击，一针见血',     model:'grok' },
-  { key:'fullfire',  emoji:'💀', label:'火力全开', desc:'火力拉满，绝不退让',     model:'grok' },
+  { key:'reconcile', icon:'handshake', label:'和解',     desc:'主动示好，化解矛盾',     model:'sonnet' },
+  { key:'polite',    icon:'hand-heart', label:'礼貌',     desc:'客气得体，给彼此留面子', model:'sonnet' },
+  { key:'rational',  icon:'scale',     label:'理性',     desc:'就事论事，冷静讲道理',   model:'sonnet' },
+  { key:'humor',     icon:'party',     label:'幽默',     desc:'轻松调侃，一笑而过',     model:'grok' },
+  { key:'sarcasm',   icon:'message',   label:'阴阳',     desc:'绵里藏针，阴阳怪气',     model:'sonnet' },
+  { key:'savage',    icon:'sword',     label:'毒舌',     desc:'犀利反击，一针见血',     model:'grok' },
+  { key:'fullfire',  icon:'skull',     label:'火力全开', desc:'火力拉满，绝不退让',     model:'grok' },
 ];
 const MODEL_LABELS = { sonnet: 'Claude', grok: 'Grok' };
 const TONE_MAX = TONES.length - 1;
@@ -375,7 +378,10 @@ function buildSlider(){
     lb.style.left = p;
     lb.title = t.label;
     lb.setAttribute('aria-label', t.label);
-    lb.textContent = t.emoji;
+    const icon = document.createElement('span');
+    icon.className = `ui-svg-icon icon-${t.icon}`;
+    icon.setAttribute('aria-hidden', 'true');
+    lb.appendChild(icon);
     lb.addEventListener('click', () => setTone(i));
     ccLabels.appendChild(lb);
   });
@@ -388,9 +394,9 @@ function setTone(i){
   const t = TONES[i];
   const p = tonePct(i) + '%';
   ccThumb.style.left = p;
-  ccThumb.textContent = t.emoji;
+  ccThumbIcon.className = `tone-thumb-glyph ui-svg-icon icon-${t.icon}`;
   ccVeil.style.left = p;
-  toneEmoji.textContent = t.emoji;
+  toneEmojiIcon.className = `tone-glyph ui-svg-icon icon-${t.icon}`;
   toneName.textContent = t.label;
   toneDesc.textContent = t.desc;
   toneModel.textContent = '当前调用模型：' + (MODEL_LABELS[t.model] || t.model);
@@ -620,7 +626,10 @@ function buildStars(level){
   for(let i = 0; i < 5; i++){
     const s = document.createElement('span');
     if(i >= level) s.className = 'off';
-    s.textContent = i < level ? '★' : '☆';
+    const starIcon = document.createElement('span');
+    starIcon.className = 'ui-svg-icon icon-star';
+    starIcon.setAttribute('aria-hidden', 'true');
+    s.appendChild(starIcon);
     wrap.appendChild(s);
   }
   return wrap;

@@ -315,7 +315,7 @@
 
     function setupCopyButton() {
       const btn = document.getElementById("copyBtn");
-      const email = document.getElementById("emailText").textContent.replace("📧 ", "");
+      const email = document.getElementById("emailText").textContent.trim();
 
       btn.addEventListener("click", async () => {
         try {

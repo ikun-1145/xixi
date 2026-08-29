@@ -8,6 +8,7 @@
   <meta name="theme-color" content="#13151e" media="(prefers-color-scheme: dark)">
   <link rel="stylesheet" href="p/css/tokens.css">
   <link rel="stylesheet" href="p/css/base.css">
+  <link rel="stylesheet" href="p/css/icons.css?v=20260829-1">
   <style>
     body {
       min-height: 100vh;
@@ -21,6 +22,9 @@
       font-size: var(--text-sm);
       color: var(--text-2);
       letter-spacing: 0.02em;
+      display: inline-flex;
+      align-items: center;
+      gap: var(--space-2);
     }
   </style>
 </head>
@@ -42,16 +46,27 @@ console.log("🚀 callback start");
 window.addEventListener("DOMContentLoaded", async () => {
   const app = document.getElementById("app") || { innerText: "" };
 
+  function setStatus(iconName, text) {
+    if (typeof app.replaceChildren !== "function") {
+      app.innerText = text;
+      return;
+    }
+    const icon = document.createElement("span");
+    icon.className = `ui-svg-icon icon-${iconName}`;
+    icon.setAttribute("aria-hidden", "true");
+    app.replaceChildren(icon, document.createTextNode(text));
+  }
+
   try {
     const code = new URLSearchParams(location.search).get("code");
     console.log("🔑 code:", code);
 
     if (!code) {
-      app.innerText = "❌ 没有 code";
+      setStatus("error", "没有 code");
       return;
     }
 
-    app.innerText = "🔐 登录中...";
+    setStatus("lock", "登录中...");
 
     console.log("🚀 准备请求 Worker");
     const res = await fetch("/vds-login", {
@@ -70,19 +85,19 @@ window.addEventListener("DOMContentLoaded", async () => {
     try {
       data = JSON.parse(text);
     } catch {
-      app.innerText = "❌ 返回异常";
+      setStatus("error", "返回异常");
       return;
     }
 
     if (!data.supabase_token) {
-      app.innerText = "❌ 登录失败：" + (data.error || "未知错误");
+      setStatus("error", "登录失败：" + (data.error || "未知错误"));
       return;
     }
 
     localStorage.setItem("token", data.supabase_token);
     localStorage.setItem("user", JSON.stringify(data.user));
 
-    app.innerText = "✅ 登录成功，跳转中...";
+    setStatus("check", "登录成功，跳转中...");
 
     setTimeout(() => {
       location.href = "/ai.html";
@@ -90,7 +105,7 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   } catch (err) {
     console.error(err);
-    app.innerText = "❌ 错误：" + err.message;
+    setStatus("error", "错误：" + err.message);
   }
 });
 

@@ -372,8 +372,13 @@ textarea#comment::placeholder {
   border-radius: var(--r-md);
   background: var(--brand-soft) !important;
   box-shadow: none !important;
-  font-size: 28px;
   line-height: 1;
+}
+
+.tone-glyph {
+  width: 27px;
+  height: 27px;
+  color: var(--brand-strong);
 }
 
 .tone-meta {
@@ -465,10 +470,15 @@ textarea#comment::placeholder {
   border: 2px solid var(--brand) !important;
   border-radius: 50%;
   box-shadow: var(--shadow-sm) !important;
-  font-size: 17px;
   line-height: 1;
   transition: left var(--dur-base) var(--ease),
               transform var(--dur-fast) var(--ease);
+}
+
+.tone-thumb-glyph,
+.cc-label .ui-svg-icon {
+  width: 17px;
+  height: 17px;
 }
 
 .cc-slider.dragging .cc-thumb {

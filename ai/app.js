@@ -51,6 +51,22 @@ navigator.serviceWorker.addEventListener("controllerchange", () => {
 }
 
 // ===== 更新提示UI =====
+function createUiIcon(name, className = "") {
+  const icon = document.createElement("span");
+  icon.className = `ui-svg-icon icon-${name}${className ? ` ${className}` : ""}`;
+  icon.setAttribute("aria-hidden", "true");
+  return icon;
+}
+
+function renderProUsageHint() {
+  const hint = document.getElementById("usageHint");
+  if (!hint) return;
+  hint.replaceChildren(
+    createUiIcon("gem"),
+    document.createTextNode(uiText("Pro · 无限使用")),
+  );
+}
+
 function showUpdateTip() {
   const box = document.createElement("div");
 
@@ -70,7 +86,7 @@ function showUpdateTip() {
       cursor:pointer;
       animation: fadeInBubble .25s ease;
     ">
-      🔄 正在更新…
+      <span class="ui-svg-icon icon-refresh" aria-hidden="true" style="margin-right:6px;"></span>正在更新…
     </div>
   `;
 
@@ -476,7 +492,7 @@ function startActivationPolling() {
     await checkActivation();
 
     if (isActivated) {
-      showToast("支付成功 🎉");
+      showToast("支付成功");
 
       // ⭐ 自动关闭支付弹窗
       const payModal = document.getElementById("payModal");
@@ -517,7 +533,7 @@ function showError(title, extra = {}) {
       box-shadow:0 20px 60px rgba(0,0,0,0.3);
       font-size:13px;
     ">
-      <div data-error-title style="font-weight:600;margin-bottom:6px;">
+      <div data-error-title style="font-weight:600;margin-bottom:6px;display:flex;align-items:center;gap:6px;">
       </div>
 
       <div style="color:#666;font-size:12px;margin-bottom:10px;">
@@ -540,7 +556,10 @@ function showError(title, extra = {}) {
     </div>
   `;
 
-  box.querySelector("[data-error-title]").textContent = `❌ ${title}`;
+  box.querySelector("[data-error-title]").replaceChildren(
+    createUiIcon("error"),
+    document.createTextNode(title),
+  );
   box.querySelector("[data-error-detail]").value = detail;
 
   document.body.appendChild(box);
@@ -679,7 +698,7 @@ item.style.borderRadius = "12px";
     img.style.objectFit = "cover";
     item.appendChild(img);
   } else {
-    item.innerText = "📄";
+    item.appendChild(createUiIcon("file-text"));
     item.style.display = "flex";
     item.style.alignItems = "center";
     item.style.justifyContent = "center";
@@ -1000,7 +1019,10 @@ function renderChatList() {
     const empty = document.createElement("div");
     const emptyLabel = document.createElement("div");
     emptyLabel.style.opacity = "0.7";
-    emptyLabel.textContent = `🔍 ${uiText("没找到相关对话")}`;
+    emptyLabel.style.display = "inline-flex";
+    emptyLabel.style.alignItems = "center";
+    emptyLabel.style.gap = "5px";
+    emptyLabel.append(createUiIcon("search"), document.createTextNode(uiText("没找到相关对话")));
     empty.appendChild(emptyLabel);
     empty.style.color = "#999";
     empty.style.fontSize = "12px";
@@ -1157,8 +1179,7 @@ async function loadUserProfileFromCloud() {
     // ⭐ 同步 Pro 状态（避免额外请求）
     if (data?.pro) {
       isActivated = true;
-      const hintEl = document.getElementById("usageHint");
-      if (hintEl) hintEl.innerText = "💎 Pro · 无限使用";
+      renderProUsageHint();
       updateDeepButton();
     }
 
@@ -1199,7 +1220,7 @@ function updateProviderCapabilityUI() {
   };
 
   const deepDisabledMessage = "Sunland AI · Beta 暂不支持深度思考";
-  const uploadDisabledMessage = "Sunland AI · Beta 暂不支持图片上传";
+  const uploadDisabledMessage = "Sunland AI · Beta 暂不支持文件上传";
 
   deepBtn.disabled = isSunland;
   deepBtn.setAttribute("aria-disabled", String(isSunland));
@@ -1589,8 +1610,7 @@ async function checkActivation() {
 
   // ⭐ 已激活直接显示∞
   if (isActivated) {
-    const hintEl = document.getElementById("usageHint");
-    if (hintEl) hintEl.innerText = "💎 Pro · 无限使用";
+    renderProUsageHint();
     updateDeepButton();
     return;
   }
@@ -1903,7 +1923,7 @@ function showLimitModal() {
   modal.innerHTML = `
     <div class="modal-content">
       <span class="close">×</span>
-      <h2 style="margin-bottom:0.5rem;font-size:1.2rem;">今日次数已用完 😢</h2>
+      <h2 style="margin-bottom:0.5rem;font-size:1.2rem;display:flex;align-items:center;gap:7px;"><span class="ui-svg-icon icon-alert" aria-hidden="true"></span>今日次数已用完</h2>
       <p style="color:#666;font-size:13px;margin-bottom:1.2rem;">
         每天限免 20 次，明天自动重置。<br>
         支付 10 元可永久解锁无限使用。
@@ -2018,7 +2038,7 @@ function showActivationModal() {
         font-size:14px;
         box-shadow:0 10px 25px rgba(34,211,238,0.35);
       ">
-        💎 扫码支付（推荐）
+        <span class="ui-svg-icon icon-gem" aria-hidden="true" style="margin-right:6px;"></span>扫码支付（推荐）
       </button>
     </div>
   `;
@@ -3475,7 +3495,7 @@ async function send() {
 
   const lastSentAt = lastRealSendByConversation.get(sendingConversation.id) || 0;
   if (Date.now() - lastSentAt < 800) {
-    showToast("操作太快了，慢一点 😅");
+    showToast("操作太快了，慢一点");
     hideGlobalLoading();
     return;
   }
@@ -3772,7 +3792,7 @@ if (deepBtn) {
     deepMode = !deepMode;
     updateDeepButton();
 
-    showToast(deepMode ? "深度思考已开启 🧠" : "深度思考已关闭");
+    showToast(deepMode ? "深度思考已开启" : "深度思考已关闭");
   };
 }
 // ===== 从设置页跳转自动打开升级 =====

@@ -473,10 +473,10 @@
     "ko": "대학 내부 시험",
     "es": "Examen interno de la universidad"
   },
-  "目标录取 🎯": {
-    "zh-Hant": "目標錄取 🎯",
-    "ko": "대상 입학  ",
-    "es": "Entrada objetivo 🎯"
+  "目标录取": {
+    "zh-Hant": "目標錄取",
+    "ko": "대상 입학",
+    "es": "Entrada objetivo"
   },
   "阶段性目标达成。": {
     "zh-Hant": "階段性目標達成。",
@@ -668,9 +668,9 @@
     "ko": "정품인증 그것은 지불 후에 효력을 1–2 분 가지고 가야 합니다; 나중에 새로 고침.",
     "es": "La activación está procesando. Debe tomar efecto 1–2 minutos después del pago; refresque más tarde."
   },
-  "支付成功 🎉": {
-    "zh-Hant": "支付成功 🎉",
-    "ko": "결제 성공적인 🎉",
+  "支付成功": {
+    "zh-Hant": "支付成功",
+    "ko": "결제 성공적인",
     "es": "Pago exitoso"
   },
   "请复制错误信息发送给开发者": {
@@ -688,10 +688,10 @@
     "ko": "채팅 삭제",
     "es": "Eliminar el chat"
   },
-  "💎 Pro · 无限使用": {
-    "zh-Hant": "💎 Pro · 無限使用",
+  "Pro · 无限使用": {
+    "zh-Hant": "Pro · 無限使用",
     "ko": "· 무제한",
-    "es": "💎 Pro · Unlimited"
+    "es": "Pro · Unlimited"
   },
   "Sunland AI · Beta 暂不支持深度思考": {
     "zh-Hant": "Sunland AI · Beta 暫不支援深度思考",
@@ -743,10 +743,10 @@
     "ko": "플래시로 계속",
     "es": "Continuar con Flash"
   },
-  "今日次数已用完 😢": {
-    "zh-Hant": "今日次數已用完 😢",
+  "今日次数已用完": {
+    "zh-Hant": "今日次數已用完",
     "ko": "오늘의 무료 메시지는 Δ을 사용",
-    "es": "Los mensajes gratis de hoy se utilizan 😢"
+    "es": "Los mensajes gratis de hoy se utilizan"
   },
   "每天限免 20 次，明天自动重置。 支付 10 元可永久解锁无限使用。": {
     "zh-Hant": "每天限免 20 次，明天自動重置。 支付 10 元可永久解鎖無限使用。",
@@ -903,10 +903,10 @@
     "ko": "오늘 사용 제한에 도달했습니다. 나중에 다시 시도하십시오.",
     "es": "Has alcanzado el límite de uso de hoy. Por favor, intente de nuevo más tarde."
   },
-  "🧠 思考过程": {
-    "zh-Hant": "🧠 思考過程",
+  "思考过程": {
+    "zh-Hant": "思考過程",
     "ko": "Re",
-    "es": "🧠 Motivo"
+    "es": "Motivo"
   },
   "请求异常，请稍后重试": {
     "zh-Hant": "請求異常，請稍後重試",
@@ -928,8 +928,8 @@
     "ko": "그것은 메시지가 비어있을 것 같습니다.",
     "es": "Parece que el mensaje está vacío, dime algo."
   },
-  "操作太快了，慢一点 😅": {
-    "zh-Hant": "操作太快了，慢一點 😅",
+  "操作太快了，慢一点": {
+    "zh-Hant": "操作太快了，慢一點",
     "ko": "조금 너무 빠르면 느려지다.",
     "es": "Un poco demasiado rápido, por favor desacelere"
   },
@@ -948,10 +948,10 @@
     "ko": "당신은 Afdian에 계속됩니다. 월별 플랜 선택 (¥10/month); 영구적으로 Pro를 잠금 해제. 여분의 달 선택은 혜택을 추가하지 않습니다. 지불 계속?",
     "es": "Estás a punto de continuar con Afdian. Elija el plan mensual (yen 10/mes); el pago desbloquea permanentemente Pro. La selección de meses adicionales no añade beneficios. ¿Sigues pagando?"
   },
-  "深度思考已开启 🧠": {
-    "zh-Hant": "深度思考已開啟 🧠",
+  "深度思考已开启": {
+    "zh-Hant": "深度思考已開啟",
     "ko": "Deep",
-    "es": "Pensamiento profundo habilitado 🧠"
+    "es": "Pensamiento profundo habilitado"
   },
   "深度思考已关闭": {
     "zh-Hant": "深度思考已關閉",
@@ -1553,10 +1553,10 @@
     "ko": "avatar를 저장할 수 없습니다. 나중에 다시 시도하십시오.",
     "es": "Incapaz de salvar el avatar. Por favor, intente de nuevo más tarde."
   },
-  "💎 Pro 会员": {
-    "zh-Hant": "💎 Pro 會員",
-    "ko": "💎",
-    "es": "💎 Pro member"
+  "Pro 会员": {
+    "zh-Hant": "Pro 會員",
+    "ko": "",
+    "es": "Pro member"
   },
   "Pro 会员 · 无限次对话": {
     "zh-Hant": "Pro 會員 · 無限次對話",
@@ -1733,10 +1733,10 @@
     "ko": "당신의 AI 대답 furry 공동체를 위한 copilot. 코멘트를 붙여 AI 분석 의도, slang, 이미지, 응답 옵션 및 지속적인 컨텍스트를 제공합니다.",
     "es": "Su respuesta de AI copiloto para comunidades furtivas. Pruebe un comentario y deje que AI analice la intención, slang, imágenes, opciones de respuesta y contexto en curso."
   },
-  "🧹 清空上下文": {
-    "zh-Hant": "🧹 清空上下文",
+  "清空上下文": {
+    "zh-Hant": "清空上下文",
     "ko": "명확한 맥락",
-    "es": "🧹 Clear context"
+    "es": "Clear context"
   },
   "清空上下文": {
     "zh-Hant": "清空上下文",
@@ -1973,8 +1973,8 @@
     "ko": "이미지를 처리 할 수 없습니다",
     "es": "Incapaz de procesar la imagen"
   },
-  "🖼️ 仅图片": {
-    "zh-Hant": "🖼️ 僅圖片",
+  "仅图片": {
+    "zh-Hant": "僅圖片",
     "ko": "XVideos️ 이미지 만",
     "es": "Imagen sólo"
   },
@@ -2028,13 +2028,13 @@
     "ko": "Continuing은 도움이되지 않습니다. 혼자 떠나는 것이 좋습니다.",
     "es": "Es improbable que se siga ayudando; es mejor dejarlo solo."
   },
-  "💎 无限": {
-    "zh-Hant": "💎 無限",
+  "无限": {
+    "zh-Hant": "無限",
     "ko": "·",
-    "es": "💎 Unlimited"
+    "es": "Unlimited"
   },
-  "⚙️ 待配置": {
-    "zh-Hant": "⚙️ 待配置",
+  "待配置": {
+    "zh-Hant": "待配置",
     "ko": "설정하지 않음",
     "es": "No está configurado"
   },
@@ -2103,10 +2103,10 @@
     "ko": "지원 - Frost",
     "es": "Apoyo - Frost"
   },
-  "感谢你的支持！💙": {
-    "zh-Hant": "感謝你的支援！💙",
+  "感谢你的支持！": {
+    "zh-Hant": "感謝你的支援！",
     "ko": "감사합니다!",
-    "es": "Gracias por su apoyo! 💙"
+    "es": "Gracias por su apoyo! "
   },
   "感谢你的支持！": {
     "zh-Hant": "感謝你的支援！",
@@ -2148,10 +2148,10 @@
     "ko": "알리페이",
     "es": "Alipay"
   },
-  "💖 粉丝鸣谢榜": {
-    "zh-Hant": "💖 粉絲鳴謝榜",
+  "粉丝鸣谢榜": {
+    "zh-Hant": "粉絲鳴謝榜",
     "ko": "회사 소개",
-    "es": "💖 Junta de Apoyo"
+    "es": "Junta de Apoyo"
   },
   "感谢每一位支持霜蓝的朋友（按时间倒序）": {
     "zh-Hant": "感謝每一位支援霜藍的朋友（按時間倒序）",
@@ -2163,8 +2163,8 @@
     "ko": "더 보기",
     "es": "Carga más"
   },
-  "✍ 留下你的支持留言": {
-    "zh-Hant": "✍ 留下你的支援留言",
+  "留下你的支持留言": {
+    "zh-Hant": "留下你的支援留言",
     "ko": "➢ 메시지",
     "es": "Deja un mensaje"
   },
@@ -2183,15 +2183,15 @@
     "ko": "본문 바로가기",
     "es": "Presentar a la Junta"
   },
-  "提交后会显示在榜单中 💙": {
-    "zh-Hant": "提交後會顯示在榜單中 💙",
+  "提交后会显示在榜单中": {
+    "zh-Hant": "提交後會顯示在榜單中",
     "ko": "당신의 메시지는 널에 나타날 것입니다",
-    "es": "Su mensaje aparecerá en el tablero 💙"
+    "es": "Su mensaje aparecerá en el tablero"
   },
-  "暂无鸣谢记录，期待你的第一份支持 💙": {
-    "zh-Hant": "暫無鳴謝記錄，期待你的第一份支援 💙",
+  "暂无鸣谢记录，期待你的第一份支持": {
+    "zh-Hant": "暫無鳴謝記錄，期待你的第一份支援",
     "ko": "아직지지 않는 메시지가 없습니다.",
-    "es": "Aún no hay mensajes de apoyo – su podría ser el primero 💙"
+    "es": "Aún no hay mensajes de apoyo – su podría ser el primero"
   },
   "感谢支持！": {
     "zh-Hant": "感謝支援！",
@@ -2203,10 +2203,10 @@
     "ko": "지금 시작",
     "es": "Ahora."
   },
-  "请先登录再点赞 💙": {
-    "zh-Hant": "請先登入再點贊 💙",
+  "请先登录再点赞": {
+    "zh-Hant": "請先登入再點贊",
     "ko": "이 메시지처럼",
-    "es": "Inicia sesión para gustar este mensaje 💙"
+    "es": "Inicia sesión para gustar este mensaje"
   },
   "请先登录后再提交": {
     "zh-Hant": "請先登入後再提交",
@@ -2233,8 +2233,8 @@
     "ko": "제출 실패. 나중에 다시 시도하십시오.",
     "es": "La comunicación falló. Por favor, intente de nuevo más tarde."
   },
-  "已提交，感谢你的支持！💙": {
-    "zh-Hant": "已提交，感謝你的支援！💙",
+  "已提交，感谢你的支持！": {
+    "zh-Hant": "已提交，感謝你的支援！",
     "ko": "감사합니다!",
     "es": "¡Gracias por tu apoyo!"
   },
@@ -2253,20 +2253,20 @@
     "ko": "금액: 50엔",
     "es": "Cantidad: 50 yenes"
   },
-  "☕ 已选择：咖啡档位，感谢你的温柔支持～": {
-    "zh-Hant": "☕ 已選擇：咖啡檔位，感謝你的溫柔支援～",
+  "已选择：咖啡档位，感谢你的温柔支持～": {
+    "zh-Hant": "已選擇：咖啡檔位，感謝你的溫柔支援～",
     "ko": "커피 티어 선택 - 당신의 친절한 지원을 위해 당신을 감사하십시오!",
-    "es": "☕ Tier de café seleccionado, gracias por su amable apoyo!"
+    "es": "Tier de café seleccionado, gracias por su amable apoyo!"
   },
-  "🍔 已选择：吃饭档位，今天加个鸡腿！": {
-    "zh-Hant": "🍔 已選擇：吃飯檔位，今天加個雞腿！",
+  "已选择：吃饭档位，今天加个鸡腿！": {
+    "zh-Hant": "已選擇：吃飯檔位，今天加個雞腿！",
     "ko": "신성한 식사 계층 선택 - 저녁 식사는 오늘 업그레이드를 가져옵니다!",
-    "es": "🍔 Calentador de comida seleccionado, ¡el comedor obtiene una actualización hoy!"
+    "es": "Calentador de comida seleccionado, ¡el comedor obtiene una actualización hoy!"
   },
-  "💖 已选择：狠狠爱我档位，真的太感动了！": {
-    "zh-Hant": "💖 已選擇：狠狠愛我檔位，真的太感動了！",
+  "已选择：狠狠爱我档位，真的太感动了！": {
+    "zh-Hant": "已選擇：狠狠愛我檔位，真的太感動了！",
     "ko": "큰 지원 계층 선택-나는 정말 감동!",
-    "es": "💖 Gran nivel de soporte seleccionado - Estoy realmente emocionado!"
+    "es": "Gran nivel de soporte seleccionado - Estoy realmente emocionado!"
   },
   "天气待临近活动时更新": {
     "zh-Hant": "天氣待臨近活動時更新",
@@ -2303,25 +2303,25 @@
     "ko": "Meituan 숙박",
     "es": "Meituan stays"
   },
-  "🐾 正在获取兽聚活动…": {
-    "zh-Hant": "🐾 正在獲取獸聚活動…",
+  "正在获取兽聚活动…": {
+    "zh-Hant": "正在獲取獸聚活動…",
     "ko": "fur...",
-    "es": "🐾 Cargando eventos furtivos..."
+    "es": "Cargando eventos furtivos..."
   },
-  "🐾 兽聚信息暂时获取失败，请稍后再试": {
-    "zh-Hant": "🐾 獸聚資訊暫時獲取失敗，請稍後再試",
+  "兽聚信息暂时获取失败，请稍后再试": {
+    "zh-Hant": "獸聚資訊暫時獲取失敗，請稍後再試",
     "ko": "지금 furry 이벤트를로드 할 수 없습니다. 나중에 다시 시도하십시오.",
     "es": "No se puede cargar eventos furtivos ahora mismo. Por favor, intente de nuevo más tarde."
   },
-  "🐾 没有找到相关兽聚活动": {
-    "zh-Hant": "🐾 沒有找到相關獸聚活動",
+  "没有找到相关兽聚活动": {
+    "zh-Hant": "沒有找到相關獸聚活動",
     "ko": "자주 묻는 질문",
-    "es": "🐾 No hay eventos de furia encontrados"
+    "es": "No hay eventos de furia encontrados"
   },
-  "🐾 相关兽聚活动": {
-    "zh-Hant": "🐾 相關獸聚活動",
+  "相关兽聚活动": {
+    "zh-Hant": "相關獸聚活動",
     "ko": "자주 묻는 질문",
-    "es": "🐾 Eventos relacionados de furia"
+    "es": "Eventos relacionados de furia"
   },
   "场 · 横向滑动查看更多": {
     "zh-Hant": "場 · 橫向滑動檢視更多",
@@ -3332,9 +3332,9 @@
     "ko": "첫 번째 EJU",
     "es": "Primer EJU"
   },
-  "目标录取 🎯": {
-    "ko": "목표 대학 합격 🎯",
-    "es": "Admisión objetivo 🎯"
+  "目标录取": {
+    "ko": "목표 대학 합격",
+    "es": "Admisión objetivo"
   },
   "阶段性目标达成。": {
     "ko": "단계 목표를 달성했습니다.",
@@ -3388,17 +3388,17 @@
     "es": "No volver a mostrar",
     "ko": "다시 표시하지 않기"
   },
-  "支付成功 🎉": {
-    "es": "Pago correcto 🎉",
-    "ko": "결제 성공 🎉"
+  "支付成功": {
+    "es": "Pago correcto",
+    "ko": "결제 성공"
   },
   "删除对话": {
     "es": "Eliminar chat",
     "ko": "채팅 삭제"
   },
-  "💎 Pro · 无限使用": {
-    "es": "💎 Pro · Ilimitado",
-    "ko": "💎 프로 · 무제한"
+  "Pro · 无限使用": {
+    "es": "Pro · Ilimitado",
+    "ko": "프로 · 무제한"
   },
   "稍后再说": {
     "es": "Tal vez más tarde"
@@ -3443,9 +3443,9 @@
     "es": "Imagen subida por el usuario",
     "ko": "사용자가 업로드한 이미지"
   },
-  "🧠 思考过程": {
-    "es": "🧠 Proceso de razonamiento",
-    "ko": "🧠 사고 과정"
+  "思考过程": {
+    "es": "Proceso de razonamiento",
+    "ko": "사고 과정"
   },
   "正在思考": {
     "es": "Pensando",
@@ -3667,9 +3667,9 @@
     "es": "Avatar guardado",
     "ko": "아바타가 저장되었습니다"
   },
-  "💎 Pro 会员": {
-    "es": "Miembro 💎 Pro",
-    "ko": "💎 프로 회원"
+  "Pro 会员": {
+    "es": "Miembro Pro",
+    "ko": "프로 회원"
   },
   "确定退出登录？": {
     "es": "¿Cerrar sesión?",
@@ -3695,9 +3695,9 @@
     "es": "HuFuBao",
     "ko": "HuFuBao"
   },
-  "🧹 清空上下文": {
-    "ko": "🧹 컨텍스트 지우기",
-    "es": "🧹 Borrar contexto"
+  "清空上下文": {
+    "ko": "컨텍스트 지우기",
+    "es": "Borrar contexto"
   },
   "上传图片": {
     "es": "Subir imagen",
@@ -3798,9 +3798,9 @@
   "仅支持图片": {
     "es": "Solo imágenes"
   },
-  "🖼️ 仅图片": {
-    "ko": "🖼️ 이미지만",
-    "es": "🖼️ Solo imagen"
+  "仅图片": {
+    "ko": "이미지만",
+    "es": "Solo imagen"
   },
   "评论分析": {
     "es": "Análisis de comentarios"
@@ -3823,11 +3823,11 @@
     "es": "Copiado",
     "ko": "복사됨"
   },
-  "💎 无限": {
-    "es": "💎 Ilimitada"
+  "无限": {
+    "es": "Ilimitada"
   },
-  "⚙️ 待配置": {
-    "es": "⚙️ Sin configurar"
+  "待配置": {
+    "es": "Sin configurar"
   },
   "额度获取失败": {
     "es": "No se puede cargar la cuota"
@@ -3862,17 +3862,17 @@
     "es": "Alipay",
     "ko": "알리페이"
   },
-  "💖 粉丝鸣谢榜": {
-    "es": "Junta de 💖 seguidores",
-    "ko": "💖 서포터 보드"
+  "粉丝鸣谢榜": {
+    "es": "Junta de seguidores",
+    "ko": "서포터 보드"
   },
   "加载更多": {
     "es": "Cargar más",
     "ko": "더 보기"
   },
-  "✍ 留下你的支持留言": {
-    "es": "✍ Deja un mensaje",
-    "ko": "메시지 ✍ 남기기"
+  "留下你的支持留言": {
+    "es": "Deja un mensaje",
+    "ko": "메시지 남기기"
   },
   "提交到鸣谢榜": {
     "es": "Envíalo a la junta",

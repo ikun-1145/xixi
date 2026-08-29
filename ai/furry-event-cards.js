@@ -9,6 +9,17 @@ function uiText(text) {
   return typeof i18n?.translate === "function" ? i18n.translate(text) : text;
 }
 
+function createUiIcon(documentRef, name) {
+  const icon = documentRef.createElement("span");
+  icon.className = `ui-svg-icon icon-${name}`;
+  icon.setAttribute("aria-hidden", "true");
+  return icon;
+}
+
+function appendIconText(documentRef, target, iconName, text) {
+  target.append(createUiIcon(documentRef, iconName), documentRef.createTextNode(text));
+}
+
 function externalLink(documentRef, url, label, className) {
   const safeUrl = safeHttpUrl(url);
   if (!safeUrl) return null;
@@ -57,12 +68,12 @@ function createEventCard(documentRef, event) {
     image.addEventListener("error", () => {
       image.remove();
       coverHost.classList.add("is-placeholder");
-      coverHost.textContent = "🐾";
+      coverHost.replaceChildren(createUiIcon(documentRef, "paw"));
     }, { once: true });
     coverHost.appendChild(image);
   } else {
     coverHost.classList.add("is-placeholder");
-    coverHost.textContent = "🐾";
+    coverHost.appendChild(createUiIcon(documentRef, "paw"));
   }
   card.appendChild(coverHost);
 
@@ -87,9 +98,9 @@ function createEventCard(documentRef, event) {
   const meta = documentRef.createElement("div");
   meta.className = "furry-event-meta";
   const date = documentRef.createElement("span");
-  date.textContent = `📅 ${uiText(formatFurryEventDateRange(event))}`;
+  appendIconText(documentRef, date, "calendar-days", uiText(formatFurryEventDateRange(event)));
   const location = documentRef.createElement("span");
-  location.textContent = `📍 ${eventLocation(event)}`;
+  appendIconText(documentRef, location, "map-pin", eventLocation(event));
   meta.append(date, location);
   body.appendChild(meta);
 
@@ -103,7 +114,7 @@ function createEventCard(documentRef, event) {
   }
   const weather = documentRef.createElement("span");
   weather.className = "furry-event-weather";
-  weather.textContent = `🌤 ${weatherText(event.weather)}`;
+  appendIconText(documentRef, weather, "cloud-sun", weatherText(event.weather));
   details.appendChild(weather);
   body.appendChild(details);
 
@@ -139,7 +150,7 @@ function createEventCard(documentRef, event) {
 function renderLoading(documentRef, content) {
   const label = documentRef.createElement("div");
   label.className = "furry-event-loading-label";
-  label.textContent = uiText("🐾 正在获取兽聚活动…");
+  appendIconText(documentRef, label, "paw", uiText("正在获取兽聚活动…"));
   content.appendChild(label);
 
   const track = documentRef.createElement("div");
@@ -157,14 +168,14 @@ function renderResult(documentRef, content, message) {
   if (message?.furryError) {
     const error = documentRef.createElement("div");
     error.className = "furry-event-empty";
-    error.textContent = uiText("🐾 兽聚信息暂时获取失败，请稍后再试");
+    appendIconText(documentRef, error, "paw", uiText("兽聚信息暂时获取失败，请稍后再试"));
     content.appendChild(error);
     return;
   }
   if (!events.length) {
     const empty = documentRef.createElement("div");
     empty.className = "furry-event-empty";
-    empty.textContent = uiText("🐾 没有找到相关兽聚活动");
+    appendIconText(documentRef, empty, "paw", uiText("没有找到相关兽聚活动"));
     content.appendChild(empty);
     return;
   }
@@ -172,7 +183,7 @@ function renderResult(documentRef, content, message) {
   const header = documentRef.createElement("div");
   header.className = "furry-event-header";
   const title = documentRef.createElement("span");
-  title.textContent = uiText("🐾 相关兽聚活动");
+  appendIconText(documentRef, title, "paw", uiText("相关兽聚活动"));
   const count = documentRef.createElement("span");
   count.className = "furry-event-count";
   count.textContent = uiText(`${events.length} 场 · 横向滑动查看更多`);

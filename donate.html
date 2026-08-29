@@ -10,6 +10,7 @@
   <meta name="theme-color" content="#13151e" media="(prefers-color-scheme: dark)">
   <link rel="stylesheet" href="p/css/tokens.css">
   <link rel="stylesheet" href="p/css/base.css">
+  <link rel="stylesheet" href="p/css/icons.css?v=20260829-1">
   <style>
     body {
       opacity: 0;
@@ -100,6 +101,10 @@
       font-weight: 500;
       color: var(--text-2);
       cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
       transition: border-color var(--dur-fast) var(--ease),
                   color var(--dur-fast) var(--ease),
                   background var(--dur-fast) var(--ease),
@@ -117,6 +122,11 @@
       color: var(--on-brand);
       font-weight: 600;
       box-shadow: var(--shadow-sm);
+    }
+
+    .tier-btn .ui-svg-icon {
+      width: 17px;
+      height: 17px;
     }
 
     #tierHintText {
@@ -215,6 +225,14 @@
       font-weight: 700;
       color: var(--text);
       margin: var(--space-16) 0 var(--space-2);
+    }
+
+    .board-title,
+    .thanks-title {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
     }
 
     .board-desc {
@@ -610,7 +628,7 @@
     <img id="previewImg" src="" alt="预览">
   </div>
 
-  <div id="thanksToast">感谢你的支持！💙</div>
+  <div id="thanksToast">感谢你的支持！</div>
 
   <div class="container">
     <h1 id="titleText"></h1>
@@ -619,9 +637,9 @@
     <p id="supportDesc"></p>
 
     <div class="tier-group">
-      <button class="tier-btn" data-tier="coffee">☕ <span id="tierCoffee"></span></button>
-      <button class="tier-btn" data-tier="meal">🍔 <span id="tierMeal"></span></button>
-      <button class="tier-btn" data-tier="biglove">💖 <span id="tierBiglove"></span></button>
+      <button class="tier-btn" data-tier="coffee"><span class="ui-svg-icon icon-coffee" aria-hidden="true"></span><span id="tierCoffee"></span></button>
+      <button class="tier-btn" data-tier="meal"><span class="ui-svg-icon icon-utensils" aria-hidden="true"></span><span id="tierMeal"></span></button>
+      <button class="tier-btn" data-tier="biglove"><span class="ui-svg-icon icon-heart" aria-hidden="true"></span><span id="tierBiglove"></span></button>
     </div>
 
     <p id="tierHintText"></p>
@@ -654,7 +672,7 @@
       </div>
     </div>
 
-    <h2 class="board-title"><span id="thanksBoardTitle"></span></h2>
+    <h2 class="board-title"><span class="ui-svg-icon icon-heart" aria-hidden="true"></span><span id="thanksBoardTitle"></span></h2>
     <p class="board-desc">
       <span id="thanksBoardDesc"></span>
     </p>
@@ -670,7 +688,7 @@
       </button>
     </div>
     <div class="thanks-form">
-      <h3 class="thanks-title"><span id="thanksFormTitle"></span></h3>
+      <h3 class="thanks-title"><span class="ui-svg-icon icon-pen" aria-hidden="true"></span><span id="thanksFormTitle"></span></h3>
       <div class="thanks-fields">
         <textarea id="thanksMsg" rows="3" placeholder=""></textarea>
       </div>
@@ -704,17 +722,17 @@
         tierHint: "选择档位后，扫码支付即可～",
         wxPay: "微信支付",
         aliPay: "支付宝",
-        boardTitle: "💖 粉丝鸣谢榜",
+        boardTitle: "粉丝鸣谢榜",
         boardDesc: "感谢每一位支持霜蓝的朋友（按时间倒序）",
         loadMore: "加载更多",
-        formTitle: "✍ 留下你的支持留言",
+        formTitle: "留下你的支持留言",
         namePh: "你的昵称（可留空）",
         msgPh: "想对霜蓝说的话（可选）",
         submit: "提交到鸣谢榜",
-        tip: "提交后会显示在榜单中 💙",
+        tip: "提交后会显示在榜单中",
         back: "返回主页",
         logout: "退出登录",
-        greeting: (name) => `欢迎你，${name || "朋友"} 💙`
+        greeting: (name) => `欢迎你，${name || "朋友"}`
       },
       en: {
         pageTitle: "Support - Sunland",
@@ -726,17 +744,17 @@
         tierHint: "Choose a tier and scan to pay.",
         wxPay: "WeChat Pay",
         aliPay: "Alipay",
-        boardTitle: "💖 Supporter Board",
+        boardTitle: "Supporter Board",
         boardDesc: "Thanks to everyone who supports Sunland (latest first)",
         loadMore: "Load more",
-        formTitle: "✍ Leave your message",
+        formTitle: "Leave your message",
         namePh: "Your nickname (optional)",
         msgPh: "Message to Sunland (optional)",
         submit: "Submit",
-        tip: "Your message will appear on the board 💙",
+        tip: "Your message will appear on the board",
         back: "Back to Home",
         logout: "Log out",
-        greeting: (name) => `Welcome, ${name || "friend"} 💙`
+        greeting: (name) => `Welcome, ${name || "friend"}`
       },
       ja: {
         pageTitle: "支援 - フロスト",
@@ -748,17 +766,17 @@
         tierHint: "金額を選んでQRコードで支払ってください。",
         wxPay: "WeChat Pay",
         aliPay: "Alipay",
-        boardTitle: "💖 応援者一覧",
+        boardTitle: "応援者一覧",
         boardDesc: "フロストを応援してくれる皆さんへ（新しい順）",
         loadMore: "もっと見る",
-        formTitle: "✍ 応援メッセージを書く",
+        formTitle: "応援メッセージを書く",
         namePh: "ニックネーム（任意）",
         msgPh: "フロストへのメッセージ（任意）",
         submit: "送信",
-        tip: "送信後、一覧に表示されます 💙",
+        tip: "送信後、一覧に表示されます",
         back: "ホームへ戻る",
         logout: "ログアウト",
-        greeting: (name) => `ようこそ、${name || "友達"} 💙`
+        greeting: (name) => `ようこそ、${name || "友達"}`
       },
       "zh-Hant": {
         pageTitle: "捐贈支持 - 霜藍",
@@ -770,17 +788,17 @@
         tierHint: "選擇檔位後，掃碼支付即可～",
         wxPay: "微信支付",
         aliPay: "支付寶",
-        boardTitle: "💖 粉絲鳴謝榜",
+        boardTitle: "粉絲鳴謝榜",
         boardDesc: "感謝每一位支持霜藍的朋友（按時間倒序）",
         loadMore: "載入更多",
-        formTitle: "✍ 留下你的支持留言",
+        formTitle: "留下你的支持留言",
         namePh: "你的暱稱（可留空）",
         msgPh: "想對霜藍說的話（可選）",
         submit: "提交到鳴謝榜",
-        tip: "提交後會顯示在榜單中 💙",
+        tip: "提交後會顯示在榜單中",
         back: "返回主頁",
         logout: "登出",
-        greeting: (name) => `歡迎你，${name || "朋友"} 💙`
+        greeting: (name) => `歡迎你，${name || "朋友"}`
       },
       ko: {
         pageTitle: "후원 - Frost",
@@ -792,17 +810,17 @@
         tierHint: "금액을 선택한 뒤 QR 코드를 스캔해 결제해 주세요.",
         wxPay: "WeChat Pay",
         aliPay: "Alipay",
-        boardTitle: "💖 후원자 명단",
+        boardTitle: "후원자 명단",
         boardDesc: "Frost를 응원해 주신 모든 분께 감사드립니다(최신순)",
         loadMore: "더 보기",
-        formTitle: "✍ 응원 메시지 남기기",
+        formTitle: "응원 메시지 남기기",
         namePh: "닉네임(선택 사항)",
         msgPh: "Frost에게 남길 메시지(선택 사항)",
         submit: "명단에 등록",
-        tip: "등록한 메시지는 후원자 명단에 표시됩니다 💙",
+        tip: "등록한 메시지는 후원자 명단에 표시됩니다",
         back: "홈으로 돌아가기",
         logout: "로그아웃",
-        greeting: (name) => `환영합니다, ${name || "친구"} 💙`
+        greeting: (name) => `환영합니다, ${name || "친구"}`
       },
       es: {
         pageTitle: "Apoya a Frost",
@@ -814,17 +832,17 @@
         tierHint: "Elige un importe y escanea el código para pagar.",
         wxPay: "WeChat Pay",
         aliPay: "Alipay",
-        boardTitle: "💖 Lista de colaboradores",
+        boardTitle: "Lista de colaboradores",
         boardDesc: "Gracias a todos los que apoyan a Frost (más recientes primero)",
         loadMore: "Cargar más",
-        formTitle: "✍ Deja tu mensaje de apoyo",
+        formTitle: "Deja tu mensaje de apoyo",
         namePh: "Tu apodo (opcional)",
         msgPh: "Mensaje para Frost (opcional)",
         submit: "Publicar en la lista",
-        tip: "Tu mensaje aparecerá en la lista 💙",
+        tip: "Tu mensaje aparecerá en la lista",
         back: "Volver al inicio",
         logout: "Cerrar sesión",
-        greeting: (name) => `Te damos la bienvenida, ${name || "amigo"} 💙`
+        greeting: (name) => `Te damos la bienvenida, ${name || "amigo"}`
       }
     };
 
@@ -1004,7 +1022,7 @@ window.addEventListener('load', () => {
       if (error || !data) {
         if (thanksList && reset) {
           thanksList.innerHTML = '<div class="thanks-item"><div class="msg">' +
-            uiText('暂无鸣谢记录，期待你的第一份支持 💙') + '</div></div>';
+            uiText('暂无鸣谢记录，期待你的第一份支持') + '</div></div>';
         }
         return;
       }
@@ -1078,7 +1096,7 @@ window.addEventListener('load', () => {
       if (!btn) return;
 
       if (!currentSession) {
-        alert("请先登录再点赞 💙");
+        alert("请先登录再点赞");
         return;
       }
 
@@ -1207,7 +1225,7 @@ window.addEventListener('load', () => {
         }
 
         msgInput.value = "";
-        tip.textContent = "已提交，感谢你的支持！💙";
+        tip.textContent = "已提交，感谢你的支持！";
 
         await loadThanks(true);
 
@@ -1273,9 +1291,9 @@ window.addEventListener('load', () => {
         selectedTier = btn.dataset.tier;
         updateQrByTier(selectedTier);
 
-        if (selectedTier === "coffee") hint.textContent = "☕ 已选择：咖啡档位，感谢你的温柔支持～";
-        if (selectedTier === "meal") hint.textContent = "🍔 已选择：吃饭档位，今天加个鸡腿！";
-        if (selectedTier === "biglove") hint.textContent = "💖 已选择：狠狠爱我档位，真的太感动了！";
+        if (selectedTier === "coffee") hint.textContent = "已选择：咖啡档位，感谢你的温柔支持～";
+        if (selectedTier === "meal") hint.textContent = "已选择：吃饭档位，今天加个鸡腿！";
+        if (selectedTier === "biglove") hint.textContent = "已选择：狠狠爱我档位，真的太感动了！";
       });
     });
 
@@ -1285,7 +1303,7 @@ window.addEventListener('load', () => {
       defaultBtn.classList.add("active");
       selectedTier = "coffee";
       updateQrByTier("coffee");
-      hint.textContent = "☕ 已选择：咖啡档位，感谢你的温柔支持～";
+      hint.textContent = "已选择：咖啡档位，感谢你的温柔支持～";
     }
 
     // 扫码点击感谢动画 + 二维码放大预览

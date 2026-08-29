@@ -12,6 +12,7 @@
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link rel="preload" href="https://fonts.googleapis.com/css2?family=Noto+Serif+SC:wght@400;600;700;900&family=Sora:wght@300;400;600;700&family=Noto+Sans+JP:wght@300;400;500;700&display=swap" as="style" onload="this.onload=null;this.rel='stylesheet'">
+  <link rel="stylesheet" href="p/css/icons.css?v=20260829-1">
   <style>
     /* ═══════════════════════════════════════════════════════════
        VARIABLES & RESET
@@ -506,6 +507,10 @@
       position: relative;
       z-index: 1;
     }
+    .feature-icon .ui-svg-icon {
+      width: 27px;
+      height: 27px;
+    }
     .feature-title {
       font-family: var(--font-serif);
       font-size: 1.15rem;
@@ -949,6 +954,11 @@
       font-size: 0.8rem;
       color: var(--text-faint);
     }
+    .platform-badge .ui-svg-icon,
+    .dl-meta-item .ui-svg-icon {
+      width: 1rem;
+      height: 1rem;
+    }
 
     /* ═══════════════════════════════════════════════════════════
        DIVIDER
@@ -1128,25 +1138,25 @@
 
         <div class="feature-grid">
           <div class="feature-card" data-obs>
-            <div class="feature-icon">💬</div>
+            <div class="feature-icon"><span class="ui-svg-icon icon-message" aria-hidden="true"></span></div>
             <div class="feature-title" data-i18n="feat1Title">智能对话</div>
             <div class="feature-desc" data-i18n="feat1Desc">理解上下文，感知情绪，像真人一样自然交流</div>
             <div class="feature-stat" data-i18n="feat1Stat">多轮深度对话</div>
           </div>
           <div class="feature-card" data-obs>
-            <div class="feature-icon">⚡</div>
+            <div class="feature-icon"><span class="ui-svg-icon icon-zap" aria-hidden="true"></span></div>
             <div class="feature-title" data-i18n="feat2Title">极速响应</div>
             <div class="feature-desc" data-i18n="feat2Desc">流式输出，毫秒级首字延迟，沟通零等待</div>
             <div class="feature-stat" data-i18n="feat2Stat">&lt; 500ms 首字延迟</div>
           </div>
           <div class="feature-card" data-obs>
-            <div class="feature-icon">🎨</div>
+            <div class="feature-icon"><span class="ui-svg-icon icon-palette" aria-hidden="true"></span></div>
             <div class="feature-title" data-i18n="feat3Title">深度创作</div>
             <div class="feature-desc" data-i18n="feat3Desc">从文案撰写到创意发散，激发无限灵感</div>
             <div class="feature-stat" data-i18n="feat3Stat">全场景创作辅助</div>
           </div>
           <div class="feature-card" data-obs>
-            <div class="feature-icon">💻</div>
+            <div class="feature-icon"><span class="ui-svg-icon icon-monitor" aria-hidden="true"></span></div>
             <div class="feature-title" data-i18n="feat4Title">编程助手</div>
             <div class="feature-desc" data-i18n="feat4Desc">代码生成、调试、解释，开发效率倍增</div>
             <div class="feature-stat" data-i18n="feat4Stat">多语言代码支持</div>
@@ -1221,7 +1231,7 @@
           <div class="dl-desc" data-i18n="dlCardDesc">Android 7.0+；iOS IPA 适用于已注册测试设备或自行签名安装</div>
 
           <div class="platform-badge">
-            <span>📱</span>
+            <span class="ui-svg-icon icon-smartphone" aria-hidden="true"></span>
             <span data-i18n="dlBadge">Android APK · Apple IPA</span>
           </div>
 
@@ -1261,10 +1271,10 @@
           </div>
 
           <div class="dl-meta">
-            <div class="dl-meta-item">📦 <span data-i18n="dlMeta1">直链下载</span></div>
-            <div class="dl-meta-item">🔒 <span data-i18n="dlMeta2">安全可信</span></div>
-            <div class="dl-meta-item">🆓 <span data-i18n="dlMeta3">公测免费</span></div>
-            <div class="dl-meta-item">🔄 <span data-i18n="dlMeta4">持续更新</span></div>
+            <div class="dl-meta-item"><span class="ui-svg-icon icon-package" aria-hidden="true"></span><span data-i18n="dlMeta1">直链下载</span></div>
+            <div class="dl-meta-item"><span class="ui-svg-icon icon-shield-check" aria-hidden="true"></span><span data-i18n="dlMeta2">安全可信</span></div>
+            <div class="dl-meta-item"><span class="ui-svg-icon icon-badge-check" aria-hidden="true"></span><span data-i18n="dlMeta3">公测免费</span></div>
+            <div class="dl-meta-item"><span class="ui-svg-icon icon-refresh" aria-hidden="true"></span><span data-i18n="dlMeta4">持续更新</span></div>
           </div>
         </div>
       </div>
