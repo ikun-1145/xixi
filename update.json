@@ -1,7 +1,7 @@
 {
-  "version": "1.4.1",
-  "build": 30,
-  "force": false,
-  "url": "https://sunland.dev/apk?v=1.4.1%2B30&cache=2",
+  "version": "1.4.3",
+  "build": 32,
+  "force": true,
+  "url": "https://github.com/ikun-1145/sunland-ai-dart/releases/download/v1.4.3%2B32/sunland-ai-1.4.3%2B32.apk",
   "desc": "修复 Android 选择图片后点击发送时可能闪退的问题，并提升中文图片文字识别稳定性。"
 }
