@@ -1,7 +1,7 @@
 {
-  "version": "1.4.4",
-  "build": 33,
+  "version": "1.4.5",
+  "build": 34,
   "force": true,
-  "url": "https://github.com/ikun-1145/sunland-ai-dart/releases/download/v1.4.4%2B33/sunland-ai-1.4.4%2B33.apk",
-  "desc": "修复 Android 选择图片后点击发送时可能闪退的问题，并提升中文图片文字识别稳定性。"
+  "url": "https://api.sunland.dev/v1/download/apk?v=1.4.5%2B34",
+  "desc": "新增 Sunland AI Beta 数据管理与仅本地诊断，提升账号切换和请求生命周期下的数据安全性。"
 }
