@@ -46,10 +46,6 @@ async function checkOrders(env) {
 
     const orderId = order.out_trade_no;
 
-    // 🧱 幂等：已处理过的订单直接跳过
-    const existed = await env.ORDERS.get(orderId);
-    if (existed) continue;
-
     // ✅ 绑定键：前端通过爱发电 ?remark= 传入 Supabase userId。
     //    优先读 remark，其次 custom_order_id（两种绑定方式都兼容）。
     const userId = (order.remark || order.custom_order_id || "").trim();
@@ -58,6 +54,10 @@ async function checkOrders(env) {
       console.log("⚠️ 订单无 remark/custom_order_id，跳过:", orderId);
       continue;
     }
+
+    // 🧱 幂等：已处理过的订单直接跳过
+    const existed = await env.ORDERS.get(orderId);
+    if (existed) continue;
 
     // 🚀 写入 Supabase（永久 Pro），service_role key 绕过 RLS。
     //    用 upsert（merge-duplicates）：用户 user_profiles 行不存在时自动创建，
