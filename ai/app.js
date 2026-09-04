@@ -855,11 +855,13 @@ function createOfflineSupabaseClient() {
 }
 
 let supabase = createOfflineSupabaseClient();
+let publicSupabase = createOfflineSupabaseClient();
 
 const supabaseReady = import('../p/js/supabaseClient.js')
   .then((module) => {
     if (module?.supabaseData) {
       supabase = module.supabaseData;
+      if (module.supabase) publicSupabase = module.supabase;
       if (session?.userId) {
         const identity = getCurrentVerifiedIdentity();
         if (identity) setSession(identity);
@@ -3701,6 +3703,54 @@ window.addEventListener("pagehide", () => {
 }, { once: true });
 document.getElementById("newChatBtn").onclick = createNewChat;
 
+async function holdForMaintenanceIfEnabled() {
+  const timeout = new Promise((resolve) => setTimeout(() => resolve(null), 7000));
+  const result = await Promise.race([
+    publicSupabase
+      .from("app_config")
+      .select("maintenance_enabled,maintenance_title,maintenance_message,maintenance_estimated_end")
+      .eq("id", "global")
+      .maybeSingle(),
+    timeout,
+  ]);
+  const config = result?.data;
+  if (!config || config.maintenance_enabled !== true) return false;
+
+  const overlay = document.createElement("main");
+  Object.assign(overlay.style, {
+    position: "fixed", inset: "0", zIndex: "100001", display: "grid",
+    placeItems: "center", padding: "24px", background: "linear-gradient(135deg,#020617,#0f172a)",
+    color: "#e2e8f0", textAlign: "center",
+  });
+  const panel = document.createElement("section");
+  Object.assign(panel.style, { maxWidth: "440px", padding: "28px", borderRadius: "20px", background: "rgba(15,23,42,.92)", border: "1px solid rgba(103,232,249,.3)" });
+  const title = document.createElement("h1");
+  title.textContent = config.maintenance_title || "服务器维护中";
+  const message = document.createElement("p");
+  message.textContent = config.maintenance_message || "服务器正在进行维护，请稍后再试。";
+  Object.assign(message.style, { margin: "14px 0", lineHeight: "1.7", whiteSpace: "pre-wrap" });
+  panel.append(title, message);
+  if (config.maintenance_estimated_end) {
+    const estimated = document.createElement("p");
+    estimated.textContent = `预计恢复时间：${new Date(config.maintenance_estimated_end).toLocaleString()}`;
+    Object.assign(estimated.style, { color: "#94a3b8", fontSize: "13px" });
+    panel.append(estimated);
+  }
+  const links = document.createElement("p");
+  Object.assign(links.style, { margin: "22px 0 0" });
+  for (const [label, href] of [["设置", "ai_settings.html"], ["公告", "announcements.html"]]) {
+    const link = document.createElement("a");
+    link.href = href;
+    link.textContent = uiText(label);
+    Object.assign(link.style, { color: "#67e8f9", margin: "0 10px" });
+    links.append(link);
+  }
+  panel.append(links);
+  overlay.append(panel);
+  document.body.append(overlay);
+  return true;
+}
+
 // 所有恢复流程可能访问的模块状态与事件处理器均已初始化，之后才开始登录、
 // Provider/会话恢复。首屏会等待同源数据客户端、用户资料、权益与当前历史
 // 全部落到 DOM，再与 window.load 汇合，一次性揭示完整页面。
@@ -3718,6 +3768,9 @@ await Promise.all([
   currentChatRender,
   window.__SUNLAND_AI_RESOURCES_READY__ || Promise.resolve(),
 ]);
+if (await holdForMaintenanceIfEnabled()) {
+  await new Promise(() => {});
+}
 await Promise.resolve();
 window.__SUNLAND_AI_REVEAL__?.();
 const sidebar = document.getElementById("sidebar");

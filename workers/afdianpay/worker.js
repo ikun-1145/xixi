@@ -59,20 +59,18 @@ async function checkOrders(env) {
     const existed = await env.ORDERS.get(orderId);
     if (existed) continue;
 
-    // 🚀 写入 Supabase（永久 Pro），service_role key 绕过 RLS。
-    //    用 upsert（merge-duplicates）：用户 user_profiles 行不存在时自动创建，
-    //    避免「付款用户尚无 profile 行 → PATCH 命中 0 行 → 漏开 Pro」。
+    // 通过数据库 RPC 原子地更新 Pro 与付款激活历史。该函数还保留支付
+    // 场景的 user_profiles upsert 行为，避免付款用户尚无 profile 时漏开权益。
     const updateRes = await fetch(
-      `${env.SUPABASE_URL}/rest/v1/user_profiles`,
+      `${env.SUPABASE_URL}/rest/v1/rpc/sunland_activate_pro_from_payment`,
       {
         method: "POST",
         headers: {
           "apikey": env.SUPABASE_KEY,
           "Authorization": `Bearer ${env.SUPABASE_KEY}`,
-          "Content-Type": "application/json",
-          "Prefer": "resolution=merge-duplicates,return=representation"
+          "Content-Type": "application/json"
         },
-        body: JSON.stringify({ user_id: userId, pro: true })
+        body: JSON.stringify({ p_user_id: userId, p_order_id: orderId })
       }
     );
 
@@ -81,19 +79,19 @@ async function checkOrders(env) {
     // ❗只有写库成功才落幂等键；失败则不落键，下次 cron 自动重试，
     //   避免"已付款但因临时故障漏开 Pro 且永不重试"。
     if (!updateRes.ok) {
-      console.log("❌ Supabase 更新失败，保留待重试:", orderId, updateRes.status, text);
+      console.log("❌ Pro 激活 RPC 失败，保留待重试:", updateRes.status);
+      continue;
+    }
+
+    let activationResult = null;
+    try { activationResult = JSON.parse(text); } catch {}
+    if (!activationResult || !["activated", "already_processed", "already_pro"].includes(activationResult.status)) {
+      console.log("❌ Pro 激活 RPC 返回无效结果，保留待重试");
       continue;
     }
 
     await env.ORDERS.put(orderId, "1");
-
-    let matched = 0;
-    try { matched = JSON.parse(text).length; } catch {}
-    if (matched === 0) {
-      console.log("⚠️ 写库成功但未匹配到用户(请核对 userId):", userId, "order:", orderId);
-    } else {
-      console.log("✅ 已开通永久Pro:", userId, "order:", orderId);
-    }
+    console.log("✅ 付款订单已原子处理:", activationResult.status);
   }
 }
 

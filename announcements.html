@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script defer src="p/js/site-i18n-extra.js?v=20260904-1"></script>
+  <script defer src="p/js/site-i18n.js?v=20260904-1"></script>
+  <title>公告 - Sunland AI · Beta</title>
+  <link rel="stylesheet" href="p/css/icons.css?v=20260829-1">
+  <style>
+    :root { --accent:#22d3ee; --bg:#f0f7ff; --surface:rgba(255,255,255,.88); --text:#0f172a; --subtext:#64748b; --border:rgba(15,23,42,.08); }
+    * { box-sizing:border-box; }
+    html, body { min-height:100%; margin:0; background:var(--bg); color:var(--text); font-family:-apple-system,BlinkMacSystemFont,"PingFang SC",sans-serif; }
+    body::before { content:""; position:fixed; inset:0; pointer-events:none; background:radial-gradient(circle at 10% 0,rgba(34,211,238,.15),transparent 34%),radial-gradient(circle at 90% 100%,rgba(167,139,250,.12),transparent 38%); }
+    .header { position:sticky; top:0; z-index:2; display:flex; align-items:center; gap:12px; height:56px; padding:0 18px; background:rgba(240,247,255,.82); backdrop-filter:blur(16px); border-bottom:1px solid var(--border); }
+    .back { color:inherit; text-decoration:none; display:inline-flex; align-items:center; justify-content:center; width:34px; height:34px; border-radius:10px; background:rgba(34,211,238,.12); }
+    .title { font-size:16px; font-weight:700; }
+    main { position:relative; max-width:720px; margin:0 auto; padding:22px 16px 48px; }
+    .intro { margin:0 0 16px; color:var(--subtext); font-size:14px; line-height:1.6; }
+    .notice { margin:0 0 12px; padding:16px; border:1px solid var(--border); border-radius:16px; background:var(--surface); box-shadow:0 10px 28px rgba(15,23,42,.05); }
+    .notice h2 { margin:0; font-size:16px; line-height:1.45; }
+    .notice time { display:block; margin-top:7px; color:var(--subtext); font-size:12px; }
+    .notice p { margin:12px 0 0; white-space:pre-wrap; overflow-wrap:anywhere; line-height:1.7; font-size:14px; }
+    .status { padding:36px 18px; color:var(--subtext); text-align:center; }
+    .retry { margin-top:12px; border:1px solid rgba(14,154,167,.35); border-radius:10px; padding:8px 14px; background:transparent; color:#087d88; font:inherit; cursor:pointer; }
+    html.dark, body.dark { --bg:#020617; --surface:rgba(15,23,42,.82); --text:#e2e8f0; --subtext:#94a3b8; --border:rgba(226,232,240,.12); }
+    html.dark .header { background:rgba(2,6,23,.82); }
+    @media (max-width:480px) { main { padding:18px 12px 34px; } .header { padding:0 14px; } }
+  </style>
+</head>
+<body>
+  <header class="header">
+    <a class="back" href="ai_settings.html" aria-label="返回设置">←</a>
+    <div class="title">公告</div>
+  </header>
+  <main>
+    <p class="intro">这里仅展示当前有效的服务公告。</p>
+    <div id="announcements" class="status" role="status" aria-live="polite">正在加载公告…</div>
+  </main>
+  <script type="module" src="ai/announcements.js"></script>
+</body>
+</html>

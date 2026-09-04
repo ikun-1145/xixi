@@ -1313,6 +1313,51 @@
     "ko": "개인정보 및 진단",
     "es": "Privacidad &quot; Diagnósticos"
   },
+  "公告": {
+    "zh-Hant": "公告",
+    "ko": "공지",
+    "es": "Anuncios"
+  },
+  "公告 - Sunland AI · Beta": {
+    "zh-Hant": "公告 - Sunland AI · Beta",
+    "ko": "공지 - Sunland AI · Beta",
+    "es": "Anuncios - Sunland AI · Beta"
+  },
+  "返回设置": {
+    "zh-Hant": "返回設定",
+    "ko": "설정으로 돌아가기",
+    "es": "Volver a configuración"
+  },
+  "这里仅展示当前有效的服务公告。": {
+    "zh-Hant": "這裡僅顯示目前有效的服務公告。",
+    "ko": "현재 유효한 서비스 공지만 표시됩니다.",
+    "es": "Aquí solo se muestran los avisos de servicio vigentes."
+  },
+  "正在加载公告…": {
+    "zh-Hant": "正在載入公告…",
+    "ko": "공지를 불러오는 중…",
+    "es": "Cargando anuncios…"
+  },
+  "当前没有有效公告。": {
+    "zh-Hant": "目前沒有有效公告。",
+    "ko": "현재 유효한 공지가 없습니다.",
+    "es": "No hay anuncios activos."
+  },
+  "公告暂时无法加载，请稍后重试。": {
+    "zh-Hant": "公告暫時無法載入，請稍後重試。",
+    "ko": "공지를 불러올 수 없습니다. 잠시 후 다시 시도해 주세요.",
+    "es": "Los anuncios no están disponibles temporalmente. Inténtalo de nuevo más tarde."
+  },
+  "重试": {
+    "zh-Hant": "重試",
+    "ko": "다시 시도",
+    "es": "Reintentar"
+  },
+  "发布时间：": {
+    "zh-Hant": "發布時間：",
+    "ko": "게시 시간: ",
+    "es": "Publicado: "
+  },
   "Beta 诊断（仅本地）": {
     "zh-Hant": "Beta 診斷（僅本地）",
     "ko": "Beta 진단 (현지 전용)",

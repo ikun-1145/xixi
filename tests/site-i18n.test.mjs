@@ -32,6 +32,7 @@ const publicPageTitles = new Map([
   ["login.html", "Sign in to Sunland AI · Beta"],
   ["ai.html", "Sunland AI · Beta"],
   ["ai_settings.html", "Settings - Sunland AI · Beta"],
+  ["announcements.html", "Announcements - Sunland AI · Beta"],
   ["copilot.html", "HuFuBao · AI Reply Copilot for Furry Communities"],
   ["verify.html", "Information Verification · Sunland"],
   ["download.html", "Sunland AI · Beta — Redefining Intelligent Interaction"],
@@ -221,6 +222,16 @@ test("AI settings links to the localized client download page", () => {
 
   dom.window.SiteI18n.setLanguage("zh-Hant", { persist: false });
   assert.equal(link.querySelector(".row-label")?.textContent.trim(), "下載霜藍AI用戶端");
+  dom.window.close();
+});
+
+test("AI settings exposes the localized public announcements page", () => {
+  const html = fs.readFileSync(new URL("../ai_settings.html", import.meta.url), "utf8");
+  const dom = createDom(html, "en");
+  const link = dom.window.document.querySelector('a.settings-link[href="announcements.html"]');
+
+  assert.ok(link, "settings should link to the announcements page");
+  assert.equal(link.querySelector(".row-label")?.textContent.trim(), "Announcements");
   dom.window.close();
 });
 
