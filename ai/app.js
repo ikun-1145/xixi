@@ -3722,7 +3722,7 @@ async function holdForMaintenanceIfEnabled() {
     publicSupabase
       .from("app_config")
       .select("maintenance_enabled,maintenance_title,maintenance_message,maintenance_estimated_end")
-      .eq("id", "global")
+      .eq("config_key", "global")
       .maybeSingle(),
     timeout,
   ]);
