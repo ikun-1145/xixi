@@ -1271,6 +1271,11 @@ body.dark .usage-hint {
     const PROFILE_CACHE_PREFIX = "xixi_profile_";
     const AVATAR_BUCKET = "avatars";
 
+    function isValidNickname(name) {
+      return typeof name === "string"
+        && /^(?:[\x21-\x7E]|\p{Script=Han}){1,8}$/u.test(name);
+    }
+
     function decodeJwtPayload(token) {
       const payload = token.split(".")[1];
       if (!payload) return null;
@@ -1391,18 +1396,22 @@ async function editNickname() {
   const current = document.getElementById("userName").innerText || "";
   const name = prompt("输入新的昵称", current);
 
-  if (!name || !name.trim()) return;
+  if (!name) return;
+  if (!isValidNickname(name)) {
+    alert("昵称最多 8 个字符，仅允许 ASCII 字符或中文汉字，且不能包含空格");
+    return;
+  }
 
   try {
     const { error } = await supabase.from("user_profiles").update({
-      name: name.trim(),
+      name,
       updated_at: new Date().toISOString()
     }).eq("user_id", user.id);
     if (error) throw error;
 
     // UI同步
-    document.getElementById("userName").innerText = name.trim();
-    document.getElementById("heroName").innerText = name.trim();
+    document.getElementById("userName").innerText = name;
+    document.getElementById("heroName").innerText = name;
 
   } catch (e) {
     console.error(e);

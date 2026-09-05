@@ -1580,6 +1580,11 @@
     "ko": "새로운 디스플레이 이름을 입력",
     "es": "Introduzca un nuevo nombre de pantalla"
   },
+  "昵称最多 8 个字符，仅允许 ASCII 字符或中文汉字，且不能包含空格": {
+    "zh-Hant": "暱稱最多 8 個字元，僅允許 ASCII 字元或中文字，且不能包含空格",
+    "ko": "닉네임은 8자 이내이며 공백 없이 ASCII 문자 또는 중국어 한자만 사용할 수 있습니다.",
+    "es": "El nombre debe tener 8 caracteres o menos y usar solo caracteres ASCII o chinos, sin espacios"
+  },
   "仅支持 JPG / PNG / WEBP 格式": {
     "zh-Hant": "僅支援 JPG / PNG / WEBP 格式",
     "ko": "JPG, PNG 및 WEBP 만 지원됩니다.",

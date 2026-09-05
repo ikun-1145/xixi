@@ -358,6 +358,7 @@
     ["这里显示的 JSON 就是复制或导出的全部内容，不包含聊天原文或账号标识。", "The JSON shown here is the complete copied or exported content. It contains no chat text or account identifiers.", "ここに表示されるJSONがコピーまたはエクスポートされる全内容です。会話本文やアカウント識別子は含まれません。"],
     ["关闭预览", "Close preview", "プレビューを閉じる"],
     ["输入新的昵称", "Enter a new display name", "新しい表示名を入力"],
+    ["昵称最多 8 个字符，仅允许 ASCII 字符或中文汉字，且不能包含空格", "Display names must be 8 characters or fewer and use only ASCII characters or Chinese characters, with no spaces", "表示名は8文字以内で、空白を含まないASCII文字または中国語の漢字のみ使用できます"],
     ["仅支持 JPG / PNG / WEBP 格式", "Only JPG, PNG, and WEBP are supported", "JPG、PNG、WEBPのみ対応しています"],
     ["图片太大，请选择 8MB 内的图片", "The image is too large. Choose one under 8 MB.", "画像が大きすぎます。8MB未満の画像を選択してください。"],
     ["文件格式异常，请重新选择图片", "The file format is invalid. Choose another image.", "ファイル形式が正しくありません。別の画像を選択してください。"],
