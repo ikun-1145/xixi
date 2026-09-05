@@ -12,23 +12,23 @@ const updateManifest = JSON.parse(
 const ipaGuidePath = path.join(projectRoot, 'p/video/ipa-install-guide.mp4');
 
 test('update manifest points to the mainland APK proxy for the published release', () => {
-  assert.equal(updateManifest.version, '1.4.5');
-  assert.equal(updateManifest.build, 34);
+  assert.equal(updateManifest.version, '1.4.6');
+  assert.equal(updateManifest.build, 35);
   assert.equal(updateManifest.force, true);
   assert.equal(
     updateManifest.url,
-    'https://api.sunland.dev/v1/download/apk?v=1.4.5%2B34',
+    'https://api.sunland.dev/v1/download/apk?v=1.4.6%2B35',
   );
 });
 
 test('download page exposes version-locked Android and iOS release assets', () => {
   assert.match(
     downloadHtml,
-    /href="https:\/\/api\.sunland\.dev\/v1\/download\/apk\?v=1\.4\.5%2B34"/u,
+    /href="https:\/\/api\.sunland\.dev\/v1\/download\/apk\?v=1\.4\.6%2B35"/u,
   );
   assert.match(
     downloadHtml,
-    /href="https:\/\/api\.sunland\.dev\/v1\/download\/ipa\?v=1\.4\.5%2B34"/u,
+    /href="https:\/\/api\.sunland\.dev\/v1\/download\/ipa\?v=1\.4\.6%2B35"/u,
   );
   assert.equal((downloadHtml.match(/<a[^>]+data-download-button/g) || []).length, 2);
 });
@@ -42,7 +42,7 @@ test('platform download buttons use the supplied local transparent artwork', () 
 
 test('platform download buttons expose a visible action, release detail, and download cue', () => {
   assert.equal((downloadHtml.match(/class="download-label" data-i18n="dl(?:Android|Ios)Btn"/gu) || []).length, 2);
-  assert.equal((downloadHtml.match(/class="download-detail">(?:APK|IPA) · v1\.4\.5\+34</gu) || []).length, 2);
+  assert.equal((downloadHtml.match(/class="download-detail">(?:APK|IPA) · v1\.4\.6\+35</gu) || []).length, 2);
   assert.equal((downloadHtml.match(/class="download-arrow" aria-hidden="true"/gu) || []).length, 2);
   assert.doesNotMatch(downloadHtml, /class="sr-only" data-i18n="dl(?:Android|Ios)Btn"/u);
 });

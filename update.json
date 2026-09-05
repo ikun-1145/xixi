@@ -2,6 +2,6 @@
   "version": "1.4.6",
   "build": 35,
   "force": true,
-  "url": "https://github.com/ikun-1145/sunland-ai-dart/releases/download/v1.4.6%2B35/sunland-ai-1.4.6%2B35.apk",
-  "desc": "新增 Sunland AI Beta 数据管理与仅本地诊断，提升账号切换和请求生命周期下的数据安全性。"
+  "url": "https://api.sunland.dev/v1/download/apk?v=1.4.6%2B35",
+  "desc": "新增管理端用户封禁能力，修复更新下载流程生命周期问题，并改进激活码、邮件验证和会话标题恢复。"
 }
