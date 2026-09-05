@@ -1,7 +1,13 @@
 name = "afdianpay"
 main = "worker.js"
-compatibility_date = "2026-06-20"
+compatibility_date = "2026-09-05"
 account_id = "5d99df0919786bd4d9de3dd5bdcbfb4d"
+# 付款回调不能依赖非生产用途的 workers.dev；由 Cloudflare 托管证书和 DNS。
+workers_dev = false
+
+[[routes]]
+pattern = "afdianpay.sunland.dev"
+custom_domain = true
 
 # 每 2 分钟轮询一次爱发电对账（想更快可改成 "* * * * *"）
 [triggers]
@@ -11,8 +17,13 @@ crons = ["*/2 * * * *"]
 [vars]
 SUPABASE_URL = "https://klyrasrqgxijwrxuoevj.supabase.co"
 USER_ID = "e736a9426c7311f1851452540025c377"
+AFDIAN_PLAN_ID = "4c2527fc6c7411f1bbe45254001e7c00"
 
-# 幂等账本 KV —— 运行 `wrangler kv namespace create ORDERS` 后把输出的 id 填到下面
+[observability]
+enabled = true
+head_sampling_rate = 1
+
+# 扫描游标 KV：付款订单幂等性由 Supabase 的 pro_payment_orders 账本保证。
 [[kv_namespaces]]
 binding = "ORDERS"
 id = "c331b9a7fe3e4589a373d46f814b3d14"
@@ -20,4 +31,5 @@ id = "c331b9a7fe3e4589a373d46f814b3d14"
 # ⚠️ 敏感值不写在这里，用命令注入（见 DEPLOY.md）：
 #   SUPABASE_KEY  = Supabase service_role key
 #   TOKEN         = 爱发电 API token
-# 命令：wrangler secret put SUPABASE_KEY   /   wrangler secret put TOKEN
+#   ADMIN_TOKEN   = 仅用于精确订单重查的随机管理员令牌
+# 命令：wrangler secret put SUPABASE_KEY / TOKEN / ADMIN_TOKEN

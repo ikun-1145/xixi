@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="zh-Hans">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <script defer src="p/js/site-i18n-extra.js?v=20260829-2"></script>
+  <script defer src="p/js/site-i18n.js?v=20260829-2"></script>
+  <title>Pro 到账申诉 - Sunland AI</title>
+  <link rel="stylesheet" href="p/css/tokens.css">
+  <link rel="stylesheet" href="p/css/base.css">
+  <style>
+    body { min-height: 100vh; padding: var(--space-8) var(--space-4) var(--space-12); }
+    .support-card { width: min(100%, 640px); margin: var(--space-14) auto 0; padding: var(--space-8) var(--space-6); }
+    h1 { font-size: var(--title-md); margin-bottom: var(--space-3); }
+    h2 { font-size: var(--text-lg); margin: var(--space-7) 0 var(--space-3); }
+    p, li { color: var(--text-2); line-height: 1.7; }
+    ul { padding-left: 1.25rem; display: grid; gap: var(--space-2); }
+    .notice { margin-top: var(--space-5); padding: var(--space-4); border: 1px solid var(--border); border-radius: var(--r-md); background: var(--surface-2); }
+    .notice strong { display: block; margin-bottom: var(--space-2); color: var(--text); }
+    .actions { display: grid; gap: var(--space-3); margin-top: var(--space-5); }
+    .button, .copy-button { min-height: 42px; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--r-md); border: 1px solid var(--border-strong); padding: 0 var(--space-4); font: inherit; font-weight: 650; cursor: pointer; text-decoration: none; color: var(--text); background: var(--surface); }
+    .button.primary { color: #00323a; border-color: transparent; background: linear-gradient(135deg, #22d3ee, #67e8f9); }
+    .button:hover, .copy-button:hover { border-color: var(--brand); transform: translateY(-1px); }
+    .email { font-weight: 700; letter-spacing: .02em; word-break: break-all; }
+    .status { min-height: 1.4em; color: var(--text-3); text-align: center; font-size: var(--text-sm); }
+    .back { display: inline-block; margin-top: var(--space-7); color: var(--text-2); }
+    @media (max-width: 480px) { body { padding-top: var(--space-4); } .support-card { margin-top: var(--space-10); padding: var(--space-6) var(--space-4); } }
+  </style>
+</head>
+<body>
+  <div id="langSwitcher" class="lang-switcher" role="navigation" aria-label="语言切换">
+    <button id="languageMenuToggle" class="language-menu-toggle" type="button" aria-haspopup="menu" aria-expanded="false" aria-controls="languageMenu">
+      <img class="language-flag" src="p/flags/cn.svg" alt="" data-language-current-flag>
+      <span data-language-current-label>简体中文</span>
+      <svg class="language-menu-chevron" viewBox="0 0 12 12" aria-hidden="true"><path d="m2 4 4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    </button>
+    <div id="languageMenu" class="language-menu" role="menu" aria-labelledby="languageMenuToggle" hidden>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="zh" aria-checked="true"><img class="language-flag" src="p/flags/cn.svg" alt="">简体中文</button>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="zh-Hant" aria-checked="false"><img class="language-flag" src="p/flags/cn.svg" alt="">繁體中文</button>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="en" aria-checked="false"><img class="language-flag" src="p/flags/gb.svg" alt="">English</button>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="ja" aria-checked="false"><img class="language-flag" src="p/flags/jp.svg" alt="">日本語</button>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="ko" aria-checked="false"><img class="language-flag" src="p/flags/kr.svg" alt="">한국어</button>
+      <button class="language-menu-item" type="button" role="menuitemradio" data-lang="es" aria-checked="false"><img class="language-flag" src="p/flags/es.svg" alt="">Español</button>
+    </div>
+  </div>
+
+  <main class="page-shell card support-card">
+    <h1 data-copy="title"></h1>
+    <p data-copy="intro"></p>
+    <div class="notice"><strong data-copy="waitTitle"></strong><p data-copy="waitBody"></p></div>
+
+    <h2 data-copy="materialsTitle"></h2>
+    <ul>
+      <li data-copy="material1"></li>
+      <li data-copy="material2"></li>
+      <li data-copy="material3"></li>
+      <li data-copy="material4"></li>
+    </ul>
+
+    <div class="notice"><strong data-copy="securityTitle"></strong><p data-copy="securityBody"></p></div>
+
+    <h2 data-copy="contactTitle"></h2>
+    <p class="email">support@sunland.dev</p>
+    <div class="actions">
+      <a id="mailButton" class="button primary" href="mailto:support@sunland.dev" data-copy="mailButton"></a>
+      <button id="copyEmail" class="copy-button" type="button" data-copy="copyEmail"></button>
+      <button id="copyTemplate" class="copy-button" type="button" data-copy="copyTemplate"></button>
+      <div id="copyStatus" class="status" aria-live="polite"></div>
+    </div>
+    <a class="back" href="ai_settings.html" data-copy="back"></a>
+  </main>
+
+  <script>
+    (function () {
+      const EMAIL = "support@sunland.dev";
+      const COPY = {
+        "zh": {
+          title: "Pro 到账申诉", intro: "付款成功后，系统通常会在几分钟内自动开通 Pro。这里不会收集任何资料；请通过邮件安全地与我们联系。",
+          waitTitle: "请先等待 10 分钟", waitBody: "先刷新或重新打开 Sunland AI，并确认 Pro 状态。超过 10 分钟仍未到账，再发送申诉材料。",
+          materialsTitle: "请准备这些材料", material1: "霜蓝账号邮箱和用户 ID", material2: "爱发电订单号、付款时间与金额", material3: "爱发电账号信息（用于核验）", material4: "订单成功截图，请遮盖无关隐私信息",
+          securityTitle: "保护你的账号与隐私", securityBody: "不要发送密码、验证码、JWT、银行卡完整信息或身份证件。截图请遮盖无关的个人资料。",
+          contactTitle: "发送给支持团队", mailButton: "发邮件给 support@sunland.dev", copyEmail: "复制邮箱", copyTemplate: "复制申诉材料模板", copiedEmail: "邮箱已复制", copiedTemplate: "材料模板已复制", copyFailed: "无法自动复制，请手动复制。", back: "返回设置",
+          subject: "Pro 到账申诉", template: "霜蓝账号邮箱：\n霜蓝用户 ID：\n爱发电订单号：\n付款时间：\n付款金额：\n爱发电账号信息：\n订单成功截图：已附（已遮盖无关隐私）\n"
+        },
+        "zh-Hant": {
+          title: "Pro 到帳申訴", intro: "付款成功後，系統通常會在幾分鐘內自動開通 Pro。這裡不會蒐集任何資料；請透過電子郵件安全地聯絡我們。",
+          waitTitle: "請先等待 10 分鐘", waitBody: "先重新整理或重新開啟 Sunland AI，並確認 Pro 狀態。超過 10 分鐘仍未到帳，再傳送申訴資料。",
+          materialsTitle: "請準備這些資料", material1: "霜藍帳號電子郵件與使用者 ID", material2: "愛發電訂單號、付款時間與金額", material3: "愛發電帳號資訊（供核驗）", material4: "訂單成功截圖，請遮蓋無關隱私資訊",
+          securityTitle: "保護你的帳號與隱私", securityBody: "請勿傳送密碼、驗證碼、JWT、完整銀行卡資料或身分證件。截圖請遮蓋無關個人資料。",
+          contactTitle: "傳送給支援團隊", mailButton: "寄信給 support@sunland.dev", copyEmail: "複製電子郵件", copyTemplate: "複製申訴資料範本", copiedEmail: "已複製電子郵件", copiedTemplate: "已複製資料範本", copyFailed: "無法自動複製，請手動複製。", back: "返回設定",
+          subject: "Pro 到帳申訴", template: "霜藍帳號電子郵件：\n霜藍使用者 ID：\n愛發電訂單號：\n付款時間：\n付款金額：\n愛發電帳號資訊：\n訂單成功截圖：已附（已遮蓋無關隱私）\n"
+        },
+        "en": {
+          title: "Pro activation support", intro: "Successful payments normally activate Pro within a few minutes. This page collects nothing; contact us safely by email if you still need help.",
+          waitTitle: "Please wait 10 minutes first", waitBody: "Refresh or reopen Sunland AI and check your Pro status. If it is still inactive after 10 minutes, send the materials below.",
+          materialsTitle: "Please prepare", material1: "Your Sunland account email and user ID", material2: "Afdian order ID, payment time, and amount", material3: "Your Afdian account information for verification", material4: "A successful-order screenshot with unrelated private details obscured",
+          securityTitle: "Protect your account and privacy", securityBody: "Never send passwords, verification codes, JWTs, full bank-card details, or identity documents. Obscure unrelated personal details in screenshots.",
+          contactTitle: "Send to support", mailButton: "Email support@sunland.dev", copyEmail: "Copy email", copyTemplate: "Copy support template", copiedEmail: "Email copied", copiedTemplate: "Template copied", copyFailed: "Could not copy automatically; please copy it manually.", back: "Back to settings",
+          subject: "Pro activation support", template: "Sunland account email:\nSunland user ID:\nAfdian order ID:\nPayment time:\nPayment amount:\nAfdian account information:\nSuccessful-order screenshot: attached (unrelated private details obscured)\n"
+        },
+        "ja": {
+          title: "Pro 有効化サポート", intro: "支払いが完了すると通常は数分で Pro が有効になります。このページでは情報を収集しません。必要な場合はメールで安全にお問い合わせください。",
+          waitTitle: "まず 10 分お待ちください", waitBody: "Sunland AI を更新または再度開き、Pro の状態を確認してください。10 分後も有効にならない場合のみ、下記の情報を送ってください。",
+          materialsTitle: "ご用意いただく情報", material1: "Sunland アカウントのメールアドレスとユーザー ID", material2: "愛発電の注文番号、支払い時刻、金額", material3: "照合用の愛発電アカウント情報", material4: "無関係な個人情報を隠した注文成功画面のスクリーンショット",
+          securityTitle: "アカウントとプライバシーを守ってください", securityBody: "パスワード、認証コード、JWT、カード番号全体、身分証明書は絶対に送らないでください。スクリーンショットの無関係な個人情報も隠してください。",
+          contactTitle: "サポートに送信", mailButton: "support@sunland.dev にメール", copyEmail: "メールアドレスをコピー", copyTemplate: "問い合わせテンプレートをコピー", copiedEmail: "メールアドレスをコピーしました", copiedTemplate: "テンプレートをコピーしました", copyFailed: "自動コピーできませんでした。手動でコピーしてください。", back: "設定に戻る",
+          subject: "Pro 有効化サポート", template: "Sunland アカウントのメール：\nSunland ユーザー ID：\n愛発電注文番号：\n支払い時刻：\n支払い金額：\n愛発電アカウント情報：\n注文成功画面：添付済み（無関係な個人情報は非表示）\n"
+        },
+        "ko": {
+          title: "Pro 활성화 지원", intro: "결제가 완료되면 보통 몇 분 안에 Pro가 활성화됩니다. 이 페이지는 정보를 수집하지 않으며, 도움이 필요하면 이메일로 안전하게 문의할 수 있습니다.",
+          waitTitle: "먼저 10분 기다려 주세요", waitBody: "Sunland AI를 새로고침하거나 다시 열고 Pro 상태를 확인하세요. 10분 후에도 활성화되지 않은 경우에만 아래 자료를 보내 주세요.",
+          materialsTitle: "준비할 자료", material1: "Sunland 계정 이메일과 사용자 ID", material2: "Afdian 주문 번호, 결제 시간 및 금액", material3: "확인용 Afdian 계정 정보", material4: "관련 없는 개인정보를 가린 주문 성공 스크린샷",
+          securityTitle: "계정과 개인정보를 보호하세요", securityBody: "비밀번호, 인증 코드, JWT, 전체 카드 정보 또는 신분증을 보내지 마세요. 스크린샷의 관련 없는 개인정보도 가리세요.",
+          contactTitle: "지원팀에 보내기", mailButton: "support@sunland.dev에 이메일", copyEmail: "이메일 복사", copyTemplate: "문의 템플릿 복사", copiedEmail: "이메일을 복사했습니다", copiedTemplate: "템플릿을 복사했습니다", copyFailed: "자동으로 복사할 수 없습니다. 직접 복사하세요.", back: "설정으로 돌아가기",
+          subject: "Pro 활성화 지원", template: "Sunland 계정 이메일:\nSunland 사용자 ID:\nAfdian 주문 번호:\n결제 시간:\n결제 금액:\nAfdian 계정 정보:\n주문 성공 스크린샷: 첨부됨(관련 없는 개인정보 가림)\n"
+        },
+        "es": {
+          title: "Soporte de activación Pro", intro: "Los pagos correctos suelen activar Pro en pocos minutos. Esta página no recopila información; si necesitas ayuda, contáctanos de forma segura por correo.",
+          waitTitle: "Espera 10 minutos primero", waitBody: "Actualiza o vuelve a abrir Sunland AI y comprueba el estado de Pro. Si sigue inactivo después de 10 minutos, envía los materiales indicados.",
+          materialsTitle: "Prepara lo siguiente", material1: "El correo de tu cuenta Sunland y tu ID de usuario", material2: "ID de pedido de Afdian, hora de pago e importe", material3: "Información de tu cuenta Afdian para verificar", material4: "Captura del pedido exitoso con datos privados no relacionados ocultos",
+          securityTitle: "Protege tu cuenta y privacidad", securityBody: "No envíes contraseñas, códigos de verificación, JWT, datos completos de tarjeta ni documentos de identidad. Oculta datos personales no relacionados en las capturas.",
+          contactTitle: "Enviar a soporte", mailButton: "Enviar correo a support@sunland.dev", copyEmail: "Copiar correo", copyTemplate: "Copiar plantilla", copiedEmail: "Correo copiado", copiedTemplate: "Plantilla copiada", copyFailed: "No se pudo copiar automáticamente; cópialo manualmente.", back: "Volver a ajustes",
+          subject: "Soporte de activación Pro", template: "Correo de cuenta Sunland:\nID de usuario de Sunland:\nID de pedido de Afdian:\nHora de pago:\nImporte pagado:\nInformación de cuenta Afdian:\nCaptura de pedido exitoso: adjunta (datos privados no relacionados ocultos)\n"
+        }
+      };
+
+      function getLanguage() {
+        const selected = window.SiteI18n?.getLanguage?.() || localStorage.getItem("lang") || "zh";
+        return COPY[selected] ? selected : "zh";
+      }
+      function applyCopy() {
+        const copy = COPY[getLanguage()];
+        document.documentElement.lang = getLanguage() === "zh-Hant" ? "zh-Hant" : getLanguage();
+        document.title = `${copy.title} - Sunland AI`;
+        document.querySelectorAll("[data-copy]").forEach(element => { element.textContent = copy[element.dataset.copy] || ""; });
+        const mail = document.getElementById("mailButton");
+        mail.href = `mailto:${EMAIL}?subject=${encodeURIComponent(copy.subject)}&body=${encodeURIComponent(copy.template)}`;
+        document.getElementById("copyEmail").onclick = () => copyText(EMAIL, copy.copiedEmail, copy.copyFailed);
+        document.getElementById("copyTemplate").onclick = () => copyText(copy.template, copy.copiedTemplate, copy.copyFailed);
+      }
+      async function copyText(value, success, failure) {
+        const status = document.getElementById("copyStatus");
+        try {
+          await navigator.clipboard.writeText(value);
+          status.textContent = success;
+        } catch {
+          status.textContent = failure;
+        }
+      }
+      applyCopy();
+      window.addEventListener("DOMContentLoaded", applyCopy, { once: true });
+      window.addEventListener("site-language-change", applyCopy);
+    })();
+  </script>
+</body>
+</html>

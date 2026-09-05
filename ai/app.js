@@ -473,38 +473,36 @@ chat.addEventListener("drop", async (e) => {
   if (!providerCapabilityState.fileUpload) return;
   files.forEach(handleFile);
 });
+function proPaymentText(key, fallback) {
+  return window.SunlandProPayment?.text?.(key) || fallback;
+}
+
 function startActivationPolling() {
-  let count = 0;
+  const payments = window.SunlandProPayment;
+  if (!payments || !supabase || !getCurrentUserId()) return;
 
-  const timer = setInterval(async () => {
-    count++;
-
-    // 最多轮询 3 分钟（覆盖爱发电 worker 的 cron 周期）
-    if (count > 60) {
-      clearInterval(timer);
-      showToast("开通处理中，付款成功后约 1-2 分钟自动生效，可稍后刷新页面");
-      return;
-    }
-
-    if (!session?.userId) return;
-
-    // ⭐ 统一判定：checkActivation 以 user_profiles.pro 为准（爱发电 worker 写入），
-    //    并兼容激活码兑换。检测到即解锁 Pro 并关闭弹窗。
-    await checkActivation();
-
-    if (isActivated) {
-      showToast("支付成功");
-
-      // ⭐ 自动关闭支付弹窗
+  stopProActivationPolling?.();
+  stopProActivationPolling = payments.startActivationMonitoring({
+    supabase,
+    getExpectedUserId: getCurrentUserId,
+    onActivated: async ({ userId }) => {
+      if (getCurrentUserId() !== userId) return;
+      try { await checkActivation(); } catch { /* The monitor already confirmed the database truth. */ }
+      if (getCurrentUserId() !== userId) return;
+      showToast(proPaymentText("activated", "支付成功，Pro 已开通。"));
       const payModal = document.getElementById("payModal");
       if (payModal) {
         payModal.classList.add("closing");
         setTimeout(() => payModal.remove(), 200);
       }
-
-      clearInterval(timer);
-    }
-  }, 3000);
+    },
+    onTimeout: ({ supportUrl }) => {
+      showToast(
+        proPaymentText("supportHint", "已等待 10 分钟仍未到账？请准备订单信息后联系支持。"),
+        { href: supportUrl, label: proPaymentText("supportLink", "Pro 到账申诉") },
+      );
+    },
+  });
 }
 
 function showError(title, extra = {}) {
@@ -574,9 +572,9 @@ function showError(title, extra = {}) {
   };
 }
 
-function showToast(text) {
+function showToast(text, action = null) {
   const toast = document.createElement("div");
-  toast.innerText = text;
+  toast.textContent = text;
   toast.style.cssText = `
     position:fixed;
     top:20px;
@@ -590,8 +588,15 @@ function showToast(text) {
     box-shadow:0 8px 20px rgba(0,0,0,0.15);
     z-index:9999;
   `;
+  if (action?.href && action?.label) {
+    const link = document.createElement("a");
+    link.href = action.href;
+    link.textContent = action.label;
+    link.style.cssText = "display:block;margin-top:6px;color:inherit;font-weight:700;text-decoration:underline;";
+    toast.appendChild(link);
+  }
   document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 2000);
+  setTimeout(() => toast.remove(), action ? 9000 : 2000);
 }
 let thinkingBubble = null;
 
@@ -874,6 +879,7 @@ const supabaseReady = import('../p/js/supabaseClient.js')
   });
 
 let session = null;
+let stopProActivationPolling = null;
 const PROFILE_META_ID = "__xixi_user_profile__";
 const PROFILE_CACHE_PREFIX = "xixi_profile_";
 
@@ -940,6 +946,8 @@ function setSession(identity) {
     : null;
   window.session = session;
   if (previousUserId && previousUserId !== userId) {
+    stopProActivationPolling?.();
+    stopProActivationPolling = null;
     deletedConversationIds.clear();
     deletingConversationIds.clear();
   }
@@ -1843,6 +1851,7 @@ async function checkLogin(options = {}) {
       } else {
         activationRequest.catch(() => {});
       }
+      if (session?.userId) startActivationPolling();
 
       if (expectedVersion == null || !isRestoreStale(expectedVersion)) {
         scheduleRenderUser();
@@ -2047,6 +2056,7 @@ function showActivationModal() {
       ">
         <span class="ui-svg-icon icon-gem" aria-hidden="true" style="margin-right:6px;"></span>扫码支付（推荐）
       </button>
+      <a href="pro_activation_support.html" style="display:block;margin-top:10px;text-align:center;color:#0e7490;font-size:12px;">${proPaymentText("supportLink", "Pro 到账申诉")}</a>
     </div>
   `;
 
@@ -2154,33 +2164,36 @@ setTimeout(() => {
   });
 }, 0);
 
-function showPayModal() {
-  // ⭐ 改为跳转爱发电「下单页」自动开通（替代旧的静态二维码 + 邮件发码手动流程）。
-  //    与 ai_settings.html 的 upgrade() 逻辑保持一致。
+async function showPayModal() {
   const userId = getCurrentUserId();
   if (!userId) {
-    alert("请先登录后再开通 Pro");
+    alert(proPaymentText("loginRequired", "请先登录后再开通 Pro。"));
     return;
   }
+  const payments = window.SunlandProPayment;
+  if (!payments) {
+    showToast(proPaymentText("intentError", "暂时无法创建安全付款引用，未进入支付页，请稍后重试。"));
+    return;
+  }
+  if (!confirm(proPaymentText("confirmation", "即将前往爱发电支付。确认前往支付？"))) return;
 
-  const encodedId = encodeURIComponent(userId);
-  const AFDIAN_PLAN_ID = "4c2527fc6c7411f1bbe45254001e7c00"; // 霜蓝AI ¥10 订阅方案
-  const afdianUrl = `https://afdian.com/order/create?product_type=0&plan_id=${AFDIAN_PLAN_ID}&custom_order_id=${encodedId}`;
-
-  // 付款前提示：选择「月付」即可。付款成功即自动开通永久 Pro，
-  // 与订阅月数无关，多选月份只会多付钱、不会增加权益。
-  const ok = confirm(
-    "即将前往爱发电支付。\n\n" +
-    "请选择「月付」方案（¥10 / 月）即可——付款成功后将自动开通【永久 Pro】，\n" +
-    "无需多选月份，多付不会增加权益。\n\n确认前往支付？"
-  );
-  if (!ok) return;
-
-  // 打开爱发电下单页（custom_order_id 携带 userId，付款后随订单回传给 worker）
-  window.open(afdianUrl, "_blank");
-
-  // 付款后 afdianpay worker 约 2 分钟内自动开通 Pro；轮询激活状态以自动刷新 UI
-  startActivationPolling();
+  try {
+    const result = await payments.beginCheckout({
+      supabase,
+      expectedUserId: userId,
+      isExpectedUser: currentUserId => getCurrentUserId() === currentUserId,
+    });
+    if (getCurrentUserId() !== userId) return;
+    if (result.alreadyActivated) {
+      await checkActivation();
+      showToast(proPaymentText("alreadyActivated", "你的 Pro 已开通，无需重复付款。"));
+      return;
+    }
+    startActivationPolling();
+    showToast(proPaymentText("processing", "已打开支付页。付款成功后会自动检查到账状态。"));
+  } catch (error) {
+    showToast(error instanceof Error ? error.message : proPaymentText("intentError", "暂时无法创建安全付款引用，未进入支付页，请稍后重试。"));
+  }
 }
 
 // ===== 设备检测控制侧边栏 =====

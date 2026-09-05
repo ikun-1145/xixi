@@ -6,6 +6,13 @@
   "use strict";
 
   const generatedCatalog = {
+  "Pro 到账申诉": {
+    "zh-Hant": "Pro 到帳申訴",
+    "en": "Pro activation support",
+    "ja": "Pro 有効化サポート",
+    "ko": "Pro 활성화 지원",
+    "es": "Soporte de activación Pro"
+  },
   "信息鉴真 · Sunland": {
     "zh-Hant": "資訊鑑真 · Sunland",
     "en": "Information Verification · Sunland",

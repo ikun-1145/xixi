@@ -529,6 +529,16 @@ body.dark .usage-hint {
       box-shadow: 0 10px 28px rgba(167,139,250,0.45);
     }
     .btn-pro:active { transform: scale(0.97); }
+    .pro-support-link {
+      display: block;
+      margin-top: 10px;
+      color: var(--pro);
+      font-size: 12px;
+      text-align: center;
+      text-decoration: underline;
+      text-underline-offset: 3px;
+    }
+    body.dark .pro-support-link { color: var(--accent2); }
 
     /* Activated state */
     .activated-banner {
@@ -1052,6 +1062,7 @@ body.dark .usage-hint {
           <div class="pro-feat">永久有效</div>
         </div>
         <button class="btn-pro" onclick="upgrade()">立即升级 · ¥10 永久</button>
+        <a class="pro-support-link" id="proSupportLink" href="pro_activation_support.html">Pro 到账申诉</a>
       </div>
     </div>
 
@@ -1247,6 +1258,7 @@ body.dark .usage-hint {
 
   <script src="/p/vendor/supabase-2.110.7.js"></script>
   <script src="/ai/database-token-client.js"></script>
+  <script src="/ai/pro-payment.js?v=20260905-1"></script>
   <script>
     window._supabaseClient = window._supabaseClient || window.supabase.createClient(
       "https://klyrasrqgxijwrxuoevj.supabase.co",
@@ -1254,6 +1266,7 @@ body.dark .usage-hint {
       { accessToken: () => window.SunlandDatabaseToken.get() }
     );
     var supabase = window._supabaseClient;
+    let stopSettingsProPaymentMonitoring = null;
     const PROFILE_META_ID = "__xixi_user_profile__";
     const PROFILE_CACHE_PREFIX = "xixi_profile_";
     const AVATAR_BUCKET = "avatars";
@@ -1671,35 +1684,58 @@ async function editNickname() {
       }
     }
 
- function upgrade() {
-  const userId = document.getElementById("userId")?.innerText?.trim();
+    function updateProSupportLink() {
+      const link = document.getElementById("proSupportLink");
+      if (link) link.textContent = window.SunlandProPayment?.text?.("supportLink") || "Pro 到账申诉";
+    }
 
-  if (!userId || userId === "--") {
-    alert("请先登录后再开通 Pro");
-    return;
-  }
+    function startSettingsProPaymentMonitoring(userId) {
+      const payment = window.SunlandProPayment;
+      if (!payment || !userId) return;
+      stopSettingsProPaymentMonitoring?.();
+      stopSettingsProPaymentMonitoring = payment.startActivationMonitoring({
+        supabase,
+        getExpectedUserId: () => userId,
+        onActivated: async () => {
+          await init();
+          alert(payment.text("activated"));
+        },
+        onTimeout: () => alert(payment.text("supportHint")),
+      });
+    }
 
-  const encodedId = encodeURIComponent(userId);
+    async function resumeSettingsProPaymentMonitoring() {
+      const payment = window.SunlandProPayment;
+      if (!payment) return;
+      try {
+        const { userId } = await payment.getVerifiedDatabaseIdentity();
+        startSettingsProPaymentMonitoring(userId);
+      } catch {
+        // The regular settings page already renders its logged-out state. Never trust a DOM id for payment binding.
+      }
+    }
 
-  // 爱发电「下单页」专属链接：用 custom_order_id 携带 Supabase userId，
-  // 付款后随订单回传，afdianpay worker 据此自动开通 Pro。
-  // ⚠️ 自定义参数必须加在 /order/create 下单页；加在创作者主页 /a/sunland 上
-  //    会被 SPA 当未知 query 处理而白屏（已踩坑验证）。
-  const AFDIAN_PLAN_ID = "4c2527fc6c7411f1bbe45254001e7c00"; // 霜蓝AI ¥10 订阅方案
-  const afdianUrl = `https://afdian.com/order/create?product_type=0&plan_id=${AFDIAN_PLAN_ID}&custom_order_id=${encodedId}`;
+    async function upgrade() {
+      const payment = window.SunlandProPayment;
+      if (!payment) {
+        alert("暂时无法创建安全付款引用，未进入支付页，请稍后重试。");
+        return;
+      }
+      if (!confirm(payment.text("confirmation"))) return;
 
-  // 付款前提示：选择「月付」即可。付款成功即自动开通永久 Pro，
-  // 与订阅月数无关，多选月份只会多付钱、不会增加权益。
-  const ok = confirm(
-    "即将前往爱发电支付。\n\n" +
-    "请选择「月付」方案（¥10 / 月）即可——付款成功后将自动开通【永久 Pro】，\n" +
-    "无需多选月份，多付不会增加权益。\n\n确认前往支付？"
-  );
-  if (!ok) return;
-
-  // 打开支付页面
-  window.open(afdianUrl, "_blank");
-}
+      try {
+        const result = await payment.beginCheckout({ supabase });
+        if (result.alreadyActivated) {
+          await init();
+          alert(payment.text("alreadyActivated"));
+          return;
+        }
+        startSettingsProPaymentMonitoring(result.userId);
+        alert(payment.text("processing"));
+      } catch (error) {
+        alert(error instanceof Error ? error.message : payment.text("intentError"));
+      }
+    }
 
     function logout() {
       if (!confirm("确定退出登录？")) return;
@@ -1740,7 +1776,11 @@ async function editNickname() {
     document.addEventListener("DOMContentLoaded", () => {
       hideGlobalLoading();
     });
+    updateProSupportLink();
+    document.addEventListener("DOMContentLoaded", updateProSupportLink, { once: true });
+    window.addEventListener("site-language-change", updateProSupportLink);
     init();
+    void resumeSettingsProPaymentMonitoring();
 
 function showGlobalLoading() {
   const el = document.getElementById("loadingBar");

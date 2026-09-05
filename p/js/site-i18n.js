@@ -703,6 +703,11 @@
       ...(additionalCatalog[source] || {}),
     })]),
   );
+  for (const [source, translations] of Object.entries(additionalCatalog)) {
+    if (!catalog.has(source)) {
+      catalog.set(source, Object.freeze({ zh: source, ...translations }));
+    }
+  }
 
   const patternRows = [
     [/^今日剩余\s*(\d+)\s*次$/u, (_, count) => ({ "zh-Hant": `今日剩餘 ${count} 次`, en: `${count} uses left today`, ja: `本日あと${count}回`, ko: `오늘 ${count}회 남음`, es: `${count} usos disponibles hoy` })],
