@@ -1,7 +1,7 @@
 {
-  "version": "1.4.6",
-  "build": 35,
+  "version": "1.4.7",
+  "build": 36,
   "force": true,
-  "url": "https://api.sunland.dev/v1/download/apk?v=1.4.6%2B35",
-  "desc": "新增管理端用户封禁能力，修复更新下载流程生命周期问题，并改进激活码、邮件验证和会话标题恢复。"
+  "url": "https://api.sunland.dev/v1/download/apk?v=1.4.7%2B36",
+  "desc": "修复“兽聚查询”按省、市或地区查询时因地点字段未正确传递而显示“无”的问题。"
 }
