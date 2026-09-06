@@ -14,6 +14,12 @@ const CITY_NAMES = Object.freeze([
   "厦门", "福州", "温州", "佛山", "东莞", "南宁", "海口", "长春",
   "沈阳", "大连", "哈尔滨", "昆明", "贵阳", "拉萨", "兰州", "西宁",
   "乌鲁木齐", "新北", "台北", "高雄", "香港", "澳门",
+  "济南", "呼和浩特", "台中", "惠州", "保定", "台州", "龙岩",
+  "长宁", "闵行", "东丽", "西青",
+  "河北", "山西", "辽宁", "吉林", "黑龙江", "江苏", "浙江", "安徽",
+  "福建", "江西", "山东", "河南", "湖北", "湖南", "广东", "海南",
+  "四川", "贵州", "云南", "陕西", "甘肃", "青海", "台湾", "内蒙古",
+  "广西", "西藏", "宁夏", "新疆",
 ]);
 
 const CITY_COORDS = Object.freeze({
@@ -43,13 +49,6 @@ const CHINESE_MONTHS = Object.freeze([
   ["七", 7], ["六", 6], ["五", 5], ["四", 4], ["三", 3],
   ["二", 2], ["一", 1],
 ]);
-
-const FURRY_EVENT_SELECT_FIELDS = [
-  "name", "start_at", "end_at", "city", "venue", "address", "cover_url",
-  "cover", "source_url", "raw_status", "days_until", "weather",
-  "weather_date", "weather_code", "temp_max", "temp_min", "precip_mm",
-  "ctrip_url", "meituan_url",
-].join(",");
 
 function cleanText(value, maxLength = 240) {
   return String(value ?? "")
@@ -301,48 +300,22 @@ export function resolveFurryQueryParams(text, previousQuery = null, now = new Da
   return next;
 }
 
-function localIso(date) {
-  const pad = value => String(value).padStart(2, "0");
-  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
-    + `T${pad(date.getHours())}:${pad(date.getMinutes())}:${pad(date.getSeconds())}`;
-}
-
-function searchRange(query, now) {
-  if (query.month != null) {
-    const year = query.year ?? (
-      query.month < now.getMonth() + 1 ? now.getFullYear() + 1 : now.getFullYear()
-    );
-    return {
-      start: new Date(year, query.month - 1, 1),
-      end: new Date(year, query.month, 1),
-    };
-  }
-  if (query.year != null) {
-    return {
-      start: new Date(query.year, 0, 1),
-      end: new Date(query.year + 1, 0, 1),
-    };
-  }
-  return { start: now, end: null };
-}
-
-export async function searchFurryEvents({ supabase, query, now = new Date() }) {
+export async function searchFurryEvents({ supabase, query }) {
   if (!supabase || supabase.__offline) throw new Error("兽聚数据服务暂不可用");
   const normalizedQuery = validPreviousQuery(query);
-  const range = searchRange(normalizedQuery, now);
-
-  let request = supabase.from("furry_events").select(FURRY_EVENT_SELECT_FIELDS);
-  if (normalizedQuery.city) {
-    request = request.ilike("city", `%${normalizedQuery.city}%`);
-  }
-  request = request.gte("start_at", localIso(range.start));
-  if (range.end) request = request.lt("start_at", localIso(range.end));
-  request = request.order("start_at", { ascending: true });
-
-  const { data, error } = await request;
+  const body = Object.fromEntries(
+    Object.entries(normalizedQuery).filter(([, value]) => value != null),
+  );
+  const { data, error } = await supabase.functions.invoke(
+    "furry-event-search",
+    { body },
+  );
   if (error) throw new Error(cleanText(error.message, 240) || "兽聚查询失败");
+  if (!data || typeof data !== "object" || !Array.isArray(data.events)) {
+    throw new Error("兽聚查询返回格式无效");
+  }
   return {
-    events: normalizeFurryEvents(data),
+    events: normalizeFurryEvents(data.events),
     query: normalizedQuery,
   };
 }

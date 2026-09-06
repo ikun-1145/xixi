@@ -47,6 +47,14 @@ test("兽聚查询参数支持相对月份、跨轮继承和范围放宽", () =>
     ),
     { city: null, month: null, year: null },
   );
+  assert.deepEqual(
+    resolveFurryQueryParams("江苏有什么兽聚", null, now),
+    { city: "江苏", month: null, year: null },
+  );
+  assert.deepEqual(
+    resolveFurryQueryParams("那闵行呢", { city: "上海", month: 8, year: 2026 }, now),
+    { city: "闵行", month: 8, year: 2026 },
+  );
 });
 
 test("兽聚追问只在已有卡片上下文时触发", () => {
@@ -122,50 +130,27 @@ test("Sunland AI 能基于同一份结构化结果回答数量和地点", () => 
   assert.match(answerFurryEventQuestion("第一场在哪里？", card), /上海 · 测试酒店/);
 });
 
-test("Supabase 查询使用与 Flutter 一致的城市和月份边界", async () => {
+test("Supabase 查询通过 Edge Function 统一匹配省市地点", async () => {
   const calls = [];
-  const queryBuilder = {
-    select(fields) {
-      calls.push(["select", fields]);
-      return this;
-    },
-    ilike(column, value) {
-      calls.push(["ilike", column, value]);
-      return this;
-    },
-    gte(column, value) {
-      calls.push(["gte", column, value]);
-      return this;
-    },
-    lt(column, value) {
-      calls.push(["lt", column, value]);
-      return this;
-    },
-    order(column, options) {
-      calls.push(["order", column, options]);
-      return this;
-    },
-    then(resolve, reject) {
-      return Promise.resolve({ data: [eventA], error: null }).then(resolve, reject);
-    },
-  };
   const supabase = {
-    from(table) {
-      calls.push(["from", table]);
-      return queryBuilder;
+    functions: {
+      async invoke(name, options) {
+        calls.push([name, options]);
+        return { data: { events: [eventA], total: 1 }, error: null };
+      },
     },
   };
 
   const result = await searchFurryEvents({
     supabase,
-    query: { city: "上海", month: 9, year: 2026 },
-    now: new Date(2026, 7, 1, 12, 0, 0),
+    query: { city: "江苏", month: 9, year: 2026 },
   });
 
   assert.equal(result.events.length, 1);
-  assert.deepEqual(calls.find(call => call[0] === "ilike"), ["ilike", "city", "%上海%"]);
-  assert.match(calls.find(call => call[0] === "gte")[2], /^2026-09-01T00:00:00/);
-  assert.match(calls.find(call => call[0] === "lt")[2], /^2026-10-01T00:00:00/);
+  assert.deepEqual(calls, [[
+    "furry-event-search",
+    { body: { city: "江苏", month: 9, year: 2026 } },
+  ]]);
 });
 
 test("近期活动天气会按城市合并请求并写回模型上下文", async () => {
