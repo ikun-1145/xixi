@@ -24,11 +24,11 @@ test('update manifest points to the mainland APK proxy for the published release
 test('download page exposes version-locked Android and iOS release assets', () => {
   assert.match(
     downloadHtml,
-    /href="https:\/\/api\.sunland\.dev\/v1\/download\/apk\?v=1\.4\.6%2B35"/u,
+    /href="https:\/\/api\.sunland\.dev\/v1\/download\/apk\?v=1\.4\.7%2B36"/u,
   );
   assert.match(
     downloadHtml,
-    /href="https:\/\/api\.sunland\.dev\/v1\/download\/ipa\?v=1\.4\.6%2B35"/u,
+    /href="https:\/\/api\.sunland\.dev\/v1\/download\/ipa\?v=1\.4\.7%2B36"/u,
   );
   assert.equal((downloadHtml.match(/<a[^>]+data-download-button/g) || []).length, 2);
 });
@@ -42,7 +42,7 @@ test('platform download buttons use the supplied local transparent artwork', () 
 
 test('platform download buttons expose a visible action, release detail, and download cue', () => {
   assert.equal((downloadHtml.match(/class="download-label" data-i18n="dl(?:Android|Ios)Btn"/gu) || []).length, 2);
-  assert.equal((downloadHtml.match(/class="download-detail">(?:APK|IPA) · v1\.4\.6\+35</gu) || []).length, 2);
+  assert.equal((downloadHtml.match(/class="download-detail">(?:APK|IPA) · v1\.4\.7\+36</gu) || []).length, 2);
   assert.equal((downloadHtml.match(/class="download-arrow" aria-hidden="true"/gu) || []).length, 2);
   assert.doesNotMatch(downloadHtml, /class="sr-only" data-i18n="dl(?:Android|Ios)Btn"/u);
 });
