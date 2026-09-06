@@ -7,6 +7,7 @@ const source = fs.readFileSync(
   new URL("../ai/login-ban-status.js", import.meta.url),
   "utf8",
 );
+const aiApp = fs.readFileSync(new URL("../ai/app.js", import.meta.url), "utf8");
 
 function loadApi() {
   const context = { URL, Error, Object, String };
@@ -86,4 +87,19 @@ test("missing profiles remain eligible, while unreadable status fails closed", a
     }),
     /account-status-unavailable/u,
   );
+});
+
+test("AI runtime subscribes to the current profile and renders a safe full-screen appeal notice", () => {
+  const overlayStart = aiApp.indexOf("function showBannedAccountOverlay");
+  const overlayEnd = aiApp.indexOf("function stopAccountBanRealtime", overlayStart);
+  const overlay = aiApp.slice(overlayStart, overlayEnd);
+
+  assert.ok(overlayStart >= 0 && overlayEnd > overlayStart);
+  assert.match(overlay, /role", "alertdialog"/u);
+  assert.match(overlay, /mailto:support@sunland\.dev/u);
+  assert.match(overlay, /textContent\s*=\s*uiText\("警告：当前账号已被封禁，无法继续使用。"\)/u);
+  assert.match(overlay, /normalizeAccountBanReason\(reason\)/u);
+  assert.doesNotMatch(overlay, /reasonBlock\.innerHTML|reason\.innerHTML/u);
+  assert.match(aiApp, /supabase\.realtime\.setAuth\(databaseToken\)/u);
+  assert.match(aiApp, /table:\s*"user_profiles"[\s\S]*?filter:\s*`user_id=eq\.\$\{userId\}`/u);
 });

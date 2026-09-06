@@ -202,6 +202,5 @@ test('cloud refresh captures the verified user, coalesces requests, and rejects 
   assert.match(aiApp, /if \(getCurrentUserId\(\) !== userId\) return;/);
   assert.match(aiApp, /\.eq\("user_id", userId\)/);
   assert.match(aiApp, /cloudSyncRequest\?\.userId === userId/);
-  assert.doesNotMatch(aiApp, /postgres_changes|payload\.new/);
   assert.doesNotMatch(aiApp, /session\.user\.id|normalizeStoredUser|getIdentityFromJwtPayload/);
 });

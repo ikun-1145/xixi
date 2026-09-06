@@ -882,6 +882,174 @@ let session = null;
 let stopProActivationPolling = null;
 const PROFILE_META_ID = "__xixi_user_profile__";
 const PROFILE_CACHE_PREFIX = "xixi_profile_";
+let accountBanRealtimeChannel = null;
+let accountBanRealtimeUserId = null;
+let accountBanRealtimeStart = null;
+let accountBanned = false;
+
+function normalizeAccountBanReason(value) {
+  return typeof value === "string"
+    ? value.replace(/[\u0000-\u001f\u007f]/gu, " ").replace(/\s+/gu, " ").trim().slice(0, 500)
+    : "";
+}
+
+function showBannedAccountOverlay(reason) {
+  if (document.getElementById("accountBannedOverlay")) return;
+
+  accountBanned = true;
+  window.__SUNLAND_AI_ACCOUNT_BANNED__ = true;
+  try {
+    localStorage.removeItem("token");
+    localStorage.removeItem("user");
+  } catch {}
+  window.SunlandDatabaseToken?.clear?.();
+  window.clearVerifiedSession?.();
+  document.activeElement?.blur?.();
+
+  const overlay = document.createElement("main");
+  overlay.id = "accountBannedOverlay";
+  overlay.setAttribute("role", "alertdialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute("aria-labelledby", "accountBannedTitle");
+  overlay.tabIndex = -1;
+  Object.assign(overlay.style, {
+    position: "fixed",
+    inset: "0",
+    zIndex: "100003",
+    display: "grid",
+    placeItems: "center",
+    padding: "24px",
+    boxSizing: "border-box",
+    background: "linear-gradient(135deg, #180b12, #3b1118 55%, #16070d)",
+    color: "#fff1f2",
+    overflow: "auto",
+  });
+
+  const panel = document.createElement("section");
+  Object.assign(panel.style, {
+    width: "min(100%, 520px)",
+    boxSizing: "border-box",
+    padding: "clamp(24px, 6vw, 44px)",
+    border: "1px solid rgba(254, 205, 211, .28)",
+    borderRadius: "24px",
+    background: "rgba(24, 8, 14, .72)",
+    boxShadow: "0 24px 80px rgba(0, 0, 0, .42)",
+    textAlign: "center",
+  });
+
+  const icon = document.createElement("div");
+  icon.appendChild(createUiIcon("alert"));
+  icon.setAttribute("aria-hidden", "true");
+  icon.style.cssText = "font-size:48px;line-height:1;margin-bottom:18px;color:#fda4af;";
+
+  const title = document.createElement("h1");
+  title.id = "accountBannedTitle";
+  title.textContent = uiText("账号已被封禁");
+  title.style.cssText = "margin:0;font-size:clamp(24px,5vw,34px);line-height:1.25;";
+
+  const warning = document.createElement("p");
+  warning.textContent = uiText("警告：当前账号已被封禁，无法继续使用。");
+  warning.style.cssText = "margin:18px 0 0;color:#fecdd3;font-size:15px;line-height:1.7;";
+
+  const reasonBlock = document.createElement("p");
+  reasonBlock.style.cssText = "margin:20px 0 0;padding:14px 16px;border-radius:14px;background:rgba(127,29,29,.28);font-size:14px;line-height:1.7;text-align:left;white-space:pre-wrap;overflow-wrap:anywhere;";
+  const reasonLabel = document.createElement("strong");
+  reasonLabel.textContent = uiText("封禁原因：");
+  reasonBlock.append(reasonLabel, document.createTextNode(
+    normalizeAccountBanReason(reason) || uiText("暂未提供封禁原因。"),
+  ));
+
+  const appeal = document.createElement("p");
+  appeal.style.cssText = "margin:22px 0 0;font-size:14px;line-height:1.7;color:#ffe4e6;";
+  appeal.append(document.createTextNode(`${uiText("如需申诉，请发送邮件至")} `));
+  const email = document.createElement("a");
+  email.href = "mailto:support@sunland.dev";
+  email.textContent = "support@sunland.dev";
+  email.style.cssText = "color:#67e8f9;font-weight:700;text-underline-offset:3px;";
+  appeal.append(email);
+
+  panel.append(icon, title, warning, reasonBlock, appeal);
+  overlay.append(panel);
+  document.body.append(overlay);
+  document.getElementById("app")?.setAttribute("inert", "");
+  document.getElementById("app")?.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "hidden";
+  overlay.focus({ preventScroll: true });
+}
+
+function stopAccountBanRealtime() {
+  const channel = accountBanRealtimeChannel;
+  accountBanRealtimeChannel = null;
+  accountBanRealtimeUserId = null;
+  if (!channel) return;
+  if (typeof supabase?.removeChannel === "function") {
+    void supabase.removeChannel(channel);
+  } else {
+    void channel.unsubscribe?.();
+  }
+}
+
+async function startAccountBanRealtime(userId) {
+  if (
+    accountBanned ||
+    !userId ||
+    supabase?.__offline ||
+    typeof supabase?.channel !== "function"
+  ) return;
+  if (accountBanRealtimeUserId === userId && accountBanRealtimeChannel) return;
+  if (accountBanRealtimeStart?.userId === userId) return accountBanRealtimeStart.promise;
+
+  const start = { userId, promise: null };
+  start.promise = (async () => {
+    const databaseToken = await window.SunlandDatabaseToken?.get?.();
+    if (!databaseToken || getCurrentUserId() !== userId || accountBanned) return;
+
+    if (typeof supabase.realtime?.setAuth === "function") {
+      supabase.realtime.setAuth(databaseToken);
+    }
+
+    const channel = supabase
+      .channel(`sunland-account-ban-${encodeURIComponent(userId)}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "user_profiles",
+          filter: `user_id=eq.${userId}`,
+        },
+        payload => {
+          if (getCurrentUserId() !== userId || accountBanned) return;
+          const profile = payload?.new || payload?.record;
+          if (profile?.is_banned === true) {
+            showBannedAccountOverlay(profile.ban_reason);
+          }
+        },
+      );
+
+    if (getCurrentUserId() !== userId || accountBanned) {
+      void channel.unsubscribe?.();
+      return;
+    }
+
+    accountBanRealtimeUserId = userId;
+    accountBanRealtimeChannel = channel;
+    channel.subscribe(status => {
+      if (
+        accountBanRealtimeChannel !== channel ||
+        !["CHANNEL_ERROR", "TIMED_OUT", "CLOSED"].includes(status)
+      ) return;
+      console.warn("账号封禁状态实时订阅失败，将使用资料同步兜底:", status);
+      stopAccountBanRealtime();
+    });
+  })().catch(error => {
+    console.warn("账号封禁状态实时检测初始化失败，将使用资料同步兜底:", error?.message || error);
+  }).finally(() => {
+    if (accountBanRealtimeStart === start) accountBanRealtimeStart = null;
+  });
+  accountBanRealtimeStart = start;
+  return start.promise;
+}
 
 function getCurrentVerifiedIdentity() {
   const identity = identityAuthority.current();
@@ -935,12 +1103,14 @@ async function resolveAndStoreIdentity(options = {}) {
 
 function setSession(identity) {
   const previousUserId = session?.userId ?? null;
+  const nextUserId = getVerifiedUserId(identity);
+  if (previousUserId !== nextUserId) stopAccountBanRealtime();
   window.SunlandDatabaseToken?.clear?.();
 
   if (identity != null && !isVerifiedIdentity(identity)) {
     throw new TypeError("Session requires a verified identity");
   }
-  const userId = getVerifiedUserId(identity);
+  const userId = nextUserId;
   session = userId
     ? { userId, identity, user: identity.user }
     : null;
@@ -1166,7 +1336,7 @@ function buildCloudData(
 
 async function loadUserProfileFromCloud() {
   const userId = getCurrentUserId();
-  if (!userId) return;
+  if (!userId || accountBanned) return;
 
   const cached = loadCachedProfile(userId);
   if (cached?.avatar_url) {
@@ -1177,13 +1347,18 @@ async function loadUserProfileFromCloud() {
   try {
     const { data, error } = await supabase
       .from("user_profiles")
-      .select("avatar_url, avatar_path, name, pro")
+      .select("avatar_url, avatar_path, name, pro, is_banned, ban_reason")
       .eq("user_id", userId)
       .maybeSingle();
 
     if (getCurrentUserId() !== userId) return;
 
     if (error) throw error;
+
+    if (data?.is_banned === true) {
+      showBannedAccountOverlay(data.ban_reason);
+      return;
+    }
 
     if (data) {
       cacheProfile(userId, data);
@@ -1200,6 +1375,10 @@ async function loadUserProfileFromCloud() {
 
   } catch (e) {
     console.warn("头像资料同步失败:", e);
+  } finally {
+    if (getCurrentUserId() === userId && !accountBanned) {
+      void startAccountBanRealtime(userId);
+    }
   }
 }
 

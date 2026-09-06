@@ -1140,6 +1140,21 @@
     "ko": "차단 사유: ",
     "es": "Motivo del bloqueo: "
   },
+  "警告：当前账号已被封禁，无法继续使用。": {
+    "zh-Hant": "警告：目前帳號已被封禁，無法繼續使用。",
+    "ko": "경고: 이 계정은 차단되어 더 이상 사용할 수 없습니다.",
+    "es": "Advertencia: Esta cuenta ha sido bloqueada y no puede seguir utilizando el servicio."
+  },
+  "暂未提供封禁原因。": {
+    "zh-Hant": "尚未提供封禁原因。",
+    "ko": "차단 사유가 제공되지 않았습니다.",
+    "es": "No se proporcionó ningún motivo del bloqueo."
+  },
+  "如需申诉，请发送邮件至": {
+    "zh-Hant": "如需申訴，請寄送電子郵件至",
+    "ko": "이의 제기는 다음 이메일로 보내 주세요:",
+    "es": "Para apelar, envía un correo a"
+  },
   "如有疑问，请联系管理员。": {
     "zh-Hant": "如有疑問，請聯絡管理員。",
     "ko": "문의 사항이 있으면 관리자에게 연락해 주세요.",

@@ -262,7 +262,11 @@ test('bootstrap initializes every recovery state before checkLogin can call load
   assert.match(bootstrapBlock, /window\.__SUNLAND_AI_RESOURCES_READY__/);
   assert.match(bootstrapBlock, /window\.__SUNLAND_AI_REVEAL__/);
   assert.doesNotMatch(bootstrapBlock, /setTimeout/);
-  assert.doesNotMatch(aiApp, /postgres_changes|startRealtime|realtimeSub/);
+  assert.match(aiApp, /function startAccountBanRealtime\(userId\)/);
+  assert.match(aiApp, /event:\s*"\*"[\s\S]*?table:\s*"user_profiles"/);
+  assert.match(aiApp, /filter:\s*`user_id=eq\.\$\{userId\}`/);
+  assert.match(aiApp, /showBannedAccountOverlay\(profile\.ban_reason\)/);
+  assert.match(aiApp, /select\("avatar_url, avatar_path, name, pro, is_banned, ban_reason"\)/);
   assert.match(aiApp, /cloudSyncRequest\?\.userId === userId/);
   assert.match(aiApp, /const CLOUD_SYNC_INTERVAL_MS = 60_000/);
 
