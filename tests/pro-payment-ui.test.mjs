@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import test from "node:test";
 import vm from "node:vm";
+import { JSDOM } from "jsdom";
 
 const source = readFileSync(new URL("../ai/pro-payment.js", import.meta.url), "utf8");
 
@@ -18,18 +19,22 @@ function databaseToken(id = "e736a9426c7311f1851452540025c377") {
   })}.signature`;
 }
 
-function loadPaymentModule({ token = databaseToken(), popup = {} } = {}) {
+function loadPaymentModule({ token = databaseToken(), popup = {}, getToken = async () => token } = {}) {
   const saved = new Map();
   const opened = [];
+  let expire;
+  const popupDocument = new JSDOM("<!doctype html><html><body></body></html>").window.document;
   const window = {
-    SunlandDatabaseToken: { get: async () => token },
+    SunlandDatabaseToken: { get: getToken },
     localStorage: {
       getItem: key => saved.get(key) || null,
       setItem: (key, value) => saved.set(key, String(value)),
       removeItem: key => saved.delete(key),
     },
+    setTimeout(callback) { expire = callback; return 1; },
+    clearTimeout() { expire = null; },
     open: () => {
-      const result = { location: { replace(url) { result.url = url; } }, close() { result.closed = true; }, ...popup };
+      const result = { document: popupDocument, location: { replace(url) { result.url = url; } }, close() { result.closed = true; }, ...popup };
       opened.push(result);
       return result;
     },
@@ -50,7 +55,7 @@ function loadPaymentModule({ token = databaseToken(), popup = {} } = {}) {
     clearTimeout,
   });
   vm.runInContext(source, context);
-  return { api: window.SunlandProPayment, opened, saved };
+  return { api: window.SunlandProPayment, opened, saved, expire: () => expire?.() };
 }
 
 test("Pro payment creates a verified intent before sending the opened placeholder to Afdian", async () => {
@@ -103,4 +108,58 @@ test("both Pro entry pages use the shared payment module and expose the static s
   for (const language of ["zh", "zh-Hant", "en", "ja", "ko", "es"]) {
     assert.match(support, new RegExp(`"${language}"`));
   }
+});
+
+test("checkout shows progress while identity is pending and times out without late navigation", async () => {
+  let resolveToken;
+  const { api, opened, saved, expire } = loadPaymentModule({
+    getToken: () => new Promise(resolve => { resolveToken = resolve; }),
+  });
+  let called = false;
+  const checkout = api.beginCheckout({ supabase: { rpc: () => { called = true; } } });
+  assert.match(opened[0].document.body.textContent, /正在安全连接/);
+  assert.equal(opened[0].opener, null);
+  expire();
+  await assert.rejects(checkout, /暂时无法创建安全付款引用/);
+  resolveToken(databaseToken());
+  await Promise.resolve();
+  assert.equal(called, false);
+  assert.equal(opened[0].closed, true);
+  assert.equal(opened[0].url, undefined);
+  assert.equal(saved.size, 0);
+});
+
+test("a stalled intent times out and its late response cannot open checkout", async () => {
+  const { api, opened, saved, expire } = loadPaymentModule();
+  let resolveIntent;
+  const checkout = api.beginCheckout({ supabase: {
+    rpc: () => new Promise(resolve => { resolveIntent = resolve; }),
+  } });
+  while (!resolveIntent) await Promise.resolve();
+  expire();
+  await assert.rejects(checkout, /暂时无法创建安全付款引用/);
+  resolveIntent({ data: { payment_reference: "11111111-2222-4333-8444-555555555555", status: "pending" } });
+  await Promise.resolve();
+  assert.equal(opened[0].closed, true);
+  assert.equal(opened[0].url, undefined);
+  assert.equal(saved.size, 0);
+});
+
+
+test("settings checkout does not block popup navigation with a success alert", async () => {
+  const settings = readFileSync(new URL("../ai_settings.html", import.meta.url), "utf8");
+  const handler = settings.slice(settings.indexOf("    async function upgrade()"), settings.indexOf("    function logout()"));
+  const alerts = [];
+  let monitoring = false;
+  const context = vm.createContext({
+    window: { SunlandProPayment: {
+      text: key => key,
+      beginCheckout: async () => ({ userId: "test-user" }),
+    } },
+    supabase: {}, confirm: () => true, alert: message => alerts.push(message),
+    startSettingsProPaymentMonitoring: () => { monitoring = true; },
+  });
+  await vm.runInContext(handler + "upgrade()", context);
+  assert.equal(monitoring, true);
+  assert.deepEqual(alerts, []);
 });

@@ -4,6 +4,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 
 const aiHtml = fs.readFileSync(new URL('../ai.html', import.meta.url), 'utf8');
+const aiSettingsHtml = fs.readFileSync(new URL('../ai_settings.html', import.meta.url), 'utf8');
 const loginHtml = fs.readFileSync(new URL('../login.html', import.meta.url), 'utf8');
 const aiAppJs = fs.readFileSync(new URL('../ai/app.js', import.meta.url), 'utf8');
 const verifiedIdentityJs = fs.readFileSync(new URL('../ai/verified-identity.js', import.meta.url), 'utf8');
@@ -117,6 +118,26 @@ test('ai.html guard redirects only when token is missing and defers validation',
   assert.equal(damaged.authOk, true);
   assert.deepEqual(damaged.redirects, []);
   assert.equal(damaged.storage.token, 'bad.jwt.token');
+});
+
+test('ai_settings.html redirects signed-out visitors through login to ai.html', () => {
+  const guard = [...aiSettingsHtml.matchAll(/<script>([\s\S]*?)<\/script>/g)]
+    .map(match => match[1])
+    .find(source => source.includes('localStorage.getItem("token")'));
+  const redirects = [];
+
+  assert.ok(guard, 'ai_settings.html should check login before loading page scripts');
+  assert.match(guard, /location\.replace\("login\.html\?return=ai\.html"\)/);
+  assert.ok(
+    aiSettingsHtml.indexOf(guard) < aiSettingsHtml.indexOf('site-i18n-extra.js'),
+    'settings login guard must run before deferred page scripts'
+  );
+
+  vm.runInNewContext(guard, {
+    localStorage: createMockStorage(),
+    location: { replace(target) { redirects.push(target); } }
+  });
+  assert.deepEqual(redirects, ['login.html?return=ai.html']);
 });
 
 test('login.html stores a normalized user object after successful login', () => {

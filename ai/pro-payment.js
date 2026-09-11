@@ -3,6 +3,7 @@
 
   const PLAN_ID = "4c2527fc6c7411f1bbe45254001e7c00";
   const CHECKOUT_URL = "https://afdian.com/order/create";
+  const CHECKOUT_TIMEOUT_MS = 30_000;
   const SUPPORT_URL = "pro_activation_support.html";
   const PENDING_PREFIX = "sunland:pro-payment-pending:";
   const SHORT_POLL_WINDOW_MS = 3 * 60 * 1000;
@@ -15,6 +16,7 @@
 
   const COPY = {
     zh: {
+      connecting: "正在安全连接支付平台，请稍候…",
       confirmation: "即将前往爱发电支付。请选择 ¥10 月付；付款成功后将自动开通永久 Pro，多选月份不会增加权益。确认前往支付？",
       identityError: "身份验证失败，请重新登录后再试。",
       popupError: "无法打开支付窗口，请允许此网站打开新窗口后重试。",
@@ -28,6 +30,7 @@
       loginRequired: "请先登录后再开通 Pro。",
     },
     "zh-Hant": {
+      connecting: "正在安全連線付款平台，請稍候…",
       confirmation: "即將前往愛發電付款。請選擇 ¥10 月付；付款成功後會自動開通永久 Pro，多選月份不會增加權益。確認前往付款？",
       identityError: "身分驗證失敗，請重新登入後再試。",
       popupError: "無法開啟付款視窗，請允許此網站開啟新視窗後重試。",
@@ -41,6 +44,7 @@
       loginRequired: "請先登入後再開通 Pro。",
     },
     en: {
+      connecting: "Connecting securely to checkout. Please wait…",
       confirmation: "You will be taken to Afdian. Choose the ¥10 monthly option; successful payment unlocks permanent Pro, and extra months add no benefits. Continue?",
       identityError: "Identity verification failed. Please sign in again and retry.",
       popupError: "The payment window could not be opened. Allow pop-ups for this site and try again.",
@@ -54,6 +58,7 @@
       loginRequired: "Please sign in before upgrading to Pro.",
     },
     ja: {
+      connecting: "決済ページに安全に接続しています。しばらくお待ちください…",
       confirmation: "愛発電の決済ページを開きます。¥10 の月額プランを選んでください。決済後は永久 Pro が有効になり、月数を増やしても特典は増えません。続けますか？",
       identityError: "本人確認に失敗しました。再ログインしてからやり直してください。",
       popupError: "決済ウィンドウを開けませんでした。このサイトのポップアップを許可して再試行してください。",
@@ -67,6 +72,7 @@
       loginRequired: "Pro にアップグレードする前にログインしてください。",
     },
     ko: {
+      connecting: "결제 페이지에 안전하게 연결 중입니다. 잠시 기다려 주세요…",
       confirmation: "Afdian 결제 페이지로 이동합니다. ¥10 월간 옵션을 선택하세요. 결제에 성공하면 영구 Pro가 활성화되며, 여러 달을 선택해도 혜택은 늘어나지 않습니다. 계속할까요?",
       identityError: "신원 확인에 실패했습니다. 다시 로그인한 후 시도하세요.",
       popupError: "결제 창을 열 수 없습니다. 이 사이트의 팝업을 허용한 후 다시 시도하세요.",
@@ -80,6 +86,7 @@
       loginRequired: "Pro로 업그레이드하기 전에 로그인하세요.",
     },
     es: {
+      connecting: "Conectando de forma segura al pago. Espera un momento…",
       confirmation: "Irás a Afdian. Elige la opción mensual de ¥10; tras el pago se activa Pro permanente y añadir meses no aumenta los beneficios. ¿Continuar?",
       identityError: "La verificación de identidad falló. Vuelve a iniciar sesión e inténtalo de nuevo.",
       popupError: "No se pudo abrir la ventana de pago. Permite las ventanas emergentes para este sitio e inténtalo de nuevo.",
@@ -160,13 +167,24 @@
   }
 
   function openPlaceholder() {
+    let popup;
     try {
-      const popup = global.open?.("", "_blank");
+      popup = global.open?.("", "_blank");
       if (popup) {
         try { popup.opener = null; } catch { /* no-op */ }
+        const doc = popup.document;
+        if (doc?.body) {
+          doc.title = text("connecting");
+          doc.documentElement.lang = language();
+          const message = doc.createElement("p");
+          message.textContent = text("connecting");
+          message.setAttribute("role", "status");
+          doc.body.replaceChildren(message);
+        }
       }
       return popup || null;
     } catch {
+      closePopup(popup);
       return null;
     }
   }
@@ -191,14 +209,18 @@
     const popup = openPlaceholder();
     if (!popup) throw new Error(text("popupError"));
 
+    let timer;
+    const timeout = new Promise((_, reject) => {
+      timer = global.setTimeout(() => reject(new Error(text("intentError"))), CHECKOUT_TIMEOUT_MS);
+    });
     try {
-      const identity = await getVerifiedDatabaseIdentity(expectedUserId);
+      const identity = await Promise.race([getVerifiedDatabaseIdentity(expectedUserId), timeout]);
       if (typeof isExpectedUser === "function" && !isExpectedUser(identity.userId)) {
         throw new Error(text("identityError"));
       }
       if (!supabase?.rpc) throw new Error(text("intentError"));
 
-      const { data, error } = await supabase.rpc("sunland_get_or_create_pro_payment_intent");
+      const { data, error } = await Promise.race([supabase.rpc("sunland_get_or_create_pro_payment_intent"), timeout]);
       if (error) throw new Error(text("intentError"));
       const intent = unpackIntent(data);
 
@@ -211,12 +233,15 @@
         return { alreadyActivated: true, userId: identity.userId };
       }
 
+      if (popup.closed) throw new Error(text("popupError"));
       savePending(identity.userId, intent.payment_reference);
       popup.location.replace(buildCheckoutUrl(intent.payment_reference));
       return { paymentReference: intent.payment_reference, userId: identity.userId };
     } catch (error) {
       closePopup(popup);
       throw error instanceof Error ? error : new Error(text("intentError"));
+    } finally {
+      global.clearTimeout(timer);
     }
   }
 

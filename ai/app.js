@@ -754,6 +754,7 @@ item.style.borderRadius = "12px";
 // 统一接口与各 Provider 通信；DeepSeek 现有逻辑保持不变，只有新增的 Sunland
 // 分支会用到这个 registry。
 import { createProviderRegistry } from './providers/registry.js';
+import { parseRemaining, readUsage } from './usage.js';
 import {
   buildVisionMessages,
   createVisionHistoryMessage,
@@ -1786,6 +1787,30 @@ function showProModelModal() {
   };
 }
 
+let usageVersion = 0;
+
+function renderRemaining(remain) {
+  if (remain === -1 || isActivated) {
+    renderProUsageHint();
+    return;
+  }
+  const hint = document.getElementById("usageHint");
+  if (hint) hint.innerText = remain == null ? "--" : uiText(`今日剩余 ${remain} 次`);
+}
+
+async function refreshChatUsage() {
+  const userId = getCurrentUserId();
+  if (!userId) return;
+  const version = ++usageVersion;
+  try {
+    const usage = await readUsage(authenticatedFetch, userId);
+    if (getCurrentUserId() !== userId || version !== usageVersion) return;
+    renderRemaining(usage.remain);
+  } catch {
+    if (getCurrentUserId() === userId && version === usageVersion) renderRemaining(null);
+  }
+}
+
 async function checkActivation() {
   const userId = getCurrentUserId();
   if (!userId) return;
@@ -1814,24 +1839,7 @@ async function checkActivation() {
     updateDeepButton();
   }
 
-  // ⭐ 同步今日剩余次数（页面加载时）
-  try {
-    const { data } = await supabase
-      .from("usage")
-      .select("count")
-      .eq("user_id", userId)
-      .maybeSingle();
-
-    if (getCurrentUserId() !== userId) return;
-
-    const count = data?.count || 0;
-    const remain = Math.max(0, 20 - count);
-
-    const hintEl = document.getElementById("usageHint");
-    if (hintEl) hintEl.innerText = `今日剩余 ${remain} 次`;
-  } catch (e) {
-    console.warn("初始化剩余次数失败:", e);
-  }
+  await refreshChatUsage();
 
   scheduleRenderUser(); // ⭐ 自动同步UI状态
 }
@@ -3475,7 +3483,18 @@ async function runDeepSeekRequest(requestContext) {
         messages: requestMessages,
         deep: requestContext.deep,
       }, false, requestContext.controller.signal);
-      if (!res || abortMissingTarget(requestContext)) return;
+      if (!res) return;
+      // Quota belongs to the account, even if its conversation was switched/deleted.
+      if (getCurrentUserId() === requestContext.userId) {
+        const remain = parseRemaining(res.headers.get("x-remain"));
+        if (remain !== null) {
+          ++usageVersion; // An older snapshot must not overwrite this response.
+          renderRemaining(remain);
+        } else {
+          void refreshChatUsage();
+        }
+      }
+      if (abortMissingTarget(requestContext)) return;
 
       if (res.status === 429) {
         if (currentId === requestContext.conversationId) showLimitModal();
@@ -3490,12 +3509,6 @@ async function runDeepSeekRequest(requestContext) {
         const message = uiText(`请求失败（${res.status}），请稍后重试`);
         renderRequestError(requestContext, message);
         return;
-      }
-
-      const remain = parseInt(res.headers.get("x-remain") ?? "-1");
-      if (!isActivated && remain >= 0 && currentId === requestContext.conversationId) {
-        const hintEl = document.getElementById("usageHint");
-        if (hintEl) hintEl.innerText = `今日剩余 ${remain} 次`;
       }
 
       const reader = res.body.getReader();
@@ -4112,6 +4125,10 @@ async function restoreLoginState() {
 }
 
 window.addEventListener("focus", restoreLoginState);
+
+setInterval(() => {
+  if (document.visibilityState === "visible" && !isActivated) void refreshChatUsage();
+}, 60000);
 
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {

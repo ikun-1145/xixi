@@ -3,6 +3,13 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script>
+    try {
+      if (!localStorage.getItem("token")) location.replace("login.html?return=ai.html");
+    } catch (e) {
+      location.replace("login.html?return=ai.html");
+    }
+  </script>
   <script defer src="p/js/site-i18n-extra.js?v=20260829-2"></script>
   <script defer src="p/js/site-i18n.js?v=20260829-2"></script>
   <title>设置 - Sunland AI · Beta</title>
@@ -923,6 +930,148 @@ body.dark .usage-hint {
       background: #0f172a;
       border-color: var(--border-dark);
     }
+    .account-delete-dialog {
+      width: min(520px, calc(100vw - 32px));
+      max-height: min(82vh, 720px);
+      margin: auto;
+      padding: 0;
+      overflow: visible;
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      background: var(--surface);
+      color: var(--text);
+      box-shadow: 0 24px 80px rgba(15,23,42,0.28);
+    }
+    .account-delete-dialog::backdrop {
+      background: rgba(2,6,23,0.58);
+    }
+    .account-delete-inner {
+      padding: 18px;
+    }
+    .account-delete-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+    .account-delete-header h2 {
+      margin: 0;
+      font-size: 16px;
+      font-weight: 700;
+    }
+    .account-delete-close {
+      border: none;
+      background: transparent;
+      color: var(--subtext);
+      font-size: 22px;
+      line-height: 1;
+      cursor: pointer;
+    }
+    .account-delete-step {
+      display: none;
+    }
+    .account-delete-step.active {
+      display: block;
+    }
+    .account-delete-copy {
+      color: var(--subtext);
+      font-size: 12px;
+      line-height: 1.6;
+    }
+    .account-delete-list {
+      margin: 8px 0 12px 18px;
+      color: var(--subtext);
+      font-size: 12px;
+      line-height: 1.7;
+    }
+    .account-delete-field {
+      margin-bottom: 10px;
+    }
+    .account-delete-field label {
+      display: block;
+      margin-bottom: 6px;
+      color: var(--text);
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .account-delete-input {
+      width: 100%;
+      height: 44px;
+      padding: 0 12px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface-2);
+      color: var(--text);
+      font-family: inherit;
+      font-size: 13px;
+    }
+    .account-delete-input:focus {
+      outline: 2px solid var(--accent);
+      outline-offset: -1px;
+    }
+    .account-delete-email-row {
+      display: flex;
+      gap: 8px;
+    }
+    .account-delete-email-row .account-delete-input {
+      flex: 1;
+    }
+    .account-delete-send {
+      flex: 0 0 auto;
+      min-width: 96px;
+      height: 44px;
+      border: 1px solid var(--border-strong);
+      border-radius: 10px;
+      background: var(--surface);
+      color: var(--accent);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+    .account-delete-send:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+    }
+    .account-delete-btn {
+      width: 100%;
+      padding: 12px;
+      border: none;
+      border-radius: 12px;
+      font-family: inherit;
+      font-size: 14px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .account-delete-btn.primary {
+      background: var(--accent);
+      color: #fff;
+    }
+    .account-delete-btn.danger {
+      background: var(--danger);
+      color: #fff;
+    }
+    .account-delete-btn:disabled {
+      opacity: 0.55;
+      cursor: not-allowed;
+    }
+    .account-delete-status {
+      min-height: 18px;
+      margin-top: 8px;
+      color: var(--subtext);
+      font-size: 12px;
+      line-height: 1.5;
+    }
+    .account-delete-status.error {
+      color: var(--danger);
+    }
+    .account-delete-status.success {
+      color: #059669;
+    }
+    body.dark .account-delete-dialog {
+      background: #0f172a;
+      border-color: var(--border-dark);
+    }
     @media (max-width: 420px) {
       .diagnostics-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
     }
@@ -1023,6 +1172,18 @@ body.dark .usage-hint {
           <div class="row-label">用户 ID<small>你的唯一标识</small></div>
         </div>
         <div class="row-value" id="userId" style="font-size:11px;font-family:monospace;">--</div>
+      </div>
+    </div>
+
+    <!-- 账号与安全 -->
+    <div class="section-label" data-site-i18n-ignore>账号与安全</div>
+    <div class="card" data-site-i18n-ignore>
+      <div class="row">
+        <div class="row-left">
+          <div class="row-icon" style="background:rgba(239,68,68,0.1)"><span class="ui-svg-icon icon-circle-alert" aria-hidden="true"></span></div>
+          <div class="row-label">删除账号<small>永久删除账号及关联数据，无法恢复</small></div>
+        </div>
+        <button id="openAccountDeleteBtn" class="data-action-btn" type="button">删除账号</button>
       </div>
     </div>
 
@@ -1259,7 +1420,7 @@ body.dark .usage-hint {
   <script src="/p/vendor/supabase-2.110.7.js"></script>
   <script type="module" src="ai/maintenance.js?v=20260905-1"></script>
   <script src="/ai/database-token-client.js"></script>
-  <script src="/ai/pro-payment.js?v=20260905-1"></script>
+  <script src="/ai/pro-payment.js?v=20260911-1"></script>
   <script>
     window._supabaseClient = window._supabaseClient || window.supabase.createClient(
       "https://klyrasrqgxijwrxuoevj.supabase.co",
@@ -1475,8 +1636,9 @@ async function editNickname() {
 
     async function uploadAvatar(user, file) {
   const avatarBlob = await compressAvatar(file);
-  const safeId = (user.id || "unknown").replace(/[^a-zA-Z0-9_-]/g, "_");
-  const path = `${safeId}/avatar-${Date.now()}.jpg`;
+  const { encodeAvatarOwnerKey } = await import("./ai/avatar-storage-key.js");
+  const ownerKey = encodeAvatarOwnerKey(user.id || "unknown");
+  const path = `${ownerKey}/avatar-${Date.now()}.jpg`;
 
       try {
         const { error } = await supabase.storage
@@ -1660,39 +1822,44 @@ async function editNickname() {
         }
       } catch (e) { console.warn("Pro 状态查询失败:", e); }
 
-      // 普通用户：查次数，增强 fallback
+      await refreshSettingsUsage();
+    }
+
+    let settingsUsageVersion = 0;
+    async function refreshSettingsUsage() {
+      const userId = getUserFromToken()?.id;
+      if (!userId) return;
+      const version = ++settingsUsageVersion;
       try {
-        let used = 0;
-
-        try {
-          const { data } = await supabase
-            .from("usage")
-            .select("count")
-            .eq("user_id", user.id)
-            .maybeSingle();
-
-          used = data?.count || 0;
-        } catch (e) {
-          console.warn("usage表失败，fallback:", e);
-
-          const { data: logs } = await supabase
-            .from("request_logs")
-            .select("created_at")
-            .eq("user_id", user.id);
-
-          const today = new Date().toDateString();
-          used = (logs || []).filter(l =>
-            new Date(l.created_at).toDateString() === today
-          ).length;
-        }
-
-        const remain = Math.max(0, 20 - used);
-        setUsageBar(remain);
-      } catch (e) {
-        console.warn("使用次数查询失败:", e);
+        const { readUsage } = await import("./ai/usage.js");
+        // Reuse the existing session refresh before sending the application JWT.
+        await window.SunlandDatabaseToken.get();
+        if (getUserFromToken()?.id !== userId) return;
+        const token = localStorage.getItem("token");
+        const usage = await readUsage((url, init) => fetch(url, {
+          ...init,
+          headers: { ...init.headers, Authorization: "Bearer " + token },
+        }), userId);
+        if (getUserFromToken()?.id !== userId || version !== settingsUsageVersion) return;
+        if (usage.isPro) renderActivated();
+        else setUsageBar(usage.remain);
+      } catch {
+        if (getUserFromToken()?.id !== userId || version !== settingsUsageVersion) return;
         document.getElementById("usageCount").innerText = "--";
+        document.getElementById("usageBar").style.width = "0%";
       }
     }
+
+    window.addEventListener("focus", refreshSettingsUsage);
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "visible") void refreshSettingsUsage();
+    });
+    window.addEventListener("pageshow", (event) => {
+      if (event.persisted) void refreshSettingsUsage();
+    });
+    setInterval(() => {
+      if (document.visibilityState === "visible") void refreshSettingsUsage();
+    }, 60000);
 
     function updateProSupportLink() {
       const link = document.getElementById("proSupportLink");
@@ -1741,7 +1908,6 @@ async function editNickname() {
           return;
         }
         startSettingsProPaymentMonitoring(result.userId);
-        alert(payment.text("processing"));
       } catch (error) {
         alert(error instanceof Error ? error.message : payment.text("intentError"));
       }
@@ -1811,6 +1977,7 @@ document.querySelectorAll("a").forEach(a => {   a.addEventListener("click", () =
 </script>
 <script type="module" src="ai/sunland-data-controls.js"></script>
 <script type="module" src="ai/sunland-beta-diagnostics.js"></script>
+<script type="module" src="ai/account-delete.js"></script>
 
 <div id="loadingBar" aria-hidden="true"><span class="bar"></span></div>
 <dialog
@@ -1823,6 +1990,20 @@ document.querySelectorAll("a").forEach(a => {   a.addEventListener("click", () =
     <p class="diagnostics-preview-copy">这里显示的 JSON 就是复制或导出的全部内容，不包含聊天原文或账号标识。</p>
     <pre id="diagnosticsPreviewContent" class="diagnostics-preview-content" tabindex="0"></pre>
     <button id="closeDiagnosticsPreviewBtn" class="diagnostics-preview-close" type="button">关闭预览</button>
+  </div>
+</dialog>
+<dialog
+  id="accountDeleteDialog"
+  class="account-delete-dialog"
+  aria-labelledby="accountDeleteTitle"
+  data-site-i18n-ignore
+>
+  <div class="account-delete-inner">
+    <div class="account-delete-header">
+      <h2 id="accountDeleteTitle">删除账号</h2>
+      <button id="accountDeleteCloseBtn" class="account-delete-close" type="button" aria-label="关闭">×</button>
+    </div>
+    <div id="accountDeleteBody"></div>
   </div>
 </dialog>
 </body>

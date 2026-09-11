@@ -12,12 +12,12 @@ const updateManifest = JSON.parse(
 const ipaGuidePath = path.join(projectRoot, 'p/video/ipa-install-guide.mp4');
 
 test('update manifest points to the mainland APK proxy for the published release', () => {
-  assert.equal(updateManifest.version, '1.4.6');
-  assert.equal(updateManifest.build, 35);
+  assert.equal(updateManifest.version, '1.4.7');
+  assert.equal(updateManifest.build, 36);
   assert.equal(updateManifest.force, true);
   assert.equal(
     updateManifest.url,
-    'https://api.sunland.dev/v1/download/apk?v=1.4.6%2B35',
+    'https://api.sunland.dev/v1/download/apk?v=1.4.7%2B36',
   );
 });
 
