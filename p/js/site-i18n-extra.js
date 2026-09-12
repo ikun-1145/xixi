@@ -475,6 +475,31 @@
     "ko": "응용 범위 및 최종 전략을 결정합니다.",
     "es": "Determinar el rango de aplicación y la estrategia final."
   },
+  "模型加载中": {
+    "zh-Hant": "模型載入中",
+    "ko": "모델을 불러오는 중",
+    "es": "Cargando modelos"
+  },
+  "正在加载模型…": {
+    "zh-Hant": "正在載入模型…",
+    "ko": "모델을 불러오는 중…",
+    "es": "Cargando modelos…"
+  },
+  "模型列表加载失败，点击重试": {
+    "zh-Hant": "模型列表載入失敗，點擊重試",
+    "ko": "모델 목록을 불러오지 못했습니다. 눌러서 다시 시도하세요.",
+    "es": "No se pudieron cargar los modelos. Toca para reintentar."
+  },
+  "当前模型不可用，请重新选择": {
+    "zh-Hant": "目前模型不可用，請重新選擇",
+    "ko": "현재 모델을 사용할 수 없습니다. 다시 선택하세요.",
+    "es": "El modelo actual no está disponible. Elige otro."
+  },
+  "暂无可用模型": {
+    "zh-Hant": "暫無可用模型",
+    "ko": "사용 가능한 모델이 없습니다",
+    "es": "No hay modelos disponibles"
+  },
   "校内考": {
     "zh-Hant": "校內考",
     "ko": "대학 내부 시험",

@@ -343,7 +343,7 @@ child-src *;
         <span class="deep-logo"></span>
       </button>
 
-      <div id="modelSelector" role="button" aria-label="DeepSeek V4 Flash" title="DeepSeek V4 Flash">Flash</div>
+      <div id="modelSelector" role="button" aria-label="模型加载中" title="模型加载中" aria-busy="true">模型加载中</div>
     </div>
 
     <button id="sendBtn" class="icon-btn">↑</button>
@@ -368,19 +368,7 @@ padding:6px;
 box-shadow:0 10px 30px rgba(0,0,0,0.2);
 z-index:999;
 ">
-  <div class="model-item flash" data-model="flash">
-    <img src="p/deepseek.png" style="width:14px;height:14px;margin-right:6px;vertical-align:-2px;">
-    DeepSeek V4 Flash
-  </div>
-  <div class="model-item pro" data-model="pro">
-    <img src="p/deepseek.png" style="width:14px;height:14px;margin-right:6px;vertical-align:-2px;">
-    DeepSeek V4 Pro
-  </div>
-  <div style="height:1px;background:rgba(0,0,0,0.08);margin:6px 2px;"></div>
-  <div class="model-item sunland" data-model="sunland" role="button" aria-label="Sunland AI · Beta" title="Sunland AI · Beta" style="display:flex;align-items:center;">
-    <img src="p/studio.png" style="width:24px;height:24px;margin-right:7px;border-radius:6px;flex-shrink:0;">
-    Sunland AI · Beta
-  </div>
+  <span>正在加载模型…</span>
 </div>
 
 <script>

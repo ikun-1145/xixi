@@ -43,8 +43,8 @@ test("first launch provides a usable login path and creates an empty chat", () =
 });
 
 test("Sunland is discoverable before a conversation starts and its limits are explicit", () => {
-  assert.match(aiHtml, /data-model="sunland"/u);
-  assert.match(aiHtml, /aria-label="Sunland AI · Beta"/u);
+  assert.match(appSource, /loadModelCatalog\(publicSupabase\)/u);
+  assert.match(appSource, /model\.provider === "sunland"/u);
   assert.match(appSource, /Sunland AI · Beta 暂不支持深度思考/u);
   assert.match(appSource, /Sunland AI · Beta 暂不支持文件上传/u);
   assert.match(

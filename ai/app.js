@@ -816,6 +816,7 @@ import {
 } from './verified-identity.js';
 import { createSunlandDiagnosticsRuntime } from './beta-diagnostics/runtime.js';
 import { preserveSunlandLegacyState } from './sunland-legacy-migration.js';
+import { availableFor, findModel, loadModelCatalog } from './model-catalog.js';
 
 const identityAuthority = new IdentityAuthority();
 const sunlandDiagnosticsRuntime = createSunlandDiagnosticsRuntime({
@@ -1140,7 +1141,11 @@ function clearVerifiedSession() {
 window.clearVerifiedSession = clearVerifiedSession;
 let isActivated = false;
 let deepMode = false;
-let currentModel = "deepseek-v4-flash";
+let currentModel = "";
+let modelCatalog = [];
+let modelCatalogLoading = true;
+let modelCatalogFailed = false;
+let modelCatalogRequest = null;
 let currentProfile = null;
 let conversations = []; // ⭐ 提前声明，避免 TDZ
 let chatSearchKeyword = "";
@@ -1454,9 +1459,11 @@ function updateModelUI() {
   const c = conversations.find(x => x.id === currentId);
   if (c && c.provider === "sunland") {
     const isLocked = hasConversationStarted(c);
-    const label = "Sunland AI · Beta";
+    const label = findModel(modelCatalog, "sunland", c.model)?.displayName || "当前模型不可用";
     const lockMessage = "当前对话已绑定 Sunland AI。请新建对话以切换模型。";
-    el.innerHTML = '<img src="p/studio.png" alt="" aria-hidden="true" style="width:20px;height:20px;border-radius:5px;flex-shrink:0;">Sunland AI · Beta';
+    el.replaceChildren(document.createTextNode(label));
+    el.setAttribute("data-site-i18n-ignore", "");
+    el.setAttribute("aria-busy", String(modelCatalogLoading));
     el.classList.toggle("locked", isLocked);
     el.setAttribute("aria-label", isLocked ? lockMessage : label);
     el.title = isLocked ? lockMessage : label;
@@ -1464,15 +1471,89 @@ function updateModelUI() {
   }
   el.classList.remove("locked");
 
-  if (currentModel === "deepseek-v4-pro") {
-    el.innerText = "Pro";
-    el.setAttribute("aria-label", "DeepSeek V4 Pro");
-    el.title = "DeepSeek V4 Pro";
-  } else {
-    el.innerText = "Flash";
-    el.setAttribute("aria-label", "DeepSeek V4 Flash");
-    el.title = "DeepSeek V4 Flash";
+  const model = findModel(modelCatalog, "deepseek", currentModel);
+  const label = modelCatalogLoading ? "模型加载中" : model?.displayName || "当前模型不可用";
+  el.textContent = label;
+  el.setAttribute("aria-busy", String(modelCatalogLoading));
+  if (model) el.setAttribute("data-site-i18n-ignore", "");
+  el.setAttribute("aria-label", label);
+  el.title = label;
+}
+
+function selectedCatalogModel(conversation = conversations.find(item => item.id === currentId)) {
+  return findModel(modelCatalog, conversation?.provider || "deepseek", conversation?.model || currentModel);
+}
+
+function currentCatalogProvider() {
+  return findModel(modelCatalog, "sunland", currentModel)?.provider || "deepseek";
+}
+
+function chooseInitialCatalogModel() {
+  const current = conversations.find(item => item.id === currentId);
+  if (current && hasConversationStarted(current)) return;
+  const selected = selectedCatalogModel(current);
+  if (availableFor(selected, isActivated)) return;
+  const fallback = modelCatalog.find(model => availableFor(model, isActivated));
+  if (!fallback) return;
+  currentModel = fallback.modelName;
+  if (current) setConversationProvider(current, fallback.provider, fallback.modelName);
+}
+
+async function refreshModelCatalog() {
+  if (modelCatalogRequest) return modelCatalogRequest;
+  modelCatalogLoading = true;
+  modelCatalogFailed = false;
+  updateModelUI();
+  modelCatalogRequest = loadModelCatalog(publicSupabase)
+    .then(models => {
+      modelCatalog = models;
+      modelCatalogLoading = false;
+      chooseInitialCatalogModel();
+      updateModelUI();
+      return models;
+    })
+    .catch(error => {
+      console.warn("模型目录加载失败:", error);
+      modelCatalog = [];
+      modelCatalogLoading = false;
+      modelCatalogFailed = true;
+      updateModelUI();
+      throw error;
+    })
+    .finally(() => { modelCatalogRequest = null; });
+  return modelCatalogRequest;
+}
+
+function renderModelMenu() {
+  const menu = document.getElementById("modelMenu");
+  if (!menu) return;
+  menu.replaceChildren();
+  if (modelCatalogLoading) {
+    menu.textContent = "正在加载模型…";
+    return;
   }
+  if (modelCatalogFailed) {
+    const retry = document.createElement("button");
+    retry.type = "button";
+    retry.className = "model-item";
+    retry.textContent = "模型列表加载失败，点击重试";
+    retry.onclick = () => { void refreshModelCatalog().then(renderModelMenu).catch(renderModelMenu); };
+    menu.append(retry);
+    return;
+  }
+  for (const model of modelCatalog) {
+    const item = document.createElement("button");
+    item.type = "button";
+    item.className = "model-item";
+    item.dataset.modelId = model.id;
+    item.setAttribute("data-site-i18n-ignore", "");
+    item.textContent = model.displayName;
+    const allowed = availableFor(model, isActivated) && (model.provider !== "sunland" || sunlandProvider.isSupported);
+    item.disabled = !allowed;
+    if (!allowed) item.title = "当前账户不可用";
+    menu.append(item);
+  }
+  if (!modelCatalog.length) menu.textContent = "暂无可用模型";
 }
 
 function getProviderBindingMessage(conversation) {
@@ -1489,7 +1570,9 @@ function getProviderBindingMessage(conversation) {
   if (!modelSelector || !modelMenu) return;
 
   modelSelector.onclick = (e) => {
+    if (sendingLock) return;
     e.stopPropagation();
+    void refreshModelCatalog().then(renderModelMenu).catch(renderModelMenu);
 
     const rect = modelSelector.getBoundingClientRect();
 
@@ -1506,11 +1589,13 @@ function getProviderBindingMessage(conversation) {
     modelMenu.classList.toggle("show");
   };
 
-  document.querySelectorAll(".model-item").forEach(item => {
-    item.onclick = () => {
-      const model = item.dataset.model;
+  modelMenu.onclick = event => {
+      const item = event.target.closest("[data-model-id]");
+      if (!item || sendingLock) return;
+      const model = modelCatalog.find(candidate => candidate.id === item.dataset.modelId);
       const c = conversations.find(x => x.id === currentId);
-      if (!["sunland", "flash", "pro"].includes(model)) {
+      if (!model || !availableFor(model, isActivated)) {
+        if (model && !isActivated) showProModelModal();
         modelMenu.classList.remove("show");
         return;
       }
@@ -1518,20 +1603,21 @@ function getProviderBindingMessage(conversation) {
       const hasStarted = hasConversationStarted(c);
 
       // ⭐ Sunland AI（新增分支，完全独立于下面 DeepSeek 的现有逻辑）
-      if (model === "sunland") {
+      if (model.provider === "sunland") {
         if (hasStarted && c.provider !== "sunland") {
           showToast(getProviderBindingMessage(c));
           modelMenu.classList.remove("show");
           return;
         }
         if (c) {
-          if (!setConversationProvider(c, "sunland", "frost")) {
+          if (!setConversationProvider(c, model.provider, model.modelName)) {
             showToast(getProviderBindingMessage(c));
             modelMenu.classList.remove("show");
             return;
           }
           saveConversations();
         }
+        currentModel = model.modelName;
         deepMode = false;
         updateModelUI();
         modelMenu.classList.remove("show");
@@ -1544,19 +1630,11 @@ function getProviderBindingMessage(conversation) {
       }
 
       // ⭐ Pro权限（DeepSeek 现有逻辑，不变）
-      if (model === "pro" && !isActivated) {
-        showProModelModal();
-        return;
-      }
-
-      currentModel =
-        model === "pro"
-          ? "deepseek-v4-pro"
-          : "deepseek-v4-flash";
+      currentModel = model.modelName;
 
       // 🆕 记录这条对话使用的 provider/model（不影响任何既有行为，仅补充字段）
       if (c) {
-        if (!setConversationProvider(c, "deepseek", currentModel)) {
+        if (!setConversationProvider(c, model.provider, currentModel)) {
           showToast(getProviderBindingMessage(c));
           modelMenu.classList.remove("show");
           return;
@@ -1567,7 +1645,6 @@ function getProviderBindingMessage(conversation) {
       updateModelUI();
       modelMenu.classList.remove("show");
     };
-  });
 
   document.addEventListener("click", (e) => {
     if (!modelMenu.contains(e.target) && e.target !== modelSelector) {
@@ -1739,19 +1816,18 @@ function showProModelModal() {
       <span class="close">×</span>
 
       <h2 style="margin-bottom:0.5rem;font-size:1.2rem;">
-        DeepSeek V4 Pro 为 Pro 专属
+        该模型为 Pro 专属
       </h2>
 
       <p style="color:#666;font-size:13px;margin-bottom:1.2rem;line-height:1.6;">
-        当前模型为 <b>DeepSeek V4 Pro</b><br>
-        该模型仅对 Pro 用户开放
+        当前选择的模型仅对 Pro 用户开放
       </p>
 
       <button id="openProBtn" class="oauth-btn" style="margin-bottom:0.6rem;">
         升级 Pro
       </button>
 
-      <button id="useFlashBtn" style="
+      <button id="chooseAnotherModelBtn" style="
         width:100%;
         border-radius:10px;
         padding:0.7rem;
@@ -1760,7 +1836,7 @@ function showProModelModal() {
         cursor:pointer;
         border:none;
       ">
-        继续使用 Flash
+        选择其他模型
       </button>
     </div>
   `;
@@ -1780,10 +1856,9 @@ function showProModelModal() {
     setTimeout(showActivationModal, 200);
   };
 
-  modal.querySelector("#useFlashBtn").onclick = () => {
-    currentModel = "deepseek-v4-flash";
-    updateModelUI();
+  modal.querySelector("#chooseAnotherModelBtn").onclick = () => {
     closeModal();
+    document.getElementById("modelSelector")?.click();
   };
 }
 
@@ -2459,6 +2534,11 @@ function updateRequestUiState() {
   document.body.classList.toggle("thinking-mode", sendingLock);
   sendBtn.innerText = sendingLock ? "■" : "↑";
   sendBtn.setAttribute("aria-label", uiText(sendingLock ? "停止当前对话生成" : "发送消息"));
+  const selector = document.getElementById("modelSelector");
+  if (selector) {
+    selector.setAttribute("aria-disabled", String(sendingLock));
+    if (sendingLock) document.getElementById("modelMenu")?.classList.remove("show");
+  }
 }
 
 function stopRequest(requestContext, reason = "user") {
@@ -2704,7 +2784,7 @@ async function deleteConversationForCurrentUser(targetConversation) {
   );
   if (!nextConversations.length) {
     const replacement = createConversation({
-      provider: "deepseek",
+      provider: currentCatalogProvider(),
       model: currentModel,
       userId,
       title: "新对话",
@@ -2792,7 +2872,7 @@ function createNewChat() {
     // 🆕 默认绑定 DeepSeek（与改造前完全一致的默认行为）；用户可以在对话
     // 还是空的时候，通过右下角模型选择器切到 Sunland AI —— 一旦发出第一
     // 条消息，provider 就锁定，需要新建对话才能更换。
-    provider: "deepseek",
+    provider: currentCatalogProvider(),
     model: currentModel,
     userId,
     title: "新对话",
@@ -2831,9 +2911,7 @@ function loadChat(id) {
 
   currentId = id;
   if (c.provider !== "sunland") {
-    currentModel = c.model === "deepseek-v4-pro"
-      ? "deepseek-v4-pro"
-      : "deepseek-v4-flash";
+  currentModel = c.model || "";
   }
   if (session?.userId) {
     persistCurrentConversationId(localStorage, session.userId, currentId);
@@ -3657,6 +3735,13 @@ async function send() {
     return;
   }
 
+  const selectedModel = selectedCatalogModel(sendingConversation);
+  if (modelCatalogLoading || modelCatalogFailed || !availableFor(selectedModel, isActivated)) {
+    showToast("当前模型不可用，请重新选择");
+    hideGlobalLoading();
+    return;
+  }
+
   const currentIdentity = getCurrentVerifiedIdentity();
   const verifiedUserId = getVerifiedUserId(currentIdentity);
   if (!currentIdentity || !verifiedUserId || !isSupportedProviderId(sendingConversation.provider)) {
@@ -3760,7 +3845,7 @@ async function send() {
     identity: currentIdentity,
     userId: verifiedUserId,
     providerId: sendingConversation.provider,
-    model: sendingConversation.provider === "sunland" ? "frost" : currentModel,
+    model: selectedModel.modelName,
     deep: requestDeepMode,
     history: sendingConversation.history,
     diagnostics,
@@ -3963,8 +4048,9 @@ async function holdForMaintenanceIfEnabled() {
 // 所有恢复流程可能访问的模块状态与事件处理器均已初始化，之后才开始登录、
 // Provider/会话恢复。首屏会等待同源数据客户端、用户资料、权益与当前历史
 // 全部落到 DOM，再与 window.load 汇合，一次性揭示完整页面。
-await supabaseReady;
-await checkLogin({ waitForUserState: true });
+  await supabaseReady;
+  await refreshModelCatalog().catch(() => null);
+  await checkLogin({ waitForUserState: true });
 scheduleRenderUser();
 
 if (getCurrentVerifiedIdentity() && !conversations.length) {

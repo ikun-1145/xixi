@@ -153,8 +153,8 @@ test('provider selection is allowed only before the conversation starts', () => 
 test('live local and cloud code use the centralized provider merge policy', () => {
   const assignments = [...aiApp.matchAll(/\.provider\s*=(?!=)/g)];
   assert.equal(assignments.length, 0);
-  assert.match(aiApp, /setConversationProvider\(c, "sunland", "frost"\)/);
-  assert.match(aiApp, /setConversationProvider\(c, "deepseek", currentModel\)/);
+  assert.match(aiApp, /setConversationProvider\(c, model\.provider, model\.modelName\)/);
+  assert.match(aiApp, /setConversationProvider\(c, model\.provider, currentModel\)/);
   assert.match(aiApp, /const hasStarted = hasConversationStarted\(c\)/);
   assert.match(aiApp, /latest && !hasConversationStarted\(latest\)/);
   assert.match(aiApp, /mergeConversationCollections\(conversations, cloudConversations\)/);

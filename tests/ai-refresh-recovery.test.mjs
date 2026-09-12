@@ -107,13 +107,15 @@ test('Sunland provider lock UI is restored from the selected conversation', () =
   assert.notEqual(end, -1);
 
   const modelElement = {
-    innerHTML: '',
-    innerText: '',
+    textContent: '',
     title: '',
     attributes: new Map(),
     classes: new Set(),
     setAttribute(name, value) {
       modelElement.attributes.set(name, String(value));
+    },
+    replaceChildren(...nodes) {
+      modelElement.textContent = nodes.map(node => node.textContent || '').join('');
     },
     classList: {
       add(name) { modelElement.classes.add(name); },
@@ -127,6 +129,9 @@ test('Sunland provider lock UI is restored from the selected conversation', () =
     },
   };
   const document = {
+    createTextNode(text) {
+      return { textContent: String(text) };
+    },
     getElementById(id) {
       return id === 'modelSelector' ? modelElement : null;
     },
@@ -139,6 +144,9 @@ test('Sunland provider lock UI is restored from the selected conversation', () =
     'currentModel',
     'updateProviderCapabilityUI',
     'hasConversationStarted',
+    'findModel',
+    'modelCatalog',
+    'modelCatalogLoading',
     `${aiApp.slice(start, end)}; updateModelUI();`,
   );
 
@@ -149,11 +157,14 @@ test('Sunland provider lock UI is restored from the selected conversation', () =
     'deepseek-v4-flash',
     () => { capabilityUpdates += 1; },
     hasConversationStarted,
+    (models, provider, modelName) => models.find(model => model.provider === provider && model.modelName === modelName) || null,
+    [{ provider: 'sunland', modelName: 'frost', displayName: '远程 Sunland 名称' }],
+    false,
   );
 
   assert.equal(capabilityUpdates, 1);
   assert.equal(modelElement.classes.has('locked'), true);
-  assert.match(modelElement.innerHTML, /Sunland/);
+  assert.equal(modelElement.textContent, '远程 Sunland 名称');
 });
 
 test('legacy conversations without provider migrate safely to DeepSeek', () => {
@@ -257,7 +268,7 @@ test('bootstrap initializes every recovery state before checkLogin can call load
     bootstrap,
     aiApp.indexOf('const sidebar = document.getElementById("sidebar")', bootstrap),
   );
-  assert.match(bootstrapBlock, /await supabaseReady;\s*await checkLogin\(\{ waitForUserState: true \}\);\s*scheduleRenderUser\(\);/);
+  assert.match(bootstrapBlock, /await supabaseReady;\s*await refreshModelCatalog\(\)\.catch\(\(\) => null\);\s*await checkLogin\(\{ waitForUserState: true \}\);\s*scheduleRenderUser\(\);/);
   assert.match(bootstrapBlock, /updateProviderCapabilityUI\(\)/);
   assert.match(bootstrapBlock, /window\.__SUNLAND_AI_RESOURCES_READY__/);
   assert.match(bootstrapBlock, /window\.__SUNLAND_AI_REVEAL__/);
@@ -281,7 +292,7 @@ test('bootstrap initializes every recovery state before checkLogin can call load
   const loadChatStart = aiApp.indexOf('function loadChat');
   const loadChatEnd = aiApp.indexOf('input.addEventListener', loadChatStart);
   const loadChatBlock = aiApp.slice(loadChatStart, loadChatEnd);
-  assert.match(loadChatBlock, /currentModel = c\.model === "deepseek-v4-pro"/);
+  assert.match(loadChatBlock, /currentModel = c\.model \|\| ""/);
   assert.match(loadChatBlock, /persistCurrentConversationId/);
   assert.match(loadChatBlock, /history = JSON\.parse/);
   assert.match(loadChatBlock, /updateModelUI\(\)/);
