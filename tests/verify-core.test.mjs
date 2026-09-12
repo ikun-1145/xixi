@@ -423,7 +423,7 @@ test("image claim extraction sends the original image only to the DeepSeek visio
   });
 
   assert.equal(requests.length, 1);
-  assert.equal(requests[0].model, "deepseek-v4-flash-vision-exp");
+  assert.equal(requests[0].model, "deepseek-flash");
   assert.equal(Array.isArray(requests[0].messages[1].content), true);
   assert.match(requests[0].messages[1].content[1].image_url.url, /^data:image\/png;base64,/u);
   assert.equal(requests[0].messages[1].content[1].image_url.detail, "original");

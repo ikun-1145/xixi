@@ -44,7 +44,7 @@ test("verify multipart API forwards a validated image to the vision model withou
   const body = await response.text();
 
   assert.equal(response.status, 200);
-  assert.equal(modelRequest.model, "deepseek-v4-flash-vision-exp");
+  assert.equal(modelRequest.model, "deepseek-flash");
   assert.equal(
     modelRequest.messages[1].content[1].image_url.url,
     `data:image/png;base64,${VALID_PNG_BASE64}`,

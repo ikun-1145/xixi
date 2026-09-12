@@ -25,7 +25,7 @@ function tinyPng(type = "image/png") {
 
 test("chat image preparation verifies the file signature and creates a bounded data URL", async () => {
   const image = await prepareChatImage(tinyPng());
-  assert.equal(DEEPSEEK_VISION_MODEL, "deepseek-v4-flash-vision-exp");
+  assert.equal(DEEPSEEK_VISION_MODEL, "deepseek-flash");
   assert.equal(image.mimeType, "image/png");
   assert.equal(image.dataUrl, `data:image/png;base64,${VALID_PNG_BASE64}`);
   assert.equal(image.previewMimeType, "image/png");

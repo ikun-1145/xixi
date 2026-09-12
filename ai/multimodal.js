@@ -1,4 +1,4 @@
-export const DEEPSEEK_VISION_MODEL = "deepseek-v4-flash-vision-exp";
+export const DEEPSEEK_VISION_MODEL = "deepseek-flash";
 export const MAX_CHAT_IMAGE_BYTES = 8 * 1024 * 1024;
 // Base64 adds about one third to the binary size. Keep prepared images small
 // enough to leave ample room for prompts and conversation history in the Worker request.

@@ -770,6 +770,13 @@
       position: relative;
       z-index: 1;
     }
+    .dl-release-note {
+      font-size: 0.8rem;
+      color: var(--text-dim);
+      margin: -0.15rem 0 0.7rem;
+      position: relative;
+      z-index: 1;
+    }
     .platform-badge {
       display: inline-flex;
       align-items: center;
@@ -845,6 +852,11 @@
     .btn-dl.downloading {
       pointer-events: none;
       cursor: wait;
+    }
+    .btn-dl[aria-disabled="true"] {
+      pointer-events: none;
+      cursor: wait;
+      opacity: 0.62;
     }
     .btn-dl.downloading .download-platform-mark,
     .btn-dl.downloading .download-copy,
@@ -1266,6 +1278,7 @@
 
           <div class="dl-title" data-i18n="dlCardTitle">Android 与 iOS 下载</div>
           <div class="dl-desc" data-i18n="dlCardDesc">Android 7.0+；iOS IPA 适用于已注册测试设备或自行签名安装</div>
+          <p class="dl-release-note" data-release-description hidden></p>
 
           <div class="platform-badge">
             <span class="ui-svg-icon icon-smartphone" aria-hidden="true"></span>
@@ -1273,15 +1286,17 @@
           </div>
 
           <div class="download-actions">
-            <a href="https://api.sunland.dev/v1/download/apk?v=1.4.8%2B37"
+            <a href=""
                class="btn-dl"
-               data-download-button>
+               data-download-button="android"
+               aria-disabled="true"
+               tabindex="-1">
               <span class="download-platform-mark download-platform-mark--android" aria-hidden="true">
                 <img src="p/logo-android-new.png" alt="" class="download-badge-img">
               </span>
               <span class="download-copy">
                 <span class="download-label" data-i18n="dlAndroidBtn">立即下载 Android APK</span>
-                <span class="download-detail">APK · v1.4.8+37</span>
+                <span class="download-detail" data-release-version>APK · …</span>
               </span>
               <span class="download-arrow" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1289,15 +1304,17 @@
                 </svg>
               </span>
             </a>
-            <a href="https://api.sunland.dev/v1/download/ipa?v=1.4.8%2B37"
+            <a href=""
                class="btn-dl"
-               data-download-button>
+               data-download-button="ios"
+               aria-disabled="true"
+               tabindex="-1">
               <span class="download-platform-mark download-platform-mark--apple" aria-hidden="true">
                 <img src="p/apple-11.png" alt="" class="download-badge-img">
               </span>
               <span class="download-copy">
                 <span class="download-label" data-i18n="dlIosBtn">立即下载 Apple IPA</span>
-                <span class="download-detail">IPA · v1.4.8+37</span>
+                <span class="download-detail" data-release-version>IPA · …</span>
               </span>
               <span class="download-arrow" aria-hidden="true">
                 <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -1859,6 +1876,42 @@
   })();
 
   /* ═══════════════════════════════════════════════════════════
+     RELEASE MANIFEST
+  ═══════════════════════════════════════════════════════════ */
+  (async function() {
+    const buttons = document.querySelectorAll('[data-download-button]');
+    const isHttpUrl = value => {
+      try { return ['http:', 'https:'].includes(new URL(value).protocol); }
+      catch { return false; }
+    };
+
+    try {
+      const response = await fetch('update.json', { cache: 'no-store' });
+      if (!response.ok) throw new Error(`update manifest returned ${response.status}`);
+      const manifest = await response.json();
+      if (!/^\d+(?:\.\d+)+$/.test(manifest.version) || !Number.isInteger(manifest.build)
+        || !isHttpUrl(manifest.url) || !isHttpUrl(manifest.ipaUrl)) throw new Error('invalid update manifest');
+
+      const version = `v${manifest.version}+${manifest.build}`;
+      document.querySelectorAll('[data-release-version]').forEach(detail => {
+        detail.textContent = `${detail.closest('[data-download-button]').dataset.downloadButton === 'android' ? 'APK' : 'IPA'} · ${version}`;
+      });
+      const description = document.querySelector('[data-release-description]');
+      if (typeof manifest.desc === 'string' && manifest.desc.trim()) {
+        description.textContent = manifest.desc.trim();
+        description.hidden = false;
+      }
+      buttons.forEach(button => {
+        button.href = button.dataset.downloadButton === 'android' ? manifest.url : manifest.ipaUrl;
+        button.removeAttribute('aria-disabled');
+        button.removeAttribute('tabindex');
+      });
+    } catch (error) {
+      console.warn('Unable to load the current release manifest.', error);
+    }
+  })();
+
+  /* ═══════════════════════════════════════════════════════════
      DOWNLOAD MICRO-INTERACTION
   ═══════════════════════════════════════════════════════════ */
   (function() {
@@ -1866,6 +1919,7 @@
     if (!buttons.length) return;
     buttons.forEach(btn => btn.addEventListener('click', function(e) {
       e.preventDefault();
+      if (btn.getAttribute('aria-disabled') === 'true') return;
       if (btn.classList.contains('downloading')) return;
       // Add ripple
       const ripple = document.createElement('span');

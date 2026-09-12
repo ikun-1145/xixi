@@ -496,12 +496,6 @@ function startActivationPolling() {
         setTimeout(() => payModal.remove(), 200);
       }
     },
-    onTimeout: ({ supportUrl }) => {
-      showToast(
-        proPaymentText("supportHint", "已等待 10 分钟仍未到账？请准备订单信息后联系支持。"),
-        { href: supportUrl, label: proPaymentText("supportLink", "Pro 到账申诉") },
-      );
-    },
   });
 }
 

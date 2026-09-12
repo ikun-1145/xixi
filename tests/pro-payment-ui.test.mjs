@@ -110,6 +110,14 @@ test("both Pro entry pages use the shared payment module and expose the static s
   }
 });
 
+test("Pro payment monitoring does not interrupt either entry page with an unpaid support prompt", () => {
+  const app = readFileSync(new URL("../ai/app.js", import.meta.url), "utf8");
+  const settings = readFileSync(new URL("../ai_settings.html", import.meta.url), "utf8");
+
+  assert.doesNotMatch(app, /onTimeout:\s*\(/);
+  assert.doesNotMatch(settings, /onTimeout:\s*\(/);
+});
+
 test("checkout shows progress while identity is pending and times out without late navigation", async () => {
   let resolveToken;
   const { api, opened, saved, expire } = loadPaymentModule({

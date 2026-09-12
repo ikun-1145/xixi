@@ -3,5 +3,6 @@
   "build": 38,
   "force": true,
   "url": "https://github.com/ikun-1145/sunland-ai-dart/releases/download/v1.4.9%2B38/sunland-ai-1.4.9%2B38.apk",
+  "ipaUrl": "https://api.sunland.dev/v1/download/ipa?v=1.4.9%2B38",
   "desc": "新增账户身份信息清理与账户删除能力，并支持读取当前账户使用情况。"
 }

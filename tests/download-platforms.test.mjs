@@ -11,26 +11,20 @@ const updateManifest = JSON.parse(
 );
 const ipaGuidePath = path.join(projectRoot, 'p/video/ipa-install-guide.mp4');
 
-test('update manifest points to the mainland APK proxy for the published release', () => {
-  assert.equal(updateManifest.version, '1.4.8');
-  assert.equal(updateManifest.build, 37);
-  assert.equal(updateManifest.force, false);
-  assert.equal(
-    updateManifest.url,
-    'https://api.sunland.dev/v1/download/apk?v=1.4.8%2B37',
-  );
+test('update manifest provides both release download URLs', () => {
+  assert.match(updateManifest.version, /^\d+(?:\.\d+)+$/u);
+  assert.ok(Number.isInteger(updateManifest.build));
+  assert.ok(new URL(updateManifest.url).protocol.startsWith('http'));
+  assert.ok(new URL(updateManifest.ipaUrl).protocol.startsWith('http'));
 });
 
-test('download page exposes version-locked Android and iOS release assets', () => {
-  assert.match(
-    downloadHtml,
-    /href="https:\/\/api\.sunland\.dev\/v1\/download\/apk\?v=1\.4\.8%2B37"/u,
-  );
-  assert.match(
-    downloadHtml,
-    /href="https:\/\/api\.sunland\.dev\/v1\/download\/ipa\?v=1\.4\.8%2B37"/u,
-  );
-  assert.equal((downloadHtml.match(/<a[^>]+data-download-button/g) || []).length, 2);
+test('download page loads release copy, version, and links from the update manifest', () => {
+  assert.match(downloadHtml, /fetch\('update\.json', \{ cache: 'no-store' \}\)/u);
+  assert.match(downloadHtml, /data-release-description/u);
+  assert.equal((downloadHtml.match(/class="download-detail" data-release-version/g) || []).length, 2);
+  assert.equal((downloadHtml.match(/data-download-button="(?:android|ios)"/g) || []).length, 2);
+  assert.doesNotMatch(downloadHtml, /href="https:\/\/api\.sunland\.dev\/v1\/download\/(?:apk|ipa)/u);
+  assert.doesNotMatch(downloadHtml, /APK · v\d+\.\d+\.\d+\+\d+/u);
 });
 
 test('platform download buttons use the supplied local transparent artwork', () => {
@@ -42,7 +36,7 @@ test('platform download buttons use the supplied local transparent artwork', () 
 
 test('platform download buttons expose a visible action, release detail, and download cue', () => {
   assert.equal((downloadHtml.match(/class="download-label" data-i18n="dl(?:Android|Ios)Btn"/gu) || []).length, 2);
-  assert.equal((downloadHtml.match(/class="download-detail">(?:APK|IPA) · v1\.4\.8\+37</gu) || []).length, 2);
+  assert.equal((downloadHtml.match(/class="download-detail" data-release-version>/gu) || []).length, 2);
   assert.equal((downloadHtml.match(/class="download-arrow" aria-hidden="true"/gu) || []).length, 2);
   assert.doesNotMatch(downloadHtml, /class="sr-only" data-i18n="dl(?:Android|Ios)Btn"/u);
 });
