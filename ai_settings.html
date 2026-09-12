@@ -1850,16 +1850,9 @@ async function editNickname() {
       }
     }
 
-    window.addEventListener("focus", refreshSettingsUsage);
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") void refreshSettingsUsage();
-    });
-    window.addEventListener("pageshow", (event) => {
-      if (event.persisted) void refreshSettingsUsage();
-    });
-    setInterval(() => {
-      if (document.visibilityState === "visible") void refreshSettingsUsage();
-    }, 60000);
+    import("./ai/usage.js").then(({ watchUsage }) => {
+      watchUsage(refreshSettingsUsage);
+    }).catch(() => console.warn("额度自动刷新未加载"));
 
     function updateProSupportLink() {
       const link = document.getElementById("proSupportLink");

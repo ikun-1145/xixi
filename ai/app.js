@@ -754,7 +754,7 @@ item.style.borderRadius = "12px";
 // 统一接口与各 Provider 通信；DeepSeek 现有逻辑保持不变，只有新增的 Sunland
 // 分支会用到这个 registry。
 import { createProviderRegistry } from './providers/registry.js';
-import { parseRemaining, readUsage } from './usage.js';
+import { parseRemaining, readUsage, usageDate, watchUsage } from './usage.js';
 import {
   buildVisionMessages,
   createVisionHistoryMessage,
@@ -1788,6 +1788,7 @@ function showProModelModal() {
 }
 
 let usageVersion = 0;
+let lastUsageDate = null;
 
 function renderRemaining(remain) {
   if (remain === -1 || isActivated) {
@@ -1802,9 +1803,11 @@ async function refreshChatUsage() {
   const userId = getCurrentUserId();
   if (!userId) return;
   const version = ++usageVersion;
+  if (lastUsageDate !== usageDate()) renderRemaining(null);
   try {
     const usage = await readUsage(authenticatedFetch, userId);
     if (getCurrentUserId() !== userId || version !== usageVersion) return;
+    lastUsageDate = usage.date;
     renderRemaining(usage.remain);
   } catch {
     if (getCurrentUserId() === userId && version === usageVersion) renderRemaining(null);
@@ -3487,8 +3490,9 @@ async function runDeepSeekRequest(requestContext) {
       // Quota belongs to the account, even if its conversation was switched/deleted.
       if (getCurrentUserId() === requestContext.userId) {
         const remain = parseRemaining(res.headers.get("x-remain"));
-        if (remain !== null) {
+        if (remain !== null && res.headers.get("x-usage-date") === usageDate()) {
           ++usageVersion; // An older snapshot must not overwrite this response.
+          lastUsageDate = usageDate();
           renderRemaining(remain);
         } else {
           void refreshChatUsage();
@@ -4126,9 +4130,7 @@ async function restoreLoginState() {
 
 window.addEventListener("focus", restoreLoginState);
 
-setInterval(() => {
-  if (document.visibilityState === "visible" && !isActivated) void refreshChatUsage();
-}, 60000);
+watchUsage(refreshChatUsage);
 
 document.addEventListener("visibilitychange", () => {
   if (document.visibilityState === "visible") {

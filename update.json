@@ -1,7 +1,7 @@
 {
-  "version": "1.4.7",
-  "build": 36,
-  "force": true,
-  "url": "https://api.sunland.dev/v1/download/apk?v=1.4.7%2B36",
-  "desc": "修复“兽聚查询”按省、市或地区查询时因地点字段未正确传递而显示“无”的问题。"
+  "version": "1.4.8",
+  "build": 37,
+  "force": false,
+  "url": "https://api.sunland.dev/v1/download/apk?v=1.4.8%2B37",
+  "desc": "新增账户身份信息清理与账户删除能力，并支持读取当前账户使用情况。"
 }
