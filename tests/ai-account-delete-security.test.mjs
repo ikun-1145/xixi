@@ -153,6 +153,7 @@ test("avatar prefix deletion pages through more than 1000 objects", async () => 
   const error = await deleteAvatarPrefixWithPages({
     list: async (_prefix, options) => {
       listCalls += 1;
+      assert.equal(options.offset, 0);
       return {
         data: objects.slice(options.offset, options.offset + options.limit),
         error: null,
@@ -161,6 +162,10 @@ test("avatar prefix deletion pages through more than 1000 objects", async () => 
     remove: async (paths) => {
       removeCalls += 1;
       removed.push(...paths);
+      const names = new Set(paths.map((path) => path.split("/").at(-1)));
+      for (let index = objects.length - 1; index >= 0; index--) {
+        if (names.has(objects[index].name)) objects.splice(index, 1);
+      }
       return { error: null };
     },
     prefix: "owner-key",
@@ -169,7 +174,123 @@ test("avatar prefix deletion pages through more than 1000 objects", async () => 
   assert.equal(error, null);
   assert.equal(removed.length, total);
   assert.equal(removeCalls, 2);
-  assert.equal(listCalls, 2);
+  assert.equal(listCalls, 3);
+});
+
+for (const total of [0, 1, 999, 1000, 1001, 1999, 2000, 2001, 3001]) {
+  test(`avatar cleanup drains ${total} objects without skipping`, async () => {
+    const objects = Array.from({ length: total }, (_, index) => ({ name: `a-${index}` }));
+    const removed = [];
+    const error = await deleteAvatarPrefixWithPages({
+      prefix: "owner-key",
+      list: async (_prefix, options) => {
+        assert.equal(options.offset, 0);
+        return { data: objects.slice(0, options.limit), error: null };
+      },
+      remove: async (paths) => {
+        removed.push(...paths);
+        const names = new Set(paths.map((path) => path.slice("owner-key/".length)));
+        for (let index = objects.length - 1; index >= 0; index--) {
+          if (names.has(objects[index].name)) objects.splice(index, 1);
+        }
+        return { error: null };
+      },
+    });
+    assert.equal(error, null);
+    assert.equal(objects.length, 0);
+    assert.equal(new Set(removed).size, total);
+  });
+}
+
+test("avatar cleanup propagates list and partial remove failures for retry", async () => {
+  const objects = [{ name: "a" }, { name: "b" }];
+  let failed = false;
+  const list = async () => ({ data: objects.slice(), error: null });
+  const remove = async (paths) => {
+    if (!failed) {
+      failed = true;
+      objects.shift();
+      return { error: { statusCode: 500 } };
+    }
+    objects.splice(0, objects.length);
+    return { error: null };
+  };
+  const firstError = await deleteAvatarPrefixWithPages({ list, remove, prefix: "owner" });
+  assert.equal(firstError?.statusCode, 500);
+  const retryError = await deleteAvatarPrefixWithPages({ list, remove, prefix: "owner" });
+  assert.equal(retryError, null);
+  assert.equal(objects.length, 0);
+
+  const listError = await deleteAvatarPrefixWithPages({
+    list: async () => ({ data: null, error: { statusCode: 404 } }),
+    remove: async () => { throw new Error("remove should not run"); },
+    prefix: "owner",
+  });
+  assert.equal(listError?.statusCode, 404);
+});
+
+test("avatar cleanup fails closed on a middle-page list error then retries", async () => {
+  const objects = Array.from({ length: 1001 }, (_, index) => ({ name: `a-${index}` }));
+  let listCalls = 0;
+  let failMiddlePage = true;
+  const list = async () => {
+    listCalls++;
+    if (failMiddlePage && listCalls === 2) {
+      failMiddlePage = false;
+      return { data: null, error: { statusCode: 503 } };
+    }
+    return { data: objects.slice(0, 1000), error: null };
+  };
+  const remove = async (paths) => {
+    const names = new Set(paths.map((path) => path.slice("owner/".length)));
+    for (let index = objects.length - 1; index >= 0; index--) {
+      if (names.has(objects[index].name)) objects.splice(index, 1);
+    }
+    return { error: null };
+  };
+  assert.equal((await deleteAvatarPrefixWithPages({ list, remove, prefix: "owner" }))?.statusCode, 503);
+  assert.equal(objects.length, 1);
+  assert.equal(await deleteAvatarPrefixWithPages({ list, remove, prefix: "owner" }), null);
+  assert.equal(objects.length, 0);
+});
+
+test("avatar cleanup rejects malformed, duplicate, and stale listings", async () => {
+  const remove = async () => ({ error: null });
+  for (const data of [null, [{ name: "a" }, { name: "a" }], [{ bad: "entry" }]]) {
+    const error = await deleteAvatarPrefixWithPages({
+      list: async () => ({ data, error: null }), remove, prefix: "owner",
+    });
+    assert.ok(error);
+  }
+  let calls = 0;
+  const stale = await deleteAvatarPrefixWithPages({
+    list: async () => { calls++; return { data: [{ name: "a" }], error: null }; },
+    remove, prefix: "owner",
+  });
+  assert.match(stale?.message ?? "", /did not advance/);
+  assert.equal(calls, 2);
+});
+
+test("avatar cleanup bounds alternating eventually consistent pages", async () => {
+  let calls = 0;
+  const error = await deleteAvatarPrefixWithPages({
+    list: async () => ({ data: [{ name: `stale-${calls++ % 2}` }], error: null }),
+    remove: async () => ({ error: null }),
+    prefix: "owner", maxPages: 5,
+  });
+  assert.match(error?.message ?? "", /page limit exceeded/);
+  assert.equal(calls, 5);
+});
+
+test("avatar cleanup can finish after an already-deleted object", async () => {
+  let calls = 0;
+  const error = await deleteAvatarPrefixWithPages({
+    list: async () => ({ data: calls++ === 0 ? [{ name: "gone" }] : [], error: null }),
+    remove: async () => ({ data: [], error: null }),
+    prefix: "owner",
+  });
+  assert.equal(error, null);
+  assert.equal(calls, 2);
 });
 
 test("exact legacy avatar path deletion is idempotent on missing objects", async () => {
@@ -186,10 +307,16 @@ test("exact legacy avatar path deletion is idempotent on missing objects", async
   assert.deepEqual(removed, ["legacy/avatar.jpg"]);
 
   error = await deleteAvatarObjectIfExists({
-    remove: async () => ({ error: { statusCode: 404 } }),
+    remove: async () => ({ error: { statusCode: 404, code: "NoSuchKey" } }),
     path: "legacy/missing.jpg",
   });
   assert.equal(error, null);
+
+  error = await deleteAvatarObjectIfExists({
+    remove: async () => ({ error: { statusCode: 404, code: "NoSuchBucket" } }),
+    path: "legacy/avatar.jpg",
+  });
+  assert.equal(error?.code, "NoSuchBucket");
 });
 
 test("migration enforces service_role-only RLS and definer permissions", () => {

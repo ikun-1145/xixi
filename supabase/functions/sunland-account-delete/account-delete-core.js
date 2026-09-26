@@ -79,35 +79,50 @@ export async function deleteAvatarPrefixWithPages({
   remove,
   prefix,
   limit = 1000,
+  maxPages = 250,
   renewLease = async () => true,
 }) {
-  let offset = 0;
-  while (true) {
+  let previousPage = null;
+  for (let page = 0; page < maxPages; page += 1) {
     if (!(await renewLease())) return new Error("lease lost");
 
     const { data, error } = await list(prefix, {
       limit,
-      offset,
+      offset: 0,
       sortBy: { column: "name", order: "asc" },
     });
-    if (error) {
-      const code = error?.statusCode ?? error?.status ?? 0;
-      return code === 400 || code === 404 ? null : error;
-    }
+    if (error) return error;
 
-    const entries = Array.isArray(data) ? data : [];
+    if (!Array.isArray(data)) return new Error("invalid storage listing");
+    const entries = data;
     const names = entries
       .filter((item) => item && typeof item.name === "string" && item.name.length > 0)
       .map((item) => `${prefix}/${item.name}`);
+
+    if (names.length !== entries.length) {
+      return new Error("invalid storage listing");
+    }
+    if (new Set(names).size !== names.length) {
+      return new Error("duplicate storage listing");
+    }
+    if (
+      previousPage &&
+      names.length === previousPage.length &&
+      names.every((name, index) => name === previousPage[index])
+    ) {
+      return new Error("storage page did not advance after deletion");
+    }
 
     if (names.length) {
       const { error: removeError } = await remove(names);
       if (removeError) return removeError;
     }
 
-    if (entries.length < limit) return null;
-    offset += entries.length;
+    if (entries.length === 0) return null;
+    // Deleting a page shrinks the listing, so the next page is now at offset 0.
+    previousPage = names;
   }
+  return new Error("avatar cleanup page limit exceeded");
 }
 
 export async function deleteAvatarObjectIfExists({
@@ -121,5 +136,5 @@ export async function deleteAvatarObjectIfExists({
   const { error } = await remove([path]);
   if (!error) return null;
   const code = error?.statusCode ?? error?.status ?? 0;
-  return code === 400 || code === 404 ? null : error;
+  return code === 404 && error?.code === "NoSuchKey" ? null : error;
 }
