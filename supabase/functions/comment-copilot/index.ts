@@ -22,6 +22,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildContextBlock } from "./internet_context.ts";
+import { verifiedActiveUserId } from "./verified-identity.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -251,25 +252,6 @@ function resolveModelPool(sec: Record<string, string>): Record<string, { model: 
   return pool;
 }
 
-function decodeJwt(token: string): Record<string, any> | null {
-  try {
-    const part = token.split(".")[1]; if (!part) return null;
-    const b64 = part.replace(/-/g, "+").replace(/_/g, "/");
-    const pad = b64.length % 4 ? b64 + "=".repeat(4 - (b64.length % 4)) : b64;
-    return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(pad), (c) => c.charCodeAt(0))));
-  } catch (_e) { return null; }
-}
-
-function getUserId(req: Request): { id: string | null; expired: boolean } {
-  const auth = req.headers.get("Authorization") || "";
-  const token = auth.startsWith("Bearer ") ? auth.slice(7) : (req.headers.get("x-sunland-token") || "");
-  if (!token) return { id: null, expired: false };
-  const p = decodeJwt(token); if (!p) return { id: null, expired: false };
-  const expired = !!p.exp && p.exp * 1000 < Date.now() - 60000;
-  const id = p.sub || p.user_id || p.id || null;
-  return { id: id ? String(id) : null, expired };
-}
-
 function parseJsonLoose(text: string): any {
   if (!text) return null;
   let t = text.trim();
@@ -353,9 +335,15 @@ Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
-  const { id: userId, expired } = getUserId(req);
-  if (expired) return json({ error: "登录已过期，请重新登录", code: "expired" }, 401);
-  if (!userId) return json({ error: "请先登录后再使用", code: "unauthorized" }, 401);
+  const identity = await verifiedActiveUserId(req);
+  if (!identity.userId) {
+    const status = identity.status;
+    return json({
+      error: status === 403 ? "账号当前不可用" : status === 503 ? "身份服务暂时不可用" : "请先登录后再使用",
+      code: status === 403 ? "account_not_active" : status === 503 ? "identity_unavailable" : "unauthorized",
+    }, status);
+  }
+  const userId = identity.userId;
 
   let payload: { action?: string; comment?: string; image?: string; tone?: string } = {};
   try { payload = await req.json(); } catch (_e) { /* status 空 body */ }
