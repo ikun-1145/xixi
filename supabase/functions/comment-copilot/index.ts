@@ -23,11 +23,16 @@
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildContextBlock } from "./internet_context.ts";
 import { verifiedActiveUserId } from "./verified-identity.js";
+import {
+  createSpan, finishSpan, generateTraceId, parseTraceparent,
+  publicProviderError, recordSpans, recordTrace, redactTelemetry, MAX_SPANS_PER_TRACE,
+} from "./trace.js";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-sunland-token",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-sunland-token, traceparent",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Access-Control-Expose-Headers": "X-Sunland-Trace-Id",
 };
 
 const DEFAULT_DAILY_LIMIT = 20;
@@ -288,7 +293,7 @@ function summarizeAssistant(result: any): string {
 async function callAI(opts: {
   apiKey: string; baseUrl: string; model: string; input: any[]; useFormat: boolean;
   instructions: string; temperature?: number;
-}): Promise<{ ok: boolean; status: number; text: string; id: string | null; err: string }> {
+}): Promise<{ ok: boolean; status: number; text: string; id: string | null; errorCategory: string | null }> {
   const body: Record<string, unknown> = { model: opts.model, instructions: opts.instructions, input: opts.input, store: true, stream: true };
   if (typeof opts.temperature === "number") body.temperature = opts.temperature;
   if (opts.useFormat) body.text = { format: { type: "json_schema", name: "comment_copilot_result", strict: true, schema: RESULT_SCHEMA } };
@@ -299,12 +304,12 @@ async function callAI(opts: {
     signal: AbortSignal.timeout(120000),
   });
   if (!res.ok || !res.body) {
-    const err = await res.text().catch(() => "");
-    return { ok: false, status: res.status, text: "", id: null, err };
+    // Provider bodies can contain prompts, credentials or user content. Never read them for diagnostics.
+    return { ok: false, status: res.status, text: "", id: null, errorCategory: "http_status" };
   }
   const reader = res.body.getReader();
   const dec = new TextDecoder();
-  let buf = "", text = "", doneText = "", id: string | null = null, failed = "";
+  let buf = "", text = "", doneText = "", id: string | null = null, failed = false;
   try {
     while (true) {
       const { done, value } = await reader.read();
@@ -322,20 +327,22 @@ async function callAI(opts: {
         if (tp === "response.output_text.delta" && typeof e.delta === "string") text += e.delta;
         else if (tp === "response.output_text.done" && typeof e.text === "string") doneText = e.text;
         else if ((tp === "response.completed" || tp === "response.created") && e.response?.id) id = e.response.id;
-        else if (tp === "response.failed" || tp === "error" || tp === "response.error") failed = JSON.stringify(e).slice(0, 300);
+        else if (tp === "response.failed" || tp === "error" || tp === "response.error") failed = true;
       }
     }
   } catch (_e) { /* 流中断，用已收到的内容 */ }
   const finalText = (doneText || text).trim();
-  if (!finalText && failed) return { ok: false, status: 502, text: "", id, err: failed };
-  return { ok: true, status: 200, text: finalText, id, err: "" };
+  if (!finalText && failed) return { ok: false, status: 502, text: "", id, errorCategory: "stream_failed" };
+  return { ok: true, status: 200, text: finalText, id, errorCategory: null };
 }
 
-Deno.serve(async (req: Request) => {
-  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+async function handleRequest(req: Request, trace: any): Promise<Response> {
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
 
+  const authSpan = createSpan(trace.traceId, trace.rootSpanId, "AUTH");
   const identity = await verifiedActiveUserId(req);
+  trace.spans.push(finishSpan(authSpan, identity.userId ? "OK" : "REJECTED",
+    identity.userId ? null : "AUTH_INVALID"));
   if (!identity.userId) {
     const status = identity.status;
     return json({
@@ -350,6 +357,7 @@ Deno.serve(async (req: Request) => {
   const action = payload.action || "generate";
 
   const admin = createClient(Deno.env.get("SUPABASE_URL")!, Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!, { auth: { persistSession: false } });
+  trace.admin = admin;
   const { dailyLimit, maxTurns, useFormat, baseUrl, modelPool, configured } = await loadRuntime(admin);
 
   let isPro = false;
@@ -390,9 +398,17 @@ Deno.serve(async (req: Request) => {
 
   let remaining = -1;
   if (!isPro) {
+    const quotaSpan = createSpan(trace.traceId, trace.rootSpanId, "QUOTA");
     const { data: consumed, error } = await admin.rpc("comment_copilot_consume", { p_user_id: userId, p_limit: dailyLimit });
-    if (error) return json({ error: "额度校验失败，请稍后再试" }, 500);
-    if (typeof consumed !== "number" || consumed < 0) return json({ error: "今日免费额度已用完，请明天再来。", code: "limit", remaining: 0 }, 429);
+    if (error) {
+      trace.spans.push(finishSpan(quotaSpan, "ERROR", "QUOTA_CHECK_FAILED"));
+      return json({ error: "额度校验失败，请稍后再试" }, 500);
+    }
+    if (typeof consumed !== "number" || consumed < 0) {
+      trace.spans.push(finishSpan(quotaSpan, "REJECTED", "QUOTA_EXCEEDED"));
+      return json({ error: "今日免费额度已用完，请明天再来。", code: "limit", remaining: 0 }, 429);
+    }
+    trace.spans.push(finishSpan(quotaSpan));
     remaining = consumed;
   }
   const refund = async () => { if (!isPro) await admin.rpc("comment_copilot_refund", { p_user_id: userId }); };
@@ -421,22 +437,24 @@ Deno.serve(async (req: Request) => {
 
   let rawText = "", respId: string | null = null, useFormatTry = useFormat, temperatureTry = tone.temperature;
   for (let attempt = 1; attempt <= MAX_AI_ATTEMPTS; attempt++) {
-    let r: { ok: boolean; status: number; text: string; id: string | null; err: string };
+    let r: { ok: boolean; status: number; text: string; id: string | null; errorCategory: string | null };
+    const upstreamSpan = createSpan(trace.traceId, trace.rootSpanId, "AI_UPSTREAM");
     try {
       r = await callAI({ apiKey, baseUrl, model, input, useFormat: useFormatTry, instructions, temperature: temperatureTry });
     } catch (_e) {
+      trace.spans.push(finishSpan(upstreamSpan, "ERROR", "AI_TIMEOUT", { attempt, model_key: tone.model, error_category: "network_or_timeout" }));
       await refund();
-      return json({ error: "AI 服务连接超时，请稍后再试" }, 504);
+      return json({ error: "AI 服务连接超时，请稍后再试", code: "AI_TIMEOUT", trace_id: trace.traceId }, 504);
     }
+    trace.spans.push(finishSpan(upstreamSpan, r.ok ? "OK" : "ERROR", r.ok ? null : "AI_UPSTREAM_ERROR",
+      { attempt, model_key: tone.model, provider_status: r.status, error_category: r.errorCategory || "none" }));
     if (r.ok && r.text) { rawText = r.text; respId = r.id; break; }
     if (r.ok && !r.text) continue;
     if ((r.status === 400 || r.status === 404) && useFormatTry) { useFormatTry = false; continue; }
     if (r.status === 400 && typeof temperatureTry === "number") { temperatureTry = undefined; continue; }
-    console.error("AI provider error:", r.status, "model=", model, r.err.slice(0, 500));
+    console.error("AI provider error:", trace.traceId, r.status, "model_key=", tone.model, "category=", r.errorCategory);
     await refund();
-    const hint = r.status === 401 ? "（密钥被拒绝，请核对 OPENAI_API_KEY）" : "";
-    // detail：透出上游（PackyCode）返回的原始错误体，便于定位是“模型不存在/端点不支持/过载”等
-    return json({ error: `AI 服务返回异常 (${r.status})${hint}`, code: "provider_error", provider_status: r.status, model, detail: (r.err || "").slice(0, 500) }, 502);
+    return json(publicProviderError(trace.traceId), 502);
   }
   if (!rawText) { await refund(); return json({ error: "AI 暂时未返回内容，请重试一次", code: "empty", model }, 502); }
 
@@ -451,7 +469,60 @@ Deno.serve(async (req: Request) => {
   const full = [...transcript, { u: userHist, a: summarizeAssistant(result) }];
   const stored = full.slice(Math.max(0, full.length - maxTurns));
   const newTurns = prevTurns + 1;
-  await admin.from("comment_copilot_context").upsert({ user_id: userId, transcript: stored, turns: newTurns, last_response_id: respId, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+  const persistenceSpan = createSpan(trace.traceId, trace.rootSpanId, "PERSISTENCE");
+  const { error: persistError } = await admin.from("comment_copilot_context").upsert({ user_id: userId, transcript: stored, turns: newTurns, last_response_id: respId, updated_at: new Date().toISOString() }, { onConflict: "user_id" });
+  trace.spans.push(finishSpan(persistenceSpan, persistError ? "ERROR" : "OK", persistError ? "PERSISTENCE_FAILED" : null));
 
   return json({ result, remaining: isPro ? -1 : remaining, isPro, turns: newTurns, truncated: false, maxTurns });
+}
+
+Deno.serve(async (req: Request) => {
+  if (req.method === "OPTIONS") return new Response("ok", { headers: corsHeaders });
+  const incoming = parseTraceparent(req.headers.get("traceparent"));
+  const traceId = incoming?.traceId ?? generateTraceId();
+  const root = createSpan(traceId, incoming?.spanId ?? null, "EDGE_REQUEST");
+  const trace: any = { traceId, rootSpanId: root.span_id, spans: [], admin: null };
+  let response: Response;
+  try {
+    response = await handleRequest(req, trace);
+  } catch {
+    response = json({ error: "服务暂时不可用，请稍后再试", code: "INTERNAL_ERROR", trace_id: traceId }, 500);
+  }
+  const outcome = response.status >= 500 ? "ERROR" : response.status >= 400 ? "REJECTED" : "OK";
+  const errorCode = response.status === 504 ? "AI_TIMEOUT" : response.status === 502 ? "AI_UPSTREAM_ERROR" :
+    response.status === 429 ? "QUOTA_EXCEEDED" : response.status === 401 ? "AUTH_INVALID" :
+    response.status >= 500 ? "INTERNAL_ERROR" : null;
+  trace.spans.unshift(finishSpan(root, outcome, errorCode));
+  const headers = new Headers(response.headers);
+  headers.set("X-Sunland-Trace-Id", traceId);
+  const tracedResponse = new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+
+  if (trace.admin) {
+    const droppedSpanCount = Math.max(0, trace.spans.length - MAX_SPANS_PER_TRACE);
+    const expiresAt = new Date(Date.now() + (outcome === "OK" ? 7 : 30) * 86400000).toISOString();
+    const spans = trace.spans.slice(0, MAX_SPANS_PER_TRACE).map((span: any) => ({ ...span, expires_at: expiresAt }));
+    const task = Promise.allSettled([
+      recordSpans(trace.admin, spans),
+      recordTrace(trace.admin, {
+        trace_id: traceId,
+        started_at: root.started_at,
+        ended_at: new Date().toISOString(),
+        entry_service: "comment-copilot",
+        route_key: "comment-copilot",
+        outcome,
+        http_status: response.status,
+        error_code: errorCode,
+        duration_ms: trace.spans[0].duration_ms,
+        sample_reason: "phase2_full",
+        trace_completeness: "UNKNOWN",
+        service_version: "UNVERIFIED",
+        attributes: redactTelemetry({ dropped_span_count: droppedSpanCount }, 2048),
+        expires_at: expiresAt,
+      }),
+    ]);
+    // Supabase EdgeRuntime keeps this task alive after the response; local runtimes await it.
+    if ((globalThis as any).EdgeRuntime?.waitUntil) (globalThis as any).EdgeRuntime.waitUntil(task);
+    else await task;
+  }
+  return tracedResponse;
 });

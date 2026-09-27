@@ -1,0 +1,4 @@
+interface:
+  display_name: "霜蓝发布门禁"
+  short_description: "按照改动风险执行测试、审查安全与兼容性并给出可追踪的发布结论"
+  default_prompt: "Use $xixi-release-gate to verify this change and report release readiness."

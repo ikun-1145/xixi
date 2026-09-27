@@ -316,10 +316,13 @@ async function authenticatedFetch(url, init = {}, _retried = false, requestIdent
   return res;
 }
 
-async function apiFetch(body, _retried = false, signal = undefined) {
+async function apiFetch(body, _retried = false, signal = undefined, traceContext = null) {
   return authenticatedFetch("https://api.sunland.dev", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      ...(traceContext?.traceparent ? { traceparent: traceContext.traceparent } : {}),
+    },
     body: JSON.stringify(body),
     signal,
   }, _retried);
@@ -811,6 +814,7 @@ import {
 import { createSunlandDiagnosticsRuntime } from './beta-diagnostics/runtime.js';
 import { preserveSunlandLegacyState } from './sunland-legacy-migration.js';
 import { availableFor, findModel, loadModelCatalog } from './model-catalog.js';
+import { createTraceContext, responseTraceId } from './trace-context.js';
 
 const identityAuthority = new IdentityAuthority();
 const sunlandDiagnosticsRuntime = createSunlandDiagnosticsRuntime({
@@ -3452,6 +3456,10 @@ async function sendSunlandMessage(requestContext) {
       furryContext: requestContext.furryContext,
       furryContextActive: requestContext.furryContextActive,
       turnId: requestContext.requestId,
+      traceparent: requestContext.traceContext?.traceparent,
+      onResponse: response => {
+        requestContext.traceId = responseTraceId(response, requestContext.traceId);
+      },
       signal: requestContext.controller.signal,
       canCommitSemanticContext: () =>
         requestCoordinator.canCommitSemanticContext(requestContext),
@@ -3557,8 +3565,9 @@ async function runDeepSeekRequest(requestContext) {
           : requestContext.model,
         messages: requestMessages,
         deep: requestContext.deep,
-      }, false, requestContext.controller.signal);
+      }, false, requestContext.controller.signal, requestContext.traceContext);
       if (!res) return;
+      requestContext.traceId = responseTraceId(res, requestContext.traceId);
       // Quota belongs to the account, even if its conversation was switched/deleted.
       if (getCurrentUserId() === requestContext.userId) {
         const remain = parseRemaining(res.headers.get("x-remain"));
@@ -3849,6 +3858,8 @@ async function send() {
     return;
   }
 
+  requestContext.traceContext = createTraceContext();
+  requestContext.traceId = requestContext.traceContext?.traceId ?? null;
   requestContext.canRecordDiagnostics = () =>
     requestCoordinator.canWrite(requestContext);
   requestContext.userText = visionPrompt;

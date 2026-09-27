@@ -48,6 +48,8 @@ export class SunlandProvider extends AIProvider {
     furryContext,
     furryContextActive = false,
     turnId,
+    traceparent,
+    onResponse,
     observationMode = "off",
     signal,
   }) {
@@ -67,15 +69,22 @@ export class SunlandProvider extends AIProvider {
       return { content };
     }
 
+    const sendWithTrace = async (path, init, auth) => {
+      const headers = new Headers(init.headers);
+      if (traceparent) headers.set("traceparent", traceparent);
+      const response = await this.sendRequest(path, { ...init, headers }, auth);
+      onResponse?.(response);
+      return response;
+    };
     const migration = await ensureSunlandLegacyMigration({
       identity,
       storage: this.storage,
-      sendRequest: this.sendRequest,
+      sendRequest: sendWithTrace,
       signal,
     });
     if (signal?.aborted) return { content: "", blocked: true };
 
-    const response = await this.sendRequest("/v1/turns", {
+    const response = await sendWithTrace("/v1/turns", {
       method: "POST",
       headers: { "content-type": "application/json" },
       body: JSON.stringify({

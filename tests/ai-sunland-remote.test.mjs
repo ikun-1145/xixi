@@ -315,6 +315,38 @@ test("remote status and malformed payloads fail closed without being saved as su
   }
 });
 
+test("remote provider propagates one trace through migration and turn without replacing turnId", async () => {
+  const userId = "remote-trace-user";
+  const identity = await identityFor(userId);
+  const storage = createStorage();
+  const calls = [];
+  const traceparent = `00-${"a".repeat(32)}-${"b".repeat(16)}-01`;
+  const provider = new SunlandProvider({
+    storage,
+    sendRequest: async (path, init) => {
+      calls.push({ path, header: new Headers(init.headers).get("traceparent"), body: JSON.parse(init.body) });
+      if (path.includes("migrations")) return {
+        ...jsonResponse({ migrationId: calls.at(-1).body.migrationId, status: "complete" }),
+        headers: new Headers({ "X-Sunland-Trace-Id": "a".repeat(32) }),
+      };
+      return { ...jsonResponse({ response: "答复" }), headers: new Headers({ "X-Sunland-Trace-Id": "a".repeat(32) }) };
+    },
+  });
+  const responseIds = [];
+  const result = await provider.send({
+    conversation: { id: "trace-conversation", userId, provider: "sunland" },
+    messages: [{ role: "user", content: "测试" }],
+    identity,
+    turnId: "existing-turn-id",
+    traceparent,
+    onResponse: response => responseIds.push(response.headers.get("X-Sunland-Trace-Id")),
+  });
+  assert.equal(result.content, "答复");
+  assert.deepEqual(calls.map(call => call.header), [traceparent, traceparent]);
+  assert.equal(calls.at(-1).body.turnId, "existing-turn-id");
+  assert.deepEqual(responseIds, ["a".repeat(32), "a".repeat(32)]);
+});
+
 test("production web code contains no Symbolic Core runtime import or vendor script", () => {
   const providerSource = fs.readFileSync(new URL("../ai/providers/SunlandProvider.js", import.meta.url), "utf8");
   const conversationSource = fs.readFileSync(new URL("../ai/providers/conversation.js", import.meta.url), "utf8");

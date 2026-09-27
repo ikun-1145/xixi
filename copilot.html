@@ -212,6 +212,7 @@ child-src *;
 <script src="p/vendor/supabase-2.110.7.js"></script>
 <script type="module" src="ai/maintenance.js?v=20260905-1"></script>
 <script type="module">
+import { createTraceContext, responseTraceId } from './ai/trace-context.js';
 /* ============================================================
    护福宝 HuFuBao 前端逻辑
    - 登录态：复用站点已有的 Supabase 登录 token（localStorage.token，
@@ -283,7 +284,7 @@ async function getFreshToken(){
 }
 
 /* ---------- 调用 Edge Function ---------- */
-async function callFn(body, _retried = false){
+async function callFn(body, _retried = false, traceContext = createTraceContext()){
   const token = await getFreshToken();
   if(!token){ showLogin(); throw new Error('not_logged_in'); }
 
@@ -292,14 +293,15 @@ async function callFn(body, _retried = false){
     headers:{
       'Content-Type':'application/json',
       'apikey': SUPABASE_PUBLISHABLE_KEY,
-      'Authorization':'Bearer ' + token
+      'Authorization':'Bearer ' + token,
+      ...(traceContext?.traceparent ? { traceparent: traceContext.traceparent } : {})
     },
     body: JSON.stringify(body)
   });
 
   if(res.status === 401 && !_retried){
     const n = await refreshToken();
-    if(n) return callFn(body, true);
+    if(n) return callFn(body, true, traceContext);
     // 刷新失败，token 已彻底失效，清掉本地残留，避免 login.html 的
     // “已登录守卫”把它当成有效登录状态而把用户直接弹回本页。
     try{ localStorage.removeItem('token'); }catch{}
@@ -310,7 +312,7 @@ async function callFn(body, _retried = false){
 
   let data = null;
   try{ data = await res.json(); }catch{}
-  return { ok: res.ok, status: res.status, data: data || {} };
+  return { ok: res.ok, status: res.status, data: data || {}, traceId: responseTraceId(res, traceContext?.traceId) };
 }
 
 /* ---------- DOM ---------- */
