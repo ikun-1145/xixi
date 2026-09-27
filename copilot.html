@@ -212,7 +212,7 @@ child-src *;
 <script src="p/vendor/supabase-2.110.7.js"></script>
 <script type="module" src="ai/maintenance.js?v=20260905-1"></script>
 <script type="module">
-import { createTraceContext, responseTraceId } from './ai/trace-context.js';
+import { createTraceContext, observeTraceResponse, traceparentFor } from './ai/trace-context.js?v=20260927-2';
 /* ============================================================
    护福宝 HuFuBao 前端逻辑
    - 登录态：复用站点已有的 Supabase 登录 token（localStorage.token，
@@ -287,6 +287,7 @@ async function getFreshToken(){
 async function callFn(body, _retried = false, traceContext = createTraceContext()){
   const token = await getFreshToken();
   if(!token){ showLogin(); throw new Error('not_logged_in'); }
+  const traceparent = traceparentFor('comment-copilot', traceContext);
 
   const res = await fetch(FN_URL, {
     method:'POST',
@@ -294,7 +295,7 @@ async function callFn(body, _retried = false, traceContext = createTraceContext(
       'Content-Type':'application/json',
       'apikey': SUPABASE_PUBLISHABLE_KEY,
       'Authorization':'Bearer ' + token,
-      ...(traceContext?.traceparent ? { traceparent: traceContext.traceparent } : {})
+      ...(traceparent ? { traceparent } : {})
     },
     body: JSON.stringify(body)
   });
@@ -312,7 +313,8 @@ async function callFn(body, _retried = false, traceContext = createTraceContext(
 
   let data = null;
   try{ data = await res.json(); }catch{}
-  return { ok: res.ok, status: res.status, data: data || {}, traceId: responseTraceId(res, traceContext?.traceId) };
+  return { ok: res.ok, status: res.status, data: data || {},
+    traceId: observeTraceResponse('comment-copilot', res, traceContext?.traceId) };
 }
 
 /* ---------- DOM ---------- */

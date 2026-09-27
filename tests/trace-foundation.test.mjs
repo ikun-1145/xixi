@@ -2,8 +2,8 @@ import test from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import {
-  createTraceContext, createTraceparent, parseTraceparent, responseTraceId,
-  validateTraceparent,
+  createTraceContext, createTraceparent, observeTraceResponse, parseTraceparent,
+  responseTraceId, traceparentFor, validateTraceparent,
 } from "../ai/trace-context.js";
 import {
   createSpan, finishSpan, parseTraceparent as parseEdgeTraceparent,
@@ -40,6 +40,19 @@ test("server response trace ID wins over the client ID only when valid", () => {
   assert.equal(responseTraceId(new Response(null, { headers: { "X-Sunland-Trace-Id": server.traceId } }), client.traceId), server.traceId);
   assert.equal(responseTraceId(new Response(null, { headers: { "X-Sunland-Trace-Id": "invalid" } }), client.traceId), client.traceId);
   assert.equal(responseTraceId(new Response(), client.traceId), client.traceId);
+});
+
+test("browser waits for an exposed server trace ID before sending a CORS-sensitive header", () => {
+  const client = createTraceContext();
+  const server = createTraceContext();
+  const service = `test-${client.traceId}`;
+  assert.equal(traceparentFor(service, client), null);
+  assert.equal(observeTraceResponse(service, new Response(), client.traceId), null);
+  assert.equal(traceparentFor(service, client), null);
+  assert.equal(observeTraceResponse(service, new Response(null, {
+    headers: { "X-Sunland-Trace-Id": server.traceId },
+  }), client.traceId), server.traceId);
+  assert.equal(traceparentFor(service, client), client.traceparent);
 });
 
 test("telemetry uses a bounded allowlist and provider failures stay public-safe", () => {
@@ -116,7 +129,7 @@ test("web paths propagate headers and copilot source never reads or returns raw 
   assert.match(app, /requestContext\.traceContext = createTraceContext\(\)/);
   assert.match(app, /requestContext\.controller\.signal, requestContext\.traceContext/);
   assert.match(provider, /headers\.set\("traceparent", traceparent\)/);
-  assert.match(copilot, /traceparent: traceContext\.traceparent/);
+  assert.match(copilot, /traceparentFor\('comment-copilot', traceContext\)/);
   assert.match(copilot, /callFn\(body, true, traceContext\)/);
   assert.match(edge, /Access-Control-Expose-Headers": "X-Sunland-Trace-Id"/);
   assert.doesNotMatch(edge, /r\.err\b|res\.text\(\)|JSON\.stringify\(e\)\.slice\(/);

@@ -317,11 +317,12 @@ async function authenticatedFetch(url, init = {}, _retried = false, requestIdent
 }
 
 async function apiFetch(body, _retried = false, signal = undefined, traceContext = null) {
+  const traceparent = traceparentFor("api-worker", traceContext);
   return authenticatedFetch("https://api.sunland.dev", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      ...(traceContext?.traceparent ? { traceparent: traceContext.traceparent } : {}),
+      ...(traceparent ? { traceparent } : {}),
     },
     body: JSON.stringify(body),
     signal,
@@ -814,7 +815,7 @@ import {
 import { createSunlandDiagnosticsRuntime } from './beta-diagnostics/runtime.js';
 import { preserveSunlandLegacyState } from './sunland-legacy-migration.js';
 import { availableFor, findModel, loadModelCatalog } from './model-catalog.js';
-import { createTraceContext, responseTraceId } from './trace-context.js';
+import { createTraceContext, observeTraceResponse, traceparentFor } from './trace-context.js?v=20260927-2';
 
 const identityAuthority = new IdentityAuthority();
 const sunlandDiagnosticsRuntime = createSunlandDiagnosticsRuntime({
@@ -3456,9 +3457,9 @@ async function sendSunlandMessage(requestContext) {
       furryContext: requestContext.furryContext,
       furryContextActive: requestContext.furryContextActive,
       turnId: requestContext.requestId,
-      traceparent: requestContext.traceContext?.traceparent,
+      traceparent: traceparentFor("sunland-core", requestContext.traceContext),
       onResponse: response => {
-        requestContext.traceId = responseTraceId(response, requestContext.traceId);
+        requestContext.traceId = observeTraceResponse("sunland-core", response, requestContext.traceId);
       },
       signal: requestContext.controller.signal,
       canCommitSemanticContext: () =>
@@ -3567,7 +3568,7 @@ async function runDeepSeekRequest(requestContext) {
         deep: requestContext.deep,
       }, false, requestContext.controller.signal, requestContext.traceContext);
       if (!res) return;
-      requestContext.traceId = responseTraceId(res, requestContext.traceId);
+      requestContext.traceId = observeTraceResponse("api-worker", res, requestContext.traceId);
       // Quota belongs to the account, even if its conversation was switched/deleted.
       if (getCurrentUserId() === requestContext.userId) {
         const remain = parseRemaining(res.headers.get("x-remain"));
