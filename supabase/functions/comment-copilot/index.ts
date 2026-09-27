@@ -25,7 +25,7 @@ import { buildContextBlock } from "./internet_context.ts";
 import { verifiedActiveUserId } from "./verified-identity.js";
 import {
   createSpan, finishSpan, generateTraceId, parseTraceparent,
-  publicProviderError, recordSpans, recordTrace, redactTelemetry, MAX_SPANS_PER_TRACE,
+  publicProviderError, recordSpans, recordTrace, redactTelemetry, MAX_SPANS_PER_TRACE, SLOW_TRACE_MS,
 } from "./trace.js";
 
 const corsHeaders = {
@@ -499,7 +499,7 @@ Deno.serve(async (req: Request) => {
 
   if (trace.admin) {
     const droppedSpanCount = Math.max(0, trace.spans.length - MAX_SPANS_PER_TRACE);
-    const expiresAt = new Date(Date.now() + (outcome === "OK" ? 7 : 30) * 86400000).toISOString();
+    const expiresAt = new Date(Date.now() + (outcome === "OK" && trace.spans[0].duration_ms < SLOW_TRACE_MS ? 7 : 30) * 86400000).toISOString();
     const spans = trace.spans.slice(0, MAX_SPANS_PER_TRACE).map((span: any) => ({ ...span, expires_at: expiresAt }));
     const task = Promise.allSettled([
       recordSpans(trace.admin, spans),

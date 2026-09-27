@@ -7,7 +7,7 @@ import {
   ensureSunlandLegacyMigration,
   preserveSunlandLegacyState,
 } from "../ai/sunland-legacy-migration.js";
-import { IdentityAuthority } from "../ai/verified-identity.js";
+import { getVerifiedToken, IdentityAuthority } from "../ai/verified-identity.js";
 import { SUNLAND_LOGIN_STATE_MESSAGE } from "../ai/user-identity.js";
 
 function tokenFor(userId) {
@@ -107,7 +107,7 @@ test("remote Provider migrates legacy state before the first turn and binds both
 
   assert.deepEqual(calls.map(call => call.path), ["/v1/migrations/local-state", "/v1/turns"]);
   assert.deepEqual(calls.map(call => call.auth.userId), [userId, userId]);
-  assert.deepEqual(calls.map(call => call.auth.token), [tokenFor(userId), tokenFor(userId)]);
+  assert.deepEqual(calls.map(call => call.auth.token), [getVerifiedToken(identity), getVerifiedToken(identity)]);
   assert.equal(calls[0].body.knowledge.length, 1);
   assert.equal(calls[0].body.memory.length, 1);
   assert.equal(calls[0].body.contexts[0].context.version, 2);

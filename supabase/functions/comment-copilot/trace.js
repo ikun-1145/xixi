@@ -11,6 +11,7 @@ const SAFE_VALUES = {
   trust_level: value => ["server_observed", "client_reported"].includes(value),
 };
 export const MAX_SPANS_PER_TRACE = 32;
+export const SLOW_TRACE_MS = 15_000;
 
 function randomHex(bytes) {
   const values = new Uint8Array(bytes);
@@ -76,14 +77,15 @@ export function createSpan(traceId, parentSpanId, name) {
 
 export function finishSpan(span, status = "OK", errorCode = null, metadata = {}) {
   const { startedTick, ...stored } = span;
+  const durationMs = Math.max(0, Math.round(performance.now() - startedTick));
   return {
     ...stored,
-    duration_ms: Math.max(0, Math.round(performance.now() - startedTick)),
+    duration_ms: durationMs,
     status,
     error_code: errorCode,
     service_version: "UNVERIFIED",
     metadata: redactTelemetry({ report_source: "server", trust_level: "server_observed", ...metadata }),
-    expires_at: new Date(Date.now() + (status === "OK" ? 7 : 30) * 86400000).toISOString(),
+    expires_at: new Date(Date.now() + (status === "OK" && durationMs < SLOW_TRACE_MS ? 7 : 30) * 86400000).toISOString(),
   };
 }
 
