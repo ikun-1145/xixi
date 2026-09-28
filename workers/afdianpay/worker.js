@@ -320,10 +320,11 @@ function normalizeOrderId(value) {
 function resolvePaymentBinding(order) {
   const customOrderId = normalizeBinding(order?.custom_order_id);
   if (customOrderId) {
-    return {
-      paymentReference: customOrderId,
-      bindingSource: LEGACY_USER_ID_PATTERN.test(customOrderId) ? "legacy" : "intent",
-    };
+    // custom_order_id 一律由本站结账流程写入，恒为 intent 的 payment_reference（标准 UUID）。
+    // 绝不能按“长得像 UUID”判成 legacy —— 否则会把 payment_reference 当成 user_id 误绑，
+    // 既让真实付款用户拿不到 Pro，又建出无邮箱的幽灵账号。RPC 会用该 reference
+    // 反查 pro_payment_intents 得到真实 user_id；查不到则安全落 unresolved，不会误建账号。
+    return { paymentReference: customOrderId, bindingSource: "intent" };
   }
 
   const legacyRemark = normalizeBinding(order?.remark);
