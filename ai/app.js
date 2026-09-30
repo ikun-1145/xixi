@@ -254,12 +254,16 @@ async function authenticatedFetch(url, init = {}, _retried = false, requestIdent
   async function refreshToken() {
     const old = localStorage.getItem("token");
     if (!old) return null;
-    const identity = await resolveAndStoreIdentity({
+    const result = await resolveIdentityResult({
       token: old,
       expectedUserId: requestIdentity?.userId ?? session?.userId ?? null,
       force: true,
     });
-    return getVerifiedToken(identity);
+    if (result.reason === "verification-unavailable") {
+      window.SunlandProPayment?.markUnavailable();
+      throw new Error("verification-unavailable");
+    }
+    return getVerifiedToken(result.identity);
   }
 
   // Session 中的身份与 Token 必须来自同一次服务端验证。
@@ -270,6 +274,7 @@ async function authenticatedFetch(url, init = {}, _retried = false, requestIdent
     token = newToken;
   }
 
+  const membershipRequest = window.SunlandProPayment?.captureRequest(false);
   const headers = new Headers(init.headers);
   if (token) headers.set("Authorization", "Bearer " + token);
   const res = await fetch(url, {
@@ -279,6 +284,16 @@ async function authenticatedFetch(url, init = {}, _retried = false, requestIdent
       ...Object.fromEntries(headers.entries()),
     },
   });
+
+  if (membershipRequest && !window.SunlandProPayment.isCurrent(membershipRequest, false)) return null;
+  if (res.status === 403) {
+    const denial = await res.clone().json().catch(() => null);
+    const code = denial?.code || denial?.error?.code || denial?.error;
+    if (code === "PRO_REQUIRED" && window.SunlandProPayment?.isCurrent(membershipRequest, false)) {
+      window.SunlandProPayment.requireProFree();
+      void checkActivation();
+    }
+  }
 
   // ⭐ 如果401 → 尝试刷新一次
   if (res.status === 401 && !_retried) {
@@ -489,9 +504,7 @@ function startActivationPolling() {
   stopProActivationPolling = payments.startActivationMonitoring({
     supabase,
     getExpectedUserId: getCurrentUserId,
-    onActivated: async ({ userId }) => {
-      if (getCurrentUserId() !== userId) return;
-      try { await checkActivation(); } catch { /* The monitor already confirmed the database truth. */ }
+    onActivated: ({ userId }) => {
       if (getCurrentUserId() !== userId) return;
       showToast(proPaymentText("activated", "支付成功，Pro 已开通。"));
       const payModal = document.getElementById("payModal");
@@ -1116,6 +1129,7 @@ function setSession(identity) {
     ? { userId, identity, user: identity.user }
     : null;
   window.session = session;
+  window.SunlandProPayment?.setIdentity(userId, getVerifiedToken(identity));
   if (previousUserId && previousUserId !== userId) {
     stopProActivationPolling?.();
     stopProActivationPolling = null;
@@ -1150,6 +1164,19 @@ let conversations = []; // ⭐ 提前声明，避免 TDZ
 let chatSearchKeyword = "";
 const deletedConversationIds = new Set();
 const deletingConversationIds = new Set();
+
+window.SunlandProPayment?.subscribe(snapshot => {
+  isActivated = snapshot.state === "PRO";
+  if (!snapshot.userId) {
+    const hint = document.getElementById("usageHint");
+    if (hint) hint.innerText = "--";
+    return;
+  }
+  if (isActivated) renderProUsageHint();
+  if (snapshot.state === "FREE" && deepMode) deepMode = false;
+  updateDeepButton();
+  scheduleRenderUser();
+});
 
 function hasConversationMarker(markers, conversationOrId) {
   const id = conversationOrId && typeof conversationOrId === "object"
@@ -1343,6 +1370,7 @@ async function loadUserProfileFromCloud() {
   const userId = getCurrentUserId();
   if (!userId || accountBanned) return;
 
+  const membershipRequest = window.SunlandProPayment?.captureRequest();
   const cached = loadCachedProfile(userId);
   if (cached?.avatar_url) {
     currentProfile = cached;
@@ -1372,13 +1400,10 @@ async function loadUserProfileFromCloud() {
     }
 
     // ⭐ 同步 Pro 状态（避免额外请求）
-    if (data?.pro) {
-      isActivated = true;
-      renderProUsageHint();
-      updateDeepButton();
-    }
+    window.SunlandProPayment?.applyMembership(data?.pro, membershipRequest);
 
   } catch (e) {
+    window.SunlandProPayment?.markUnavailable(membershipRequest);
     console.warn("头像资料同步失败:", e);
   } finally {
     if (getCurrentUserId() === userId && !accountBanned) {
@@ -1491,6 +1516,7 @@ function chooseInitialCatalogModel() {
   const current = conversations.find(item => item.id === currentId);
   if (current && hasConversationStarted(current)) return;
   const selected = selectedCatalogModel(current);
+  if (selected && window.SunlandProPayment?.getState().state === "UNKNOWN") return;
   if (availableFor(selected, isActivated)) return;
   const fallback = modelCatalog.find(model => availableFor(model, isActivated));
   if (!fallback) return;
@@ -1757,6 +1783,30 @@ function setupSidebarByDevice() {
     }
   });
 })();
+function appendProRecheckControl(container) {
+  const payments = window.SunlandProPayment;
+  if (!payments) return;
+  const button = document.createElement("button");
+  button.type = "button";
+  button.className = "oauth-btn";
+  button.textContent = payments.text("checkStatus");
+  const status = document.createElement("p");
+  status.setAttribute("role", "status");
+  status.setAttribute("aria-live", "polite");
+  button.onclick = async () => {
+    button.disabled = true;
+    const request = payments.captureRequest(false);
+    try {
+      const snapshot = await payments.reconcile();
+      if (!payments.isCurrent(request, false)) return;
+      status.textContent = snapshot.stale ? payments.text("statusUnavailable")
+        : snapshot.state === "PRO" ? payments.text("alreadyActivated")
+        : snapshot.paymentSync?.paid_order_pending === true ? payments.text("paidPending") : payments.text("pending");
+    } finally { button.disabled = false; }
+  };
+  container.append(button, status);
+}
+
 function showProRequiredModal() {
   if (document.getElementById("proRequiredModal")) return;
 
@@ -1785,6 +1835,7 @@ function showProRequiredModal() {
     </div>
   `;
 
+  appendProRecheckControl(modal.querySelector(".modal-content"));
   document.body.appendChild(modal);
 
   function closeModal() {
@@ -1840,6 +1891,7 @@ function showProModelModal() {
     </div>
   `;
 
+  appendProRecheckControl(modal.querySelector(".modal-content"));
   document.body.appendChild(modal);
 
   function closeModal() {
@@ -1877,48 +1929,28 @@ async function refreshChatUsage() {
   const userId = getCurrentUserId();
   if (!userId) return;
   const version = ++usageVersion;
+  const payments = globalThis.window?.SunlandProPayment;
+  const membershipRequest = payments?.captureRequest();
   if (lastUsageDate !== usageDate()) renderRemaining(null);
   try {
     const usage = await readUsage(authenticatedFetch, userId);
     if (getCurrentUserId() !== userId || version !== usageVersion) return;
+    if (membershipRequest && !payments.isCurrent(membershipRequest)) return;
+    payments?.applyMembership(usage.isPro, membershipRequest);
     lastUsageDate = usage.date;
     renderRemaining(usage.remain);
   } catch {
-    if (getCurrentUserId() === userId && version === usageVersion) renderRemaining(null);
+    if (getCurrentUserId() === userId && version === usageVersion) {
+      payments?.markUnavailable(membershipRequest);
+      renderRemaining(null);
+    }
   }
 }
 
 async function checkActivation() {
-  const userId = getCurrentUserId();
-  if (!userId) return;
-
-  // ⭐ Pro 判定唯一真值源：user_profiles.pro（爱发电付款由 afdianpay worker 回调写入）。
-  //    激活码系统已弃用；历史激活码用户的 pro 已回填，故不再查 activation_codes。
-  const { data: prof } = await supabase
-    .from("user_profiles")
-    .select("pro")
-    .eq("user_id", userId)
-    .maybeSingle();
-
-  if (getCurrentUserId() !== userId) return;
-
-  isActivated = !!prof?.pro;
-
-  // ⭐ 已激活直接显示∞
-  if (isActivated) {
-    renderProUsageHint();
-    updateDeepButton();
-    return;
-  }
-
-  if (deepMode) {
-    deepMode = false;
-    updateDeepButton();
-  }
-
+  if (!getCurrentUserId()) return;
+  await window.SunlandProPayment?.refreshMembership(supabase);
   await refreshChatUsage();
-
-  scheduleRenderUser(); // ⭐ 自动同步UI状态
 }
 let sessionReady = false; // ✅ 是否已完成登录检查
 
@@ -2016,6 +2048,10 @@ async function checkLogin(options = {}) {
 
     try {
       const token = localStorage.getItem("token");
+      const payments = window.SunlandProPayment;
+      if (token && payments && !payments.isCurrent(payments.captureRequest(false), false)) {
+        payments.setIdentity(null, token);
+      }
       if (!token) {
         identityAuthority.clear();
         setSession(null);
@@ -2039,6 +2075,13 @@ async function checkLogin(options = {}) {
             "missing-identity",
             "expired-verified-token",
           ].includes(resolution.reason);
+          if (!hardFailure) {
+            // A temporary verification outage is not a logout or a Free entitlement.
+            window.SunlandProPayment?.markUnavailable();
+            sessionReady = true;
+            scheduleRenderUser();
+            return;
+          }
           if (hardFailure) {
             localStorage.removeItem("token");
             localStorage.removeItem("user");
@@ -2382,7 +2425,7 @@ setTimeout(() => {
       if (!response || getCurrentUserId() !== userId) return;
       const payload = await response.json().catch(() => ({}));
       if (response.ok && ["success", "already_activated"].includes(payload.result)) {
-        isActivated = true;
+        if (getCurrentVerifiedIdentity() !== identity) return;
         await checkActivation();
         updateDeepButton();
         showActivationSuccess(modal, closeModal);
@@ -2441,11 +2484,13 @@ async function showPayModal() {
   }
   if (!confirm(proPaymentText("confirmation", "即将前往爱发电支付。确认前往支付？"))) return;
 
+  const checkoutEpoch = payments.getState().identityVersion;
   try {
     const result = await payments.beginCheckout({
       supabase,
       expectedUserId: userId,
-      isExpectedUser: currentUserId => getCurrentUserId() === currentUserId,
+      isExpectedUser: currentUserId => getCurrentUserId() === currentUserId
+        && payments.getState().identityVersion === checkoutEpoch,
     });
     if (getCurrentUserId() !== userId) return;
     if (result.alreadyActivated) {
@@ -3809,6 +3854,11 @@ async function send() {
   }
 
   const requestDeepMode = !isSunlandConversation && deepMode;
+  if (requestDeepMode && window.SunlandProPayment?.getState().state === "UNKNOWN") {
+    showToast(proPaymentText("statusUnavailable", "暂时无法检查到账，请稍后重试。"));
+    hideGlobalLoading();
+    return;
+  }
   if (requestDeepMode && !isActivated) {
     deepMode = false;
     updateDeepButton();
@@ -4149,6 +4199,10 @@ if (deepBtn) {
     if (!(await requireLoginForAction())) return;
     if (!providerCapabilityState.deepThinking) return;
 
+    if (window.SunlandProPayment?.getState().state === "UNKNOWN") {
+      showToast(proPaymentText("statusUnavailable", "暂时无法检查到账，请稍后重试。"));
+      return;
+    }
     if (!isActivated) {
       deepMode = false;
       updateDeepButton();

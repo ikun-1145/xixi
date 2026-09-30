@@ -1,0 +1,230 @@
+[
+  {
+    "test": "REST-UUID-Worker-real-v2-and-tampered-webhook",
+    "ledger": [
+      {
+        "order_id": "lab-rest-order-1e2e97cd",
+        "plan_id": "4c2527fc6c7411f1bbe45254001e7c00",
+        "total_amount": 10,
+        "paid_at": null,
+        "bound_user_id": "lab-rest-1e2e97cd",
+        "binding_source": "intent",
+        "status": "activated",
+        "attempt_count": 2,
+        "last_error_code": null,
+        "first_seen_at": "2026-09-29T11:45:28.64907+00:00",
+        "last_seen_at": "2026-09-29T11:45:28.683546+00:00",
+        "activated_at": "2026-09-29T11:45:28.683546+00:00",
+        "resolved_at": "2026-09-29T11:45:28.683546+00:00",
+        "payment_status": "paid",
+        "last_verified_at": "2026-09-29T11:45:28.68655+00:00",
+        "next_retry_at": null,
+        "verified_binding_reference": "96fe8680-351a-446e-a49d-2cd249b1b354",
+        "binding_reference_verified_at": "2026-09-29T11:45:28.68655+00:00"
+      }
+    ],
+    "profile": [
+      {
+        "user_id": "lab-rest-1e2e97cd",
+        "avatar_url": null,
+        "avatar_path": null,
+        "updated_at": "2026-09-29T11:45:28.683546+00:00",
+        "name": null,
+        "pro": true,
+        "email": null,
+        "created_at": "2026-09-29T11:45:28.566187+00:00",
+        "is_banned": false,
+        "ban_reason": null,
+        "identity_status": "active",
+        "deletion_job_id": null,
+        "deletion_attempt_id": null,
+        "deletion_fencing_version": 0,
+        "deletion_started_at": null,
+        "retired_at": null,
+        "profile_sanitized_at": null
+      }
+    ],
+    "intent": [
+      {
+        "payment_reference": "96fe8680-351a-446e-a49d-2cd249b1b354",
+        "user_id": "lab-rest-1e2e97cd",
+        "status": "activated",
+        "created_at": "2026-09-29T11:45:28.592053+00:00",
+        "activated_at": "2026-09-29T11:45:28.683546+00:00"
+      }
+    ],
+    "providerCalls": 1
+  },
+  {
+    "test": "REST-12-actual-Worker-signed-replays",
+    "additionalProviderCalls": 0
+  },
+  {
+    "test": "REST-authenticated-summary",
+    "summary": {
+      "user_id": "lab-rest-1e2e97cd",
+      "membership": {
+        "state": "confirmed",
+        "pro": true,
+        "checked_at": "2026-09-29T11:45:28.786Z"
+      },
+      "payment_sync": {
+        "status": "idle",
+        "paid_order_pending": false
+      },
+      "retry_after_seconds": 0
+    }
+  },
+  {
+    "test": "REST-zero-match-then-paid-recovery",
+    "pending": {
+      "order_id": "lab-rest-order-1e2e97cd-second",
+      "plan_id": "",
+      "total_amount": null,
+      "paid_at": null,
+      "bound_user_id": null,
+      "binding_source": "unresolved",
+      "status": "unresolved",
+      "attempt_count": 3,
+      "last_error_code": "PROVIDER_QUERY_FAILED",
+      "first_seen_at": "2026-09-29T11:45:28.805341+00:00",
+      "last_seen_at": "2026-09-29T11:45:28.820343+00:00",
+      "activated_at": null,
+      "resolved_at": null,
+      "payment_status": "unknown",
+      "last_verified_at": null,
+      "next_retry_at": "2026-09-29T11:47:28.820343+00:00",
+      "verified_binding_reference": null,
+      "binding_reference_verified_at": null
+    },
+    "recovered": {
+      "order_id": "lab-rest-order-1e2e97cd-second",
+      "plan_id": "4c2527fc6c7411f1bbe45254001e7c00",
+      "total_amount": 10,
+      "paid_at": null,
+      "bound_user_id": "lab-rest-1e2e97cd-second",
+      "binding_source": "intent",
+      "status": "activated",
+      "attempt_count": 4,
+      "last_error_code": null,
+      "first_seen_at": "2026-09-29T11:45:28.805341+00:00",
+      "last_seen_at": "2026-09-29T11:45:28.841651+00:00",
+      "activated_at": "2026-09-29T11:45:28.841651+00:00",
+      "resolved_at": "2026-09-29T11:45:28.841651+00:00",
+      "payment_status": "paid",
+      "last_verified_at": "2026-09-29T11:45:28.844652+00:00",
+      "next_retry_at": null,
+      "verified_binding_reference": "0a45767c-c8e7-4886-8c4b-535a60489037",
+      "binding_reference_verified_at": "2026-09-29T11:45:28.844652+00:00"
+    }
+  },
+  {
+    "test": "REST-Worker-commit-response-lost-authoritative-retry",
+    "actualCommittedBeforeDrop": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-rest-order-1e2e97cd-third",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": "unresolved",
+      "attempt_count": 2,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "retriedResult": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-rest-order-1e2e97cd-third",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": "activated",
+      "attempt_count": 3,
+      "payment_status": "paid",
+      "already_processed": true
+    },
+    "thirdLedger": {
+      "order_id": "lab-rest-order-1e2e97cd-third",
+      "plan_id": "4c2527fc6c7411f1bbe45254001e7c00",
+      "total_amount": 10,
+      "paid_at": null,
+      "bound_user_id": "lab-rest-1e2e97cd-third",
+      "binding_source": "intent",
+      "status": "activated",
+      "attempt_count": 3,
+      "last_error_code": null,
+      "first_seen_at": "2026-09-29T11:45:28.85756+00:00",
+      "last_seen_at": "2026-09-29T11:45:28.949103+00:00",
+      "activated_at": "2026-09-29T11:45:28.864435+00:00",
+      "resolved_at": "2026-09-29T11:45:28.864435+00:00",
+      "payment_status": "paid",
+      "last_verified_at": "2026-09-29T11:45:28.950874+00:00",
+      "next_retry_at": null,
+      "verified_binding_reference": "3806a558-6abd-472b-bc03-821168447219",
+      "binding_reference_verified_at": "2026-09-29T11:45:28.950874+00:00"
+    }
+  },
+  {
+    "test": "REST-12-user-requests-one-recent-scan",
+    "requests": 12,
+    "providerQueries": 1
+  },
+  {
+    "test": "REST-PG-history-two-cycles",
+    "sequence": [
+      1,
+      2,
+      3,
+      4,
+      1,
+      2,
+      3,
+      4
+    ],
+    "state": [
+      {
+        "state_key": "history",
+        "next_page": 1,
+        "cycle_id": "abedd618-16bd-4c84-87f6-f8576516541d",
+        "lease_token": null,
+        "lease_until": null,
+        "generation": 8,
+        "last_success_at": "2026-09-29T11:45:29.090166+00:00",
+        "provider_backoff_until": null,
+        "updated_at": "2026-09-29T11:45:29.089659+00:00"
+      }
+    ]
+  },
+  {
+    "test": "REST-PG-history-failed-page3",
+    "sequence": [
+      1,
+      2,
+      3,
+      3,
+      4
+    ],
+    "state": [
+      {
+        "state_key": "history",
+        "next_page": 1,
+        "cycle_id": "8ead9380-1214-4c32-8e64-8c0529407eea",
+        "lease_token": null,
+        "lease_until": null,
+        "generation": 13,
+        "last_success_at": "2026-09-29T11:45:29.122316+00:00",
+        "provider_backoff_until": null,
+        "updated_at": "2026-09-29T11:45:29.121382+00:00"
+      }
+    ]
+  },
+  {
+    "test": "REST-anon-v2-denied",
+    "http": 401
+  },
+  {
+    "test": "REST-authenticated-v2-denied",
+    "http": 403
+  }
+]

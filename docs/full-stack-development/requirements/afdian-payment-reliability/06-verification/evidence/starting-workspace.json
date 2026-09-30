@@ -1,0 +1,22 @@
+{
+  "time": "2026-09-29T10:28:29.616913+00:00",
+  "head": "c1dbad9893a3a2d8a5f5ad3f3f5e98d89476bdb2",
+  "branch": "main",
+  "status": "?? docs/full-stack-development/requirements/afdian-payment-reliability/\n",
+  "hashes": {
+    "ai/app.js": "c103b669c2fec58d5b7e3560b837efbb233283c2b0f29ba52f7e815931b4b30e",
+    "ai/pro-payment.js": "fe04ceb4be27ffba5fffb01374ab12893c5dd834b770d84ffc9e4cd1b93efdc4",
+    "ai.html": "2d518f8d681946433595906603ed32beec0f9431e9a631cdce48602c95b54842",
+    "ai_settings.html": "e616c9309f1f5ed418edac8e2c943920b3baa7a44dee6dcbb6b4715a23f9cc44",
+    "supabase/migrations/20260905014430_pro_payment_activation_reliability.sql": "1cae063c210ecf6bd3fc4ef61f95672685aeee0d10432e2e9a52eee4bea30f3f",
+    "supabase/migrations/20260905014530_pro_payment_function_permissions.sql": "be4cef81a82d8029315dbd2573336e57d2b16d41a7697baa5dbef0ed7909d8e8",
+    "supabase/migrations/20260905015911_pro_payment_order_serialization.sql": "20d25e3fa05a05e7fef50d3fc77a10da6f0655ce5b2c8bfab7fc0f999b0661b7",
+    "supabase/migrations/20260905020048_pro_payment_manual_resolution_fix.sql": "40b6a4000072377466a2a5f64891b79eb23426b1bb824bfece03f2a8007724ab",
+    "supabase/migrations/20260905020518_pro_payment_orders_service_policy.sql": "3ab17622e6e2bf8001245036f68a8450ae9459e4e32aba6359e93dbadf029a93",
+    "supabase/migrations/20260906010000_account_deletion.sql": "a5da6f29f9a097422aa39d1cc651ab9eee043064ac3f118c29d080a3f5338300",
+    "supabase/migrations/20260911120000_account_deletion_finalize_order.sql": "8e9641273c935cb521584aa8e07c4e51d0fcb85941686a54b88f9f9a52940967",
+    "tests/pro-payment-ui.test.mjs": "bfbf76128c13b5e07fb82f3c7195223a7266c9bdb1336846d227074b499d2de2",
+    "workers/afdianpay/worker.js": "c74f099d65e1282dab7252d7f29e7ee1d51d0e67084aedc8e46a507e32dd6808",
+    "tests/afdianpay-worker.test.mjs": "fc7b0ad829ed9bea43f01727e9b15ea90b496231acc31402853e878099158b29"
+  }
+}

@@ -1,0 +1,156 @@
+[
+  {
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "expected": "PRO",
+    "state": {
+      "userId": "fixture-browser-user",
+      "state": "PRO",
+      "identityVersion": 2,
+      "requestGeneration": 5,
+      "lastConfirmedAt": 1790682899277,
+      "stale": false,
+      "paymentSync": null
+    },
+    "layout": {
+      "width": 1280,
+      "scrollWidth": 1280,
+      "card": "card pro-card activated"
+    },
+    "errors": [
+      "Supabase browser runtime is unavailable"
+    ],
+    "provider": "synthetic routes, no external writes"
+  },
+  {
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "expected": "FREE",
+    "state": {
+      "userId": "fixture-browser-user",
+      "state": "FREE",
+      "identityVersion": 2,
+      "requestGeneration": 5,
+      "lastConfirmedAt": 1790682909121,
+      "stale": false,
+      "paymentSync": null
+    },
+    "layout": {
+      "width": 1280,
+      "scrollWidth": 1280,
+      "button": "Check payment status",
+      "card": "card pro-card"
+    },
+    "errors": [
+      "Supabase browser runtime is unavailable"
+    ],
+    "provider": "synthetic routes, no external writes"
+  },
+  {
+    "viewport": {
+      "width": 1280,
+      "height": 900
+    },
+    "expected": "UNKNOWN",
+    "state": {
+      "userId": "fixture-browser-user",
+      "state": "UNKNOWN",
+      "identityVersion": 2,
+      "requestGeneration": 3,
+      "lastConfirmedAt": null,
+      "stale": true,
+      "paymentSync": null
+    },
+    "layout": {
+      "width": 1280,
+      "scrollWidth": 1280,
+      "button": "Check payment status",
+      "card": "card pro-card"
+    },
+    "errors": [
+      "Supabase browser runtime is unavailable"
+    ],
+    "provider": "synthetic routes, no external writes"
+  },
+  {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "expected": "PRO",
+    "state": {
+      "userId": "fixture-browser-user",
+      "state": "PRO",
+      "identityVersion": 2,
+      "requestGeneration": 5,
+      "lastConfirmedAt": 1790682911463,
+      "stale": false,
+      "paymentSync": null
+    },
+    "layout": {
+      "width": 390,
+      "scrollWidth": 390,
+      "card": "card pro-card activated"
+    },
+    "errors": [
+      "Supabase browser runtime is unavailable"
+    ],
+    "provider": "synthetic routes, no external writes"
+  },
+  {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "expected": "FREE",
+    "state": {
+      "userId": "fixture-browser-user",
+      "state": "FREE",
+      "identityVersion": 2,
+      "requestGeneration": 5,
+      "lastConfirmedAt": 1790682919898,
+      "stale": false,
+      "paymentSync": null
+    },
+    "layout": {
+      "width": 390,
+      "scrollWidth": 390,
+      "button": "Check payment status",
+      "card": "card pro-card"
+    },
+    "errors": [
+      "Supabase browser runtime is unavailable"
+    ],
+    "provider": "synthetic routes, no external writes"
+  },
+  {
+    "viewport": {
+      "width": 390,
+      "height": 844
+    },
+    "expected": "UNKNOWN",
+    "state": {
+      "userId": "fixture-browser-user",
+      "state": "UNKNOWN",
+      "identityVersion": 2,
+      "requestGeneration": 3,
+      "lastConfirmedAt": null,
+      "stale": true,
+      "paymentSync": null
+    },
+    "layout": {
+      "width": 390,
+      "scrollWidth": 390,
+      "button": "Check payment status",
+      "card": "card pro-card"
+    },
+    "errors": [
+      "Supabase browser runtime is unavailable"
+    ],
+    "provider": "synthetic routes, no external writes"
+  }
+]

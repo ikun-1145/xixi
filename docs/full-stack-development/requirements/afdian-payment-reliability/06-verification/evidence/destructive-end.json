@@ -1,0 +1,26 @@
+{
+  "head": "c1dbad9893a3a2d8a5f5ad3f3f5e98d89476bdb2",
+  "status": " M ai.html\n M ai/app.js\n M ai/pro-payment.js\n M ai_settings.html\n M p/js/site-i18n-extra.js\n M tests/afdianpay-worker.test.mjs\n M tests/pro-payment-ui.test.mjs\n M workers/afdianpay/worker.js\n?? docs/full-stack-development/requirements/afdian-payment-reliability/\n?? supabase/migrations/20260929104134_verified_pro_payment_reconciliation.sql\n?? tests/afdianpay-lab.py\n?? tests/afdianpay-migration.test.mjs\n?? tests/afdianpay-policy.test.mjs\n?? tests/afdianpay-rest-lab.mjs\n?? tests/afdianpay-uuid-baseline.test.mjs\n?? tests/afdianpay-worker-crash-lab.mjs\n?? tests/pro-payment-state.test.mjs\n",
+  "hashes": {
+    "ai.html": "53d9fa62d57fa267c43033994af93fe818290eeaeda13ca2dbdbdaab53fa4cba",
+    "ai/app.js": "83613a7d3ba39bdba67fdbf99c06adb6ad30ddf91b004d32a8d2fd3c003bbf22",
+    "ai/pro-payment.js": "924a8afd65293615c26427a6a178314d639719b7711e6cd39b03efba828856e6",
+    "ai_settings.html": "301703384d34e7ef38a11990a83988b0624b5a7a0127942b79bce66ec3087bd2",
+    "supabase/migrations/20260905014430_pro_payment_activation_reliability.sql": "1cae063c210ecf6bd3fc4ef61f95672685aeee0d10432e2e9a52eee4bea30f3f",
+    "supabase/migrations/20260905014530_pro_payment_function_permissions.sql": "be4cef81a82d8029315dbd2573336e57d2b16d41a7697baa5dbef0ed7909d8e8",
+    "supabase/migrations/20260905015911_pro_payment_order_serialization.sql": "20d25e3fa05a05e7fef50d3fc77a10da6f0655ce5b2c8bfab7fc0f999b0661b7",
+    "supabase/migrations/20260905020048_pro_payment_manual_resolution_fix.sql": "40b6a4000072377466a2a5f64891b79eb23426b1bb824bfece03f2a8007724ab",
+    "supabase/migrations/20260905020518_pro_payment_orders_service_policy.sql": "3ab17622e6e2bf8001245036f68a8450ae9459e4e32aba6359e93dbadf029a93",
+    "supabase/migrations/20260929104134_verified_pro_payment_reconciliation.sql": "13b39c0530e87390454c91aabfceb97194e0f1c0fec1c082ee59a76815473400",
+    "tests/afdianpay-lab.py": "66c8942513c5268d65d526ecffb671d9989679ca5df56d0f8916b6d0182ee4a1",
+    "tests/afdianpay-migration.test.mjs": "1d2070224d0cd49bd8adf4bf2820181b07b55f7be6a57efd3768cac815bea4e1",
+    "tests/afdianpay-policy.test.mjs": "cbd81ecba932d4810d142357eaa5991350ed83aad02aa10e2c14a3f0b2406f24",
+    "tests/afdianpay-rest-lab.mjs": "f5b50d1460c8c35602e87bc06d95c8d1133522d4c18f000c654635f2d0c591c2",
+    "tests/afdianpay-uuid-baseline.test.mjs": "399c4a5e235f88d4bebe67f7bea73bd096e5637b16b2d319fd000767afd2d27f",
+    "tests/afdianpay-worker-crash-lab.mjs": "51381291fbfbecde197a1faf950f36274a5f7524552c79038fdb1d5313869a78",
+    "tests/afdianpay-worker.test.mjs": "9e12288cf7a971593248fdf80b113462427811c470701212983dd9ab15768021",
+    "tests/pro-payment-state.test.mjs": "97032f903b74654f9a0e3b327cc85a1406717979dde9a9c43077262f629ef0d4",
+    "tests/pro-payment-ui.test.mjs": "2cf165b8e6b1c01c4f97834160d51496456a5a6422694b15dacc4df9f2e882b1",
+    "workers/afdianpay/worker.js": "3cb2ba3dd97c73e5a1da6f5e2688c1d21a7874320499d2fe095d8a11812a1d54"
+  }
+}

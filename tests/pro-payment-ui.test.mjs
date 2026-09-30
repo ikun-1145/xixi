@@ -162,12 +162,62 @@ test("settings checkout does not block popup navigation with a success alert", a
   const context = vm.createContext({
     window: { SunlandProPayment: {
       text: key => key,
+      getState: () => ({ identityVersion: 1 }),
       beginCheckout: async () => ({ userId: "test-user" }),
     } },
+    getUserFromToken: () => ({ id: "test-user" }),
     supabase: {}, confirm: () => true, alert: message => alerts.push(message),
     startSettingsProPaymentMonitoring: () => { monitoring = true; },
   });
   await vm.runInContext(handler + "upgrade()", context);
   assert.equal(monitoring, true);
   assert.deepEqual(alerts, []);
+});
+
+test("checkout rejects an old A response after A to B to A even with the same credential", async () => {
+  const { api, opened, saved } = loadPaymentModule();
+  api.setIdentity("A", null);
+  let resolveIntent;
+  const checkout = api.beginCheckout({ supabase: { rpc: () => new Promise(resolve => { resolveIntent = resolve; }) } });
+  while (!resolveIntent) await Promise.resolve();
+  api.setIdentity("B", null);
+  api.setIdentity("A", null);
+  resolveIntent({ data: { payment_reference: "11111111-2222-4333-8444-555555555555", status: "pending" }, error: null });
+  await assert.rejects(checkout, /身份验证失败/);
+  assert.equal(opened[0].closed, true);
+  assert.equal(opened[0].url, undefined);
+  assert.equal(saved.size, 0);
+});
+
+test("settings restores its upgrade card on confirmed Free and keeps its Pro card on temporary errors", () => {
+  const settings = readFileSync(new URL("../ai_settings.html", import.meta.url), "utf8");
+  const document = new JSDOM(settings).window.document;
+  const { api } = loadPaymentModule();
+  const render = settings.slice(settings.indexOf("    function renderActivated()"), settings.indexOf("    async function recheckSettingsPayment()"));
+  vm.runInNewContext(render, { document, window: { SunlandProPayment: api }, updateProSupportLink() {} });
+  api.setIdentity("A", null);
+  api.applyMembership(true, api.captureRequest());
+  assert.equal(document.getElementById("proCard").classList.contains("activated"), true);
+  api.markUnavailable();
+  assert.equal(document.getElementById("proCard").classList.contains("activated"), true);
+  api.applyMembership(false, api.captureRequest());
+  assert.equal(document.getElementById("proCard").classList.contains("activated"), false);
+  assert.ok(document.querySelector('#proCard [onclick="upgrade()"]'));
+  assert.ok(document.getElementById("proRecheckBtn"));
+});
+
+test("static settings payment retry labels agree with the shared payment module in all six languages", () => {
+  const settings = readFileSync(new URL("../ai_settings.html", import.meta.url), "utf8");
+  const catalog = readFileSync(new URL("../p/js/site-i18n-extra.js", import.meta.url), "utf8");
+  const runtime = readFileSync(new URL("../p/js/site-i18n.js", import.meta.url), "utf8");
+  const dom = new JSDOM(settings, { runScripts: "outside-only", url: "https://sunland.dev/ai_settings.html" });
+  dom.window.eval(catalog);
+  dom.window.eval(runtime);
+  dom.window.eval(source);
+  for (const language of ["zh", "zh-Hant", "en", "ja", "ko", "es"]) {
+    dom.window.SiteI18n.setLanguage(language, { persist: false });
+    assert.equal(dom.window.document.getElementById("proRecheckBtn").textContent,
+      dom.window.SunlandProPayment.text("checkStatus"), language);
+  }
+  dom.window.close();
 });

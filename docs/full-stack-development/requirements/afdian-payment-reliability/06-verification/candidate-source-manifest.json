@@ -1,0 +1,77 @@
+{
+  "scope": "Phase 3 local candidate only; no production deploy or migration",
+  "start_head": "c1dbad9893a3a2d8a5f5ad3f3f5e98d89476bdb2",
+  "end_head": "c1dbad9893a3a2d8a5f5ad3f3f5e98d89476bdb2",
+  "production_worker_baseline": {
+    "source_commit": "32d0d58f9df2ffa09a75c440fd0bb82d4dbb8d6c",
+    "version_id": "13442a1f-4dce-4590-87b3-fcff297c203a",
+    "bundle_sha256": "61d2fdce390777cc7a53dda855b3c1cc69871eef49e6671cf9e5d1638d9b1d69"
+  },
+  "candidate_worker_dry_run_bundle_sha256": "0dcad865132322cf731f74b7951a54d4a472e50a8ac6a03a7c87aef2fce197a0",
+  "files": {
+    "workers/afdianpay/worker.js": {
+      "start_sha256": "c74f099d65e1282dab7252d7f29e7ee1d51d0e67084aedc8e46a507e32dd6808",
+      "end_sha256": "3cb2ba3dd97c73e5a1da6f5e2688c1d21a7874320499d2fe095d8a11812a1d54"
+    },
+    "supabase/migrations/20260929104134_verified_pro_payment_reconciliation.sql": {
+      "start_sha256": null,
+      "end_sha256": "13b39c0530e87390454c91aabfceb97194e0f1c0fec1c082ee59a76815473400"
+    },
+    "ai/pro-payment.js": {
+      "start_sha256": "fe04ceb4be27ffba5fffb01374ab12893c5dd834b770d84ffc9e4cd1b93efdc4",
+      "end_sha256": "924a8afd65293615c26427a6a178314d639719b7711e6cd39b03efba828856e6"
+    },
+    "ai/app.js": {
+      "start_sha256": "c103b669c2fec58d5b7e3560b837efbb233283c2b0f29ba52f7e815931b4b30e",
+      "end_sha256": "83613a7d3ba39bdba67fdbf99c06adb6ad30ddf91b004d32a8d2fd3c003bbf22"
+    },
+    "ai.html": {
+      "start_sha256": "2d518f8d681946433595906603ed32beec0f9431e9a631cdce48602c95b54842",
+      "end_sha256": "53d9fa62d57fa267c43033994af93fe818290eeaeda13ca2dbdbdaab53fa4cba"
+    },
+    "ai_settings.html": {
+      "start_sha256": "e616c9309f1f5ed418edac8e2c943920b3baa7a44dee6dcbb6b4715a23f9cc44",
+      "end_sha256": "301703384d34e7ef38a11990a83988b0624b5a7a0127942b79bce66ec3087bd2"
+    },
+    "p/js/site-i18n-extra.js": {
+      "start_sha256": "69e001b6ebfb04a7b4bfdeb261f8fd19419ee8fd8a90d4e8f78a69f52b56ec94",
+      "end_sha256": "bdb4e688cca9cf8a6669097bfa5837e92580babcdcc41ae9de9334377edba868"
+    },
+    "tests/afdianpay-worker.test.mjs": {
+      "start_sha256": "fc7b0ad829ed9bea43f01727e9b15ea90b496231acc31402853e878099158b29",
+      "end_sha256": "9e12288cf7a971593248fdf80b113462427811c470701212983dd9ab15768021"
+    },
+    "tests/afdianpay-uuid-baseline.test.mjs": {
+      "start_sha256": null,
+      "end_sha256": "399c4a5e235f88d4bebe67f7bea73bd096e5637b16b2d319fd000767afd2d27f"
+    },
+    "tests/afdianpay-policy.test.mjs": {
+      "start_sha256": null,
+      "end_sha256": "cbd81ecba932d4810d142357eaa5991350ed83aad02aa10e2c14a3f0b2406f24"
+    },
+    "tests/afdianpay-migration.test.mjs": {
+      "start_sha256": null,
+      "end_sha256": "1d2070224d0cd49bd8adf4bf2820181b07b55f7be6a57efd3768cac815bea4e1"
+    },
+    "tests/afdianpay-lab.py": {
+      "start_sha256": null,
+      "end_sha256": "66c8942513c5268d65d526ecffb671d9989679ca5df56d0f8916b6d0182ee4a1"
+    },
+    "tests/afdianpay-rest-lab.mjs": {
+      "start_sha256": null,
+      "end_sha256": "f5b50d1460c8c35602e87bc06d95c8d1133522d4c18f000c654635f2d0c591c2"
+    },
+    "tests/afdianpay-worker-crash-lab.mjs": {
+      "start_sha256": null,
+      "end_sha256": "51381291fbfbecde197a1faf950f36274a5f7524552c79038fdb1d5313869a78"
+    },
+    "tests/pro-payment-ui.test.mjs": {
+      "start_sha256": "bfbf76128c13b5e07fb82f3c7195223a7266c9bdb1336846d227074b499d2de2",
+      "end_sha256": "2cf165b8e6b1c01c4f97834160d51496456a5a6422694b15dacc4df9f2e882b1"
+    },
+    "tests/pro-payment-state.test.mjs": {
+      "start_sha256": null,
+      "end_sha256": "97032f903b74654f9a0e3b327cc85a1406717979dde9a9c43077262f629ef0d4"
+    }
+  }
+}

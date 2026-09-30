@@ -1,0 +1,36 @@
+{
+  "feature": "afdian-payment-reliability",
+  "currentStage": "phase3-local-validated-pending-phase4-review",
+  "flowProfile": "debug-fix",
+  "scope": "Phase 3 — Local Implementation + Isolated Destructive Validation",
+  "approvals": {
+    "requirementsApproved": true,
+    "implementationApproved": true,
+    "productionChangesApproved": false,
+    "evidence": "用户本轮明确授权本地实现与隔离数据库破坏性验证，禁止生产部署、生产 migration、生产数据写入、commit/push。"
+  },
+  "visualDesign": {
+    "required": false,
+    "reason": "支付可靠性与状态同步修复；复用现有页面和共享支付模块，不重新设计界面。"
+  },
+  "lifecycleHooks": {
+    "available": false,
+    "fallback": "使用仓库规则、设计文档、只读线上证据和独立子代理审查；不将人工记录视为已通过自动化生命周期门禁。"
+  },
+  "reviewConclusion": "Phase 3 本地候选、真实隔离 PostgreSQL/PostgREST 破坏性验证和全量回归完成；READY FOR PHASE 4 REVIEW，但 G10 失败且生产条件未验证，不可发布。",
+  "openConditions": [
+    "平台历史留存、分页位移与绑定字段稳定性没有完整保证，G1/G2 不能无条件证明。",
+    "外部 AI 网关的 deep=true 缺少 Pro 校验，G10 全功能要求尚未满足。",
+    "需在 Phase 4 再核对生产 catalog/guardrails 漂移、来源与发布前完整调用契约。",
+    "真实失败用户订单号与平台付款事实尚缺，不能对单个事故作最终归因或自动补发。",
+    "迁移后的旧 Worker 只可收集线索，完整业务回滚必须使用预先验证的 query-order→v2 Worker。"
+  ],
+  "implementationChanges": [
+    "存储经过验证的 binding reference 与验证时间，限15分钟本地重试；过期重新查询provider。",
+    "简化调度：DB游标/lease/generation/全局backoff，不实现复杂lane quota。",
+    "关闭实际manual函数 sunland_resolve_pro_payment，保护旧pro_activations支付归属。"
+  ],
+  "designDocument": "phase-2-design-review.md",
+  "phase3Report": "06-verification/phase-3-implementation-report.md",
+  "phase3CandidateManifest": "06-verification/candidate-source-manifest.json"
+}

@@ -1,13 +1,12 @@
-const DEFAULT_AFDIAN_PLAN_ID = "4c2527fc6c7411f1bbe45254001e7c00";
 const AFDIAN_QUERY_ENDPOINT = "https://ifdian.net/api/open/query-order";
-const RECONCILIATION_CURSOR_KEY = "pro-reconcile:next-page";
-const RECONCILIATION_FULL_SCAN_DAY_KEY = "pro-reconcile:last-full-scan-day";
-const MAX_RECONCILIATION_PAGES_PER_RUN = 1;
+const IDENTITY_ENDPOINT = "https://api.sunland.dev/v1/account/identity";
+const LIMITS = Object.freeze({ ordersPerRun: 8, pageSize: 50, providerBackoffSeconds: 60 });
 const RETRY_DELAYS_MS = [75, 225];
 const REQUEST_TIMEOUT_MS = 8_000;
-// 仅兼容旧前端曾写入 remark 的 32 位用户 UUID；买家留言绝不能作为账号绑定。
+const USER_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9@._+-]{0,127}$/;
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const LEGACY_USER_ID_PATTERN = /^(?:[0-9a-f]{32}|[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12})$/i;
-
+const DURABLE_PAYMENT_STATUSES = new Set(["activated", "already_processed", "already_pro", "unresolved", "ineligible"]);
 // 爱发电公开的 Webhook 验签公钥；允许通过非敏感 Worker 变量覆盖以支持官方换钥。
 const DEFAULT_AFDIAN_WEBHOOK_PUBLIC_KEY = `-----BEGIN PUBLIC KEY-----
 MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAwwdaCg1Bt+UKZKs0R54y
@@ -19,344 +18,274 @@ jRlgSRaf/Ind46vMCm3N2sgwxu/g3bnooW+db0iLo13zzuvyn727Q3UDQ0MmZcEW
 MQIDAQAB
 -----END PUBLIC KEY-----`;
 
-const DURABLE_PAYMENT_STATUSES = new Set([
-  "activated",
-  "already_processed",
-  "already_pro",
-  "unresolved",
-  "ineligible",
-]);
 
 export default {
   async scheduled(_controller, env) {
-    try {
-      await reconcileOrders(env);
-    } catch (error) {
-      logEvent({ event: "reconciliation_failed", reason: errorCode(error) });
-      throw error;
-    }
+    // 独立通道：某页失败不阻断另一通道；游标只在持久化成功后推进。
+    const outcomes = await Promise.allSettled([
+      reconcilePage(env, 'recent', 'cron_recent'),
+      reconcilePage(env, 'history', 'cron_history'),
+      retryKnownOrders(env),
+    ]);
+    const errors = outcomes.filter(result => result.status === 'rejected');
+    if (errors.length) throw new Error('RECONCILIATION_INCOMPLETE');
   },
-
   async fetch(request, env) {
-    const url = new URL(request.url);
-
-    if (url.pathname === "/webhook/afdian") {
-      return handleAfdianWebhook(request, env);
-    }
-
-    if (url.pathname === "/admin/reconcile") {
-      return handleAdminReconcile(request, env);
-    }
-
-    return new Response("Not found", { status: 404 });
+    const path = new URL(request.url).pathname;
+    if (path === '/payment/reconcile') return withCors(request, await handleUserReconcile(request, env));
+    if (path === '/webhook/afdian') return handleAfdianWebhook(request, env);
+    if (path === '/admin/reconcile') return handleAdminReconcile(request, env);
+    return new Response('Not found', { status: 404 });
   },
 };
 
-async function reconcileOrders(env) {
-  const latest = await queryAfdianOrders(env, { page: 1, per_page: 100 });
-  const summary = await processOrders(latest.list, env, "query-latest");
-  const totalPage = latest.totalPage;
-  const today = new Date().toISOString().slice(0, 10);
-  const lastFullScanDay = await getReconciliationFullScanDay(env);
-  const mustResumeOrStartFullScan = lastFullScanDay !== today;
-  let fullScanCompletedToday = lastFullScanDay === today;
-
-  if (totalPage > 1) {
-    let nextPage = mustResumeOrStartFullScan ? 2 : await getReconciliationPage(env);
-    const shouldScanHistory = mustResumeOrStartFullScan || (nextPage >= 2 && nextPage <= totalPage);
-
-    if (shouldScanHistory) {
-      for (let index = 0; index < MAX_RECONCILIATION_PAGES_PER_RUN; index += 1) {
-        const pageResult = await queryAfdianOrders(env, { page: nextPage, per_page: 100 });
-        const pageSummary = await processOrders(pageResult.list, env, "query-history");
-        mergeSummary(summary, pageSummary);
-
-        const effectiveTotal = Math.max(totalPage, pageResult.totalPage);
-        nextPage = nextPage >= effectiveTotal ? 1 : nextPage + 1;
-        await setReconciliationState(env, RECONCILIATION_CURSOR_KEY, String(nextPage));
-        if (nextPage === 1) {
-          await setReconciliationState(env, RECONCILIATION_FULL_SCAN_DAY_KEY, today);
-          fullScanCompletedToday = true;
-          break;
-        }
-      }
-    }
-  } else {
-    await setReconciliationState(env, RECONCILIATION_CURSOR_KEY, "1");
-    await setReconciliationState(env, RECONCILIATION_FULL_SCAN_DAY_KEY, today);
-    fullScanCompletedToday = true;
+function policyError(code) { return Object.assign(new Error(code), { code }); }
+function normalizeOrderId(value) {
+  return typeof value === 'string' && /^[A-Za-z0-9_-]{6,128}$/.test(value) ? value : null;
+}
+export function normalizeAndValidateProviderOrder(order) {
+  if (!order || typeof order !== 'object' || Array.isArray(order) || !normalizeOrderId(order.out_trade_no)) throw policyError('PROVIDER_FACT_CONFLICT');
+  // Provider total_amount 为十进制字符串。禁止浮点/科学计数法/隐式Number授权。
+  if (typeof order.total_amount !== 'string' || !/^(0|[1-9][0-9]{0,6})(\.[0-9]{1,2})?$/.test(order.total_amount)) throw policyError('AMOUNT_MISMATCH');
+  const [whole, fraction = ''] = order.total_amount.split('.');
+  const cents = Number(whole) * 100 + Number(fraction.padEnd(2, '0'));
+  if (!Number.isSafeInteger(cents) || cents > 100_000_000) throw policyError('AMOUNT_MISMATCH');
+  if (typeof order.plan_id !== 'string' || order.plan_id.length > 128 || !Number.isInteger(order.product_type) || ![0, 1].includes(order.product_type)) throw policyError('INVALID_PRODUCT');
+  // 固定人民币商户/方案契约；API未提供currency时使用该契约，显式其它币种拒绝。
+  if (order.currency !== undefined && order.currency !== 'CNY') throw policyError('INVALID_PRODUCT');
+  let reference = null;
+  let source = 'unresolved';
+  if (order.custom_order_id !== undefined && order.custom_order_id !== null && order.custom_order_id !== '') {
+    if (typeof order.custom_order_id !== 'string' || !UUID_PATTERN.test(order.custom_order_id)) throw policyError('INVALID_BINDING');
+    reference = order.custom_order_id.toLowerCase(); source = 'intent';
+  } else if (typeof order.remark === 'string' && LEGACY_USER_ID_PATTERN.test(order.remark)) {
+    reference = order.remark; source = 'legacy';
   }
+  const status = order.status === 2 || order.status === '2' ? 'paid'
+    : order.status === 'refunded' ? 'refunded' : order.status === 'cancelled' ? 'cancelled' : 'unknown';
+  // 数字退款状态未获官方契约确认，一律unknown，不猜数字枚举。
+  const timestamp = order.pay_time;
+  const date = typeof timestamp === 'number' && Number.isSafeInteger(timestamp) && timestamp > 0 && timestamp < 253402300800
+    ? new Date(timestamp * 1000).toISOString() : null;
+  return { order_id: order.out_trade_no, payment_status: status, plan_id: order.plan_id,
+    product_type: order.product_type, amount_cents: cents,
+    total_amount: `${whole}.${fraction.padEnd(2, '0')}`, currency: 'CNY',
+    binding_reference: reference, binding_source: source, paid_at: date };
+}
 
-  logEvent({
-    event: "reconciliation_complete",
-    source: "scheduled",
-    totalPage,
-    fullScanCompletedToday,
-    ...summary,
+async function rpc(env, name, args = {}) {
+  const response = await fetchWithRetry(`${env.SUPABASE_URL}/rest/v1/rpc/${name}`, {
+    method: 'POST', headers: dbHeaders(env), body: JSON.stringify(args),
   });
-}
-
-async function handleAfdianWebhook(request, env) {
-  if (request.method !== "POST") return methodNotAllowed(["POST"]);
-
-  const payload = await readJsonRequest(request);
-  const order = payload?.data?.type === "order" ? payload.data.order : null;
-  const sign = typeof payload?.sign === "string"
-    ? payload.sign
-    : typeof payload?.data?.sign === "string"
-      ? payload.data.sign
-      : "";
-
-  if (!isOrderObject(order) || !sign) {
-    return jsonResponse({ ec: 400, em: "invalid webhook payload" }, 400);
-  }
-
-  const verified = await verifyWebhookSignature(
-    order,
-    sign,
-    env.AFDIAN_WEBHOOK_PUBLIC_KEY || DEFAULT_AFDIAN_WEBHOOK_PUBLIC_KEY,
-  );
-  if (!verified) {
-    logEvent({ event: "webhook_signature_rejected" });
-    return jsonResponse({ ec: 401, em: "invalid signature" }, 401);
-  }
-
-  if (!isPaidOrder(order)) return jsonResponse({ ec: 200, em: "" });
-
-  try {
-    const result = await processOrder(order, env, "webhook");
-    if (!DURABLE_PAYMENT_STATUSES.has(result.status)) {
-      throw new Error("payment outcome was not durable");
-    }
-    return jsonResponse({ ec: 200, em: "" });
-  } catch (error) {
-    logEvent({ event: "webhook_processing_failed", reason: errorCode(error) });
-    return jsonResponse({ ec: 503, em: "temporary processing failure" }, 503);
-  }
-}
-
-async function handleAdminReconcile(request, env) {
-  if (request.method !== "POST") return methodNotAllowed(["POST"]);
-  if (!await hasValidAdminToken(request, env.ADMIN_TOKEN)) {
-    return new Response("Not found", { status: 404 });
-  }
-
-  const body = await readJsonRequest(request);
-  const orderId = normalizeOrderId(body?.out_trade_no);
-  if (!orderId) return jsonResponse({ error: "out_trade_no is required" }, 400);
-
-  try {
-    const response = await queryAfdianOrders(env, { out_trade_no: orderId, per_page: 1 });
-    const order = response.list.find(item => normalizeOrderId(item?.out_trade_no) === orderId);
-    if (!order) return jsonResponse({ error: "order not found" }, 404);
-    if (!isPaidOrder(order)) return jsonResponse({ status: "not_paid" }, 409);
-
-    const result = await processOrder(order, env, "admin");
-    return jsonResponse({ status: result.status });
-  } catch (error) {
-    logEvent({ event: "admin_reconciliation_failed", reason: errorCode(error) });
-    return jsonResponse({ error: "temporary processing failure" }, 503);
-  }
-}
-
-async function processOrders(orders, env, source) {
-  const summary = {
-    scanned: Array.isArray(orders) ? orders.length : 0,
-    activated: 0,
-    unresolved: 0,
-    ineligible: 0,
-    skipped: 0,
-    failed: 0,
-  };
-
-  for (const order of orders) {
-    if (!isPaidOrder(order)) {
-      summary.skipped += 1;
-      continue;
-    }
-
-    try {
-      const result = await processOrder(order, env, source);
-      if (result.status === "unresolved") summary.unresolved += 1;
-      else if (result.status === "ineligible") summary.ineligible += 1;
-      else summary.activated += 1;
-    } catch (error) {
-      summary.failed += 1;
-      logEvent({ event: "order_processing_failed", source, reason: errorCode(error) });
-    }
-  }
-
-  return summary;
-}
-
-function mergeSummary(target, source) {
-  for (const key of Object.keys(target)) target[key] += source[key] || 0;
-}
-
-async function processOrder(order, env, source) {
-  const orderId = normalizeOrderId(order?.out_trade_no);
-  if (!orderId) throw new Error("invalid order id");
-  const planId = typeof order.plan_id === "string" ? order.plan_id.trim() : "";
-  if (planId !== getAfdianPlanId(env)) {
-    logEvent({ event: "payment_plan_not_eligible", source });
-  }
-
-  const result = await activatePayment(env, {
-    orderId,
-    ...resolvePaymentBinding(order),
-    planId,
-    totalAmount: normalizeAmount(order.total_amount),
-    paidAt: normalizePaidAt(order),
-  });
-
-  if (!DURABLE_PAYMENT_STATUSES.has(result.status)) {
-    throw new Error("invalid payment RPC outcome");
-  }
-
-  logEvent({ event: "payment_persisted", source, status: result.status });
-  return result;
-}
-
-function getAfdianPlanId(env) {
-  const configured = typeof env.AFDIAN_PLAN_ID === "string" ? env.AFDIAN_PLAN_ID.trim() : "";
-  return /^[A-Za-z0-9]{16,64}$/.test(configured) ? configured : DEFAULT_AFDIAN_PLAN_ID;
-}
-
-async function activatePayment(env, payment) {
-  const response = await fetchWithRetry(
-    `${env.SUPABASE_URL}/rest/v1/rpc/sunland_activate_pro_from_payment`,
-    {
-      method: "POST",
-      headers: {
-        apikey: env.SUPABASE_KEY,
-        Authorization: `Bearer ${env.SUPABASE_KEY}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        p_order_id: payment.orderId,
-        p_payment_reference: payment.paymentReference,
-        p_binding_source: payment.bindingSource,
-        p_plan_id: payment.planId,
-        p_total_amount: payment.totalAmount,
-        p_paid_at: payment.paidAt,
-      }),
-    },
-  );
-
-  if (!response.ok) throw new Error(`payment RPC returned ${response.status}`);
   const payload = await response.json().catch(() => null);
-  const result = Array.isArray(payload) ? payload[0] : payload;
-  if (!result || typeof result.status !== "string") {
-    throw new Error("payment RPC returned invalid JSON");
-  }
-  return result;
+  if (!response.ok || payload === null) throw policyError('DATABASE_UNAVAILABLE');
+  return payload;
 }
-
-async function queryAfdianOrders(env, paramsObject) {
+function dbHeaders(env) {
+  return { apikey: env.SUPABASE_KEY, Authorization: `Bearer ${env.SUPABASE_KEY}`, 'Content-Type': 'application/json' };
+}
+async function dbRows(env, table, query) {
+  const response = await fetchWithRetry(`${env.SUPABASE_URL}/rest/v1/${table}?${query}`, { headers: dbHeaders(env) });
+  const rows = await response.json().catch(() => null);
+  if (!response.ok || !Array.isArray(rows)) throw policyError('DATABASE_UNAVAILABLE');
+  return rows;
+}
+async function queryProvider(env, paramsObject) {
+  const backoff = await rpc(env, 'sunland_get_pro_payment_backoff');
+  if (backoff.retry_after_seconds > 0) throw policyError('PROVIDER_BACKOFF');
+  if (!env.USER_ID || !env.TOKEN) throw policyError('PROVIDER_CREDENTIALS_UNAVAILABLE');
   const ts = Math.floor(Date.now() / 1000);
   const params = JSON.stringify(paramsObject);
-  const raw = `params${params}ts${ts}user_id${env.USER_ID}`;
-  const sign = await md5(`${env.TOKEN}${raw}`);
-  const response = await fetchWithRetry(AFDIAN_QUERY_ENDPOINT, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
+  const sign = await md5(`${env.TOKEN}params${params}ts${ts}user_id${env.USER_ID}`);
+  // Provider 429 不做立即重试；跨Worker共享退避。禁止URL覆盖/redirect到其它host。
+  const response = await fetchWithTimeout(AFDIAN_QUERY_ENDPOINT, {
+    method: 'POST', redirect: 'error', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_id: env.USER_ID, params, ts, sign }),
   });
-
-  if (!response.ok) throw new Error(`Afdian query returned ${response.status}`);
+  if (response.status === 429) {
+    const header = response.headers.get('Retry-After');
+    const seconds = /^\d+$/.test(header || '') ? Math.min(3600, Math.max(1, Number(header))) : LIMITS.providerBackoffSeconds;
+    await rpc(env, 'sunland_set_pro_payment_backoff', { p_retry_after_seconds: seconds });
+    throw policyError('PROVIDER_BACKOFF');
+  }
+  if (!response.ok) throw policyError('PROVIDER_QUERY_FAILED');
   const payload = await response.json().catch(() => null);
-  const list = payload?.data?.list;
-  if (payload?.ec !== 200 || !Array.isArray(list)) {
-    throw new Error("Afdian query returned invalid data");
-  }
-
-  const totalPage = Number.parseInt(payload.data.total_page, 10);
-  return { list, totalPage: Number.isSafeInteger(totalPage) && totalPage > 0 ? totalPage : 1 };
+  if (payload?.ec !== 200 || !Array.isArray(payload?.data?.list) || payload.data.list.length > LIMITS.pageSize || !Number.isInteger(payload.data.total_page) || payload.data.total_page < 0) throw policyError('PROVIDER_QUERY_FAILED');
+  return { list: payload.data.list, totalPage: Math.max(1, payload.data.total_page) };
 }
-
-async function getReconciliationPage(env) {
+export async function queryProviderOrder(env, orderId) {
+  if (!normalizeOrderId(orderId)) throw policyError('INVALID_BINDING');
+  const page = await queryProvider(env, { out_trade_no: orderId });
+  const matches = page.list.filter(order => order?.out_trade_no === orderId);
+  if (matches.length !== 1) throw policyError('PROVIDER_QUERY_FAILED');
+  return normalizeAndValidateProviderOrder(matches[0]);
+}
+async function persistVerified(env, observation, source, traceId, cached = false) {
+  const result = await rpc(env, 'sunland_process_verified_pro_order', {
+    p_order: observation, p_processing_source: source, p_trace_id: traceId, p_use_cached: cached,
+  });
+  if (!DURABLE_PAYMENT_STATUSES.has(result?.status)) throw policyError('DATABASE_UNAVAILABLE');
+  logEvent({ event: 'payment_persisted', trace_id: traceId, order_id: observation.order_id, source,
+    state_before: result.state_before ?? null, state_after: result.state_after ?? result.status,
+    attempt: result.attempt_count ?? null, reason_code: result.reason_code || null,
+    cached, commit_outcome: 'confirmed_by_rpc' });
+  return result;
+}
+async function recordHints(env, ids, source, traceId) {
+  if (!ids.length) return;
+  await rpc(env, 'sunland_record_pro_payment_hints', { p_order_ids: ids, p_processing_source: source, p_trace_id: traceId });
+}
+async function noteRetry(env, id, reason, source, traceId) {
+  const allowed = new Set(['PROVIDER_QUERY_FAILED','AMOUNT_MISMATCH','INVALID_PRODUCT','INVALID_BINDING']);
+  await rpc(env, 'sunland_note_pro_payment_retry', { p_order_id: id,
+    p_reason_code: allowed.has(reason) ? reason : 'PROVIDER_QUERY_FAILED', p_processing_source: source, p_trace_id: traceId });
+}
+async function processKnownOrder(env, row, source, traceId) {
+  const claim = await rpc(env, 'sunland_claim_pro_payment_order_query', { p_order_id: row.order_id });
+  if (claim?.acquired !== true) {
+    if (!DURABLE_PAYMENT_STATUSES.has(claim?.status)) throw policyError('DATABASE_UNAVAILABLE');
+    return claim;
+  }
   try {
-    const value = await env.ORDERS.get(RECONCILIATION_CURSOR_KEY);
-    const page = Number.parseInt(value, 10);
-    return Number.isSafeInteger(page) && page > 0 ? page : 2;
+    return await persistVerified(env, await queryProviderOrder(env, row.order_id), source, traceId);
   } catch (error) {
-    logEvent({ event: "reconciliation_cursor_unavailable", reason: errorCode(error) });
-    return 2;
+    logEvent({ event: 'payment_attempt_failed', trace_id: traceId, order_id: row.order_id, source,
+      reason_code: error.code || 'PROVIDER_QUERY_FAILED', commit_outcome: 'unknown' });
+    await noteRetry(env, row.order_id, error.code, source, traceId);
+    throw error;
   }
 }
-
-async function getReconciliationFullScanDay(env) {
+async function retryKnownOrders(env, userId = null) {
+  const traceId = crypto.randomUUID();
+  const owner = userId ? `&bound_user_id=eq.${encodeURIComponent(userId)}` : '';
+  const rows = await dbRows(env, 'pro_payment_orders', `select=order_id&status=eq.unresolved&next_retry_at=lte.${encodeURIComponent(new Date().toISOString())}&order=next_retry_at.asc&limit=${LIMITS.ordersPerRun}${owner}`);
+  // 真幂等RPC处理commit unknown，下次读取authoritative ledger再决定，不猜上次是否提交。
+  const results = [];
+  for (const row of rows) {
+    try { results.push(await processKnownOrder(env, row, userId ? 'user_reconcile' : 'cron_recent', traceId)); }
+    catch { results.push({ status: 'unresolved', reason_code: 'PROVIDER_QUERY_FAILED' }); }
+  }
+  return results;
+}
+export async function reconcilePage(env, key, source, userId = null) {
+  const lease = await rpc(env, 'sunland_claim_pro_payment_scan', { p_state_key: key });
+  if (!lease?.acquired) return { acquired: false, retry_after_seconds: lease?.retry_after_seconds || 0 };
+  const traceId = crypto.randomUUID();
   try {
-    const value = await env.ORDERS.get(RECONCILIATION_FULL_SCAN_DAY_KEY);
-    return /^\d{4}-\d{2}-\d{2}$/.test(value || "") ? value : null;
+    const page = key === 'history' ? lease.next_page : 1;
+    const response = await queryProvider(env, { page });
+    const ids = response.list.map(order => normalizeOrderId(order?.out_trade_no));
+    if (ids.some(id => !id) || new Set(ids).size !== ids.length) throw policyError('PROVIDER_FACT_CONFLICT');
+    await recordHints(env, ids, source, traceId);
+    const completion = await rpc(env, 'sunland_complete_pro_payment_scan', {
+      p_state_key: key, p_lease_token: lease.lease_token, p_generation: lease.generation,
+      p_next_page: key !== 'history' || page >= response.totalPage ? 1 : page + 1,
+      p_total_pages: response.totalPage, p_order_ids: ids,
+    });
+    if (completion?.advanced !== true) throw policyError('SCAN_LEASE_LOST');
+    if (userId) await retryKnownOrders(env, userId);
+    // 页面只处理有限个；其余ID已持久为due hints，后续逐ID可信查询。
+    for (const raw of response.list.slice(0, LIMITS.ordersPerRun)) {
+      try { await persistVerified(env, normalizeAndValidateProviderOrder(raw), source, traceId); }
+      catch (error) { await noteRetry(env, raw.out_trade_no, error.code, source, traceId); }
+    }
+    return { acquired: true };
   } catch (error) {
-    logEvent({ event: "reconciliation_state_unavailable", reason: errorCode(error) });
-    return null;
+    await rpc(env, 'sunland_release_pro_payment_scan', { p_state_key: key, p_lease_token: lease.lease_token, p_generation: lease.generation }).catch(() => {});
+    logEvent({ event: 'scan_failed', source, trace_id: traceId, reason_code: error.code || 'PROVIDER_QUERY_FAILED' });
+    throw error;
   }
 }
-
-async function setReconciliationState(env, key, value) {
+async function handleAfdianWebhook(request, env) {
+  if (request.method !== 'POST') return methodNotAllowed(['POST']);
+  const payload = await readJsonRequest(request);
+  const order = payload?.data?.type === 'order' ? payload.data.order : null;
+  const sign = payload?.sign || payload?.data?.sign;
+  if (!normalizeOrderId(order?.out_trade_no) || typeof sign !== 'string') return jsonResponse({ ec: 400, em: 'invalid webhook' }, 400);
+  if (!await verifyWebhookSignature(order, sign, env.AFDIAN_WEBHOOK_PUBLIC_KEY || DEFAULT_AFDIAN_WEBHOOK_PUBLIC_KEY)) return jsonResponse({ ec: 401, em: 'invalid signature' }, 401);
+  const traceId = crypto.randomUUID();
+  let hintDurable = false;
   try {
-    await env.ORDERS.put(key, value);
-  } catch (error) {
-    // KV 只保存扫描进度，不能影响已持久化的付款账本；下轮会从安全的重叠页重试。
-    logEvent({ event: "reconciliation_state_write_failed", reason: errorCode(error) });
+    await recordHints(env, [order.out_trade_no], 'webhook', traceId);
+    hintDurable = true;
+    await processKnownOrder(env, { order_id: order.out_trade_no }, 'webhook', traceId);
+    return jsonResponse({ ec: 200, em: '' });
+  } catch {
+    // hint已durable可ACK，未durable则返回503以请求平台重投。
+    if (!hintDurable) return jsonResponse({ ec: 503, em: 'temporary processing failure' }, 503);
+    try { await noteRetry(env, order.out_trade_no, 'PROVIDER_QUERY_FAILED', 'webhook', traceId); return jsonResponse({ ec: 200, em: '' }); }
+    catch { return jsonResponse({ ec: 503, em: 'temporary processing failure' }, 503); }
   }
 }
-
-function isPaidOrder(order) {
-  return isOrderObject(order) && Number(order.status) === 2;
+async function handleAdminReconcile(request, env) {
+  if (request.method !== 'POST') return methodNotAllowed(['POST']);
+  if (!await hasValidAdminToken(request, env.ADMIN_TOKEN)) return new Response('Not found', { status: 404 });
+  const body = await readJsonRequest(request);
+  if (!body || Object.keys(body).some(key => key !== 'out_trade_no') || !normalizeOrderId(body.out_trade_no)) return jsonResponse({ error: 'INVALID_REQUEST' }, 400);
+  const traceId = crypto.randomUUID();
+  try {
+    await recordHints(env, [body.out_trade_no], 'manual_query', traceId);
+    const result = await processKnownOrder(env, { order_id: body.out_trade_no }, 'manual_query', traceId);
+    return jsonResponse(result);
+  } catch { return jsonResponse({ error: 'RETRYABLE' }, 503); }
 }
-
-function isOrderObject(order) {
-  return !!order && typeof order === "object" && !Array.isArray(order);
+async function readMembership(env, userId) {
+  try {
+    const rows = await dbRows(env, 'user_profiles', `select=user_id,pro,identity_status&user_id=eq.${encodeURIComponent(userId)}&limit=1`);
+    if (rows.length !== 1 || rows[0].identity_status !== 'active' || typeof rows[0].pro !== 'boolean') throw policyError('DATABASE_UNAVAILABLE');
+    return { state: 'confirmed', pro: rows[0].pro, checked_at: new Date().toISOString() };
+  } catch { return { state: 'unknown', pro: null, checked_at: null }; }
 }
-
-function normalizeOrderId(value) {
-  const orderId = typeof value === "string" ? value.trim() : "";
-  return /^[A-Za-z0-9_-]{6,128}$/.test(orderId) ? orderId : null;
+async function handleUserReconcile(request, env) {
+  if (request.method === 'OPTIONS') return new Response(null, { status: 204 });
+  if (request.method !== 'POST') return methodNotAllowed(['POST']);
+  const body = await readJsonRequest(request);
+  if (!body || Array.isArray(body) || typeof body !== 'object' || Object.keys(body).length) return jsonResponse({ error: 'INVALID_REQUEST' }, 400);
+  const auth = request.headers.get('Authorization') || '';
+  if (!/^Bearer \S+$/.test(auth)) return jsonResponse({ error: 'UNAUTHORIZED' }, 401);
+  try {
+    const identityResponse = await fetchWithTimeout(IDENTITY_ENDPOINT, { method: 'POST', headers: { Authorization: auth, 'Content-Type': 'application/json' }, body: '{}', redirect: 'error' });
+    const identity = await identityResponse.json().catch(() => null);
+    if (!identityResponse.ok) {
+      const error = identityResponse.status === 403 && identity?.error === 'ACCOUNT_NOT_ACTIVE'
+        ? 'ACCOUNT_NOT_ACTIVE' : 'IDENTITY_UNAVAILABLE';
+      return jsonResponse({ error }, [401,403].includes(identityResponse.status) ? identityResponse.status : 503);
+    }
+    if (!USER_ID_PATTERN.test(identity?.user_id || '') || identity?.identity_status !== 'active') throw policyError('IDENTITY_UNAVAILABLE');
+    const userId = identity.user_id;
+    let membership = await readMembership(env, userId);
+    let status = 'idle'; let retryAfter = 0;
+    if (membership.state === 'unknown') status = 'retryable';
+    else if (!membership.pro) {
+      try {
+        const scan = await reconcilePage(env, 'recent', 'user_reconcile', userId);
+        retryAfter = scan.retry_after_seconds || 0;
+        membership = await readMembership(env, userId);
+      } catch { status = 'retryable'; retryAfter = LIMITS.providerBackoffSeconds; }
+    }
+    let pending = null;
+    try {
+      const rows = await dbRows(env, 'pro_payment_orders', `select=payment_status,reason_code:last_error_code,next_retry_at&bound_user_id=eq.${encodeURIComponent(userId)}&status=eq.unresolved&limit=8`);
+      pending = rows.some(row => row.payment_status === 'paid');
+      if (rows.some(row => row.next_retry_at === null)) status = 'review_required';
+      else if (rows.length && status === 'idle') status = 'processing';
+    } catch { status = 'retryable'; }
+    return jsonResponse({ user_id: userId, membership,
+      payment_sync: { status, paid_order_pending: pending }, retry_after_seconds: retryAfter });
+  } catch { return jsonResponse({ error: 'RETRYABLE' }, 503); }
 }
-
-function resolvePaymentBinding(order) {
-  const customOrderId = normalizeBinding(order?.custom_order_id);
-  if (customOrderId) {
-    return {
-      paymentReference: customOrderId,
-      bindingSource: LEGACY_USER_ID_PATTERN.test(customOrderId) ? "legacy" : "intent",
-    };
+function withCors(request, response) {
+  const origin = request.headers.get('Origin');
+  const allowed = ['https://sunland.dev', 'https://www.sunland.dev'];
+  const headers = new Headers(response.headers);
+  if (allowed.includes(origin)) {
+    headers.set('Access-Control-Allow-Origin', origin); headers.set('Vary', 'Origin');
+    headers.set('Access-Control-Allow-Headers', 'Authorization, Content-Type');
+    headers.set('Access-Control-Allow-Methods', 'POST, OPTIONS');
   }
-
-  const legacyRemark = normalizeBinding(order?.remark);
-  if (legacyRemark && LEGACY_USER_ID_PATTERN.test(legacyRemark)) {
-    return { paymentReference: legacyRemark, bindingSource: "legacy" };
-  }
-  return { paymentReference: null, bindingSource: "unresolved" };
+  headers.set('Cache-Control', 'no-store');
+  return new Response(response.body, { status: response.status, headers });
 }
-
-function normalizeBinding(value) {
-  if (typeof value !== "string") return null;
-  const normalized = value.trim();
-  return normalized && normalized.length <= 128 ? normalized : null;
-}
-
-function normalizeAmount(value) {
-  const amount = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(amount) || amount < 0 || amount > 1_000_000) return null;
-  return amount;
-}
-
-function normalizePaidAt(order) {
-  const timestamp = order?.pay_time ?? order?.create_time ?? order?.created_at ?? null;
-  if (typeof timestamp === "number" && Number.isFinite(timestamp) && timestamp > 0) {
-    return new Date(timestamp * 1000).toISOString();
-  }
-  if (typeof timestamp === "string" && timestamp.trim()) {
-    const date = new Date(timestamp);
-    return Number.isNaN(date.getTime()) ? null : date.toISOString();
-  }
-  return null;
-}
-
 async function verifyWebhookSignature(order, sign, publicKeyPem) {
   try {
     const data = new TextEncoder().encode([

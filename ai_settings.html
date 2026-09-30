@@ -10,7 +10,7 @@
       location.replace("login.html?return=ai.html");
     }
   </script>
-  <script defer src="p/js/site-i18n-extra.js?v=20260829-2"></script>
+  <script defer src="p/js/site-i18n-extra.js?v=20260929-1"></script>
   <script defer src="p/js/site-i18n.js?v=20260829-2"></script>
   <title>设置 - Sunland AI · Beta</title>
   <link rel="stylesheet" href="p/css/icons.css?v=20260829-1">
@@ -1223,6 +1223,8 @@ body.dark .usage-hint {
           <div class="pro-feat">永久有效</div>
         </div>
         <button class="btn-pro" onclick="upgrade()">立即升级 · ¥10 永久</button>
+        <button class="btn-pro" id="proRecheckBtn" type="button" onclick="recheckSettingsPayment()">检查到账状态</button>
+        <div id="proPaymentStatus" role="status" aria-live="polite"></div>
         <a class="pro-support-link" id="proSupportLink" href="pro_activation_support.html">Pro 到账申诉</a>
       </div>
     </div>
@@ -1420,7 +1422,7 @@ body.dark .usage-hint {
   <script src="/p/vendor/supabase-2.110.7.js"></script>
   <script type="module" src="ai/maintenance.js?v=20260905-1"></script>
   <script src="/ai/database-token-client.js"></script>
-  <script src="/ai/pro-payment.js?v=20260911-1"></script>
+  <script src="/ai/pro-payment.js?v=20260929-1"></script>
   <script>
     window._supabaseClient = window._supabaseClient || window.supabase.createClient(
       "https://klyrasrqgxijwrxuoevj.supabase.co",
@@ -1446,37 +1448,36 @@ body.dark .usage-hint {
       return JSON.parse(decodeURIComponent(escape(atob(padded))));
     }
 
-    // ===== 从 token 读取 user（和主页 checkLogin 行为保持一致）=====
+    let settingsCredential = null;
     function getUserFromToken() {
+      const payment = window.SunlandProPayment;
+      const userId = payment?.getState().userId;
+      if (!userId || settingsCredential !== localStorage.getItem("token")) return null;
+      let display = {};
+      try { display = JSON.parse(localStorage.getItem("user") || "{}"); } catch { /* Display cache only. */ }
+      const claims = decodeJwtPayload(settingsCredential);
+      return { ...(display?.id === userId ? display : {}), id: userId,
+        email: claims?.email || (display?.id === userId ? display.email : null) || userId };
+    }
+    async function ensureSettingsIdentity() {
+      const payment = window.SunlandProPayment;
       const token = localStorage.getItem("token");
-      const userStr = localStorage.getItem("user");
-
-      // 1) 优先用 localStorage.user，但必须是有效对象（至少有 id 或 email）；
-      //    若为 null / "null" / 缺 id 的脏数据，则回退到 token 重建，避免误判为未登录
-      if (userStr) {
-        try {
-          const u = JSON.parse(userStr);
-          if (u && (u.id || u.email)) return u;
-        } catch {}
+      if (settingsCredential !== token) {
+        window.SunlandDatabaseToken.clear();
+        payment.setIdentity(null, token);
+        settingsCredential = token;
       }
-
-      // 2) 回退：从 token 解析（登录瞬间 user 尚未写入时的兜底）
-      if (token) {
-        try {
-          const payload = decodeJwtPayload(token);
-          if (payload) {
-            const id = payload.sub || payload.id || payload.user_id || payload.email;
-            if (id) {
-              return {
-                id,
-                email: payload.email || payload.user_email || "未知用户"
-              };
-            }
-          }
-        } catch {}
+      if (!token) return null;
+      const epoch = payment.getState().identityVersion;
+      try {
+        const { userId } = await payment.getVerifiedDatabaseIdentity();
+        if (localStorage.getItem("token") !== token || payment.getState().identityVersion !== epoch) return null;
+        payment.setIdentity(userId, token);
+        return getUserFromToken();
+      } catch {
+        payment.markUnavailable();
+        return getUserFromToken();
       }
-
-      return null;
     }
 
     function getProfileCacheKey(userId) {
@@ -1762,12 +1763,50 @@ async function editNickname() {
       `;
     }
 
+    const originalProCard = Array.from(document.getElementById("proCard").childNodes, node => node.cloneNode(true));
+    const originalBadge = document.getElementById("heroBadge").cloneNode(true);
+    const originalUsageHint = document.getElementById("usageHint").textContent;
+    window.SunlandProPayment.subscribe(snapshot => {
+      if (snapshot.state === "PRO") { renderActivated(); return; }
+      const card = document.getElementById("proCard");
+      if (card.classList.contains("activated")) {
+        card.classList.remove("activated");
+        card.replaceChildren(...originalProCard.map(node => node.cloneNode(true)));
+      }
+      const badge = document.getElementById("heroBadge");
+      badge.className = originalBadge.className;
+      badge.replaceChildren(...Array.from(originalBadge.childNodes, node => node.cloneNode(true)));
+      if (snapshot.state === "UNKNOWN") badge.textContent = "--";
+      document.getElementById("usageHint").textContent = originalUsageHint;
+      document.getElementById("usageBar").style.background = "";
+      document.getElementById("usageCount").innerText = "--";
+      document.getElementById("usageBar").style.width = "0%";
+      updateProSupportLink();
+    });
+    async function recheckSettingsPayment() {
+      const user = await ensureSettingsIdentity();
+      if (!user) return;
+      const payment = window.SunlandProPayment;
+      const snapshot = await payment.reconcile();
+      const status = document.getElementById("proPaymentStatus");
+      if (status && snapshot.userId === user.id) status.textContent = snapshot.stale
+        ? payment.text("statusUnavailable")
+        : snapshot.paymentSync?.paid_order_pending === true ? payment.text("paidPending") : payment.text("pending");
+    }
+    window.addEventListener("storage", event => {
+      if (event.key === "token" || event.key === null) {
+        stopSettingsProPaymentMonitoring?.();
+        void init().then(resumeSettingsProPaymentMonitoring);
+      }
+    });
+
     async function init() {
-      const user = getUserFromToken();
+      const user = await ensureSettingsIdentity();
 
       if (!user) {
-        document.getElementById("userEmail").innerText = "未登录";
-        document.getElementById("heroName").innerText = "未登录";
+        const message = localStorage.getItem("token") ? window.SunlandProPayment.text("statusUnavailable") : "未登录";
+        document.getElementById("userEmail").innerText = message;
+        document.getElementById("heroName").innerText = message;
         document.getElementById("userId").innerText = "--";
         document.getElementById("usageCount").innerText = "--";
         document.getElementById("usageBar").style.width = "0%";
@@ -1789,12 +1828,14 @@ async function editNickname() {
       document.getElementById("userName").innerText = email;
       setupAvatarUpload(user);
 
+      const profileEpoch = window.SunlandProPayment.getState().identityVersion;
       const cachedProfile = getCachedProfile(user.id);
       const avatarUrl = cachedProfile?.avatar_url || user.avatar_url || user.picture;
       setAvatarImage(avatarUrl, letter);
 
       try {
         const cloudProfile = await loadCloudProfile(user.id);
+        if (window.SunlandProPayment.getState().identityVersion !== profileEpoch || getUserFromToken()?.id !== user.id) return;
         if (cloudProfile?.name) {
   document.getElementById("userName").innerText = cloudProfile.name;
   document.getElementById("heroName").innerText = cloudProfile.name;
@@ -1808,45 +1849,37 @@ async function editNickname() {
         console.warn("头像资料读取失败:", e);
       }
 
-      // 激活状态：以 user_profiles.pro 为准（爱发电付款由 afdianpay worker 回调写入；激活码系统已弃用）
-      try {
-        const { data: prof } = await supabase
-          .from("user_profiles")
-          .select("pro")
-          .eq("user_id", user.id)
-          .maybeSingle();
-
-        if (prof?.pro) {
-          renderActivated();
-          return;
-        }
-      } catch (e) { console.warn("Pro 状态查询失败:", e); }
-
+      if (window.SunlandProPayment.getState().identityVersion !== profileEpoch || getUserFromToken()?.id !== user.id) return;
+      await window.SunlandProPayment.refreshMembership(supabase);
       await refreshSettingsUsage();
     }
 
     let settingsUsageVersion = 0;
     async function refreshSettingsUsage() {
-      const userId = getUserFromToken()?.id;
+      const user = await ensureSettingsIdentity();
+      const userId = user?.id;
       if (!userId) return;
       const version = ++settingsUsageVersion;
+      const payment = window.SunlandProPayment;
+      const membershipRequest = payment.captureRequest();
       try {
         const { readUsage } = await import("./ai/usage.js");
-        // Reuse the existing session refresh before sending the application JWT.
-        await window.SunlandDatabaseToken.get();
-        if (getUserFromToken()?.id !== userId) return;
+        if (!payment.isCurrent(membershipRequest)) return;
         const token = localStorage.getItem("token");
         const usage = await readUsage((url, init) => fetch(url, {
           ...init,
           headers: { ...init.headers, Authorization: "Bearer " + token },
         }), userId);
-        if (getUserFromToken()?.id !== userId || version !== settingsUsageVersion) return;
-        if (usage.isPro) renderActivated();
-        else setUsageBar(usage.remain);
+        if (getUserFromToken()?.id !== userId || version !== settingsUsageVersion || !payment.isCurrent(membershipRequest)) return;
+        payment.applyMembership(usage.isPro, membershipRequest);
+        if (!usage.isPro) setUsageBar(usage.remain);
       } catch {
         if (getUserFromToken()?.id !== userId || version !== settingsUsageVersion) return;
-        document.getElementById("usageCount").innerText = "--";
-        document.getElementById("usageBar").style.width = "0%";
+        payment.markUnavailable(membershipRequest);
+        if (payment.getState().state !== "PRO") {
+          document.getElementById("usageCount").innerText = "--";
+          document.getElementById("usageBar").style.width = "0%";
+        }
       }
     }
 
@@ -1857,6 +1890,8 @@ async function editNickname() {
     function updateProSupportLink() {
       const link = document.getElementById("proSupportLink");
       if (link) link.textContent = window.SunlandProPayment?.text?.("supportLink") || "Pro 到账申诉";
+      const button = document.getElementById("proRecheckBtn");
+      if (button) button.textContent = window.SunlandProPayment.text("checkStatus");
     }
 
     function startSettingsProPaymentMonitoring(userId) {
@@ -1865,11 +1900,8 @@ async function editNickname() {
       stopSettingsProPaymentMonitoring?.();
       stopSettingsProPaymentMonitoring = payment.startActivationMonitoring({
         supabase,
-        getExpectedUserId: () => userId,
-        onActivated: async () => {
-          await init();
-          alert(payment.text("activated"));
-        },
+        getExpectedUserId: () => getUserFromToken()?.id,
+        onActivated: () => { if (getUserFromToken()?.id === userId) alert(payment.text("activated")); },
       });
     }
 
@@ -1877,8 +1909,8 @@ async function editNickname() {
       const payment = window.SunlandProPayment;
       if (!payment) return;
       try {
-        const { userId } = await payment.getVerifiedDatabaseIdentity();
-        startSettingsProPaymentMonitoring(userId);
+        const user = await ensureSettingsIdentity();
+        if (user) startSettingsProPaymentMonitoring(user.id);
       } catch {
         // The regular settings page already renders its logged-out state. Never trust a DOM id for payment binding.
       }
@@ -1892,8 +1924,12 @@ async function editNickname() {
       }
       if (!confirm(payment.text("confirmation"))) return;
 
+      const userId = getUserFromToken()?.id;
+      if (!userId) { alert(payment.text("loginRequired")); return; }
+      const epoch = payment.getState().identityVersion;
       try {
-        const result = await payment.beginCheckout({ supabase });
+        const result = await payment.beginCheckout({ supabase, expectedUserId: userId,
+          isExpectedUser: id => getUserFromToken()?.id === id && payment.getState().identityVersion === epoch });
         if (result.alreadyActivated) {
           await init();
           alert(payment.text("alreadyActivated"));
@@ -1907,6 +1943,8 @@ async function editNickname() {
 
     function logout() {
       if (!confirm("确定退出登录？")) return;
+      window.SunlandProPayment.setIdentity(null);
+      window.SunlandDatabaseToken.clear();
       localStorage.removeItem("token");
       localStorage.removeItem("user");
       location.href = "ai.html";

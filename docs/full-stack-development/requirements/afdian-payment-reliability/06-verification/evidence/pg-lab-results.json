@@ -1,0 +1,8624 @@
+[
+  {
+    "test": "ACL-anon",
+    "result": "PASS",
+    "real_role": "anon",
+    "denials": [
+      {
+        "operation": "v2",
+        "sqlstate": "42501"
+      },
+      {
+        "operation": "scan",
+        "sqlstate": "42501"
+      },
+      {
+        "operation": "ledger",
+        "sqlstate": "42501"
+      },
+      {
+        "operation": "state",
+        "sqlstate": "42501"
+      },
+      {
+        "operation": "pro-update",
+        "sqlstate": "42501"
+      },
+      {
+        "operation": "pro-insert",
+        "sqlstate": "42501"
+      }
+    ],
+    "all_overloads": [
+      [
+        "sunland_activate_pro_from_payment(text,text,text,text,numeric,timestamp with time zone)",
+        false
+      ],
+      [
+        "sunland_activate_pro_from_payment(text,text)",
+        false
+      ],
+      [
+        "sunland_claim_pro_payment_order_query(text)",
+        false
+      ],
+      [
+        "sunland_claim_pro_payment_scan(text)",
+        false
+      ],
+      [
+        "sunland_complete_pro_payment_scan(text,uuid,bigint,integer,integer,text[])",
+        false
+      ],
+      [
+        "sunland_get_or_create_pro_payment_intent()",
+        false
+      ],
+      [
+        "sunland_get_pro_payment_backoff()",
+        false
+      ],
+      [
+        "sunland_note_pro_payment_retry(text,text,text,uuid)",
+        false
+      ],
+      [
+        "sunland_process_verified_pro_order(jsonb,text,uuid,boolean)",
+        false
+      ],
+      [
+        "sunland_record_pro_payment_hints(text[],text,uuid)",
+        false
+      ],
+      [
+        "sunland_release_pro_payment_scan(text,uuid,bigint)",
+        false
+      ],
+      [
+        "sunland_resolve_pro_payment(text,text)",
+        false
+      ],
+      [
+        "sunland_serialize_pro_payment_order_insert()",
+        false
+      ],
+      [
+        "sunland_set_pro_payment_backoff(integer)",
+        false
+      ]
+    ]
+  },
+  {
+    "test": "ACL-authenticated",
+    "result": "PASS",
+    "real_role": "authenticated",
+    "denials": [
+      {
+        "operation": "v2",
+        "sqlstate": "42501"
+      },
+      {
+        "operation": "scan",
+        "sqlstate": "42501"
+      },
+      {
+        "operation": "ledger",
+        "sqlstate": "42501"
+      },
+      {
+        "operation": "state",
+        "sqlstate": "42501"
+      },
+      {
+        "operation": "pro-update",
+        "sqlstate": "42501"
+      },
+      {
+        "operation": "pro-insert",
+        "sqlstate": "42501"
+      }
+    ],
+    "all_overloads": [
+      [
+        "sunland_activate_pro_from_payment(text,text,text,text,numeric,timestamp with time zone)",
+        false
+      ],
+      [
+        "sunland_activate_pro_from_payment(text,text)",
+        false
+      ],
+      [
+        "sunland_claim_pro_payment_order_query(text)",
+        false
+      ],
+      [
+        "sunland_claim_pro_payment_scan(text)",
+        false
+      ],
+      [
+        "sunland_complete_pro_payment_scan(text,uuid,bigint,integer,integer,text[])",
+        false
+      ],
+      [
+        "sunland_get_or_create_pro_payment_intent()",
+        true
+      ],
+      [
+        "sunland_get_pro_payment_backoff()",
+        false
+      ],
+      [
+        "sunland_note_pro_payment_retry(text,text,text,uuid)",
+        false
+      ],
+      [
+        "sunland_process_verified_pro_order(jsonb,text,uuid,boolean)",
+        false
+      ],
+      [
+        "sunland_record_pro_payment_hints(text[],text,uuid)",
+        false
+      ],
+      [
+        "sunland_release_pro_payment_scan(text,uuid,bigint)",
+        false
+      ],
+      [
+        "sunland_resolve_pro_payment(text,text)",
+        false
+      ],
+      [
+        "sunland_serialize_pro_payment_order_insert()",
+        false
+      ],
+      [
+        "sunland_set_pro_payment_backoff(integer)",
+        false
+      ]
+    ]
+  },
+  {
+    "test": "ACL-service-role",
+    "result": "PASS",
+    "rpc": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-acl-service",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": null,
+      "attempt_count": 1,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "rows": {
+      "orders": [
+        [
+          "lab-e4a4f79c-acl-service",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-acl-service",
+          null,
+          null,
+          "80b4521f-a736-4677-8b87-c79b6a7d3151",
+          "2026-09-29 11:45:26.734589+00:00",
+          "2026-09-29 11:45:26.734589+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-acl-service",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "80b4521f-a736-4677-8b87-c79b6a7d3151",
+          "lab-e4a4f79c-acl-service",
+          "activated"
+        ]
+      ]
+    }
+  },
+  {
+    "test": "I-Design-B-provider-offline",
+    "result": "PASS",
+    "before": {
+      "orders": [
+        [
+          "lab-e4a4f79c-outage-cache",
+          "unresolved",
+          "paid",
+          null,
+          "INTENT_NOT_FOUND",
+          "2026-09-29 11:47:26.752312+00:00",
+          "fa78aada-87ce-4e3a-b991-8b80a4c0468d",
+          "2026-09-29 11:45:26.754047+00:00",
+          "2026-09-29 11:45:26.754047+00:00"
+        ]
+      ],
+      "profiles": [],
+      "intents": []
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-outage-cache",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-outage-cache",
+          null,
+          null,
+          "fa78aada-87ce-4e3a-b991-8b80a4c0468d",
+          "2026-09-29 11:45:26.754047+00:00",
+          "2026-09-29 11:45:26.754047+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-outage-cache",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "fa78aada-87ce-4e3a-b991-8b80a4c0468d",
+          "lab-e4a4f79c-outage-cache",
+          "activated"
+        ]
+      ]
+    },
+    "first": {
+      "cached": false,
+      "status": "unresolved",
+      "order_id": "lab-e4a4f79c-outage-cache",
+      "reason_code": "INTENT_NOT_FOUND",
+      "retry_class": "retryable",
+      "state_after": "unresolved",
+      "state_before": null,
+      "attempt_count": 1,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "cached": {
+      "cached": true,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-outage-cache",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": "unresolved",
+      "attempt_count": 2,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "provider_calls_after_intent_created": 0
+  },
+  {
+    "test": "I-refund-independent",
+    "result": "PASS",
+    "observation": "synthetic canonical refund, not confirmed provider enum",
+    "rpc": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-outage-cache",
+      "reason_code": "PAYMENT_NOT_PAID",
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": "activated",
+      "attempt_count": 3,
+      "payment_status": "refunded",
+      "already_processed": true
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-outage-cache",
+          "activated",
+          "refunded",
+          "lab-e4a4f79c-outage-cache",
+          "PAYMENT_NOT_PAID",
+          null,
+          "fa78aada-87ce-4e3a-b991-8b80a4c0468d",
+          "2026-09-29 11:45:26.767200+00:00",
+          "2026-09-29 11:45:26.767200+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-outage-cache",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "fa78aada-87ce-4e3a-b991-8b80a4c0468d",
+          "lab-e4a4f79c-outage-cache",
+          "activated"
+        ]
+      ]
+    }
+  },
+  {
+    "test": "I-expired-cache",
+    "result": "PASS",
+    "cached": {
+      "cached": true,
+      "status": "unresolved",
+      "order_id": "lab-e4a4f79c-expired-cache",
+      "reason_code": "PROVIDER_VERIFICATION_REQUIRED",
+      "retry_class": "retryable",
+      "state_after": "unresolved",
+      "state_before": "unresolved",
+      "attempt_count": 2
+    },
+    "fresh_query": "activated"
+  },
+  {
+    "test": "I-legacy-two",
+    "result": "PASS",
+    "rpc": {
+      "status": "verification_required"
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-legacy-two",
+          "unresolved",
+          "unknown",
+          null,
+          "PROVIDER_VERIFICATION_REQUIRED",
+          "2026-09-29 11:45:26.786681+00:00",
+          null,
+          null,
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-legacy-two",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "b7538a54-d7c3-4d80-9218-6f2f93deefeb",
+          "lab-e4a4f79c-legacy-two",
+          "pending"
+        ]
+      ]
+    }
+  },
+  {
+    "test": "I-legacy-six",
+    "result": "PASS",
+    "rpc": "unresolved",
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-legacy-six",
+          "unresolved",
+          "unknown",
+          null,
+          "PROVIDER_VERIFICATION_REQUIRED",
+          "2026-09-29 11:45:26.802447+00:00",
+          null,
+          null,
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-legacy-six",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "8db21f5a-05e2-4d3e-ae86-22ec3a022df7",
+          "lab-e4a4f79c-legacy-six",
+          "pending"
+        ]
+      ]
+    }
+  },
+  {
+    "test": "I-legacy-manual",
+    "result": "PASS",
+    "rpc": "verification_required",
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-legacy-manual",
+          "unresolved",
+          "unknown",
+          null,
+          "PROVIDER_VERIFICATION_REQUIRED",
+          "2026-09-29 11:45:26.808890+00:00",
+          null,
+          null,
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-legacy-manual",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "7b6608a2-d21c-448e-81e9-d310acc9e23a",
+          "lab-e4a4f79c-legacy-manual",
+          "pending"
+        ]
+      ]
+    }
+  },
+  {
+    "test": "I-historical-payment-consumed",
+    "result": "PASS",
+    "rpc": {
+      "cached": false,
+      "status": "unresolved",
+      "order_id": "lab-e4a4f79c-historic",
+      "reason_code": "HISTORICAL_PAYMENT_ACTIVATION",
+      "retry_class": "blocked",
+      "state_after": "unresolved",
+      "state_before": null,
+      "attempt_count": 1,
+      "payment_status": "paid",
+      "already_processed": true
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-historic",
+          "unresolved",
+          "paid",
+          null,
+          "HISTORICAL_PAYMENT_ACTIVATION",
+          null,
+          "5552b858-497e-41b4-92e5-d73df19d6408",
+          "2026-09-29 11:45:26.816493+00:00",
+          "2026-09-29 11:45:26.816493+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-historic",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "5552b858-497e-41b4-92e5-d73df19d6408",
+          "lab-e4a4f79c-historic",
+          "pending"
+        ]
+      ]
+    }
+  },
+  {
+    "test": "I-policy-wrong-plan",
+    "result": "PASS",
+    "rpc": {
+      "cached": false,
+      "status": "ineligible",
+      "order_id": "lab-e4a4f79c-policy-wrong-plan",
+      "reason_code": "INVALID_PRODUCT",
+      "retry_class": "terminal",
+      "state_after": "ineligible",
+      "state_before": null,
+      "attempt_count": 1,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-policy-wrong-plan",
+          "ineligible",
+          "paid",
+          null,
+          "INVALID_PRODUCT",
+          null,
+          null,
+          "2026-09-29 11:45:26.823034+00:00",
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-policy-wrong-plan",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "07414d86-9d54-4c2e-b5d0-da2519a0aae2",
+          "lab-e4a4f79c-policy-wrong-plan",
+          "pending"
+        ]
+      ]
+    }
+  },
+  {
+    "test": "I-policy-amount-zero",
+    "result": "PASS",
+    "rpc": {
+      "cached": false,
+      "status": "unresolved",
+      "order_id": "lab-e4a4f79c-policy-amount-zero",
+      "reason_code": "AMOUNT_MISMATCH",
+      "retry_class": "blocked",
+      "state_after": "unresolved",
+      "state_before": null,
+      "attempt_count": 1,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-policy-amount-zero",
+          "unresolved",
+          "paid",
+          null,
+          "AMOUNT_MISMATCH",
+          null,
+          null,
+          "2026-09-29 11:45:26.827474+00:00",
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-policy-amount-zero",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "e366ee6c-8d24-4f9f-8294-6bc123712f96",
+          "lab-e4a4f79c-policy-amount-zero",
+          "pending"
+        ]
+      ]
+    }
+  },
+  {
+    "test": "I-policy-amount-nine",
+    "result": "PASS",
+    "rpc": {
+      "cached": false,
+      "status": "unresolved",
+      "order_id": "lab-e4a4f79c-policy-amount-nine",
+      "reason_code": "AMOUNT_MISMATCH",
+      "retry_class": "blocked",
+      "state_after": "unresolved",
+      "state_before": null,
+      "attempt_count": 1,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-policy-amount-nine",
+          "unresolved",
+          "paid",
+          null,
+          "AMOUNT_MISMATCH",
+          null,
+          null,
+          "2026-09-29 11:45:26.830934+00:00",
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-policy-amount-nine",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "1e5525d2-591e-436c-b6ae-e18023060ee2",
+          "lab-e4a4f79c-policy-amount-nine",
+          "pending"
+        ]
+      ]
+    }
+  },
+  {
+    "test": "I-policy-foreign-currency",
+    "result": "PASS",
+    "rpc": {
+      "cached": false,
+      "status": "ineligible",
+      "order_id": "lab-e4a4f79c-policy-foreign-currency",
+      "reason_code": "INVALID_PRODUCT",
+      "retry_class": "terminal",
+      "state_after": "ineligible",
+      "state_before": null,
+      "attempt_count": 1,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-policy-foreign-currency",
+          "ineligible",
+          "paid",
+          null,
+          "INVALID_PRODUCT",
+          null,
+          null,
+          "2026-09-29 11:45:26.834508+00:00",
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-policy-foreign-currency",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "9600f292-6afc-448e-84d1-6fdba57f8b80",
+          "lab-e4a4f79c-policy-foreign-currency",
+          "pending"
+        ]
+      ]
+    }
+  },
+  {
+    "test": "I-rejected-ref-privacy",
+    "result": "PASS",
+    "rpc": {
+      "cached": false,
+      "status": "ineligible",
+      "order_id": "lab-e4a4f79c-bad-retired",
+      "reason_code": "INVALID_PRODUCT",
+      "retry_class": "terminal",
+      "state_after": "ineligible",
+      "state_before": null,
+      "attempt_count": 1,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-bad-retired",
+          "ineligible",
+          "paid",
+          null,
+          "INVALID_PRODUCT",
+          null,
+          null,
+          "2026-09-29 11:45:26.838694+00:00",
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "33333333333333333333333333333333",
+          false,
+          "retired"
+        ]
+      ],
+      "intents": []
+    }
+  },
+  {
+    "test": "I-12-signed-replay-query-claims",
+    "result": "PASS",
+    "claimed": [
+      {
+        "status": "unresolved",
+        "acquired": true,
+        "reason_code": "PROVIDER_VERIFICATION_REQUIRED",
+        "retry_after_seconds": 0
+      },
+      {
+        "status": "unresolved",
+        "acquired": false,
+        "reason_code": "PROVIDER_VERIFICATION_REQUIRED",
+        "retry_after_seconds": 20
+      },
+      {
+        "status": "unresolved",
+        "acquired": false,
+        "reason_code": "PROVIDER_VERIFICATION_REQUIRED",
+        "retry_after_seconds": 20
+      },
+      {
+        "status": "unresolved",
+        "acquired": false,
+        "reason_code": "PROVIDER_VERIFICATION_REQUIRED",
+        "retry_after_seconds": 20
+      },
+      {
+        "status": "unresolved",
+        "acquired": false,
+        "reason_code": "PROVIDER_VERIFICATION_REQUIRED",
+        "retry_after_seconds": 20
+      },
+      {
+        "status": "unresolved",
+        "acquired": false,
+        "reason_code": "PROVIDER_VERIFICATION_REQUIRED",
+        "retry_after_seconds": 20
+      },
+      {
+        "status": "unresolved",
+        "acquired": false,
+        "reason_code": "PROVIDER_VERIFICATION_REQUIRED",
+        "retry_after_seconds": 20
+      },
+      {
+        "status": "unresolved",
+        "acquired": false,
+        "reason_code": "PROVIDER_VERIFICATION_REQUIRED",
+        "retry_after_seconds": 20
+      },
+      {
+        "status": "unresolved",
+        "acquired": false,
+        "reason_code": "PROVIDER_VERIFICATION_REQUIRED",
+        "retry_after_seconds": 20
+      },
+      {
+        "status": "unresolved",
+        "acquired": false,
+        "reason_code": "PROVIDER_VERIFICATION_REQUIRED",
+        "retry_after_seconds": 20
+      },
+      {
+        "status": "unresolved",
+        "acquired": false,
+        "reason_code": "PROVIDER_VERIFICATION_REQUIRED",
+        "retry_after_seconds": 20
+      },
+      {
+        "status": "unresolved",
+        "acquired": false,
+        "reason_code": "PROVIDER_VERIFICATION_REQUIRED",
+        "retry_after_seconds": 20
+      }
+    ],
+    "allowed_provider_requests": 1
+  },
+  {
+    "test": "PG-1",
+    "result": "PASS",
+    "session_A_timeline": [
+      {
+        "A": "BEGIN",
+        "time": 340534.604461875
+      },
+      {
+        "A": "RPC returned; transaction uncommitted",
+        "result": {
+          "cached": false,
+          "status": "activated",
+          "order_id": "lab-e4a4f79c-pg1",
+          "reason_code": null,
+          "retry_class": "terminal",
+          "state_after": "activated",
+          "state_before": null,
+          "attempt_count": 1,
+          "payment_status": "paid",
+          "already_processed": false
+        },
+        "time": 340534.608449958
+      },
+      {
+        "B": "BEGIN/RPC started",
+        "time": 340534.60851775
+      },
+      {
+        "A": "COMMIT",
+        "time": 340534.615477625
+      },
+      {
+        "B": "COMMIT",
+        "result": {
+          "cached": false,
+          "status": "activated",
+          "order_id": "lab-e4a4f79c-pg1",
+          "reason_code": null,
+          "retry_class": "terminal",
+          "state_after": "activated",
+          "state_before": "activated",
+          "attempt_count": 2,
+          "payment_status": "paid",
+          "already_processed": true
+        },
+        "time": 340534.617936666
+      }
+    ],
+    "locks_while_B_waited": {
+      "pg_stat_activity": [
+        [
+          111792,
+          "sunland-payment-phase3:PG-1-A",
+          "idle in transaction",
+          "Client",
+          "ClientRead",
+          "select public.sunland_process_verified_pro_order($1,$2,$3,$4)"
+        ],
+        [
+          111793,
+          "sunland-payment-phase3:PG-1-B",
+          "active",
+          "Lock",
+          "advisory",
+          "select public.sunland_process_verified_pro_order($1,$2,$3,$4)"
+        ]
+      ],
+      "pg_locks": [
+        [
+          111792,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_user_activated_at_idx",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_order_id_unique",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_pkey",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111792,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111792,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111792,
+          "transactionid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111792,
+          "advisory",
+          "ExclusiveLock",
+          true,
+          null,
+          0,
+          322773010
+        ],
+        [
+          111793,
+          "advisory",
+          "ExclusiveLock",
+          false,
+          null,
+          0,
+          322773010
+        ],
+        [
+          111793,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ]
+      ]
+    },
+    "before": {
+      "orders": [],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg1",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "667205ba-cf45-49b6-9255-a72e018d1646",
+          "lab-e4a4f79c-pg1",
+          "pending"
+        ]
+      ]
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-pg1",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-pg1",
+          null,
+          null,
+          "667205ba-cf45-49b6-9255-a72e018d1646",
+          "2026-09-29 11:45:26.928678+00:00",
+          "2026-09-29 11:45:26.928678+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg1",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "667205ba-cf45-49b6-9255-a72e018d1646",
+          "lab-e4a4f79c-pg1",
+          "activated"
+        ]
+      ]
+    },
+    "rpc_A": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-pg1",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": null,
+      "attempt_count": 1,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "rpc_B": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-pg1",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": "activated",
+      "attempt_count": 2,
+      "payment_status": "paid",
+      "already_processed": true
+    }
+  },
+  {
+    "test": "PG-3",
+    "result": "PASS",
+    "session_A_timeline": [
+      {
+        "A": "BEGIN",
+        "time": 340534.632392875
+      },
+      {
+        "A": "RPC returned; transaction uncommitted",
+        "result": {
+          "cached": false,
+          "status": "activated",
+          "order_id": "lab-e4a4f79c-pg3",
+          "reason_code": null,
+          "retry_class": "terminal",
+          "state_after": "activated",
+          "state_before": null,
+          "attempt_count": 1,
+          "payment_status": "paid",
+          "already_processed": false
+        },
+        "time": 340534.635629625
+      },
+      {
+        "B": "BEGIN/RPC started",
+        "time": 340534.635693166
+      },
+      {
+        "A": "COMMIT",
+        "time": 340534.638838708
+      },
+      {
+        "B": "COMMIT",
+        "result": {
+          "cached": false,
+          "status": "activated",
+          "order_id": "lab-e4a4f79c-pg3",
+          "reason_code": null,
+          "retry_class": "terminal",
+          "state_after": "activated",
+          "state_before": "activated",
+          "attempt_count": 2,
+          "payment_status": "paid",
+          "already_processed": true
+        },
+        "time": 340534.641508916
+      }
+    ],
+    "locks_while_B_waited": {
+      "pg_stat_activity": [
+        [
+          111795,
+          "sunland-payment-phase3:PG-3-B",
+          "active",
+          "Lock",
+          "advisory",
+          "select public.sunland_process_verified_pro_order($1,$2,$3,$4)"
+        ],
+        [
+          111794,
+          "sunland-payment-phase3:PG-3-A",
+          "idle in transaction",
+          "Client",
+          "ClientRead",
+          "select public.sunland_process_verified_pro_order($1,$2,$3,$4)"
+        ]
+      ],
+      "pg_locks": [
+        [
+          111794,
+          "transactionid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_user_activated_at_idx",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_order_id_unique",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_pkey",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111794,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111794,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111794,
+          "advisory",
+          "ExclusiveLock",
+          true,
+          null,
+          0,
+          1694501988
+        ],
+        [
+          111795,
+          "advisory",
+          "ExclusiveLock",
+          false,
+          null,
+          0,
+          1694501988
+        ],
+        [
+          111795,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ]
+      ]
+    },
+    "before": {
+      "orders": [],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg3",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "0c106b72-9dcf-4ec8-ba9d-e2f45f126cd3",
+          "lab-e4a4f79c-pg3",
+          "pending"
+        ]
+      ]
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-pg3",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-pg3",
+          null,
+          null,
+          "0c106b72-9dcf-4ec8-ba9d-e2f45f126cd3",
+          "2026-09-29 11:45:26.951893+00:00",
+          "2026-09-29 11:45:26.951893+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg3",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "0c106b72-9dcf-4ec8-ba9d-e2f45f126cd3",
+          "lab-e4a4f79c-pg3",
+          "activated"
+        ]
+      ]
+    },
+    "rpc_A": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-pg3",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": null,
+      "attempt_count": 1,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "rpc_B": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-pg3",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": "activated",
+      "attempt_count": 2,
+      "payment_status": "paid",
+      "already_processed": true
+    }
+  },
+  {
+    "test": "PG-4",
+    "result": "PASS",
+    "session_A_timeline": [
+      {
+        "A": "BEGIN",
+        "time": 340534.656657833
+      },
+      {
+        "A": "RPC returned; transaction uncommitted",
+        "result": {
+          "cached": false,
+          "status": "activated",
+          "order_id": "lab-e4a4f79c-pg4",
+          "reason_code": null,
+          "retry_class": "terminal",
+          "state_after": "activated",
+          "state_before": null,
+          "attempt_count": 1,
+          "payment_status": "paid",
+          "already_processed": false
+        },
+        "time": 340534.660312541
+      },
+      {
+        "B": "BEGIN/RPC started",
+        "time": 340534.660382958
+      },
+      {
+        "A": "COMMIT",
+        "time": 340534.691524625
+      },
+      {
+        "B": "COMMIT",
+        "result": {
+          "cached": false,
+          "status": "activated",
+          "order_id": "lab-e4a4f79c-pg4",
+          "reason_code": null,
+          "retry_class": "terminal",
+          "state_after": "activated",
+          "state_before": "activated",
+          "attempt_count": 2,
+          "payment_status": "paid",
+          "already_processed": true
+        },
+        "time": 340534.694067625
+      }
+    ],
+    "locks_while_B_waited": {
+      "pg_stat_activity": [
+        [
+          111797,
+          "sunland-payment-phase3:PG-4-B",
+          "active",
+          "Lock",
+          "advisory",
+          "select public.sunland_process_verified_pro_order($1,$2,$3,$4)"
+        ],
+        [
+          111796,
+          "sunland-payment-phase3:PG-4-A",
+          "idle in transaction",
+          "Client",
+          "ClientRead",
+          "select public.sunland_process_verified_pro_order($1,$2,$3,$4)"
+        ]
+      ],
+      "pg_locks": [
+        [
+          111796,
+          "advisory",
+          "ExclusiveLock",
+          true,
+          null,
+          4294967295,
+          3086712350
+        ],
+        [
+          111796,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_user_activated_at_idx",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_order_id_unique",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_pkey",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111796,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111796,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111796,
+          "transactionid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111797,
+          "advisory",
+          "ExclusiveLock",
+          false,
+          null,
+          4294967295,
+          3086712350
+        ],
+        [
+          111797,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ]
+      ]
+    },
+    "before": {
+      "orders": [],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg4",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "00dc2925-8fd6-4e78-a8a6-863a75083d15",
+          "lab-e4a4f79c-pg4",
+          "pending"
+        ]
+      ]
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-pg4",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-pg4",
+          null,
+          null,
+          "00dc2925-8fd6-4e78-a8a6-863a75083d15",
+          "2026-09-29 11:45:27.004641+00:00",
+          "2026-09-29 11:45:27.004641+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg4",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "00dc2925-8fd6-4e78-a8a6-863a75083d15",
+          "lab-e4a4f79c-pg4",
+          "activated"
+        ]
+      ]
+    },
+    "rpc_A": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-pg4",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": null,
+      "attempt_count": 1,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "rpc_B": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-pg4",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": "activated",
+      "attempt_count": 2,
+      "payment_status": "paid",
+      "already_processed": true
+    }
+  },
+  {
+    "test": "PG-5",
+    "result": "PASS",
+    "session_A_timeline": [
+      {
+        "A": "BEGIN",
+        "time": 340534.726980541
+      },
+      {
+        "A": "RPC returned; transaction uncommitted",
+        "result": {
+          "cached": false,
+          "status": "activated",
+          "order_id": "lab-e4a4f79c-pg5",
+          "reason_code": null,
+          "retry_class": "terminal",
+          "state_after": "activated",
+          "state_before": null,
+          "attempt_count": 1,
+          "payment_status": "paid",
+          "already_processed": false
+        },
+        "time": 340534.73131425
+      },
+      {
+        "B": "BEGIN/RPC started",
+        "time": 340534.7313855
+      },
+      {
+        "A": "COMMIT",
+        "time": 340534.763811916
+      },
+      {
+        "B": "COMMIT",
+        "result": {
+          "cached": false,
+          "status": "activated",
+          "order_id": "lab-e4a4f79c-pg5",
+          "reason_code": null,
+          "retry_class": "terminal",
+          "state_after": "activated",
+          "state_before": "activated",
+          "attempt_count": 2,
+          "payment_status": "paid",
+          "already_processed": true
+        },
+        "time": 340534.767838333
+      }
+    ],
+    "locks_while_B_waited": {
+      "pg_stat_activity": [
+        [
+          111798,
+          "sunland-payment-phase3:PG-5-A",
+          "idle in transaction",
+          "Client",
+          "ClientRead",
+          "select public.sunland_process_verified_pro_order($1,$2,$3,$4)"
+        ],
+        [
+          111799,
+          "sunland-payment-phase3:PG-5-B",
+          "active",
+          "Lock",
+          "advisory",
+          "select public.sunland_process_verified_pro_order($1,$2,$3,$4)"
+        ]
+      ],
+      "pg_locks": [
+        [
+          111798,
+          "transactionid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_user_activated_at_idx",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_order_id_unique",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_pkey",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111798,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111798,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111798,
+          "advisory",
+          "ExclusiveLock",
+          true,
+          null,
+          4294967295,
+          4167835899
+        ],
+        [
+          111798,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111799,
+          "advisory",
+          "ExclusiveLock",
+          false,
+          null,
+          4294967295,
+          4167835899
+        ],
+        [
+          111799,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ]
+      ]
+    },
+    "before": {
+      "orders": [],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg5",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "41e85d89-f564-4ae4-9719-efd041007bf3",
+          "lab-e4a4f79c-pg5",
+          "pending"
+        ]
+      ]
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-pg5",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-pg5",
+          null,
+          null,
+          "41e85d89-f564-4ae4-9719-efd041007bf3",
+          "2026-09-29 11:45:27.077419+00:00",
+          "2026-09-29 11:45:27.077419+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg5",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "41e85d89-f564-4ae4-9719-efd041007bf3",
+          "lab-e4a4f79c-pg5",
+          "activated"
+        ]
+      ]
+    },
+    "rpc_A": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-pg5",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": null,
+      "attempt_count": 1,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "rpc_B": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-pg5",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": "activated",
+      "attempt_count": 2,
+      "payment_status": "paid",
+      "already_processed": true
+    }
+  },
+  {
+    "test": "PG-2",
+    "result": "PASS",
+    "session_A_timeline": [
+      {
+        "A": "BEGIN",
+        "time": 340534.789214541
+      },
+      {
+        "A": "RPC returned; transaction uncommitted",
+        "result": {
+          "cached": false,
+          "status": "activated",
+          "order_id": "lab-e4a4f79c-pg2",
+          "reason_code": null,
+          "retry_class": "terminal",
+          "state_after": "activated",
+          "state_before": null,
+          "attempt_count": 1,
+          "payment_status": "paid",
+          "already_processed": false
+        },
+        "time": 340534.795425458
+      },
+      {
+        "B": "BEGIN/RPC started",
+        "time": 340534.795544458
+      },
+      {
+        "A": "COMMIT",
+        "time": 340534.823945916
+      },
+      {
+        "B": "COMMIT",
+        "result": {
+          "cached": false,
+          "status": "activated",
+          "order_id": "lab-e4a4f79c-pg2",
+          "reason_code": "BINDING_CONFLICT",
+          "retry_class": "blocked",
+          "state_after": "activated",
+          "state_before": "activated",
+          "attempt_count": 2,
+          "payment_status": "paid",
+          "already_processed": true
+        },
+        "time": 340534.828801208
+      }
+    ],
+    "locks_while_B_waited": {
+      "pg_stat_activity": [
+        [
+          111800,
+          "sunland-payment-phase3:PG-2-A",
+          "idle in transaction",
+          "Client",
+          "ClientRead",
+          "select public.sunland_process_verified_pro_order($1,$2,$3,$4)"
+        ],
+        [
+          111801,
+          "sunland-payment-phase3:PG-2-B",
+          "active",
+          "Lock",
+          "advisory",
+          "select public.sunland_process_verified_pro_order($1,$2,$3,$4)"
+        ]
+      ],
+      "pg_locks": [
+        [
+          111800,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_user_activated_at_idx",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_order_id_unique",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_pkey",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111800,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111800,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111800,
+          "transactionid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111800,
+          "advisory",
+          "ExclusiveLock",
+          true,
+          null,
+          0,
+          1499726592
+        ],
+        [
+          111801,
+          "advisory",
+          "ExclusiveLock",
+          false,
+          null,
+          0,
+          1499726592
+        ],
+        [
+          111801,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ]
+      ]
+    },
+    "before": {
+      "orders": [],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg2a",
+          false,
+          "active"
+        ],
+        [
+          "lab-e4a4f79c-pg2b",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "d6e03b49-c57f-46c3-aaa5-37dfb320b747",
+          "lab-e4a4f79c-pg2a",
+          "pending"
+        ],
+        [
+          "8cbae8c7-fce4-4fa8-9955-a8a79b436c4f",
+          "lab-e4a4f79c-pg2b",
+          "pending"
+        ]
+      ]
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-pg2",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-pg2a",
+          "BINDING_CONFLICT",
+          null,
+          "d6e03b49-c57f-46c3-aaa5-37dfb320b747",
+          "2026-09-29 11:45:27.137898+00:00",
+          "2026-09-29 11:45:27.104124+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg2a",
+          true,
+          "active"
+        ],
+        [
+          "lab-e4a4f79c-pg2b",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "d6e03b49-c57f-46c3-aaa5-37dfb320b747",
+          "lab-e4a4f79c-pg2a",
+          "activated"
+        ],
+        [
+          "8cbae8c7-fce4-4fa8-9955-a8a79b436c4f",
+          "lab-e4a4f79c-pg2b",
+          "pending"
+        ]
+      ]
+    },
+    "rpc_A": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-pg2",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": null,
+      "attempt_count": 1,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "rpc_B": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-pg2",
+      "reason_code": "BINDING_CONFLICT",
+      "retry_class": "blocked",
+      "state_after": "activated",
+      "state_before": "activated",
+      "attempt_count": 2,
+      "payment_status": "paid",
+      "already_processed": true
+    }
+  },
+  {
+    "test": "PG-6",
+    "result": "PASS",
+    "session_A_timeline": [
+      {
+        "A": "BEGIN",
+        "time": 340534.849069416
+      },
+      {
+        "A": "RPC returned; transaction uncommitted",
+        "result": {
+          "cached": false,
+          "status": "activated",
+          "order_id": "lab-e4a4f79c-pg6a",
+          "reason_code": null,
+          "retry_class": "terminal",
+          "state_after": "activated",
+          "state_before": null,
+          "attempt_count": 1,
+          "payment_status": "paid",
+          "already_processed": false
+        },
+        "time": 340534.853994125
+      },
+      {
+        "B": "BEGIN/RPC started",
+        "time": 340534.854152458
+      },
+      {
+        "A": "COMMIT",
+        "time": 340534.877504333
+      },
+      {
+        "B": "COMMIT",
+        "result": {
+          "cached": false,
+          "status": "activated",
+          "order_id": "lab-e4a4f79c-pg6b",
+          "reason_code": null,
+          "retry_class": "terminal",
+          "state_after": "activated",
+          "state_before": null,
+          "attempt_count": 1,
+          "payment_status": "paid",
+          "already_processed": false
+        },
+        "time": 340534.880755291
+      }
+    ],
+    "locks_while_B_waited": {
+      "pg_stat_activity": [
+        [
+          111803,
+          "sunland-payment-phase3:PG-6-B",
+          "active",
+          "Lock",
+          "transactionid",
+          "select public.sunland_process_verified_pro_order($1,$2,$3,$4)"
+        ],
+        [
+          111802,
+          "sunland-payment-phase3:PG-6-A",
+          "idle in transaction",
+          "Client",
+          "ClientRead",
+          "select public.sunland_process_verified_pro_order($1,$2,$3,$4)"
+        ]
+      ],
+      "pg_locks": [
+        [
+          111802,
+          "advisory",
+          "ExclusiveLock",
+          true,
+          null,
+          4294967295,
+          3830925110
+        ],
+        [
+          111802,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_pkey",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111802,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111802,
+          "transactionid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_user_activated_at_idx",
+          null,
+          null
+        ],
+        [
+          111802,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_order_id_unique",
+          null,
+          null
+        ],
+        [
+          111803,
+          "transactionid",
+          "ShareLock",
+          false,
+          null,
+          null,
+          null
+        ],
+        [
+          111803,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111803,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111803,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111803,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111803,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_user_activated_at_idx",
+          null,
+          null
+        ],
+        [
+          111803,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_order_id_unique",
+          null,
+          null
+        ],
+        [
+          111803,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_pkey",
+          null,
+          null
+        ],
+        [
+          111803,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations",
+          null,
+          null
+        ],
+        [
+          111803,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111803,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111803,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111803,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111803,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111803,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111803,
+          "tuple",
+          "AccessExclusiveLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111803,
+          "advisory",
+          "ExclusiveLock",
+          true,
+          null,
+          4294967295,
+          3597160369
+        ],
+        [
+          111803,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111803,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ]
+      ]
+    },
+    "before": {
+      "orders": [],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg6",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "b3bb45af-7da0-478e-88ad-26eb7acefe57",
+          "lab-e4a4f79c-pg6",
+          "pending"
+        ]
+      ]
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-pg6a",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-pg6",
+          null,
+          null,
+          "b3bb45af-7da0-478e-88ad-26eb7acefe57",
+          "2026-09-29 11:45:27.163799+00:00",
+          "2026-09-29 11:45:27.163799+00:00"
+        ],
+        [
+          "lab-e4a4f79c-pg6b",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-pg6",
+          null,
+          null,
+          "b3bb45af-7da0-478e-88ad-26eb7acefe57",
+          "2026-09-29 11:45:27.168667+00:00",
+          "2026-09-29 11:45:27.168667+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg6",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "b3bb45af-7da0-478e-88ad-26eb7acefe57",
+          "lab-e4a4f79c-pg6",
+          "activated"
+        ]
+      ]
+    },
+    "rpc_A": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-pg6a",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": null,
+      "attempt_count": 1,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "rpc_B": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-pg6b",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": null,
+      "attempt_count": 1,
+      "payment_status": "paid",
+      "already_processed": false
+    }
+  },
+  {
+    "test": "PG-7",
+    "result": "PASS",
+    "session_A_timeline": [
+      {
+        "A": "BEGIN",
+        "time": 340534.911506083
+      },
+      {
+        "A": "RPC returned; transaction uncommitted",
+        "result": {
+          "cached": false,
+          "status": "activated",
+          "order_id": "lab-e4a4f79c-pg7",
+          "reason_code": null,
+          "retry_class": "terminal",
+          "state_after": "activated",
+          "state_before": null,
+          "attempt_count": 1,
+          "payment_status": "paid",
+          "already_processed": false
+        },
+        "time": 340534.917194791
+      },
+      {
+        "B": "BEGIN/RPC started",
+        "time": 340534.917345708
+      },
+      {
+        "A": "COMMIT",
+        "time": 340534.950297083
+      },
+      {
+        "B": "COMMIT",
+        "result": {
+          "begin": {
+            "code": "revoked",
+            "user_id": "lab-e4a4f79c-pg7",
+            "attempt_id": "lab-delete-attempt-0001",
+            "deletion_job_id": "43e1da41-e36e-4a1e-b61d-8209c2df9dad",
+            "fencing_version": 1
+          },
+          "business": "deleted",
+          "finalize": {
+            "code": "retired",
+            "user_id": "lab-e4a4f79c-pg7",
+            "attempt_id": "lab-delete-attempt-0001",
+            "deletion_job_id": "43e1da41-e36e-4a1e-b61d-8209c2df9dad",
+            "fencing_version": 1
+          }
+        },
+        "time": 340534.961748875
+      }
+    ],
+    "locks_while_B_waited": {
+      "pg_stat_activity": [
+        [
+          111805,
+          "sunland-payment-phase3:PG-7-B",
+          "active",
+          "Lock",
+          "transactionid",
+          "select sunland_account_delete_begin($1,$2,$3,$4)"
+        ],
+        [
+          111804,
+          "sunland-payment-phase3:PG-7-A",
+          "idle in transaction",
+          "Client",
+          "ClientRead",
+          "select public.sunland_process_verified_pro_order($1,$2,$3,$4)"
+        ]
+      ],
+      "pg_locks": [
+        [
+          111804,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111804,
+          "advisory",
+          "ExclusiveLock",
+          true,
+          null,
+          4294967295,
+          2586580266
+        ],
+        [
+          111804,
+          "transactionid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111804,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_user_activated_at_idx",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_order_id_unique",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_pkey",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111804,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111805,
+          "transactionid",
+          "ShareLock",
+          false,
+          null,
+          null,
+          null
+        ],
+        [
+          111805,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111805,
+          "tuple",
+          "AccessExclusiveLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111805,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111805,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111805,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ]
+      ]
+    },
+    "before": {
+      "orders": [],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg7",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "044c105a-501a-4ee5-99b5-9528b7fa13d6",
+          "lab-e4a4f79c-pg7",
+          "pending"
+        ]
+      ]
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-pg7",
+          "activated",
+          "paid",
+          null,
+          "DATA_DELETED",
+          null,
+          null,
+          "2026-09-29 11:45:27.226661+00:00",
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg7",
+          false,
+          "retired"
+        ]
+      ],
+      "intents": []
+    },
+    "rpc_A": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-pg7",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": null,
+      "attempt_count": 1,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "rpc_B": {
+      "begin": {
+        "code": "revoked",
+        "user_id": "lab-e4a4f79c-pg7",
+        "attempt_id": "lab-delete-attempt-0001",
+        "deletion_job_id": "43e1da41-e36e-4a1e-b61d-8209c2df9dad",
+        "fencing_version": 1
+      },
+      "business": "deleted",
+      "finalize": {
+        "code": "retired",
+        "user_id": "lab-e4a4f79c-pg7",
+        "attempt_id": "lab-delete-attempt-0001",
+        "deletion_job_id": "43e1da41-e36e-4a1e-b61d-8209c2df9dad",
+        "fencing_version": 1
+      }
+    }
+  },
+  {
+    "test": "PG-8",
+    "result": "PASS",
+    "session_A_timeline": [
+      {
+        "A": "BEGIN",
+        "time": 340534.987313458
+      },
+      {
+        "A": "RPC returned; transaction uncommitted",
+        "result": {
+          "begin": {
+            "code": "revoked",
+            "user_id": "lab-e4a4f79c-pg8",
+            "attempt_id": "lab-delete-attempt-0001",
+            "deletion_job_id": "39bd209d-f382-49d7-be92-dd9b85fb8e8c",
+            "fencing_version": 1
+          },
+          "business": "deleted",
+          "finalize": {
+            "code": "retired",
+            "user_id": "lab-e4a4f79c-pg8",
+            "attempt_id": "lab-delete-attempt-0001",
+            "deletion_job_id": "39bd209d-f382-49d7-be92-dd9b85fb8e8c",
+            "fencing_version": 1
+          }
+        },
+        "time": 340534.995475958
+      },
+      {
+        "B": "BEGIN/RPC started",
+        "time": 340534.995620708
+      },
+      {
+        "A": "COMMIT",
+        "time": 340535.020493083
+      },
+      {
+        "B": "COMMIT",
+        "result": {
+          "cached": false,
+          "status": "unresolved",
+          "order_id": "lab-e4a4f79c-pg8",
+          "reason_code": "ACCOUNT_RETIRED",
+          "retry_class": "blocked",
+          "state_after": "unresolved",
+          "state_before": null,
+          "attempt_count": 1,
+          "payment_status": "paid",
+          "already_processed": false
+        },
+        "time": 340535.023620625
+      }
+    ],
+    "locks_while_B_waited": {
+      "pg_stat_activity": [
+        [
+          111807,
+          "sunland-payment-phase3:PG-8-B",
+          "active",
+          "Lock",
+          "transactionid",
+          "select public.sunland_process_verified_pro_order($1,$2,$3,$4)"
+        ],
+        [
+          111806,
+          "sunland-payment-phase3:PG-8-A",
+          "idle in transaction",
+          "Client",
+          "ClientRead",
+          "select sunland_account_delete_sanitize_profile($1,$2,$3,$4)"
+        ]
+      ],
+      "pg_locks": [
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_turns_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_knowledge",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_threads",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_messages_user_client_key",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_memory",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "idx_request_logs_user",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "conversations_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_context",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "comment_copilot_usage",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_messages_user_seq_key",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "usage_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "transactionid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_user_state_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_turns_retention_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_daily_usage_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "comment_copilot_usage_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_memory_user_updated_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_memory_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_usage_entries_sweep_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_message_images_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_message_images_msg_sort_key",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_message_images",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowShareLock",
+          true,
+          "chat_threads_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowShareLock",
+          true,
+          "chat_threads",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111806,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_turn_results_user_expiry_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "deleted_conversations",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_messages",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_daily_usage",
+          null,
+          null
+        ],
+        [
+          111806,
+          "advisory",
+          "ExclusiveLock",
+          true,
+          null,
+          4294967295,
+          3180000811
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_context_user_updated_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "idx_usage_user_id",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_knowledge_user_relation_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_context_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_user_state",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_message_images_message_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_activations",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_message_images_user_path_key",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_messages_history_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "idx_request_logs_cleanup",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_migration_receipts_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "idx_conversations_user_id",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_usage_entries_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_message_images_pending_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "usage",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_message_images_cleanup_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "usage_logs",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "comment_copilot_context",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "deleted_conversations_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_turns_sweep_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_usage_entries_date_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_turns_delivery_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_migration_receipts",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_migration_receipts_user_created_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_turn_results_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_turns_user_status_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_turns",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "conversations",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "comment_copilot_context_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_knowledge_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_activations_order_id_unique",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_threads_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_knowledge_user_created_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_turn_results",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_usage_entries",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_messages_created_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_messages_bubble_key",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "usage_logs_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_messages_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_knowledge_user_id_subject_relation_object_negate_key",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_message_images_active_expiry_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_activations_user_activated_at_idx",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_activations_pkey",
+          null,
+          null
+        ],
+        [
+          111806,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "request_logs",
+          null,
+          null
+        ],
+        [
+          111807,
+          "transactionid",
+          "ShareLock",
+          false,
+          null,
+          null,
+          null
+        ],
+        [
+          111807,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111807,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111807,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111807,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111807,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_user_activated_at_idx",
+          null,
+          null
+        ],
+        [
+          111807,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_order_id_unique",
+          null,
+          null
+        ],
+        [
+          111807,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_pkey",
+          null,
+          null
+        ],
+        [
+          111807,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations",
+          null,
+          null
+        ],
+        [
+          111807,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111807,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111807,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111807,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111807,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111807,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111807,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111807,
+          "tuple",
+          "AccessExclusiveLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111807,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111807,
+          "advisory",
+          "ExclusiveLock",
+          true,
+          null,
+          0,
+          1892670869
+        ]
+      ]
+    },
+    "before": {
+      "orders": [],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg8",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "c63fda4a-6c70-491c-9eb9-50c7c883c829",
+          "lab-e4a4f79c-pg8",
+          "pending"
+        ]
+      ]
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-pg8",
+          "unresolved",
+          "paid",
+          null,
+          "ACCOUNT_RETIRED",
+          null,
+          null,
+          "2026-09-29 11:45:27.310784+00:00",
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg8",
+          false,
+          "retired"
+        ]
+      ],
+      "intents": []
+    },
+    "rpc_A": {
+      "begin": {
+        "code": "revoked",
+        "user_id": "lab-e4a4f79c-pg8",
+        "attempt_id": "lab-delete-attempt-0001",
+        "deletion_job_id": "39bd209d-f382-49d7-be92-dd9b85fb8e8c",
+        "fencing_version": 1
+      },
+      "business": "deleted",
+      "finalize": {
+        "code": "retired",
+        "user_id": "lab-e4a4f79c-pg8",
+        "attempt_id": "lab-delete-attempt-0001",
+        "deletion_job_id": "39bd209d-f382-49d7-be92-dd9b85fb8e8c",
+        "fencing_version": 1
+      }
+    },
+    "rpc_B": {
+      "cached": false,
+      "status": "unresolved",
+      "order_id": "lab-e4a4f79c-pg8",
+      "reason_code": "ACCOUNT_RETIRED",
+      "retry_class": "blocked",
+      "state_after": "unresolved",
+      "state_before": null,
+      "attempt_count": 1,
+      "payment_status": "paid",
+      "already_processed": false
+    }
+  },
+  {
+    "test": "PG-9",
+    "result": "PASS",
+    "session_A_timeline": [
+      {
+        "A": "BEGIN",
+        "time": 340535.047680916
+      },
+      {
+        "A": "RPC returned; transaction uncommitted",
+        "result": "lab-e4a4f79c-pg9",
+        "time": 340535.048592833
+      },
+      {
+        "B": "BEGIN/RPC started",
+        "time": 340535.048715333
+      },
+      {
+        "A": "COMMIT",
+        "time": 340535.073788458
+      },
+      {
+        "B": "ROLLBACK expected denial",
+        "time": 340535.07576775
+      }
+    ],
+    "locks_while_B_waited": {
+      "pg_stat_activity": [
+        [
+          111808,
+          "sunland-payment-phase3:PG-9-A",
+          "idle in transaction",
+          "Client",
+          "ClientRead",
+          "select user_id from user_profiles where user_id=$1 for update"
+        ],
+        [
+          111809,
+          "sunland-payment-phase3:PG-9-B",
+          "active",
+          "Lock",
+          "transactionid",
+          "select * from sunland_delete_account_business_data($1)"
+        ]
+      ],
+      "pg_locks": [
+        [
+          111808,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111808,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111808,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111808,
+          "transactionid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111808,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111809,
+          "transactionid",
+          "ShareLock",
+          false,
+          null,
+          null,
+          null
+        ],
+        [
+          111809,
+          "tuple",
+          "AccessExclusiveLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111809,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111809,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111809,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111809,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111809,
+          "advisory",
+          "ExclusiveLock",
+          true,
+          null,
+          0,
+          1139557604
+        ]
+      ]
+    },
+    "before": {
+      "orders": [],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg9",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "2b571740-3d76-4bf3-8a44-596a03cc5d8e",
+          "lab-e4a4f79c-pg9",
+          "pending"
+        ]
+      ]
+    },
+    "after": {
+      "orders": [],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg9",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "2b571740-3d76-4bf3-8a44-596a03cc5d8e",
+          "lab-e4a4f79c-pg9",
+          "pending"
+        ]
+      ]
+    },
+    "rpc_A": "lab-e4a4f79c-pg9",
+    "rpc_B": {
+      "sqlstate": "42501",
+      "message": "ACCOUNT_DELETION_NOT_STARTED\nCONTEXT:  PL/pgSQL function sunland_delete_account_business_data(text) line 11 at RAISE"
+    }
+  },
+  {
+    "test": "PG-10",
+    "result": "PASS",
+    "session_A_timeline": [
+      {
+        "A": "BEGIN",
+        "time": 340535.102829875
+      },
+      {
+        "A": "RPC returned; transaction uncommitted",
+        "result": "unresolved",
+        "time": 340535.105609166
+      },
+      {
+        "B": "BEGIN/RPC started",
+        "time": 340535.105705666
+      },
+      {
+        "A": "COMMIT",
+        "time": 340535.132042625
+      },
+      {
+        "B": "COMMIT",
+        "result": {
+          "cached": false,
+          "status": "activated",
+          "order_id": "lab-e4a4f79c-pg10",
+          "reason_code": null,
+          "retry_class": "terminal",
+          "state_after": "activated",
+          "state_before": "unresolved",
+          "attempt_count": 2,
+          "payment_status": "paid",
+          "already_processed": false
+        },
+        "time": 340535.136364833
+      }
+    ],
+    "locks_while_B_waited": {
+      "pg_stat_activity": [
+        [
+          111811,
+          "sunland-payment-phase3:PG-10-B",
+          "active",
+          "Lock",
+          "advisory",
+          "select public.sunland_process_verified_pro_order($1,$2,$3,$4)"
+        ],
+        [
+          111810,
+          "sunland-payment-phase3:PG-10-A",
+          "idle in transaction",
+          "Client",
+          "ClientRead",
+          "select * from sunland_activate_pro_from_payment($1,$2,$3,$4,$5,$6)"
+        ]
+      ],
+      "pg_locks": [
+        [
+          111810,
+          "advisory",
+          "ExclusiveLock",
+          true,
+          null,
+          4294967295,
+          2633609515
+        ],
+        [
+          111810,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_user_activated_at_idx",
+          null,
+          null
+        ],
+        [
+          111810,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_order_id_unique",
+          null,
+          null
+        ],
+        [
+          111810,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_pkey",
+          null,
+          null
+        ],
+        [
+          111810,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations",
+          null,
+          null
+        ],
+        [
+          111810,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111810,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111810,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111810,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111810,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111810,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111810,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111810,
+          "transactionid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111811,
+          "advisory",
+          "ExclusiveLock",
+          false,
+          null,
+          4294967295,
+          2633609515
+        ],
+        [
+          111811,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ]
+      ]
+    },
+    "before": {
+      "orders": [],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg10",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "8e51beb0-0fb8-46ec-a1e6-4530be0d27cf",
+          "lab-e4a4f79c-pg10",
+          "pending"
+        ]
+      ]
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-pg10",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-pg10",
+          null,
+          null,
+          "8e51beb0-0fb8-46ec-a1e6-4530be0d27cf",
+          "2026-09-29 11:45:27.445082+00:00",
+          "2026-09-29 11:45:27.445082+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg10",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "8e51beb0-0fb8-46ec-a1e6-4530be0d27cf",
+          "lab-e4a4f79c-pg10",
+          "activated"
+        ]
+      ]
+    },
+    "rpc_A": "unresolved",
+    "rpc_B": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-pg10",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": "unresolved",
+      "attempt_count": 2,
+      "payment_status": "paid",
+      "already_processed": false
+    }
+  },
+  {
+    "test": "PG-11",
+    "result": "PASS",
+    "session_A_timeline": [
+      {
+        "A": "BEGIN",
+        "time": 340535.183075083
+      },
+      {
+        "A": "RPC returned; transaction uncommitted",
+        "result": {
+          "cached": false,
+          "status": "activated",
+          "order_id": "lab-e4a4f79c-pg11",
+          "reason_code": "DATA_DELETED",
+          "retry_class": "blocked",
+          "state_after": "activated",
+          "state_before": "activated",
+          "attempt_count": 2,
+          "payment_status": "paid",
+          "already_processed": true
+        },
+        "time": 340535.191857416
+      },
+      {
+        "B": "BEGIN/RPC started",
+        "time": 340535.192277416
+      },
+      {
+        "A": "COMMIT",
+        "time": 340535.228071208
+      },
+      {
+        "B": "COMMIT",
+        "result": {
+          "cached": false,
+          "status": "activated",
+          "order_id": "lab-e4a4f79c-pg11",
+          "reason_code": "DATA_DELETED",
+          "retry_class": "blocked",
+          "state_after": "activated",
+          "state_before": "activated",
+          "attempt_count": 3,
+          "payment_status": "paid",
+          "already_processed": true
+        },
+        "time": 340535.233544458
+      }
+    ],
+    "locks_while_B_waited": {
+      "pg_stat_activity": [
+        [
+          111813,
+          "sunland-payment-phase3:PG-11-A",
+          "idle in transaction",
+          "Client",
+          "ClientRead",
+          "select public.sunland_process_verified_pro_order($1,$2,$3,$4)"
+        ],
+        [
+          111814,
+          "sunland-payment-phase3:PG-11-B",
+          "active",
+          "Lock",
+          "advisory",
+          "select public.sunland_process_verified_pro_order($1,$2,$3,$4)"
+        ]
+      ],
+      "pg_locks": [
+        [
+          111813,
+          "transactionid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111813,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_order_id_unique",
+          null,
+          null
+        ],
+        [
+          111813,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_pkey",
+          null,
+          null
+        ],
+        [
+          111813,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations",
+          null,
+          null
+        ],
+        [
+          111813,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111813,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111813,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111813,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111813,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111813,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111813,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111813,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111813,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111813,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111813,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111813,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111813,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111813,
+          "relation",
+          "RowShareLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111813,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111813,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111813,
+          "advisory",
+          "ExclusiveLock",
+          true,
+          null,
+          4294967295,
+          4032246480
+        ],
+        [
+          111813,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_user_activated_at_idx",
+          null,
+          null
+        ],
+        [
+          111814,
+          "advisory",
+          "ExclusiveLock",
+          false,
+          null,
+          4294967295,
+          4032246480
+        ],
+        [
+          111814,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ]
+      ]
+    },
+    "before": {
+      "orders": [
+        [
+          "lab-e4a4f79c-pg11",
+          "activated",
+          "paid",
+          null,
+          "DATA_DELETED",
+          null,
+          null,
+          "2026-09-29 11:45:27.462754+00:00",
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg11",
+          false,
+          "retired"
+        ]
+      ],
+      "intents": []
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-pg11",
+          "activated",
+          "paid",
+          null,
+          "DATA_DELETED",
+          null,
+          null,
+          "2026-09-29 11:45:27.542318+00:00",
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg11",
+          false,
+          "retired"
+        ]
+      ],
+      "intents": []
+    },
+    "rpc_A": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-pg11",
+      "reason_code": "DATA_DELETED",
+      "retry_class": "blocked",
+      "state_after": "activated",
+      "state_before": "activated",
+      "attempt_count": 2,
+      "payment_status": "paid",
+      "already_processed": true
+    },
+    "rpc_B": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-pg11",
+      "reason_code": "DATA_DELETED",
+      "retry_class": "blocked",
+      "state_after": "activated",
+      "state_before": "activated",
+      "attempt_count": 3,
+      "payment_status": "paid",
+      "already_processed": true
+    }
+  },
+  {
+    "test": "PG-12",
+    "result": "PASS",
+    "session_A_timeline": [
+      {
+        "A": "BEGIN",
+        "time": 340535.265603083
+      },
+      {
+        "A": "RPC returned; transaction uncommitted",
+        "result": {
+          "begin": {
+            "code": "revoked",
+            "user_id": "lab-e4a4f79c-pg12",
+            "attempt_id": "lab-delete-attempt-0001",
+            "deletion_job_id": "945424da-4cb9-489d-a1b0-f192b6ef5117",
+            "fencing_version": 1
+          },
+          "business": "deleted",
+          "finalize": {
+            "code": "retired",
+            "user_id": "lab-e4a4f79c-pg12",
+            "attempt_id": "lab-delete-attempt-0001",
+            "deletion_job_id": "945424da-4cb9-489d-a1b0-f192b6ef5117",
+            "fencing_version": 1
+          }
+        },
+        "time": 340535.272275
+      },
+      {
+        "B": "BEGIN/RPC started",
+        "time": 340535.27236425
+      },
+      {
+        "A": "COMMIT",
+        "time": 340535.30490225
+      },
+      {
+        "B": "COMMIT",
+        "result": {
+          "cached": false,
+          "status": "unresolved",
+          "order_id": "lab-e4a4f79c-pg12",
+          "reason_code": "DATA_DELETED",
+          "retry_class": "blocked",
+          "state_after": "unresolved",
+          "state_before": "unresolved",
+          "attempt_count": 2,
+          "payment_status": "paid",
+          "already_processed": false
+        },
+        "time": 340535.307342375
+      }
+    ],
+    "locks_while_B_waited": {
+      "pg_stat_activity": [
+        [
+          111816,
+          "sunland-payment-phase3:PG-12-A",
+          "idle in transaction",
+          "Client",
+          "ClientRead",
+          "select sunland_account_delete_sanitize_profile($1,$2,$3,$4)"
+        ],
+        [
+          111817,
+          "sunland-payment-phase3:PG-12-B",
+          "active",
+          "Lock",
+          "transactionid",
+          "select public.sunland_process_verified_pro_order($1,$2,$3,$4)"
+        ]
+      ],
+      "pg_locks": [
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "request_logs",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_message_images_msg_sort_key",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_message_images",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowShareLock",
+          true,
+          "chat_threads_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowShareLock",
+          true,
+          "chat_threads",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111816,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_memory_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_usage_entries_sweep_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_turns_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "comment_copilot_usage_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_turn_results",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_usage_entries",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_messages_created_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "usage_logs_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_messages_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_messages_bubble_key",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_knowledge_user_id_subject_relation_object_negate_key",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_message_images_active_expiry_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "advisory",
+          "ExclusiveLock",
+          true,
+          null,
+          0,
+          1741220
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_activations_user_activated_at_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_activations_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_message_images_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "comment_copilot_context",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_message_images_cleanup_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "usage_logs",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_usage_entries_date_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "deleted_conversations_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_turns_sweep_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_turns_delivery_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_migration_receipts_user_created_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_migration_receipts",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_turns_user_status_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_turns",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_turn_results_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "conversations",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "comment_copilot_context_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_knowledge_user_created_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_knowledge_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_activations_order_id_unique",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_threads_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_messages",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_turn_results_user_expiry_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "deleted_conversations",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_daily_usage",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_context_user_updated_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_context_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_user_state",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_message_images_message_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "pro_activations",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "idx_usage_user_id",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_knowledge_user_relation_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "transactionid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_migration_receipts_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_message_images_user_path_key",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_messages_history_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "idx_request_logs_cleanup",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "idx_conversations_user_id",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_usage_entries_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_message_images_pending_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "usage",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_threads",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_messages_user_client_key",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_knowledge",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_memory",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_messages_user_seq_key",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "idx_request_logs_user",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "conversations_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_context",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "comment_copilot_usage",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "usage_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_turns_retention_idx",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "chat_daily_usage_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_user_state_pkey",
+          null,
+          null
+        ],
+        [
+          111816,
+          "relation",
+          "RowExclusiveLock",
+          true,
+          "sunland_ai_memory_user_updated_idx",
+          null,
+          null
+        ],
+        [
+          111817,
+          "transactionid",
+          "ShareLock",
+          false,
+          null,
+          null,
+          null
+        ],
+        [
+          111817,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_pkey",
+          null,
+          null
+        ],
+        [
+          111817,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111817,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_user_id_key",
+          null,
+          null
+        ],
+        [
+          111817,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents_pkey",
+          null,
+          null
+        ],
+        [
+          111817,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_intents",
+          null,
+          null
+        ],
+        [
+          111817,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_user_activated_at_idx",
+          null,
+          null
+        ],
+        [
+          111817,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_order_id_unique",
+          null,
+          null
+        ],
+        [
+          111817,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations_pkey",
+          null,
+          null
+        ],
+        [
+          111817,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_activations",
+          null,
+          null
+        ],
+        [
+          111817,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_verified_reference_idx",
+          null,
+          null
+        ],
+        [
+          111817,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_retry_idx",
+          null,
+          null
+        ],
+        [
+          111817,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_status_first_seen_idx",
+          null,
+          null
+        ],
+        [
+          111817,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders_pkey",
+          null,
+          null
+        ],
+        [
+          111817,
+          "relation",
+          "AccessShareLock",
+          true,
+          "pro_payment_orders",
+          null,
+          null
+        ],
+        [
+          111817,
+          "virtualxid",
+          "ExclusiveLock",
+          true,
+          null,
+          null,
+          null
+        ],
+        [
+          111817,
+          "tuple",
+          "AccessExclusiveLock",
+          true,
+          "user_profiles",
+          null,
+          null
+        ],
+        [
+          111817,
+          "relation",
+          "RowShareLock",
+          true,
+          "user_profiles_email_unique_idx",
+          null,
+          null
+        ],
+        [
+          111817,
+          "advisory",
+          "ExclusiveLock",
+          true,
+          null,
+          0,
+          1014087351
+        ]
+      ]
+    },
+    "before": {
+      "orders": [
+        [
+          "lab-e4a4f79c-pg12",
+          "unresolved",
+          "paid",
+          null,
+          "INTENT_NOT_FOUND",
+          "2026-09-29 11:47:27.558607+00:00",
+          "4205419f-5280-4524-98c3-ec1a86d0f066",
+          "2026-09-29 11:45:27.560861+00:00",
+          "2026-09-29 11:45:27.560861+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg12",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "4205419f-5280-4524-98c3-ec1a86d0f066",
+          "lab-e4a4f79c-pg12",
+          "pending"
+        ]
+      ]
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-pg12",
+          "unresolved",
+          "paid",
+          null,
+          "DATA_DELETED",
+          null,
+          null,
+          "2026-09-29 11:45:27.587185+00:00",
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-pg12",
+          false,
+          "retired"
+        ]
+      ],
+      "intents": []
+    },
+    "rpc_A": {
+      "begin": {
+        "code": "revoked",
+        "user_id": "lab-e4a4f79c-pg12",
+        "attempt_id": "lab-delete-attempt-0001",
+        "deletion_job_id": "945424da-4cb9-489d-a1b0-f192b6ef5117",
+        "fencing_version": 1
+      },
+      "business": "deleted",
+      "finalize": {
+        "code": "retired",
+        "user_id": "lab-e4a4f79c-pg12",
+        "attempt_id": "lab-delete-attempt-0001",
+        "deletion_job_id": "945424da-4cb9-489d-a1b0-f192b6ef5117",
+        "fencing_version": 1
+      }
+    },
+    "rpc_B": {
+      "cached": false,
+      "status": "unresolved",
+      "order_id": "lab-e4a4f79c-pg12",
+      "reason_code": "DATA_DELETED",
+      "retry_class": "blocked",
+      "state_after": "unresolved",
+      "state_before": "unresolved",
+      "attempt_count": 2,
+      "payment_status": "paid",
+      "already_processed": false
+    }
+  },
+  {
+    "test": "I-historical-anonymous-U",
+    "result": "PASS",
+    "rpc": {
+      "cached": false,
+      "status": "unresolved",
+      "order_id": "lab-e4a4f79c-anonymous-U",
+      "reason_code": "OWNER_ANONYMIZED",
+      "retry_class": "blocked",
+      "state_after": "unresolved",
+      "state_before": "unresolved",
+      "attempt_count": 2,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "after": {
+      "orders": [
+        [
+          "lab-e4a4f79c-anonymous-U",
+          "unresolved",
+          "paid",
+          null,
+          "OWNER_ANONYMIZED",
+          null,
+          null,
+          "2026-09-29 11:45:27.631748+00:00",
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-anonymous-U",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "899706c1-d927-4593-b6d8-99919593bda9",
+          "lab-e4a4f79c-anonymous-U",
+          "pending"
+        ]
+      ]
+    }
+  },
+  {
+    "test": "lab-hook-provenance",
+    "result": "PASS",
+    "candidate_sha": "feacd878d507608de7b3e6e3aeb650d532fb76d022336619b97e1ba2bf0ba554",
+    "modification": "lab-only renamed copy; after-lock sleep, AFTER triggers for ledger/grant/activation; no candidate modification"
+  },
+  {
+    "test": "CRASH-1",
+    "result": "PASS",
+    "point": "before-provider-query",
+    "provider": "synthetic verified fixture; network-stage crash represented by stopping the lab session before RPC",
+    "before": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash0",
+          "unresolved",
+          "unknown",
+          null,
+          "PROVIDER_VERIFICATION_REQUIRED",
+          "2026-09-29 11:45:27.673381+00:00",
+          null,
+          null,
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash0",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "633701e2-d1ca-4d68-8a45-68f8441947b1",
+          "lab-e4a4f79c-crash0",
+          "pending"
+        ]
+      ]
+    },
+    "activity": [
+      111819,
+      "active",
+      "Timeout",
+      "PgSleep",
+      "select pg_sleep(30)"
+    ],
+    "termination": {
+      "guard": [
+        111819,
+        "sunland_payment_phase3_lab",
+        "sunland-payment-phase3:crash-before-provider-query"
+      ],
+      "terminated": true
+    },
+    "after_crash": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash0",
+          "unresolved",
+          "unknown",
+          null,
+          "PROVIDER_VERIFICATION_REQUIRED",
+          "2026-09-29 11:45:27.673381+00:00",
+          null,
+          null,
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash0",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "633701e2-d1ca-4d68-8a45-68f8441947b1",
+          "lab-e4a4f79c-crash0",
+          "pending"
+        ]
+      ]
+    },
+    "recovery_rpc": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-crash0",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": "unresolved",
+      "attempt_count": 2,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "after_recovery": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash0",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-crash0",
+          null,
+          null,
+          "633701e2-d1ca-4d68-8a45-68f8441947b1",
+          "2026-09-29 11:45:27.723078+00:00",
+          "2026-09-29 11:45:27.723078+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash0",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "633701e2-d1ca-4d68-8a45-68f8441947b1",
+          "lab-e4a4f79c-crash0",
+          "activated"
+        ]
+      ]
+    },
+    "exception": [
+      "AdminShutdown"
+    ]
+  },
+  {
+    "test": "CRASH-2",
+    "result": "PASS",
+    "point": "after-provider-query",
+    "provider": "synthetic verified fixture; network-stage crash represented by stopping the lab session before RPC",
+    "before": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash1",
+          "unresolved",
+          "unknown",
+          null,
+          "PROVIDER_VERIFICATION_REQUIRED",
+          "2026-09-29 11:45:27.742022+00:00",
+          null,
+          null,
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash1",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "dae5354f-1f47-4d1a-9f3f-d084980a4d90",
+          "lab-e4a4f79c-crash1",
+          "pending"
+        ]
+      ]
+    },
+    "activity": [
+      111821,
+      "active",
+      "Timeout",
+      "PgSleep",
+      "select pg_sleep(30)"
+    ],
+    "termination": {
+      "guard": [
+        111821,
+        "sunland_payment_phase3_lab",
+        "sunland-payment-phase3:crash-after-provider-query"
+      ],
+      "terminated": true
+    },
+    "after_crash": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash1",
+          "unresolved",
+          "unknown",
+          null,
+          "PROVIDER_VERIFICATION_REQUIRED",
+          "2026-09-29 11:45:27.742022+00:00",
+          null,
+          null,
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash1",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "dae5354f-1f47-4d1a-9f3f-d084980a4d90",
+          "lab-e4a4f79c-crash1",
+          "pending"
+        ]
+      ]
+    },
+    "recovery_rpc": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-crash1",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": "unresolved",
+      "attempt_count": 2,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "after_recovery": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash1",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-crash1",
+          null,
+          null,
+          "dae5354f-1f47-4d1a-9f3f-d084980a4d90",
+          "2026-09-29 11:45:27.752679+00:00",
+          "2026-09-29 11:45:27.752679+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash1",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "dae5354f-1f47-4d1a-9f3f-d084980a4d90",
+          "lab-e4a4f79c-crash1",
+          "activated"
+        ]
+      ]
+    },
+    "exception": [
+      "AdminShutdown"
+    ]
+  },
+  {
+    "test": "CRASH-3",
+    "result": "PASS",
+    "point": "after-BEGIN-before-lock",
+    "provider": "synthetic verified fixture; network-stage crash represented by stopping the lab session before RPC",
+    "before": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash2",
+          "unresolved",
+          "unknown",
+          null,
+          "PROVIDER_VERIFICATION_REQUIRED",
+          "2026-09-29 11:45:27.766639+00:00",
+          null,
+          null,
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash2",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "96f9367a-9348-4f1e-b2c7-aa4a331e5821",
+          "lab-e4a4f79c-crash2",
+          "pending"
+        ]
+      ]
+    },
+    "activity": [
+      111823,
+      "active",
+      "Timeout",
+      "PgSleep",
+      "select pg_sleep(30)"
+    ],
+    "termination": {
+      "guard": [
+        111823,
+        "sunland_payment_phase3_lab",
+        "sunland-payment-phase3:crash-after-BEGIN-before-lock"
+      ],
+      "terminated": true
+    },
+    "after_crash": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash2",
+          "unresolved",
+          "unknown",
+          null,
+          "PROVIDER_VERIFICATION_REQUIRED",
+          "2026-09-29 11:45:27.766639+00:00",
+          null,
+          null,
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash2",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "96f9367a-9348-4f1e-b2c7-aa4a331e5821",
+          "lab-e4a4f79c-crash2",
+          "pending"
+        ]
+      ]
+    },
+    "recovery_rpc": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-crash2",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": "unresolved",
+      "attempt_count": 2,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "after_recovery": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash2",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-crash2",
+          null,
+          null,
+          "96f9367a-9348-4f1e-b2c7-aa4a331e5821",
+          "2026-09-29 11:45:27.777284+00:00",
+          "2026-09-29 11:45:27.777284+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash2",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "96f9367a-9348-4f1e-b2c7-aa4a331e5821",
+          "lab-e4a4f79c-crash2",
+          "activated"
+        ]
+      ]
+    },
+    "exception": [
+      "AdminShutdown"
+    ]
+  },
+  {
+    "test": "CRASH-4",
+    "result": "PASS",
+    "point": "after-lock",
+    "provider": "synthetic verified fixture; network-stage crash represented by stopping the lab session before RPC",
+    "before": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash3",
+          "unresolved",
+          "unknown",
+          null,
+          "PROVIDER_VERIFICATION_REQUIRED",
+          "2026-09-29 11:45:27.792492+00:00",
+          null,
+          null,
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash3",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "104f766d-26c4-4700-8bb6-9b5993a608bd",
+          "lab-e4a4f79c-crash3",
+          "pending"
+        ]
+      ]
+    },
+    "activity": [
+      111825,
+      "active",
+      "Timeout",
+      "PgSleep",
+      "select public.sunland_lab_process_verified_pro_order($1,$2,$3,$4)"
+    ],
+    "termination": {
+      "guard": [
+        111825,
+        "sunland_payment_phase3_lab",
+        "sunland-payment-phase3:crash-after-lock"
+      ],
+      "terminated": true
+    },
+    "after_crash": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash3",
+          "unresolved",
+          "unknown",
+          null,
+          "PROVIDER_VERIFICATION_REQUIRED",
+          "2026-09-29 11:45:27.792492+00:00",
+          null,
+          null,
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash3",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "104f766d-26c4-4700-8bb6-9b5993a608bd",
+          "lab-e4a4f79c-crash3",
+          "pending"
+        ]
+      ]
+    },
+    "recovery_rpc": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-crash3",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": "unresolved",
+      "attempt_count": 2,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "after_recovery": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash3",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-crash3",
+          null,
+          null,
+          "104f766d-26c4-4700-8bb6-9b5993a608bd",
+          "2026-09-29 11:45:27.806739+00:00",
+          "2026-09-29 11:45:27.806739+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash3",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "104f766d-26c4-4700-8bb6-9b5993a608bd",
+          "lab-e4a4f79c-crash3",
+          "activated"
+        ]
+      ]
+    },
+    "exception": [
+      "AdminShutdown"
+    ]
+  },
+  {
+    "test": "CRASH-5",
+    "result": "PASS",
+    "point": "after-ledger-write",
+    "provider": "synthetic verified fixture; network-stage crash represented by stopping the lab session before RPC",
+    "before": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash4",
+          "unresolved",
+          "unknown",
+          null,
+          "PROVIDER_VERIFICATION_REQUIRED",
+          "2026-09-29 11:45:27.819603+00:00",
+          null,
+          null,
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash4",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "559e712d-51c1-44c9-97e4-976a2e47f6de",
+          "lab-e4a4f79c-crash4",
+          "pending"
+        ]
+      ]
+    },
+    "activity": [
+      111827,
+      "active",
+      "Timeout",
+      "PgSleep",
+      "select public.sunland_lab_process_verified_pro_order($1,$2,$3,$4)"
+    ],
+    "termination": {
+      "guard": [
+        111827,
+        "sunland_payment_phase3_lab",
+        "sunland-payment-phase3:crash-after-ledger-write"
+      ],
+      "terminated": true
+    },
+    "after_crash": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash4",
+          "unresolved",
+          "unknown",
+          null,
+          "PROVIDER_VERIFICATION_REQUIRED",
+          "2026-09-29 11:45:27.819603+00:00",
+          null,
+          null,
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash4",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "559e712d-51c1-44c9-97e4-976a2e47f6de",
+          "lab-e4a4f79c-crash4",
+          "pending"
+        ]
+      ]
+    },
+    "recovery_rpc": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-crash4",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": "unresolved",
+      "attempt_count": 2,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "after_recovery": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash4",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-crash4",
+          null,
+          null,
+          "559e712d-51c1-44c9-97e4-976a2e47f6de",
+          "2026-09-29 11:45:27.856632+00:00",
+          "2026-09-29 11:45:27.856632+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash4",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "559e712d-51c1-44c9-97e4-976a2e47f6de",
+          "lab-e4a4f79c-crash4",
+          "activated"
+        ]
+      ]
+    },
+    "exception": [
+      "AdminShutdown"
+    ]
+  },
+  {
+    "test": "CRASH-6",
+    "result": "PASS",
+    "point": "after-grant",
+    "provider": "synthetic verified fixture; network-stage crash represented by stopping the lab session before RPC",
+    "before": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash5",
+          "unresolved",
+          "unknown",
+          null,
+          "PROVIDER_VERIFICATION_REQUIRED",
+          "2026-09-29 11:45:27.872069+00:00",
+          null,
+          null,
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash5",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "56044b9c-17d2-471e-9835-c2fbbac79a66",
+          "lab-e4a4f79c-crash5",
+          "pending"
+        ]
+      ]
+    },
+    "activity": [
+      111829,
+      "active",
+      "Timeout",
+      "PgSleep",
+      "select public.sunland_lab_process_verified_pro_order($1,$2,$3,$4)"
+    ],
+    "termination": {
+      "guard": [
+        111829,
+        "sunland_payment_phase3_lab",
+        "sunland-payment-phase3:crash-after-grant"
+      ],
+      "terminated": true
+    },
+    "after_crash": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash5",
+          "unresolved",
+          "unknown",
+          null,
+          "PROVIDER_VERIFICATION_REQUIRED",
+          "2026-09-29 11:45:27.872069+00:00",
+          null,
+          null,
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash5",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "56044b9c-17d2-471e-9835-c2fbbac79a66",
+          "lab-e4a4f79c-crash5",
+          "pending"
+        ]
+      ]
+    },
+    "recovery_rpc": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-crash5",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": "unresolved",
+      "attempt_count": 2,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "after_recovery": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash5",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-crash5",
+          null,
+          null,
+          "56044b9c-17d2-471e-9835-c2fbbac79a66",
+          "2026-09-29 11:45:27.884207+00:00",
+          "2026-09-29 11:45:27.884207+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash5",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "56044b9c-17d2-471e-9835-c2fbbac79a66",
+          "lab-e4a4f79c-crash5",
+          "activated"
+        ]
+      ]
+    },
+    "exception": [
+      "AdminShutdown"
+    ]
+  },
+  {
+    "test": "CRASH-7",
+    "result": "PASS",
+    "point": "after-activated",
+    "provider": "synthetic verified fixture; network-stage crash represented by stopping the lab session before RPC",
+    "before": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash6",
+          "unresolved",
+          "unknown",
+          null,
+          "PROVIDER_VERIFICATION_REQUIRED",
+          "2026-09-29 11:45:27.893940+00:00",
+          null,
+          null,
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash6",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "840a6439-e0f0-4128-998c-2e4463615abc",
+          "lab-e4a4f79c-crash6",
+          "pending"
+        ]
+      ]
+    },
+    "activity": [
+      111831,
+      "active",
+      "Timeout",
+      "PgSleep",
+      "select public.sunland_lab_process_verified_pro_order($1,$2,$3,$4)"
+    ],
+    "termination": {
+      "guard": [
+        111831,
+        "sunland_payment_phase3_lab",
+        "sunland-payment-phase3:crash-after-activated"
+      ],
+      "terminated": true
+    },
+    "after_crash": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash6",
+          "unresolved",
+          "unknown",
+          null,
+          "PROVIDER_VERIFICATION_REQUIRED",
+          "2026-09-29 11:45:27.893940+00:00",
+          null,
+          null,
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash6",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "840a6439-e0f0-4128-998c-2e4463615abc",
+          "lab-e4a4f79c-crash6",
+          "pending"
+        ]
+      ]
+    },
+    "recovery_rpc": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-crash6",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": "unresolved",
+      "attempt_count": 2,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "after_recovery": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash6",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-crash6",
+          null,
+          null,
+          "840a6439-e0f0-4128-998c-2e4463615abc",
+          "2026-09-29 11:45:27.930009+00:00",
+          "2026-09-29 11:45:27.930009+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash6",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "840a6439-e0f0-4128-998c-2e4463615abc",
+          "lab-e4a4f79c-crash6",
+          "activated"
+        ]
+      ]
+    },
+    "exception": [
+      "AdminShutdown"
+    ]
+  },
+  {
+    "test": "CRASH-8",
+    "result": "PASS",
+    "point": "after-COMMIT-before-HTTP",
+    "provider": "synthetic verified fixture; network-stage crash represented by stopping the lab session before RPC",
+    "before": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash7",
+          "unresolved",
+          "unknown",
+          null,
+          "PROVIDER_VERIFICATION_REQUIRED",
+          "2026-09-29 11:45:27.946199+00:00",
+          null,
+          null,
+          null
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash7",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "076d9215-715a-4d6b-8505-db7a7fd12688",
+          "lab-e4a4f79c-crash7",
+          "pending"
+        ]
+      ]
+    },
+    "activity": [
+      111833,
+      "active",
+      "Timeout",
+      "PgSleep",
+      "select pg_sleep(30)"
+    ],
+    "termination": {
+      "guard": [
+        111833,
+        "sunland_payment_phase3_lab",
+        "sunland-payment-phase3:crash-after-COMMIT-before-HTTP"
+      ],
+      "terminated": true
+    },
+    "after_crash": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash7",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-crash7",
+          null,
+          null,
+          "076d9215-715a-4d6b-8505-db7a7fd12688",
+          "2026-09-29 11:45:27.949514+00:00",
+          "2026-09-29 11:45:27.949514+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash7",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "076d9215-715a-4d6b-8505-db7a7fd12688",
+          "lab-e4a4f79c-crash7",
+          "activated"
+        ]
+      ]
+    },
+    "recovery_rpc": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-crash7",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": "activated",
+      "attempt_count": 3,
+      "payment_status": "paid",
+      "already_processed": true
+    },
+    "after_recovery": {
+      "orders": [
+        [
+          "lab-e4a4f79c-crash7",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-crash7",
+          null,
+          null,
+          "076d9215-715a-4d6b-8505-db7a7fd12688",
+          "2026-09-29 11:45:27.981188+00:00",
+          "2026-09-29 11:45:27.981188+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-crash7",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "076d9215-715a-4d6b-8505-db7a7fd12688",
+          "lab-e4a4f79c-crash7",
+          "activated"
+        ]
+      ]
+    },
+    "exception": [
+      "AdminShutdown"
+    ]
+  },
+  {
+    "test": "COMMIT-UNKNOWN-persisted",
+    "result": "PASS",
+    "TCP_events": [
+      "client sent COMMIT on TCP",
+      "server processed COMMIT; HTTP/SQL response dropped"
+    ],
+    "before": {
+      "orders": [],
+      "profiles": [
+        [
+          "lab-e4a4f79c-unknown-persisted",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "93091865-e6c8-4330-927c-8cf6bd3b41f9",
+          "lab-e4a4f79c-unknown-persisted",
+          "pending"
+        ]
+      ]
+    },
+    "uncommitted_rpc": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-unknown-persisted",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": null,
+      "attempt_count": 1,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "authoritative_after_drop": {
+      "orders": [
+        [
+          "lab-e4a4f79c-unknown-persisted",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-unknown-persisted",
+          null,
+          null,
+          "93091865-e6c8-4330-927c-8cf6bd3b41f9",
+          "2026-09-29 11:45:28.000404+00:00",
+          "2026-09-29 11:45:28.000404+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-unknown-persisted",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "93091865-e6c8-4330-927c-8cf6bd3b41f9",
+          "lab-e4a4f79c-unknown-persisted",
+          "activated"
+        ]
+      ]
+    },
+    "retry_rpc": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-unknown-persisted",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": "activated",
+      "attempt_count": 2,
+      "payment_status": "paid",
+      "already_processed": true
+    },
+    "after_retry": {
+      "orders": [
+        [
+          "lab-e4a4f79c-unknown-persisted",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-unknown-persisted",
+          null,
+          null,
+          "93091865-e6c8-4330-927c-8cf6bd3b41f9",
+          "2026-09-29 11:45:28.010995+00:00",
+          "2026-09-29 11:45:28.010995+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-unknown-persisted",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "93091865-e6c8-4330-927c-8cf6bd3b41f9",
+          "lab-e4a4f79c-unknown-persisted",
+          "activated"
+        ]
+      ]
+    }
+  },
+  {
+    "test": "COMMIT-UNKNOWN-rolled-back",
+    "result": "PASS",
+    "TCP_events": [
+      "client sent COMMIT on TCP",
+      "COMMIT not forwarded; upstream TCP dropped"
+    ],
+    "before": {
+      "orders": [],
+      "profiles": [
+        [
+          "lab-e4a4f79c-unknown-rolled-back",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "4a92712a-566b-488d-a4f5-2c0007d29ad8",
+          "lab-e4a4f79c-unknown-rolled-back",
+          "pending"
+        ]
+      ]
+    },
+    "uncommitted_rpc": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-unknown-rolled-back",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": null,
+      "attempt_count": 1,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "authoritative_after_drop": {
+      "orders": [],
+      "profiles": [
+        [
+          "lab-e4a4f79c-unknown-rolled-back",
+          false,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "4a92712a-566b-488d-a4f5-2c0007d29ad8",
+          "lab-e4a4f79c-unknown-rolled-back",
+          "pending"
+        ]
+      ]
+    },
+    "retry_rpc": {
+      "cached": false,
+      "status": "activated",
+      "order_id": "lab-e4a4f79c-unknown-rolled-back",
+      "reason_code": null,
+      "retry_class": "terminal",
+      "state_after": "activated",
+      "state_before": null,
+      "attempt_count": 1,
+      "payment_status": "paid",
+      "already_processed": false
+    },
+    "after_retry": {
+      "orders": [
+        [
+          "lab-e4a4f79c-unknown-rolled-back",
+          "activated",
+          "paid",
+          "lab-e4a4f79c-unknown-rolled-back",
+          null,
+          null,
+          "4a92712a-566b-488d-a4f5-2c0007d29ad8",
+          "2026-09-29 11:45:28.053770+00:00",
+          "2026-09-29 11:45:28.053770+00:00"
+        ]
+      ],
+      "profiles": [
+        [
+          "lab-e4a4f79c-unknown-rolled-back",
+          true,
+          "active"
+        ]
+      ],
+      "intents": [
+        [
+          "4a92712a-566b-488d-a4f5-2c0007d29ad8",
+          "lab-e4a4f79c-unknown-rolled-back",
+          "activated"
+        ]
+      ]
+    }
+  }
+]

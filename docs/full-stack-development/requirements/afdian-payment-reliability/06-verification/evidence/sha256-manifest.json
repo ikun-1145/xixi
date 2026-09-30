@@ -1,0 +1,30 @@
+{
+  "description": "Synthetic local Phase 3 evidence; no production records or credentials",
+  "files": {
+    "starting-workspace.json": "354236ff35d15e56b41cffd49f4858bb31c83b2e10d0a536f6e5ceb2e7649b62",
+    "destructive-start.json": "f2c7d24a2c1901c1c56514d21862c81f40daff591bfa0d9436f32aaa42ef894d",
+    "destructive-end.json": "f2c7d24a2c1901c1c56514d21862c81f40daff591bfa0d9436f32aaa42ef894d",
+    "pg-lab-results.json": "9ac3b2afc65b0b96b7e32723ca1a8faab5249e77a3c677ff66371dd2e6f2aab7",
+    "rest-lab-results.json": "ba95dd0a4ce4ac5327cdbddfa42be5cffa0899418c811a9add081257c3649682",
+    "worker-physical-crash-results.json": "c450063974fd38057d277ecbc45e9a0dd22ad0bc885fa200be3d179c647e9fc3",
+    "browser-results.json": "9bb8482bfd3d88500e058b9478d7493a2398a95fe8fdd97a8ae4ebd58bbb334a",
+    "browser-baseline-results.json": "24729a03c615ffa9fdf0163407b62d61b14d83582edb31b36390facc11ffb47c",
+    "baseline-head-tests.log": "1f7eeed0a31a5847a5c717bde9f743f7b76751e7f3312daf3ea144d36135ad5d",
+    "uuid-red.log": "1acdb5455bd8a99b43752273c90ae2dbdf672f20108250a63906d6235a3fb717",
+    "uuid-green.log": "246a52ba4782aa824ab4430ffd81dc3208fd1a051e21f3aa9ff286a71e4d9944",
+    "unit-provider.log": "acc6383028390b45aa30b2d40cd9a3b06e62569ec1741c63004dc8b9c2282f16",
+    "pg-lab.log": "be8dbb304d8aafc424850d721c4d02e653cacb26669ed13c6ca088c8f4668923",
+    "rest-lab.log": "ce9871180c875dd5e73c78a92d1f8010ed72a7877eb768abeda1db37c5c98c77",
+    "worker-physical-crash.log": "389f15a2d244cb9af23a18ef69a8450ef82dca697b9d56571af5468401a264c1",
+    "frontend-final.log": "10879947be56e60bee1a605e830b100cfa3265cab7c06973bab9dea304ef2c13",
+    "full-regression-final.log": "7c748d64a5061c272f62f95383a0b32bd12c165293b93c83ea4dc381ba7e9b95",
+    "worker-build-final.log": "65761bd0ba8a24a81e8ae33b96a0f68f317c2cf62b416c7d075c85be0b1b04f0",
+    "browser-final.log": "2ff1d54ddabf4cd031c57177e8c53829eba47f5c0e709e45b777ccd94c3d59d6",
+    "settings-1280-pro.png": "50cd28c347a22a99b833077d87b092c3da242238632db1a84eca946b7f0eba65",
+    "settings-1280-free.png": "0e44b0cae27eb06085b1b0941ef2a874e69364c90a317d02f8d165c3b9537f8d",
+    "settings-1280-unknown.png": "e2e2f2406b31a6c0983303a05fc49233c6797cac27e2d985f61120f2440074b4",
+    "settings-390-pro.png": "58bb45131b1ac1d7c32ec8afe020b4a2baa62e0e27d7eac5082374d29b737540",
+    "settings-390-free.png": "ab5a4c1d2524444a89e0427841db937f7c81bd76b990a556ffbf5f2be1106267",
+    "settings-390-unknown.png": "bea1437f2c1f7d508e1f8a6a0f1be1eff2557a73cc42d2b6215fe7f5750c80da"
+  }
+}

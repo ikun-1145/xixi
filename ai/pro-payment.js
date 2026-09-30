@@ -10,12 +10,18 @@
   const SUPPORT_WINDOW_MS = 10 * 60 * 1000;
   const SHORT_POLL_INTERVAL_MS = 3 * 1000;
   const LONG_POLL_INTERVAL_MS = 15 * 1000;
+  const MAX_AUTOMATIC_ATTEMPTS = 5;
+  const MIN_RETRY_SECONDS = 1;
+  const MAX_RETRY_SECONDS = 10 * 60;
   const USER_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9@._+-]{0,127}$/;
   const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   let activeMonitoring = null;
 
   const COPY = {
     zh: {
+      checkStatus: "检查到账状态",
+      paidPending: "付款已确认，正在同步 Pro。",
+      statusUnavailable: "暂时无法检查到账，请稍后重试。",
       connecting: "正在安全连接支付平台，请稍候…",
       confirmation: "即将前往爱发电支付。请选择 ¥10 月付；付款成功后将自动开通永久 Pro，多选月份不会增加权益。确认前往支付？",
       identityError: "身份验证失败，请重新登录后再试。",
@@ -30,6 +36,9 @@
       loginRequired: "请先登录后再开通 Pro。",
     },
     "zh-Hant": {
+      checkStatus: "檢查到帳狀態",
+      paidPending: "付款已確認，正在同步 Pro。",
+      statusUnavailable: "暫時無法檢查到帳，請稍後重試。",
       connecting: "正在安全連線付款平台，請稍候…",
       confirmation: "即將前往愛發電付款。請選擇 ¥10 月付；付款成功後會自動開通永久 Pro，多選月份不會增加權益。確認前往付款？",
       identityError: "身分驗證失敗，請重新登入後再試。",
@@ -44,6 +53,9 @@
       loginRequired: "請先登入後再開通 Pro。",
     },
     en: {
+      checkStatus: "Check payment status",
+      paidPending: "Payment confirmed. Synchronizing Pro.",
+      statusUnavailable: "Payment status is unavailable. Please try again later.",
       connecting: "Connecting securely to checkout. Please wait…",
       confirmation: "You will be taken to Afdian. Choose the ¥10 monthly option; successful payment unlocks permanent Pro, and extra months add no benefits. Continue?",
       identityError: "Identity verification failed. Please sign in again and retry.",
@@ -58,6 +70,9 @@
       loginRequired: "Please sign in before upgrading to Pro.",
     },
     ja: {
+      checkStatus: "支払い状況を確認",
+      paidPending: "支払いを確認しました。Pro を同期中です。",
+      statusUnavailable: "支払い状況を確認できません。後でもう一度お試しください。",
       connecting: "決済ページに安全に接続しています。しばらくお待ちください…",
       confirmation: "愛発電の決済ページを開きます。¥10 の月額プランを選んでください。決済後は永久 Pro が有効になり、月数を増やしても特典は増えません。続けますか？",
       identityError: "本人確認に失敗しました。再ログインしてからやり直してください。",
@@ -72,6 +87,9 @@
       loginRequired: "Pro にアップグレードする前にログインしてください。",
     },
     ko: {
+      checkStatus: "결제 상태 확인",
+      paidPending: "결제가 확인되었습니다. Pro를 동기화 중입니다.",
+      statusUnavailable: "결제 상태를 확인할 수 없습니다. 나중에 다시 시도하세요.",
       connecting: "결제 페이지에 안전하게 연결 중입니다. 잠시 기다려 주세요…",
       confirmation: "Afdian 결제 페이지로 이동합니다. ¥10 월간 옵션을 선택하세요. 결제에 성공하면 영구 Pro가 활성화되며, 여러 달을 선택해도 혜택은 늘어나지 않습니다. 계속할까요?",
       identityError: "신원 확인에 실패했습니다. 다시 로그인한 후 시도하세요.",
@@ -86,6 +104,9 @@
       loginRequired: "Pro로 업그레이드하기 전에 로그인하세요.",
     },
     es: {
+      checkStatus: "Comprobar el pago",
+      paidPending: "Pago confirmado. Sincronizando Pro.",
+      statusUnavailable: "No se puede comprobar el pago. Inténtalo más tarde.",
       connecting: "Conectando de forma segura al pago. Espera un momento…",
       confirmation: "Irás a Afdian. Elige la opción mensual de ¥10; tras el pago se activa Pro permanente y añadir meses no aumenta los beneficios. ¿Continuar?",
       identityError: "La verificación de identidad falló. Vuelve a iniciar sesión e inténtalo de nuevo.",
@@ -206,6 +227,10 @@
   }
 
   async function beginCheckout({ supabase, expectedUserId = null, isExpectedUser = null } = {}) {
+    const checkoutEpoch = membership.identityVersion;
+    const checkoutCredential = global.localStorage?.getItem("token") || null;
+    const checkoutCurrent = () => membership.identityVersion === checkoutEpoch
+      && (global.localStorage?.getItem("token") || null) === checkoutCredential;
     const popup = openPlaceholder();
     if (!popup) throw new Error(text("popupError"));
 
@@ -215,7 +240,7 @@
     });
     try {
       const identity = await Promise.race([getVerifiedDatabaseIdentity(expectedUserId), timeout]);
-      if (typeof isExpectedUser === "function" && !isExpectedUser(identity.userId)) {
+      if (!checkoutCurrent() || (typeof isExpectedUser === "function" && !isExpectedUser(identity.userId))) {
         throw new Error(text("identityError"));
       }
       if (!supabase?.rpc) throw new Error(text("intentError"));
@@ -224,7 +249,7 @@
       if (error) throw new Error(text("intentError"));
       const intent = unpackIntent(data);
 
-      if (typeof isExpectedUser === "function" && !isExpectedUser(identity.userId)) {
+      if (!checkoutCurrent() || (typeof isExpectedUser === "function" && !isExpectedUser(identity.userId))) {
         throw new Error(text("identityError"));
       }
       if (intent.status === "activated") {
@@ -245,71 +270,227 @@
     }
   }
 
+  // Membership is memory-only and scoped to the verified identity and credential epoch.
+  let membership = { userId: null, state: "UNKNOWN", identityVersion: 0,
+    requestGeneration: 0, lastConfirmedAt: null, stale: false, paymentSync: null };
+  let credential = null;
+  let reconciliation = null;
+  let reconcileNotBefore = 0;
+  const subscribers = new Set();
+
+  function getState() { return { ...membership }; }
+  function publish() { for (const listener of subscribers) listener(getState()); }
+  function subscribe(listener) { subscribers.add(listener); listener(getState()); return () => subscribers.delete(listener); }
+
+  function setIdentity(userId, token = global.localStorage?.getItem("token") || null) {
+    userId = USER_ID_PATTERN.test(userId || "") ? userId : null;
+    if (membership.userId === userId && credential === token) return getState();
+    const sameUser = userId && membership.userId === userId;
+    if (!sameUser) reconcileNotBefore = 0;
+    stopActivationMonitoring();
+    reconciliation = null;
+    credential = token;
+    membership = { userId, state: sameUser ? membership.state : "UNKNOWN",
+      identityVersion: membership.identityVersion + 1, requestGeneration: membership.requestGeneration + 1,
+      lastConfirmedAt: sameUser ? membership.lastConfirmedAt : null,
+      stale: Boolean(sameUser), paymentSync: null };
+    publish();
+    return getState();
+  }
+
+  function captureRequest(increment = true) {
+    return { userId: membership.userId, identityVersion: membership.identityVersion,
+      requestGeneration: increment ? ++membership.requestGeneration : membership.requestGeneration };
+  }
+  function isCurrent(request, checkGeneration = true) {
+    return request?.userId === membership.userId && request?.identityVersion === membership.identityVersion
+      && (!checkGeneration || request.requestGeneration === membership.requestGeneration)
+      && credential === (global.localStorage?.getItem("token") || null);
+  }
+  function applyMembership(pro, request) {
+    if (typeof pro !== "boolean" || !request?.userId || !isCurrent(request)) return false;
+    membership.state = pro ? "PRO" : "FREE";
+    membership.lastConfirmedAt = Date.now();
+    membership.stale = false;
+    if (pro && activeMonitoring) {
+      global.clearTimeout?.(activeMonitoring.supportTimer);
+      activeMonitoring.supportTimer = null;
+    }
+    publish();
+    return true;
+  }
+  function markUnavailable(request = null) {
+    if (request && !isCurrent(request)) return false;
+    membership.stale = true;
+    publish();
+    return true;
+  }
+  function requireProFree() {
+    return applyMembership(false, captureRequest());
+  }
+  async function refreshMembership(supabase) {
+    const request = captureRequest();
+    if (!request.userId) return getState();
+    try {
+      const { data, error } = await supabase.from("user_profiles").select("pro")
+        .eq("user_id", request.userId).maybeSingle();
+      if (error || !applyMembership(data?.pro, request)) markUnavailable(request);
+    } catch { markUnavailable(request); }
+    return getState();
+  }
+
+  function applyReconciliationCooldown(response, result) {
+    const header = response.headers?.get?.("Retry-After");
+    const headerSeconds = typeof header === "string" && /^\d+$/.test(header) ? Number(header) : null;
+    const bodySeconds = result?.retry_after_seconds;
+    const seconds = Number.isSafeInteger(headerSeconds) ? headerSeconds
+      : Number.isSafeInteger(bodySeconds) && bodySeconds >= 0 ? bodySeconds
+      : response.status === 429 || response.status === 503 ? LONG_POLL_INTERVAL_MS / 1000 : null;
+    if (seconds !== null) {
+      const bounded = Math.max(MIN_RETRY_SECONDS, Math.min(MAX_RETRY_SECONDS, seconds));
+      reconcileNotBefore = Math.max(reconcileNotBefore, Date.now() + bounded * 1000);
+    }
+  }
+
+  async function reconcile() {
+    if (!membership.userId || !credential) return getState();
+    if (reconciliation) return reconciliation;
+    if (Date.now() < reconcileNotBefore) return getState();
+    const request = captureRequest();
+    const token = credential;
+    const run = (async () => {
+      try {
+        const response = await global.fetch("https://afdianpay.sunland.dev/payment/reconcile", {
+          method: "POST", headers: { "Content-Type": "application/json", Authorization: "Bearer " + token },
+          body: "{}", cache: "no-store", signal: AbortSignal.timeout(10000),
+        });
+        if (!isCurrent(request, false)) return getState();
+        const result = await response.json?.().catch(() => null);
+        if (!isCurrent(request, false)) return getState();
+        applyReconciliationCooldown(response, result);
+        if (!isCurrent(request)) return getState();
+        if (response.status === 401) {
+          setIdentity(null);
+          return getState();
+        }
+        if (response.status === 403) {
+          const code = result?.code || result?.error?.code || result?.error;
+          if (["account_inactive", "account_deleting", "account_retired", "ACCOUNT_NOT_ACTIVE", "ACCOUNT_INACTIVE", "ACCOUNT_DELETING", "ACCOUNT_RETIRED"].includes(code)) {
+            if (isCurrent(request)) {
+              global.SunlandDatabaseToken?.clear?.();
+              setIdentity(null);
+            }
+            return getState();
+          }
+        }
+        if (!response.ok) throw new Error("reconciliation-unavailable");
+        if (!isCurrent(request)) return getState();
+        if (result?.user_id !== request.userId) throw new Error("reconciliation-identity-mismatch");
+        membership.paymentSync = result.payment_sync || null;
+        if (result.membership?.state !== "confirmed" || !applyMembership(result.membership.pro, request)) {
+          markUnavailable(request);
+        }
+      } catch {
+        if (isCurrent(request, false)) reconcileNotBefore = Math.max(reconcileNotBefore, Date.now() + LONG_POLL_INTERVAL_MS);
+        markUnavailable(request);
+      }
+      return getState();
+    })();
+    reconciliation = run;
+    try { return await run; }
+    finally { if (reconciliation === run) reconciliation = null; }
+  }
+
   function stopActivationMonitoring() {
     if (!activeMonitoring) return;
     global.clearTimeout?.(activeMonitoring.timer);
-    global.removeEventListener?.("visibilitychange", activeMonitoring.onVisibilityChange);
+    global.clearTimeout?.(activeMonitoring.supportTimer);
+    global.document?.removeEventListener?.("visibilitychange", activeMonitoring.onVisibilityChange);
+    global.removeEventListener?.("focus", activeMonitoring.onFocus);
+    global.removeEventListener?.("pageshow", activeMonitoring.onFocus);
     activeMonitoring = null;
   }
 
   function startActivationMonitoring({ supabase, getExpectedUserId, onActivated, onTimeout } = {}) {
     stopActivationMonitoring();
     const userId = typeof getExpectedUserId === "function" ? getExpectedUserId() : null;
+    if (!userId || membership.userId !== userId) return stopActivationMonitoring;
     const pending = getPending(userId);
-    if (!supabase?.from || !pending || !userId) return stopActivationMonitoring;
-
-    const state = { timer: null, running: false, onVisibilityChange: null };
+    const epoch = membership.identityVersion;
+    const state = { timer: null, supportTimer: null, running: false, notified: false, timeoutNotified: false,
+      startedAt: Date.now(), attempts: 0, automaticFinished: false, onVisibilityChange: null, onFocus: null };
     activeMonitoring = state;
-
-    const stopIfCurrent = () => {
-      if (activeMonitoring === state) stopActivationMonitoring();
+    const current = () => activeMonitoring === state && membership.identityVersion === epoch
+      && getExpectedUserId() === userId && credential === (global.localStorage?.getItem("token") || null);
+    const stopIfCurrent = () => { if (activeMonitoring === state) stopActivationMonitoring(); };
+    const finishAutomatic = () => {
+      state.automaticFinished = true;
+      global.clearTimeout?.(state.timer);
+      state.timer = null;
     };
-    const tick = async () => {
-      if (activeMonitoring !== state || state.running) return;
-      if (typeof getExpectedUserId !== "function" || getExpectedUserId() !== userId) {
-        stopIfCurrent();
+    const schedule = () => {
+      if (!current() || state.automaticFinished) return;
+      global.clearTimeout?.(state.timer);
+      const elapsed = Date.now() - state.startedAt;
+      if (elapsed >= SUPPORT_WINDOW_MS || state.attempts >= MAX_AUTOMATIC_ATTEMPTS) {
+        finishAutomatic();
+        return;
+      }
+      const interval = elapsed < SHORT_POLL_WINDOW_MS ? SHORT_POLL_INTERVAL_MS : LONG_POLL_INTERVAL_MS;
+      const delay = Math.min(SUPPORT_WINDOW_MS - elapsed, Math.max(interval, reconcileNotBefore - Date.now()));
+      state.timer = global.setTimeout?.(() => { state.timer = null; void tick(); }, delay);
+    };
+    const tick = async (resume = false) => {
+      if (!current() || state.running) return;
+      if (!resume && (state.automaticFinished || Date.now() - state.startedAt >= SUPPORT_WINDOW_MS
+          || state.attempts >= MAX_AUTOMATIC_ATTEMPTS)) {
+        finishAutomatic();
+        return;
+      }
+      if (global.document?.visibilityState === "hidden" || Date.now() < reconcileNotBefore) {
+        if (state.timer === null) schedule();
         return;
       }
       state.running = true;
+      if (!resume) state.attempts += 1;
       try {
-        const { data } = await supabase
-          .from("user_profiles")
-          .select("pro")
-          .eq("user_id", userId)
-          .maybeSingle();
-        if (activeMonitoring !== state || getExpectedUserId() !== userId) return;
-        if (data?.pro) {
+        if (global.fetch) await reconcile();
+        else await refreshMembership(supabase);
+        if (!current()) return;
+        if (membership.state === "PRO" && !membership.stale && !state.notified) {
+          state.notified = true;
           clearPending(userId);
+          if (pending) onActivated?.({ userId, snapshot: getState() });
           stopIfCurrent();
-          onActivated?.({ userId });
           return;
         }
-      } catch {
-        // Temporary read failures never mean the payment failed; the next poll and server reconciliation remain active.
-      } finally {
-        state.running = false;
-      }
-
-      if (activeMonitoring !== state) return;
-      const elapsed = Date.now() - pending.startedAt;
-      if (elapsed >= SUPPORT_WINDOW_MS) {
-        stopIfCurrent();
-        onTimeout?.({ userId, supportUrl: SUPPORT_URL });
-        return;
-      }
-      const delay = elapsed < SHORT_POLL_WINDOW_MS ? SHORT_POLL_INTERVAL_MS : LONG_POLL_INTERVAL_MS;
-      state.timer = global.setTimeout?.(tick, delay);
+      } finally { state.running = false; }
+      schedule();
     };
-
-    state.onVisibilityChange = () => {
-      if (global.document?.visibilityState === "visible") void tick();
-    };
-    global.addEventListener?.("visibilitychange", state.onVisibilityChange);
+    if (pending && typeof onTimeout === "function") {
+      state.supportTimer = global.setTimeout?.(() => {
+        state.supportTimer = null;
+        if (!current() || state.timeoutNotified || membership.state === "PRO") return;
+        state.timeoutNotified = true;
+        onTimeout({ userId, supportUrl: SUPPORT_URL });
+      }, Math.max(0, SUPPORT_WINDOW_MS - (Date.now() - pending.startedAt)));
+    }
+    state.onFocus = () => { if (global.document?.visibilityState !== "hidden") void tick(true); };
+    state.onVisibilityChange = () => { if (global.document?.visibilityState === "visible") void tick(true); };
+    global.document?.addEventListener?.("visibilitychange", state.onVisibilityChange);
+    global.addEventListener?.("focus", state.onFocus);
+    global.addEventListener?.("pageshow", state.onFocus);
     void tick();
     return stopIfCurrent;
   }
 
+  global.addEventListener?.("storage", event => {
+    if (event.key === "token" || event.key === null) setIdentity(null);
+  });
+
   global.SunlandProPayment = {
+    setIdentity, getState, subscribe, captureRequest, isCurrent, applyMembership,
+    markUnavailable, requireProFree, refreshMembership, reconcile,
     PLAN_ID,
     SUPPORT_URL,
     text,

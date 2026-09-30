@@ -6,6 +6,13 @@
   "use strict";
 
   const generatedCatalog = {
+  "检查到账状态": {
+    "zh-Hant": "檢查到帳狀態",
+    "en": "Check payment status",
+    "ja": "支払い状況を確認",
+    "ko": "결제 상태 확인",
+    "es": "Comprobar el pago"
+  },
   "Pro 到账申诉": {
     "zh-Hant": "Pro 到帳申訴",
     "en": "Pro activation support",

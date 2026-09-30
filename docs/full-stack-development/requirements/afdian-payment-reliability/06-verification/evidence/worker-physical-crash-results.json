@@ -1,0 +1,206 @@
+[
+  {
+    "point": "before-provider-query",
+    "registeredOwnedChildGuard": {
+      "database": "sunland_payment_phase3_lab",
+      "stage": "before-provider-query",
+      "pid": 34979,
+      "run": "6f2dcd16-f70a-4495-a18e-7000325a8a47"
+    },
+    "terminated": {
+      "code": null,
+      "signal": "SIGKILL"
+    },
+    "before": [
+      {
+        "order_id": "lab-physical-order-6f2dcd16",
+        "plan_id": "",
+        "total_amount": null,
+        "paid_at": null,
+        "bound_user_id": null,
+        "binding_source": "unresolved",
+        "status": "unresolved",
+        "attempt_count": 1,
+        "last_error_code": "PROVIDER_VERIFICATION_REQUIRED",
+        "first_seen_at": "2026-09-29T11:45:29.282405+00:00",
+        "last_seen_at": "2026-09-29T11:45:29.291954+00:00",
+        "activated_at": null,
+        "resolved_at": null,
+        "payment_status": "unknown",
+        "last_verified_at": null,
+        "next_retry_at": "2026-09-29T11:45:49.291954+00:00",
+        "verified_binding_reference": null,
+        "binding_reference_verified_at": null
+      }
+    ],
+    "after": [
+      {
+        "order_id": "lab-physical-order-6f2dcd16",
+        "plan_id": "",
+        "total_amount": null,
+        "paid_at": null,
+        "bound_user_id": null,
+        "binding_source": "unresolved",
+        "status": "unresolved",
+        "attempt_count": 1,
+        "last_error_code": "PROVIDER_VERIFICATION_REQUIRED",
+        "first_seen_at": "2026-09-29T11:45:29.282405+00:00",
+        "last_seen_at": "2026-09-29T11:45:29.291954+00:00",
+        "activated_at": null,
+        "resolved_at": null,
+        "payment_status": "unknown",
+        "last_verified_at": null,
+        "next_retry_at": "2026-09-29T11:45:49.291954+00:00",
+        "verified_binding_reference": null,
+        "binding_reference_verified_at": null
+      }
+    ],
+    "profile": [
+      {
+        "user_id": "lab-physical-6f2dcd16",
+        "avatar_url": null,
+        "avatar_path": null,
+        "updated_at": "2026-09-29T11:45:29.185308+00:00",
+        "name": null,
+        "pro": false,
+        "email": null,
+        "created_at": "2026-09-29T11:45:29.185308+00:00",
+        "is_banned": false,
+        "ban_reason": null,
+        "identity_status": "active",
+        "deletion_job_id": null,
+        "deletion_attempt_id": null,
+        "deletion_fencing_version": 0,
+        "deletion_started_at": null,
+        "retired_at": null,
+        "profile_sanitized_at": null
+      }
+    ],
+    "recovered": [
+      {
+        "order_id": "lab-physical-order-6f2dcd16",
+        "plan_id": "4c2527fc6c7411f1bbe45254001e7c00",
+        "total_amount": 10,
+        "paid_at": null,
+        "bound_user_id": "lab-physical-6f2dcd16",
+        "binding_source": "intent",
+        "status": "activated",
+        "attempt_count": 2,
+        "last_error_code": null,
+        "first_seen_at": "2026-09-29T11:45:29.282405+00:00",
+        "last_seen_at": "2026-09-29T11:45:29.315402+00:00",
+        "activated_at": "2026-09-29T11:45:29.315402+00:00",
+        "resolved_at": "2026-09-29T11:45:29.315402+00:00",
+        "payment_status": "paid",
+        "last_verified_at": "2026-09-29T11:45:29.315963+00:00",
+        "next_retry_at": null,
+        "verified_binding_reference": "17b07abb-0df3-4cc5-9db6-a8c2fad010bb",
+        "binding_reference_verified_at": "2026-09-29T11:45:29.315963+00:00"
+      }
+    ],
+    "provider": "synthetic HTTPS interception",
+    "db": "real isolated PostgreSQL"
+  },
+  {
+    "point": "after-provider-query",
+    "registeredOwnedChildGuard": {
+      "database": "sunland_payment_phase3_lab",
+      "stage": "after-provider-query",
+      "pid": 34981,
+      "run": "213e6666-5099-43c2-950f-7afd28ffa234"
+    },
+    "terminated": {
+      "code": null,
+      "signal": "SIGKILL"
+    },
+    "before": [
+      {
+        "order_id": "lab-physical-order-213e6666",
+        "plan_id": "",
+        "total_amount": null,
+        "paid_at": null,
+        "bound_user_id": null,
+        "binding_source": "unresolved",
+        "status": "unresolved",
+        "attempt_count": 1,
+        "last_error_code": "PROVIDER_VERIFICATION_REQUIRED",
+        "first_seen_at": "2026-09-29T11:45:29.378027+00:00",
+        "last_seen_at": "2026-09-29T11:45:29.391166+00:00",
+        "activated_at": null,
+        "resolved_at": null,
+        "payment_status": "unknown",
+        "last_verified_at": null,
+        "next_retry_at": "2026-09-29T11:45:49.391166+00:00",
+        "verified_binding_reference": null,
+        "binding_reference_verified_at": null
+      }
+    ],
+    "after": [
+      {
+        "order_id": "lab-physical-order-213e6666",
+        "plan_id": "",
+        "total_amount": null,
+        "paid_at": null,
+        "bound_user_id": null,
+        "binding_source": "unresolved",
+        "status": "unresolved",
+        "attempt_count": 1,
+        "last_error_code": "PROVIDER_VERIFICATION_REQUIRED",
+        "first_seen_at": "2026-09-29T11:45:29.378027+00:00",
+        "last_seen_at": "2026-09-29T11:45:29.391166+00:00",
+        "activated_at": null,
+        "resolved_at": null,
+        "payment_status": "unknown",
+        "last_verified_at": null,
+        "next_retry_at": "2026-09-29T11:45:49.391166+00:00",
+        "verified_binding_reference": null,
+        "binding_reference_verified_at": null
+      }
+    ],
+    "profile": [
+      {
+        "user_id": "lab-physical-213e6666",
+        "avatar_url": null,
+        "avatar_path": null,
+        "updated_at": "2026-09-29T11:45:29.322007+00:00",
+        "name": null,
+        "pro": false,
+        "email": null,
+        "created_at": "2026-09-29T11:45:29.322007+00:00",
+        "is_banned": false,
+        "ban_reason": null,
+        "identity_status": "active",
+        "deletion_job_id": null,
+        "deletion_attempt_id": null,
+        "deletion_fencing_version": 0,
+        "deletion_started_at": null,
+        "retired_at": null,
+        "profile_sanitized_at": null
+      }
+    ],
+    "recovered": [
+      {
+        "order_id": "lab-physical-order-213e6666",
+        "plan_id": "4c2527fc6c7411f1bbe45254001e7c00",
+        "total_amount": 10,
+        "paid_at": null,
+        "bound_user_id": "lab-physical-213e6666",
+        "binding_source": "intent",
+        "status": "activated",
+        "attempt_count": 2,
+        "last_error_code": null,
+        "first_seen_at": "2026-09-29T11:45:29.378027+00:00",
+        "last_seen_at": "2026-09-29T11:45:29.427441+00:00",
+        "activated_at": "2026-09-29T11:45:29.427441+00:00",
+        "resolved_at": "2026-09-29T11:45:29.427441+00:00",
+        "payment_status": "paid",
+        "last_verified_at": "2026-09-29T11:45:29.42899+00:00",
+        "next_retry_at": null,
+        "verified_binding_reference": "48bab884-d540-4b16-86fc-ade45c1dc1c2",
+        "binding_reference_verified_at": "2026-09-29T11:45:29.42899+00:00"
+      }
+    ],
+    "provider": "synthetic HTTPS interception",
+    "db": "real isolated PostgreSQL"
+  }
+]
