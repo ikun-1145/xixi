@@ -787,15 +787,15 @@
     "ko": "오늘의 무료 메시지는 Δ을 사용",
     "es": "Los mensajes gratis de hoy se utilizan"
   },
-  "每天限免 20 次，明天自动重置。 支付 10 元可永久解锁无限使用。": {
-    "zh-Hant": "每天限免 20 次，明天自動重置。 支付 10 元可永久解鎖無限使用。",
-    "ko": "하루 20 무료 메시지를 수신, 내일 재설정. 영구적으로 무제한 사용으로 한 번 유료 ¥ 10.",
-    "es": "Recibirás 20 mensajes gratis por día, reiniciarás mañana. Paga ¥10 una vez para desbloquear el uso ilimitado permanentemente."
+  "每天限免 20 次，明天自动重置。 支付 15 元可永久解锁无限使用。": {
+    "zh-Hant": "每天限免 20 次，明天自動重置。 支付 15 元可永久解鎖無限使用。",
+    "ko": "하루 20 무료 메시지를 수신, 내일 재설정. 영구적으로 무제한 사용으로 한 번 유료 ¥ 15.",
+    "es": "Recibirás 20 mensajes gratis por día, reiniciarás mañana. Paga ¥15 una vez para desbloquear el uso ilimitado permanentemente."
   },
-  "支付 10 元（永久）": {
-    "zh-Hant": "支付 10 元（永久）",
-    "ko": "유료 ¥10 (자본)",
-    "es": "Pagar 10 yenes (permanente)"
+  "支付 15 元（永久）": {
+    "zh-Hant": "支付 15 元（永久）",
+    "ko": "유료 ¥15 (자본)",
+    "es": "Pagar 15 yenes (permanente)"
   },
   "激活成功": {
     "zh-Hant": "啟用成功",
@@ -981,11 +981,6 @@
     "zh-Hant": "訊息處理失敗，請稍後重試",
     "ko": "메시지를 처리 할 수 없습니다. 나중에 다시 시도하십시오.",
     "es": "Incapaz de procesar el mensaje. Por favor, intente de nuevo más tarde."
-  },
-  "即将前往爱发电支付。 请选择「月付」方案（¥10 / 月）即可——付款成功后将自动开通【永久 Pro】， 无需多选月份，多付不会增加权益。 确认前往支付？": {
-    "zh-Hant": "即將前往愛發電支付。 請選擇「月付」方案（¥10 / 月）即可——付款成功後將自動開通【永久 Pro】， 無需多選月份，多付不會增加權益。 確認前往支付？",
-    "ko": "당신은 Afdian에 계속됩니다. 월별 플랜 선택 (¥10/month); 영구적으로 Pro를 잠금 해제. 여분의 달 선택은 혜택을 추가하지 않습니다. 지불 계속?",
-    "es": "Estás a punto de continuar con Afdian. Elija el plan mensual (yen 10/mes); el pago desbloquea permanentemente Pro. La selección de meses adicionales no añade beneficios. ¿Sigues pagando?"
   },
   "深度思考已开启": {
     "zh-Hant": "深度思考已開啟",
@@ -1302,10 +1297,10 @@
     "ko": "이름 *",
     "es": "Permanente"
   },
-  "立即升级 · ¥10 永久": {
-    "zh-Hant": "立即升級 · ¥10 永久",
-    "ko": "지금 업그레이드 · 10 엔 영구",
-    "es": "Actualización ahora · ¥10 permanente"
+  "立即升级 · ¥15 永久": {
+    "zh-Hant": "立即升級 · ¥15 永久",
+    "ko": "지금 업그레이드 · 15 엔 영구",
+    "es": "Actualización ahora · ¥15 permanente"
   },
   "下载霜蓝AI客户端": {
     "zh-Hant": "下載霜藍AI用戶端",
@@ -3520,8 +3515,8 @@
   "继续使用 Flash": {
     "es": "Continúa con Flash"
   },
-  "支付 10 元（永久）": {
-    "es": "Paga 10 ¥ (permanente)"
+  "支付 15 元（永久）": {
+    "es": "Paga 15 ¥ (permanente)"
   },
   "激活成功": {
     "es": "Activación correcta",

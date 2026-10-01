@@ -10,8 +10,8 @@
       location.replace("login.html?return=ai.html");
     }
   </script>
-  <script defer src="p/js/site-i18n-extra.js?v=20260929-1"></script>
-  <script defer src="p/js/site-i18n.js?v=20260829-2"></script>
+  <script defer src="p/js/site-i18n-extra.js?v=20261001-review-1"></script>
+  <script defer src="p/js/site-i18n.js?v=20261001-review-1"></script>
   <title>设置 - Sunland AI · Beta</title>
   <link rel="stylesheet" href="p/css/icons.css?v=20260829-1">
   <style>
@@ -536,6 +536,7 @@ body.dark .usage-hint {
       box-shadow: 0 10px 28px rgba(167,139,250,0.45);
     }
     .btn-pro:active { transform: scale(0.97); }
+    .pro-disabled-note { margin-top: 8px; font-size: 12px; color: var(--subtext); text-align: center; }
     .pro-support-link {
       display: block;
       margin-top: 10px;
@@ -1212,8 +1213,8 @@ body.dark .usage-hint {
         <div class="pro-header">
           <div class="pro-gem"><span class="ui-svg-icon icon-gem" aria-hidden="true"></span></div>
           <div>
-            <div class="pro-title">霜蓝 Pro</div>
-            <div class="pro-sub">一次付费，永久解锁</div>
+            <div class="pro-title">霜蓝 AI Pro</div>
+            <div class="pro-sub">¥15 CNY · 一次性购买</div>
           </div>
         </div>
         <div class="pro-features">
@@ -1222,7 +1223,12 @@ body.dark .usage-hint {
           <div class="pro-feat">优先响应速度</div>
           <div class="pro-feat">永久有效</div>
         </div>
-        <button class="btn-pro" onclick="upgrade()">立即升级 · ¥10 永久</button>
+        <p class="pro-disabled-note">一次性购买 · 非订阅 · 不自动续费</p>
+        <p class="pro-disabled-note">霜蓝 AI 提供服务</p>
+        <button class="btn-pro" type="button" onclick="upgrade()">购买 Pro · ¥15 CNY</button>
+        <div class="pro-disabled-note" id="proReviewStatus" role="status" aria-live="polite"></div>
+        <a class="pro-support-link" href="mailto:support@sunland.dev">support@sunland.dev</a>
+        <div class="pro-support-link"><a href="privacy.html">隐私政策</a> · <a href="xukexieyi.html">用户协议</a> · <a href="pricing.html">付费说明</a></div>
         <button class="btn-pro" id="proRecheckBtn" type="button" onclick="recheckSettingsPayment()">检查到账状态</button>
         <div id="proPaymentStatus" role="status" aria-live="polite"></div>
         <a class="pro-support-link" id="proSupportLink" href="pro_activation_support.html">Pro 到账申诉</a>
@@ -1422,7 +1428,7 @@ body.dark .usage-hint {
   <script src="/p/vendor/supabase-2.110.7.js"></script>
   <script type="module" src="ai/maintenance.js?v=20260905-1"></script>
   <script src="/ai/database-token-client.js"></script>
-  <script src="/ai/pro-payment.js?v=20260929-1"></script>
+  <script src="/ai/pro-payment.js?v=20261001-review-1"></script>
   <script>
     window._supabaseClient = window._supabaseClient || window.supabase.createClient(
       "https://klyrasrqgxijwrxuoevj.supabase.co",
@@ -1917,28 +1923,8 @@ async function editNickname() {
     }
 
     async function upgrade() {
-      const payment = window.SunlandProPayment;
-      if (!payment) {
-        alert("暂时无法创建安全付款引用，未进入支付页，请稍后重试。");
-        return;
-      }
-      if (!confirm(payment.text("confirmation"))) return;
-
-      const userId = getUserFromToken()?.id;
-      if (!userId) { alert(payment.text("loginRequired")); return; }
-      const epoch = payment.getState().identityVersion;
-      try {
-        const result = await payment.beginCheckout({ supabase, expectedUserId: userId,
-          isExpectedUser: id => getUserFromToken()?.id === id && payment.getState().identityVersion === epoch });
-        if (result.alreadyActivated) {
-          await init();
-          alert(payment.text("alreadyActivated"));
-          return;
-        }
-        startSettingsProPaymentMonitoring(result.userId);
-      } catch (error) {
-        alert(error instanceof Error ? error.message : payment.text("intentError"));
-      }
+      const status = document.getElementById("proReviewStatus");
+      if (status) status.textContent = window.SunlandProPayment?.text?.("reviewNotice") || "支付服务正在上线审核中，暂不收款。";
     }
 
     function logout() {

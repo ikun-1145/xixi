@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script defer src="p/js/site-i18n-extra.js?v=20261001-review-1"></script>
+  <script defer src="p/js/site-i18n.js?v=20261001-review-1"></script>
+  <title>Sunland AI · Beta 定价</title>
+  <meta name="description" content="Sunland AI · Beta 定价说明：免费版与霜蓝 AI Pro 的权益与价格。Pro 为一次性买断 ¥15，永久有效，非订阅、不自动续费。">
+  <!-- 网站 favicon -->
+  <link rel="icon" type="image/png" href="p/ailogo.png">
+  <link rel="shortcut icon" href="p/ailogo.png">
+  <meta name="theme-color" content="#f7f9fa" media="(prefers-color-scheme: light)">
+  <meta name="theme-color" content="#13151e" media="(prefers-color-scheme: dark)">
+  <link rel="stylesheet" href="p/css/tokens.css">
+  <link rel="stylesheet" href="p/css/base.css">
+  <style>
+    /* 定价页（依赖 tokens.css / base.css） */
+    body {
+      padding: var(--space-8) var(--space-6) var(--space-16);
+    }
+    .container {
+      max-width: 880px;
+      margin: auto;
+    }
+    .pricing-head {
+      text-align: center;
+      margin-bottom: var(--space-8);
+    }
+    .pricing-head h1 {
+      font-size: var(--title-lg);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+      margin: 0 0 var(--space-3);
+    }
+    .pricing-head p {
+      margin: 0;
+      color: var(--text-2);
+      font-size: var(--text-base);
+    }
+    .plans {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: var(--space-4);
+      align-items: stretch;
+    }
+    @media (max-width: 640px) {
+      .plans { grid-template-columns: 1fr; }
+    }
+    .plan {
+      display: flex;
+      flex-direction: column;
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--r-lg);
+      padding: var(--space-6);
+    }
+    .plan.featured {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 1px var(--brand-soft);
+    }
+    .plan-name {
+      font-size: var(--text-lg);
+      font-weight: 600;
+      margin: 0 0 var(--space-2);
+    }
+    .plan-price {
+      display: flex;
+      align-items: baseline;
+      gap: var(--space-2);
+      margin: 0 0 var(--space-1);
+    }
+    .plan-price .amount {
+      font-size: var(--title-md);
+      font-weight: 700;
+      letter-spacing: -0.01em;
+    }
+    .plan-billing {
+      color: var(--text-2);
+      font-size: var(--text-sm);
+      margin: 0 0 var(--space-4);
+    }
+    .plan-feats {
+      list-style: none;
+      margin: 0 0 var(--space-6);
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      flex: 1;
+    }
+    .plan-feats li {
+      position: relative;
+      padding-left: var(--space-6);
+      color: var(--text-2);
+      font-size: var(--text-sm);
+      line-height: 1.5;
+    }
+    .plan-feats li::before {
+      content: "✓";
+      position: absolute;
+      left: 0;
+      top: 0;
+      color: var(--brand-strong);
+      font-weight: 700;
+    }
+    .plan-cta {
+      font-family: inherit;
+      cursor: pointer;
+      border: 0;
+      display: inline-block;
+      text-align: center;
+      padding: var(--space-3) var(--space-4);
+      border-radius: var(--r-md);
+      font-size: var(--text-base);
+      font-weight: 600;
+      text-decoration: none;
+      transition: opacity .18s, transform .18s;
+    }
+    .plan-cta.primary {
+      background: var(--brand);
+      color: #ffffff;
+    }
+    .plan-cta.primary:hover {
+      opacity: .92;
+      transform: translateY(-1px);
+    }
+    .plan-cta.secondary {
+      border: 1px solid var(--border-strong);
+      color: var(--text);
+    }
+    .plan-cta.secondary:hover {
+      background: var(--surface-2);
+    }
+    .pricing-notes {
+      margin: var(--space-8) 0 0;
+      padding: var(--space-4) var(--space-6);
+      background: var(--brand-soft);
+      border: 1px solid var(--border);
+      border-radius: var(--r-md);
+    }
+    .pricing-notes h2 {
+      font-size: var(--text-lg);
+      font-weight: 600;
+      margin: 0 0 var(--space-3);
+    }
+    .pricing-notes p {
+      margin: 0 0 var(--space-2);
+      color: var(--text-2);
+      font-size: var(--text-sm);
+      line-height: 1.6;
+    }
+    .pricing-notes p:last-child { margin-bottom: 0; }
+    .pricing-notes a { color: var(--brand-strong); }
+    .pricing-back {
+      display: block;
+      text-align: center;
+      margin-top: var(--space-8);
+      font-size: var(--text-sm);
+      color: var(--brand-strong);
+    }
+  </style>
+</head>
+<body>
+  <script>
+    /* 首帧前应用夜间主题，避免闪色 */
+    (function () {
+      var hour = new Date().getHours();
+      if (hour >= 18 || hour < 6) document.body.classList.add('night');
+    })();
+  </script>
+  <div class="container">
+
+    <div class="pricing-head">
+      <h1>Sunland AI · Beta 定价</h1>
+      <p>Sunland AI 是一款智能对话助手。以下是免费版与霜蓝 AI Pro 的权益与价格说明。</p>
+    </div>
+
+    <div class="plans">
+      <!-- 免费版 -->
+      <div class="plan">
+        <div class="plan-name">免费版</div>
+        <div class="plan-price"><span class="amount">¥0</span></div>
+        <p class="plan-billing">无需付费，注册即可使用</p>
+        <ul class="plan-feats">
+          <li>每天限免 20 次对话，次日自动重置</li>
+          <li>智能对话与创作辅助</li>
+          <li>编程辅助能力</li>
+        </ul>
+        <a href="download.html" class="plan-cta secondary">立即下载使用</a>
+      </div>
+
+      <!-- 霜蓝 AI Pro -->
+      <div class="plan featured">
+        <div class="plan-name">霜蓝 AI Pro</div>
+        <div class="plan-price"><span class="amount">¥15</span><span>CNY</span></div>
+        <p class="plan-billing">一次性购买 · 永久有效 · 非订阅制 · 不会自动续费</p>
+        <ul class="plan-feats">
+          <li>无限次对话，不受每日次数限制</li>
+          <li>深度思考模式</li>
+          <li>优先响应速度</li>
+          <li>一次付费，永久解锁，后续无需再付费</li>
+        </ul>
+        <button type="button" id="purchaseProBtn" class="plan-cta primary" aria-controls="purchaseStatus">购买 Pro</button>
+        <p id="purchaseStatus" class="plan-billing" role="status" hidden>支付服务正在上线审核中，暂不收款。</p>
+      </div>
+    </div>
+
+    <div class="pricing-notes">
+      <h2>付费说明</h2>
+      <p>服务提供方：霜蓝 AI（Sunland AI）。</p>
+      <p>正式开放后，支付成功并完成验证，Pro 权益将绑定到购买时登录的账号。</p>
+      <p>霜蓝 AI Pro 为一次性买断制，支付 ¥15 CNY 后永久解锁，非订阅、不会自动续费、不产生任何后续费用。</p>
+      <p>除 Pro 一次性费用外，本服务不存在其他强制费用。</p>
+      <p>霜蓝 AI 提供数字产品与数字服务，不包含实体商品配送。</p>
+      <p>有关退款及服务条款，请查看<a href="xukexieyi.html">用户协议</a>与<a href="privacy.html">隐私政策</a>。</p>
+      <p>如有任何疑问，请联系客服：<a href="mailto:support@sunland.dev">support@sunland.dev</a></p>
+    </div>
+
+    <a href="index.html" class="pricing-back">← 返回主页</a>
+
+  </div>
+
+<div id="loadingBar" aria-hidden="true"><span class="bar"></span></div>
+<script>
+function showGlobalLoading() {
+  const el = document.getElementById("loadingBar");
+  if (el) el.classList.add("active");
+}
+
+function hideGlobalLoading() {
+  const el = document.getElementById("loadingBar");
+  if (el) el.classList.remove("active");
+}
+
+document.getElementById("purchaseProBtn").addEventListener("click", () => {
+  document.getElementById("purchaseStatus").hidden = false;
+});
+
+// 页面进入立即关闭 loading（防止跨页面残留）
+document.addEventListener("DOMContentLoaded", () => {
+  hideGlobalLoading();
+});
+
+document.querySelectorAll("a").forEach(a => {
+  a.addEventListener("click", () => {
+    showGlobalLoading();
+  });
+});
+</script>
+</body>
+</html>

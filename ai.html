@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<script defer src="p/js/site-i18n-extra.js?v=20260822-2"></script>
-<script defer src="p/js/site-i18n.js?v=20260822-2"></script>
+<script defer src="p/js/site-i18n-extra.js?v=20261001-review-1"></script>
+<script defer src="p/js/site-i18n.js?v=20261001-review-1"></script>
 
 <title>Sunland AI · Beta</title>
 <link rel="manifest" href="/manifest.json">
@@ -84,7 +84,7 @@
 <script src="p/vendor/dompurify-3.4.12.min.js"></script>
 <script src="p/vendor/supabase-2.110.7.js"></script>
 <script src="ai/database-token-client.js"></script>
-<script src="ai/pro-payment.js?v=20260929-1"></script>
+<script src="ai/pro-payment.js?v=20261001-review-1"></script>
 <script async src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
 <link rel="preload" href="https://cdn.jsdelivr.net/npm/highlight.js/styles/github.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
 <script async src="https://cdn.jsdelivr.net/npm/highlight.js/highlight.min.js"></script>
@@ -293,7 +293,7 @@ child-src *;
   <div class="top-actions">
     <div id="usageHint" class="ghost-btn" style="cursor:default;">--</div>
     <button class="ghost-btn" id="downloadBtn" onclick="location.href='download.html'">下载公测版</button>
-    <button class="pro-btn" id="proBtn">升级 Pro</button>
+    <button class="pro-btn" id="proBtn">购买 Pro · ¥15 CNY</button>
 
     <div class="avatar" id="avatarBtn"></div>
 
@@ -721,7 +721,7 @@ if (window.__SUNLAND_AI_AUTH_OK__) {
   const appScript = document.createElement("script");
   appScript.type = "module";
   appScript.src = "ai/app.js";
-  appScript.src += "?v=20260927-2";
+  appScript.src += "?v=20261001-review-1";
   appScript.addEventListener("error", () => {
     window.__SUNLAND_AI_BOOT_FAILED__?.();
   }, { once: true });

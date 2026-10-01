@@ -1821,7 +1821,7 @@ function showProRequiredModal() {
         升级后可开启深度思考模式，并解锁无限次对话。
       </p>
       <button id="openProBtn" class="oauth-btn" style="margin-bottom:0.6rem;">
-        升级 Pro
+        购买 Pro · ¥15 CNY
       </button>
       <button id="closeProTipBtn" style="
         width:100%;
@@ -1874,7 +1874,7 @@ function showProModelModal() {
       </p>
 
       <button id="openProBtn" class="oauth-btn" style="margin-bottom:0.6rem;">
-        升级 Pro
+        购买 Pro · ¥15 CNY
       </button>
 
       <button id="chooseAnotherModelBtn" style="
@@ -2249,11 +2249,11 @@ function showLimitModal() {
       <h2 style="margin-bottom:0.5rem;font-size:1.2rem;display:flex;align-items:center;gap:7px;"><span class="ui-svg-icon icon-alert" aria-hidden="true"></span>今日次数已用完</h2>
       <p style="color:#666;font-size:13px;margin-bottom:1.2rem;">
         每天限免 20 次，明天自动重置。<br>
-        支付 10 元可永久解锁无限使用。
+        Pro 为 ¥15 CNY 一次性购买，非订阅、不自动续费。
       </p>
 
       <button id="payBtn" class="oauth-btn" style="margin-bottom:0.6rem;">
-        支付 10 元（永久）
+        购买 Pro · ¥15 CNY
       </button>
     </div>
   `;
@@ -2318,7 +2318,7 @@ function showActivationSuccess(modal, closeModal) {
 }
 
 function showActivationModal() {
-  // 🚫 激活码系统已弃用：升级统一走爱发电支付（showPayModal）。
+  // 🚫 激活码系统已弃用：购买统一进入审核中的价格页（showPayModal）。
   //    下方为旧的激活码兑换逻辑，已不可达，保留以便需要时回溯，可后续清理。
   showPayModal();
   return;
@@ -2472,37 +2472,8 @@ setTimeout(() => {
 }, 0);
 
 async function showPayModal() {
-  const userId = getCurrentUserId();
-  if (!userId) {
-    alert(proPaymentText("loginRequired", "请先登录后再开通 Pro。"));
-    return;
-  }
-  const payments = window.SunlandProPayment;
-  if (!payments) {
-    showToast(proPaymentText("intentError", "暂时无法创建安全付款引用，未进入支付页，请稍后重试。"));
-    return;
-  }
-  if (!confirm(proPaymentText("confirmation", "即将前往爱发电支付。确认前往支付？"))) return;
-
-  const checkoutEpoch = payments.getState().identityVersion;
-  try {
-    const result = await payments.beginCheckout({
-      supabase,
-      expectedUserId: userId,
-      isExpectedUser: currentUserId => getCurrentUserId() === currentUserId
-        && payments.getState().identityVersion === checkoutEpoch,
-    });
-    if (getCurrentUserId() !== userId) return;
-    if (result.alreadyActivated) {
-      await checkActivation();
-      showToast(proPaymentText("alreadyActivated", "你的 Pro 已开通，无需重复付款。"));
-      return;
-    }
-    startActivationPolling();
-    showToast(proPaymentText("processing", "已打开支付页。付款成功后会自动检查到账状态。"));
-  } catch (error) {
-    showToast(error instanceof Error ? error.message : proPaymentText("intentError", "暂时无法创建安全付款引用，未进入支付页，请稍后重试。"));
-  }
+  // Public purchasing is under review; no checkout or entitlement writes.
+  window.location.href = "pricing.html";
 }
 
 // ===== 设备检测控制侧边栏 =====

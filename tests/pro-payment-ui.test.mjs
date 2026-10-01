@@ -19,7 +19,7 @@ function databaseToken(id = "e736a9426c7311f1851452540025c377") {
   })}.signature`;
 }
 
-function loadPaymentModule({ token = databaseToken(), popup = {}, getToken = async () => token } = {}) {
+function loadPaymentModule({ token = databaseToken(), popup = {}, getToken = async () => token, enableLegacyInFixture = false } = {}) {
   const saved = new Map();
   const opened = [];
   let expire;
@@ -54,12 +54,12 @@ function loadPaymentModule({ token = databaseToken(), popup = {}, getToken = asy
     setTimeout,
     clearTimeout,
   });
-  vm.runInContext(source, context);
+  vm.runInContext(enableLegacyInFixture ? source.replace("const PUBLIC_CHECKOUT_ENABLED = false;", "const PUBLIC_CHECKOUT_ENABLED = true;") : source, context);
   return { api: window.SunlandProPayment, opened, saved, expire: () => expire?.() };
 }
 
 test("Pro payment creates a verified intent before sending the opened placeholder to Afdian", async () => {
-  const { api, opened, saved } = loadPaymentModule();
+  const { api, opened, saved } = loadPaymentModule({ enableLegacyInFixture: true });
   const calls = [];
   const reference = "11111111-2222-4333-8444-555555555555";
   const supabase = {
@@ -80,7 +80,7 @@ test("Pro payment creates a verified intent before sending the opened placeholde
 });
 
 test("Pro payment closes the placeholder and never enters checkout when identity verification fails", async () => {
-  const { api, opened } = loadPaymentModule({ token: "not-a-token" });
+  const { api, opened } = loadPaymentModule({ token: "not-a-token", enableLegacyInFixture: true });
   let rpcCalled = false;
 
   await assert.rejects(
@@ -99,9 +99,9 @@ test("both Pro entry pages use the shared payment module and expose the static s
   const support = readFileSync(new URL("../pro_activation_support.html", import.meta.url), "utf8");
 
   assert.match(app, /window\.SunlandProPayment/);
-  assert.match(app, /payments\.beginCheckout/);
+  assert.doesNotMatch(app, /payments\.beginCheckout/);
   assert.match(settings, /window\.SunlandProPayment/);
-  assert.match(settings, /payment\.beginCheckout/);
+  assert.doesNotMatch(settings, /payment\.beginCheckout/);
   assert.match(app, /pro_activation_support\.html/);
   assert.match(settings, /pro_activation_support\.html/);
   assert.match(support, /support@sunland\.dev/);
@@ -121,6 +121,7 @@ test("Pro payment monitoring does not interrupt either entry page with an unpaid
 test("checkout shows progress while identity is pending and times out without late navigation", async () => {
   let resolveToken;
   const { api, opened, saved, expire } = loadPaymentModule({
+    enableLegacyInFixture: true,
     getToken: () => new Promise(resolve => { resolveToken = resolve; }),
   });
   let called = false;
@@ -138,7 +139,7 @@ test("checkout shows progress while identity is pending and times out without la
 });
 
 test("a stalled intent times out and its late response cannot open checkout", async () => {
-  const { api, opened, saved, expire } = loadPaymentModule();
+  const { api, opened, saved, expire } = loadPaymentModule({ enableLegacyInFixture: true });
   let resolveIntent;
   const checkout = api.beginCheckout({ supabase: {
     rpc: () => new Promise(resolve => { resolveIntent = resolve; }),
@@ -154,28 +155,30 @@ test("a stalled intent times out and its late response cannot open checkout", as
 });
 
 
-test("settings checkout does not block popup navigation with a success alert", async () => {
+test("settings purchase only displays review notice without checkout", async () => {
   const settings = readFileSync(new URL("../ai_settings.html", import.meta.url), "utf8");
   const handler = settings.slice(settings.indexOf("    async function upgrade()"), settings.indexOf("    function logout()"));
-  const alerts = [];
-  let monitoring = false;
-  const context = vm.createContext({
-    window: { SunlandProPayment: {
-      text: key => key,
-      getState: () => ({ identityVersion: 1 }),
-      beginCheckout: async () => ({ userId: "test-user" }),
-    } },
-    getUserFromToken: () => ({ id: "test-user" }),
-    supabase: {}, confirm: () => true, alert: message => alerts.push(message),
-    startSettingsProPaymentMonitoring: () => { monitoring = true; },
-  });
+  const status = { textContent: "" };
+  const context = vm.createContext({ document: { getElementById: () => status },
+    window: { SunlandProPayment: { text: () => "支付服务正在上线审核中，暂不收款。",
+      beginCheckout() { throw new Error("unexpected checkout"); } } } });
   await vm.runInContext(handler + "upgrade()", context);
-  assert.equal(monitoring, true);
-  assert.deepEqual(alerts, []);
+  assert.match(status.textContent, /审核中/);
+});
+
+test("public checkout disabled rejects before identity, popup or order writes", async () => {
+  let reads = 0;
+  const { api, opened, saved } = loadPaymentModule({ getToken: async () => { reads++; throw new Error("unexpected credential read"); } });
+  assert.equal(api.WAFFO_ENABLED, false);
+  assert.equal(api.PUBLIC_CHECKOUT_ENABLED, false);
+  await assert.rejects(() => api.beginCheckout({ supabase: { rpc() { throw new Error("unexpected order"); } } }), /审核中/);
+  assert.equal(reads, 0);
+  assert.equal(opened.length, 0);
+  assert.equal(saved.size, 0);
 });
 
 test("checkout rejects an old A response after A to B to A even with the same credential", async () => {
-  const { api, opened, saved } = loadPaymentModule();
+  const { api, opened, saved } = loadPaymentModule({ enableLegacyInFixture: true });
   api.setIdentity("A", null);
   let resolveIntent;
   const checkout = api.beginCheckout({ supabase: { rpc: () => new Promise(resolve => { resolveIntent = resolve; }) } });

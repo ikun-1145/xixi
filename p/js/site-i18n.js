@@ -191,8 +191,8 @@
     ["当前模型不可用，请重新选择", "The current model is unavailable. Please choose another model.", "現在のモデルは利用できません。別のモデルを選択してください。"],
     ["暂无可用模型", "No models are available", "利用可能なモデルがありません"],
     ["今日次数已用完", "Today's free messages are used up", "本日の無料回数を使い切りました"],
-    ["每天限免 20 次，明天自动重置。 支付 10 元可永久解锁无限使用。", "You receive 20 free messages per day, reset tomorrow. Pay ¥10 once to unlock unlimited use permanently.", "1日20回まで無料で、明日リセットされます。¥10の一度払いで無制限利用を永久に解放できます。"],
-    ["支付 10 元（永久）", "Pay ¥10 (permanent)", "¥10を支払う（永久）"],
+    ["每天限免 20 次，明天自动重置。 支付 15 元可永久解锁无限使用。", "You receive 20 free messages per day, reset tomorrow. Pay ¥15 once to unlock unlimited use permanently.", "1日20回まで無料で、明日リセットされます。¥15の一度払いで無制限利用を永久に解放できます。"],
+    ["支付 15 元（永久）", "Pay ¥15 (permanent)", "¥15を支払う（永久）"],
     ["激活成功", "Activated", "有効化しました"],
     ["已解锁 Pro · 无限使用", "Pro unlocked · Unlimited use", "Pro 解放 · 無制限利用"],
     ["输入激活码", "Enter activation code", "アクティベーションコードを入力"],
@@ -233,7 +233,6 @@
     ["操作太快了，慢一点", "A little too fast—please slow down", "操作が速すぎます。少し待ってください"],
     ["文件读取失败", "Unable to read the file", "ファイルを読み込めませんでした"],
     ["消息处理失败，请稍后重试", "Unable to process the message. Please try again later.", "メッセージを処理できませんでした。後でもう一度お試しください。"],
-    ["即将前往爱发电支付。 请选择「月付」方案（¥10 / 月）即可——付款成功后将自动开通【永久 Pro】， 无需多选月份，多付不会增加权益。 确认前往支付？", "You are about to continue to Afdian. Choose the monthly plan (¥10/month); payment permanently unlocks Pro. Selecting extra months does not add benefits. Continue to payment?", "愛発電の支払いページへ移動します。「月額」プラン（¥10/月）を選ぶと、支払い完了後に永久Proが有効になります。複数月を選んでも特典は増えません。支払いへ進みますか？"],
     ["深度思考已开启", "Deep thinking enabled", "深い思考を有効にしました"],
     ["深度思考已关闭", "Deep thinking disabled", "深い思考を無効にしました"],
 
@@ -301,7 +300,7 @@
     ["深度思考模式", "Deep thinking mode", "深い思考モード"],
     ["优先响应速度", "Priority response speed", "優先応答"],
     ["永久有效", "Permanent", "永久有効"],
-    ["立即升级 · ¥10 永久", "Upgrade now · ¥10 permanent", "今すぐアップグレード · ¥10 永久"],
+    ["立即升级 · ¥15 永久", "Upgrade now · ¥15 permanent", "今すぐアップグレード · ¥15 永久"],
     ["下载霜蓝AI客户端", "Download the Sunland AI client", "Sunland AI クライアントをダウンロード"],
     ["Sunland AI · Beta 数据管理", "Sunland AI · Beta Data Management", "Sunland AI · Beta データ管理"],
     ["姓名记忆", "Name memory", "名前の記憶"],
@@ -575,6 +574,45 @@
     ["持续更新", "Continuous updates", "継続的アップデート"],
     ["许可协议", "Terms of Service", "利用規約"],
 
+    // Footer shared links.
+    ["定价", "Pricing", "料金"],
+    ["客服支持", "Support", "サポート"],
+
+    // Pricing page.
+    ["¥15 CNY · 一次性购买", "¥15 CNY · One-time purchase", "¥15 CNY · 買い切り", {"zh-Hant": "¥15 CNY · 一次性購買", "ko": "¥15 CNY · 일회성 구매", "es": "¥15 CNY · Compra única"}],
+    ["Pro 为 ¥15 CNY 一次性购买，非订阅、不自动续费。", "Pro is a one-time purchase for ¥15 CNY, with no subscription or auto-renewal.", "Pro は ¥15 CNY の買い切りです。サブスクや自動更新はありません。", {"zh-Hant": "Pro 為 ¥15 CNY 一次性購買，非訂閱、不自動續費。", "ko": "Pro는 ¥15 CNY의 일회성 구매이며 구독이나 자동 갱신이 없습니다.", "es": "Pro es una compra única de ¥15 CNY, sin suscripción ni renovación automática."}],
+    ["霜蓝 AI 提供服务", "Service provided by Sunland AI", "Sunland AI がサービスを提供", {"zh-Hant": "霜藍 AI 提供服務", "ko": "Sunland AI 제공 서비스", "es": "Servicio proporcionado por Sunland AI"}],
+    ["购买 Pro · ¥15 CNY", "Buy Pro · ¥15 CNY", "Pro を購入 · ¥15 CNY", {"zh-Hant": "購買 Pro · ¥15 CNY", "ko": "Pro 구매 · ¥15 CNY", "es": "Comprar Pro · ¥15 CNY"}],
+    ["支付服务正在上线审核中，暂不收款。", "Payment service is under launch review. Payments are not accepted yet.", "決済サービスは公開審査中です。現在、お支払いは受け付けていません。", {"zh-Hant": "支付服務正在上線審核中，暫不收款。", "ko": "결제 서비스는 출시 심사 중이며 아직 결제를 받지 않습니다.", "es": "El servicio de pago está en revisión para su lanzamiento. Aún no se aceptan pagos."}],
+    ["一次性购买 · 非订阅 · 不自动续费", "One-time purchase · Not a subscription · No auto-renewal", "買い切り · サブスクではありません · 自動更新なし", {"zh-Hant": "一次性購買 · 非訂閱 · 不自動續費", "ko": "일회성 구매 · 구독 아님 · 자동 갱신 없음", "es": "Compra única · Sin suscripción · Sin renovación automática"}],
+    ["购买 Pro", "Buy Pro", "Pro を購入", {"zh-Hant": "購買 Pro", "ko": "Pro 구매", "es": "Comprar Pro"}],
+    ["服务提供方：霜蓝 AI（Sunland AI）。", "Service provider: Sunland AI.", "サービス提供者：Sunland AI。", {"zh-Hant": "服務提供方：霜藍 AI（Sunland AI）。", "ko": "서비스 제공자: Sunland AI.", "es": "Proveedor del servicio: Sunland AI."}],
+    ["正式开放后，支付成功并完成验证，Pro 权益将绑定到购买时登录的账号。", "Once purchasing is available, verified successful payment will link Pro benefits to the account signed in at purchase.", "購入受付開始後、支払いの成功が確認されると、購入時にログインしていたアカウントに Pro 特典が付与されます。", {"zh-Hant": "正式開放後，支付成功並完成驗證，Pro 權益將綁定到購買時登入的帳號。", "ko": "구매가 시작되면 결제 성공 확인 후 구매 시 로그인한 계정에 Pro 혜택이 연결됩니다.", "es": "Cuando se habiliten las compras, tras verificar el pago correcto, las ventajas Pro se vincularán a la cuenta con la que hayas iniciado sesión al comprar."}],
+    ["用户协议", "Terms of Service", "利用規約", {"zh-Hant": "用戶協議", "ko": "이용약관", "es": "Condiciones del servicio"}],
+    ["与", "and", "と", {"zh-Hant": "與", "ko": "및", "es": "y"}],
+
+    ["Sunland AI · Beta 定价", "Sunland AI · Beta Pricing", "Sunland AI · Beta 料金"],
+    ["Sunland AI 是一款智能对话助手。以下是免费版与霜蓝 AI Pro 的权益与价格说明。", "Sunland AI is an intelligent conversation assistant. Below are the features and prices of the Free plan and Sunland AI Pro.", "Sunland AI はスマートな対話アシスタントです。以下は無料版と霜蓝 AI Pro の特典と料金の説明です。"],
+    ["免费版", "Free", "無料版"],
+    ["无需付费，注册即可使用", "No payment required — sign up and start using it", "支払い不要、登録してすぐ利用可能"],
+    ["每天限免 20 次对话，次日自动重置", "20 free conversations per day, reset the next day", "1日20回まで無料で対話でき、翌日にリセットされます"],
+    ["智能对话与创作辅助", "Smart conversation and creative assistance", "スマートな対話と創作支援"],
+    ["编程辅助能力", "Coding assistance", "コーディング支援"],
+    ["立即下载使用", "Download now", "今すぐダウンロード"],
+    ["霜蓝 AI Pro", "Sunland AI Pro", "霜蓝 AI Pro"],
+    ["一次性购买 · 永久有效 · 非订阅制 · 不会自动续费", "One-time purchase · Permanent · Not a subscription · No auto-renewal", "買い切り · 永久有効 · サブスクではありません · 自動更新なし"],
+    ["无限次对话，不受每日次数限制", "Unlimited conversations, no daily limit", "無制限の対話、1日の回数制限なし"],
+    ["深度思考模式", "Deep thinking mode", "深層思考モード"],
+    ["优先响应速度", "Priority response speed", "優先応答速度"],
+    ["一次付费，永久解锁，后续无需再付费", "Pay once, unlock permanently, no further payments", "一度の支払いで永久に解放、追加料金なし"],
+    ["查看 / 升级 Pro", "View / Upgrade to Pro", "Pro を確認 / アップグレード"],
+    ["付费说明", "Payment details", "支払いについて"],
+    ["霜蓝 AI Pro 为一次性买断制，支付 ¥15 CNY 后永久解锁，非订阅、不会自动续费、不产生任何后续费用。", "Sunland AI Pro is a one-time purchase. Pay ¥15 CNY to unlock it permanently — it is not a subscription, does not auto-renew, and incurs no further charges.", "霜蓝 AI Pro は買い切り制です。¥15 CNY の支払いで永久に解放され、サブスクではなく、自動更新もされず、追加費用は一切かかりません。", {"zh-Hant": "霜藍 AI Pro 為一次性買斷制，支付 ¥15 CNY 後永久解鎖，非訂閱、不會自動續費、不產生任何後續費用。", "ko": "Sunland AI Pro는 일회성 구매입니다. ¥15 CNY를 결제하면 영구 이용할 수 있으며 구독, 자동 갱신, 추가 요금이 없습니다.", "es": "Sunland AI Pro es una compra única de ¥15 CNY que desbloquea el servicio permanentemente. No es una suscripción, no se renueva automáticamente y no genera cargos adicionales."}],
+    ["除 Pro 一次性费用外，本服务不存在其他强制费用。", "Apart from the one-time Pro fee, the service has no other mandatory charges.", "Pro の一度きりの料金以外に、本サービスに必須の費用はありません。"],
+    ["霜蓝 AI 提供数字产品与数字服务，不包含实体商品配送。", "Sunland AI provides digital products and services only; no physical goods are shipped.", "霜蓝 AI はデジタル製品・サービスを提供し、物理的な商品の配送は含みません。"],
+    ["有关退款及服务条款，请查看", "For refunds and terms of service, see", "返金および利用規約については、こちらをご覧ください："],
+    ["如有任何疑问，请联系客服：", "For any questions, contact support:", "ご不明な点があれば、サポートまでお問い合わせください："],
+
     // Privacy policy.
     ["Sunland AI · Beta 隐私政策", "Sunland AI · Beta Privacy Policy", "Sunland AI · Beta プライバシーポリシー"],
     ["最后更新：2026-07-25", "Last updated: July 25, 2026", "最終更新日：2026年7月25日"],
@@ -705,11 +743,12 @@
 
   const additionalCatalog = global.SiteI18nAdditionalCatalog || {};
   const catalog = new Map(
-    rows.map(([source, en, ja]) => [source, Object.freeze({
+    rows.map(([source, en, ja, translations]) => [source, Object.freeze({
       zh: source,
       en,
       ja,
       ...(additionalCatalog[source] || {}),
+      ...(translations || {}),
     })]),
   );
   for (const [source, translations] of Object.entries(additionalCatalog)) {
