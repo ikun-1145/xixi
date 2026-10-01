@@ -1,8 +1,9 @@
 {
-  "version": "1.4.10",
-  "build": 39,
-  "force": true,
-  "url": "https://github.com/ikun-1145/sunland-ai-dart/releases/download/v1.4.10%2B39/sunland-ai-1.4.10%2B39.apk",
-  "ipaUrl": "https://api.sunland.dev/v1/download/ipa?v=1.4.10%2B39",
-  "desc": "修复更新检查机制，避免已安装最新版本时仍重复触发强制更新，并提升版本检测稳定性。"
+  "version": "1.5.0",
+  "build": 40,
+  "force": false,
+  "url": "https://api.sunland.dev/v1/download/apk?v=1.5.0%2B40",
+  "ipaUrl": "https://api.sunland.dev/v1/download/ipa?v=1.5.0%2B40",
+  "desc": "霜蓝 AI 1.5.0\n\n- 修复普通更新无法跳过的问题，记住跳过的版本。\n- 修复已安装最新版本时仍重复弹出更新提示的问题。\n- APK 更新下载改走 Cloudflare Worker，避免使用 GitHub 直链。\n- 优化聊天消息展示和交互体验。\n\n本次更新不强制安装。IPA 为未签名版本，需要自行签名后安装。",
+  "apk_url": "https://api.sunland.dev/v1/download/apk?v=1.5.0%2B40"
 }
