@@ -1428,7 +1428,7 @@ body.dark .usage-hint {
   <script src="/p/vendor/supabase-2.110.7.js"></script>
   <script type="module" src="ai/maintenance.js?v=20260905-1"></script>
   <script src="/ai/database-token-client.js"></script>
-  <script src="/ai/pro-payment.js?v=20261001-review-1"></script>
+  <script src="/ai/pro-payment.js?v=20261002-waffo-prod"></script>
   <script>
     window._supabaseClient = window._supabaseClient || window.supabase.createClient(
       "https://klyrasrqgxijwrxuoevj.supabase.co",
@@ -1923,8 +1923,7 @@ async function editNickname() {
     }
 
     async function upgrade() {
-      const status = document.getElementById("proReviewStatus");
-      if (status) status.textContent = window.SunlandProPayment?.text?.("reviewNotice") || "支付服务正在上线审核中，暂不收款。";
+      location.href = "pricing.html";
     }
 
     function logout() {

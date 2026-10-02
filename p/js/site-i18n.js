@@ -587,7 +587,7 @@
     ["一次性购买 · 非订阅 · 不自动续费", "One-time purchase · Not a subscription · No auto-renewal", "買い切り · サブスクではありません · 自動更新なし", {"zh-Hant": "一次性購買 · 非訂閱 · 不自動續費", "ko": "일회성 구매 · 구독 아님 · 자동 갱신 없음", "es": "Compra única · Sin suscripción · Sin renovación automática"}],
     ["购买 Pro", "Buy Pro", "Pro を購入", {"zh-Hant": "購買 Pro", "ko": "Pro 구매", "es": "Comprar Pro"}],
     ["服务提供方：霜蓝 AI（Sunland AI）。", "Service provider: Sunland AI.", "サービス提供者：Sunland AI。", {"zh-Hant": "服務提供方：霜藍 AI（Sunland AI）。", "ko": "서비스 제공자: Sunland AI.", "es": "Proveedor del servicio: Sunland AI."}],
-    ["正式开放后，支付成功并完成验证，Pro 权益将绑定到购买时登录的账号。", "Once purchasing is available, verified successful payment will link Pro benefits to the account signed in at purchase.", "購入受付開始後、支払いの成功が確認されると、購入時にログインしていたアカウントに Pro 特典が付与されます。", {"zh-Hant": "正式開放後，支付成功並完成驗證，Pro 權益將綁定到購買時登入的帳號。", "ko": "구매가 시작되면 결제 성공 확인 후 구매 시 로그인한 계정에 Pro 혜택이 연결됩니다.", "es": "Cuando se habiliten las compras, tras verificar el pago correcto, las ventajas Pro se vincularán a la cuenta con la que hayas iniciado sesión al comprar."}],
+    ["支付成功并完成验证，Pro 权益将绑定到购买时登录的账号。", "Verified successful payment will link Pro benefits to the account signed in at purchase.", "支払いの成功が確認されると、購入時にログインしていたアカウントに Pro 特典が付与されます。", {"zh-Hant": "支付成功並完成驗證，Pro 權益將綁定到購買時登入的帳號。", "ko": "결제 성공 확인 후 구매 시 로그인한 계정에 Pro 혜택이 연결됩니다.", "es": "Tras verificar el pago correcto, las ventajas Pro se vincularán a la cuenta con la que hayas iniciado sesión al comprar."}],
     ["用户协议", "Terms of Service", "利用規約", {"zh-Hant": "用戶協議", "ko": "이용약관", "es": "Condiciones del servicio"}],
     ["与", "and", "と", {"zh-Hant": "與", "ko": "및", "es": "y"}],
 

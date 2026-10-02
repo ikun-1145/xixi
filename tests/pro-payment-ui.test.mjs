@@ -54,7 +54,10 @@ function loadPaymentModule({ token = databaseToken(), popup = {}, getToken = asy
     setTimeout,
     clearTimeout,
   });
-  vm.runInContext(enableLegacyInFixture ? source.replace("const PUBLIC_CHECKOUT_ENABLED = false;", "const PUBLIC_CHECKOUT_ENABLED = true;") : source, context);
+  const fixture = source.replace("const WAFFO_ENABLED = true;", "const WAFFO_ENABLED = false;")
+    .replace("const PUBLIC_CHECKOUT_ENABLED = true;", `const PUBLIC_CHECKOUT_ENABLED = ${enableLegacyInFixture};`)
+    .replace("const LEGACY_CHECKOUT_ENABLED = false;", `const LEGACY_CHECKOUT_ENABLED = ${enableLegacyInFixture};`);
+  vm.runInContext(fixture, context);
   return { api: window.SunlandProPayment, opened, saved, expire: () => expire?.() };
 }
 
@@ -155,15 +158,12 @@ test("a stalled intent times out and its late response cannot open checkout", as
 });
 
 
-test("settings purchase only displays review notice without checkout", async () => {
+test("settings purchase uses the public Production pricing path", async () => {
   const settings = readFileSync(new URL("../ai_settings.html", import.meta.url), "utf8");
   const handler = settings.slice(settings.indexOf("    async function upgrade()"), settings.indexOf("    function logout()"));
-  const status = { textContent: "" };
-  const context = vm.createContext({ document: { getElementById: () => status },
-    window: { SunlandProPayment: { text: () => "支付服务正在上线审核中，暂不收款。",
-      beginCheckout() { throw new Error("unexpected checkout"); } } } });
-  await vm.runInContext(handler + "upgrade()", context);
-  assert.match(status.textContent, /审核中/);
+  const location = { href: "" };
+  await vm.runInNewContext(handler + "upgrade()", { location });
+  assert.equal(location.href, "pricing.html");
 });
 
 test("public checkout disabled rejects before identity, popup or order writes", async () => {

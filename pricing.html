@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <script src="ai/pro-payment.js?v=20261002-waffo-prod"></script>
   <script defer src="p/js/site-i18n-extra.js?v=20261001-review-1"></script>
   <script defer src="p/js/site-i18n.js?v=20261001-review-1"></script>
   <title>Sunland AI · Beta 定价</title>
@@ -209,7 +210,7 @@
     <div class="pricing-notes">
       <h2>付费说明</h2>
       <p>服务提供方：霜蓝 AI（Sunland AI）。</p>
-      <p>正式开放后，支付成功并完成验证，Pro 权益将绑定到购买时登录的账号。</p>
+      <p>支付成功并完成验证，Pro 权益将绑定到购买时登录的账号。</p>
       <p>霜蓝 AI Pro 为一次性买断制，支付 ¥15 CNY 后永久解锁，非订阅、不会自动续费、不产生任何后续费用。</p>
       <p>除 Pro 一次性费用外，本服务不存在其他强制费用。</p>
       <p>霜蓝 AI 提供数字产品与数字服务，不包含实体商品配送。</p>
@@ -233,8 +234,19 @@ function hideGlobalLoading() {
   if (el) el.classList.remove("active");
 }
 
-document.getElementById("purchaseProBtn").addEventListener("click", () => {
-  document.getElementById("purchaseStatus").hidden = false;
+document.getElementById("purchaseProBtn").addEventListener("click", async () => {
+  const button = document.getElementById("purchaseProBtn");
+  const status = document.getElementById("purchaseStatus");
+  button.disabled = true;
+  status.hidden = false;
+  const payment = window.SunlandProPayment;
+  status.textContent = payment.text("connecting");
+  try {
+    await payment.createWaffoCheckout();
+    status.textContent = payment.text("processing");
+  } catch (error) {
+    status.textContent = error.message || payment.text("intentError");
+  } finally { button.disabled = false; }
 });
 
 // 页面进入立即关闭 loading（防止跨页面残留）

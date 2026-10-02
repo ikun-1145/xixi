@@ -5,12 +5,14 @@ import { JSDOM } from "jsdom";
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
 
-test("pricing purchase stays local and retains price, legal and support details in all six languages", () => {
+test("pricing purchase calls the Production adapter and retains price, legal and support details in all six languages", () => {
   for (const language of ["zh", "zh-Hant", "en", "ja", "ko", "es"]) {
     const dom = new JSDOM(read("pricing.html"), { url: "https://sunland.dev/pricing.html", runScripts: "outside-only" });
     const { window } = dom;
     window.fetch = () => { throw new Error("unexpected purchase request"); };
     window.open = () => { throw new Error("unexpected checkout window"); };
+    let calls = 0;
+    window.SunlandProPayment = { text: () => "Connecting securely", createWaffoCheckout: async () => { calls++; } };
     window.eval(read("p/js/site-i18n-extra.js"));
     window.eval(read("p/js/site-i18n.js"));
     window.SiteI18n.setLanguage(language, { persist: false });
@@ -20,6 +22,7 @@ test("pricing purchase stays local and retains price, legal and support details 
     assert.equal(status.hidden, true);
     window.document.getElementById("purchaseProBtn").click();
     assert.equal(status.hidden, false);
+    assert.equal(calls, 1);
     assert.equal(window.location.href, "https://sunland.dev/pricing.html");
     assert.ok(status.textContent.trim());
     const content = window.document.querySelector(".container").textContent;

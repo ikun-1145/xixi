@@ -3,8 +3,10 @@
 
   const PLAN_ID = "4c2527fc6c7411f1bbe45254001e7c00";
   const CHECKOUT_URL = "https://afdian.com/order/create";
-  const WAFFO_ENABLED = false;
-  const PUBLIC_CHECKOUT_ENABLED = false;
+  const WAFFO_ENABLED = true;
+  const PUBLIC_CHECKOUT_ENABLED = true;
+  const LEGACY_CHECKOUT_ENABLED = false;
+  const WAFFO_CHECKOUT_ENDPOINT = "https://waffopay.sunland.dev/checkout/waffo/production";
   const CHECKOUT_TIMEOUT_MS = 30_000;
   const SUPPORT_URL = "pro_activation_support.html";
   const PENDING_PREFIX = "sunland:pro-payment-pending:";
@@ -235,8 +237,10 @@
   }
 
   async function beginCheckout({ supabase, expectedUserId = null, isExpectedUser = null } = {}) {
-    // Preserve the historical adapter, but fail closed before any side effect.
     if (!PUBLIC_CHECKOUT_ENABLED) throw new Error(text("reviewNotice"));
+    if (WAFFO_ENABLED) return createWaffoCheckout({ expectedUserId, isExpectedUser });
+    // Historical recovery code stays available; public Waffo never falls back to it.
+    if (!LEGACY_CHECKOUT_ENABLED) throw new Error(text("reviewNotice"));
     const checkoutEpoch = membership.identityVersion;
     const checkoutCredential = global.localStorage?.getItem("token") || null;
     const checkoutCurrent = () => membership.identityVersion === checkoutEpoch
@@ -278,6 +282,57 @@
     } finally {
       global.clearTimeout(timer);
     }
+  }
+
+  async function createWaffoCheckout({ expectedUserId = null, isExpectedUser = null } = {}) {
+    if (!PUBLIC_CHECKOUT_ENABLED || !WAFFO_ENABLED) throw new Error(text("reviewNotice"));
+    const token = global.localStorage?.getItem("token");
+    if (!token) throw new Error(text("loginRequired"));
+    const epoch = membership.identityVersion;
+    const current = () => epoch === membership.identityVersion && global.localStorage?.getItem("token") === token;
+    const popup = openPlaceholder();
+    if (!popup) throw new Error(text("popupError"));
+    const controller = new AbortController();
+    let timer;
+    const timeout = new Promise((_, reject) => {
+      timer = global.setTimeout(() => { controller.abort(); reject(new Error(text("intentError"))); }, CHECKOUT_TIMEOUT_MS);
+    });
+    try {
+      const options = { method: "POST", redirect: "error", credentials: "omit", cache: "no-store",
+        headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" }, signal: controller.signal };
+      const identityResponse = await Promise.race([
+        global.fetch("https://api.sunland.dev/v1/account/identity", { ...options, body: "{}" }), timeout]);
+      if (!identityResponse.ok) throw new Error(text("identityError"));
+      const identity = await Promise.race([identityResponse.json(), timeout]);
+      const userId = identity?.user_id;
+      const valid = () => current() && identity?.identity_status === "active" && USER_ID_PATTERN.test(userId || "")
+        && (!expectedUserId || expectedUserId === userId)
+        && (typeof isExpectedUser !== "function" || isExpectedUser(userId));
+      if (!valid()) throw new Error(text("identityError"));
+      // An opaque correlation key is reused across retries, never a provider order ID.
+      const requestKey = getPending(userId)?.paymentReference || global.crypto.randomUUID();
+      savePending(userId, requestKey);
+      const response = await Promise.race([global.fetch(WAFFO_CHECKOUT_ENDPOINT, {
+        ...options, headers: { ...options.headers, "Idempotency-Key": requestKey },
+        body: JSON.stringify({ language: language(), darkMode: global.document?.body?.classList.contains("night") === true }),
+      }), timeout]);
+      if (!response.ok) throw new Error(text("intentError"));
+      const result = await Promise.race([response.json(), timeout]);
+      if (!valid()) throw new Error(text("identityError"));
+      let checkoutUrl;
+      try {
+        const parsed = new URL(result?.checkoutUrl || "");
+        if (result?.mode !== "prod" || !["https://checkout.waffo.ai", "https://pancake.waffo.ai"].includes(parsed.origin)
+          || parsed.username || parsed.password) throw new Error("invalid checkout");
+        checkoutUrl = parsed.toString();
+      } catch { throw new Error(text("intentError")); }
+      if (popup.closed) throw new Error(text("popupError"));
+      popup.location.replace(checkoutUrl);
+      return { checkoutUrl, userId };
+    } catch (error) {
+      closePopup(popup);
+      throw error instanceof Error ? error : new Error(text("intentError"));
+    } finally { global.clearTimeout(timer); }
   }
 
   // Membership is memory-only and scoped to the verified identity and credential epoch.
@@ -508,6 +563,7 @@
     WAFFO_ENABLED,
     PUBLIC_CHECKOUT_ENABLED,
     beginCheckout,
+    createWaffoCheckout,
     getPending,
     clearPending,
     startActivationMonitoring,
