@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import test from "node:test";
+import { usagePreflightResponse } from "./helpers/verify-gateway.mjs";
 
 import { onRequestGet, onRequestPost } from "../functions/api/verify.js";
 
@@ -23,6 +24,8 @@ test("verify multipart API forwards a validated image to the vision model withou
   let modelRequest = null;
   const gateway = {
     async fetch(request) {
+      const usage = usagePreflightResponse(request);
+      if (usage) return usage;
       modelRequest = await request.json();
       return Response.json({ choices: [{ message: { content: '{"claims":[]}' } }] });
     },

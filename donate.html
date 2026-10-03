@@ -1030,24 +1030,36 @@ window.addEventListener('load', () => {
       if (thanksList) {
         if (reset) thanksList.innerHTML = "";
 
-        const html = data.map(item => {
+        const fragment = document.createDocumentFragment();
+        for (const item of data) {
           const isMine = currentUserEmail && item.name === currentUserEmail;
-          return `
-          <div class="thanks-item ${isMine ? "mine" : ""}" data-id="${item.id}">
-            <div class="name">${item.name || ""}</div>
-            <div class="msg">${item.message || uiText("感谢支持！")}</div>
-            <div class="like-row">
-              <div class="time">${formatTime(item.created_at)}</div>
-              <button class="like-btn">
-                <span class="heart"></span>
-                <span class="like-count">0</span>
-              </button>
-            </div>
-          </div>
-          `;
-        }).join("");
-
-        thanksList.insertAdjacentHTML("beforeend", html);
+          const row = document.createElement("div");
+          row.className = isMine ? "thanks-item mine" : "thanks-item";
+          row.dataset.id = item.id;
+          const name = document.createElement("div");
+          name.className = "name";
+          name.textContent = item.name || "";
+          const message = document.createElement("div");
+          message.className = "msg";
+          message.textContent = item.message || uiText("感谢支持！");
+          const likeRow = document.createElement("div");
+          likeRow.className = "like-row";
+          const time = document.createElement("div");
+          time.className = "time";
+          time.textContent = formatTime(item.created_at);
+          const button = document.createElement("button");
+          button.className = "like-btn";
+          const heart = document.createElement("span");
+          heart.className = "heart";
+          const count = document.createElement("span");
+          count.className = "like-count";
+          count.textContent = "0";
+          button.append(heart, count);
+          likeRow.append(time, button);
+          row.append(name, message, likeRow);
+          fragment.append(row);
+        }
+        thanksList.append(fragment);
       }
 
       const loadMoreBtn = document.getElementById("loadMoreBtn");

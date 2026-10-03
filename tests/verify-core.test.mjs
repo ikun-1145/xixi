@@ -1,5 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
+import { usagePreflightResponse } from "./helpers/verify-gateway.mjs";
 
 import { parseModelJson } from "../verify/server/json-utils.js";
 import { callDeepSeek, readGatewayResponse } from "../verify/server/model-adapter.js";
@@ -28,6 +29,8 @@ function gatewaySequence(contents) {
   return {
     async fetch(request) {
       assert.equal(request.headers.get("authorization"), "Bearer valid-test-token");
+      const usage = usagePreflightResponse(request);
+      if (usage) return usage;
       const content = contents[index++];
       return new Response(JSON.stringify({ choices: [{ message: { content } }] }), {
         headers: { "content-type": "application/json" },
@@ -406,6 +409,8 @@ test("image claim extraction sends the original image only to the DeepSeek visio
   const requests = [];
   const gateway = {
     async fetch(request) {
+      const usage = usagePreflightResponse(request);
+      if (usage) return usage;
       requests.push(await request.json());
       return new Response(JSON.stringify({ choices: [{ message: { content: '{"claims":[]}' } }] }), {
         headers: { "content-type": "application/json" },
@@ -554,6 +559,8 @@ test("full pipeline bounds the Evidence Judge source package", async () => {
   const modelRequests = [];
   const gateway = {
     async fetch(request) {
+      const usage = usagePreflightResponse(request);
+      if (usage) return usage;
       modelRequests.push(await request.json());
       const content = modelRequests.length === 1
         ? '{"claims":[{"text":"A bounded public fact","subject":"Agency","type":"event","search_queries":["query one","query two","query three"]}]}'

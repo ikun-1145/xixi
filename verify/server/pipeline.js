@@ -1,7 +1,7 @@
 import { VERIFY_LIMITS } from "./constants.js";
 import { VerifyError } from "./errors.js";
 import { cleanText } from "./json-utils.js";
-import { callDeepSeek } from "./model-adapter.js";
+import { authorizeVerification, callDeepSeek } from "./model-adapter.js";
 import { extractClaims, normalizeClaims } from "./claim-extractor.js";
 import { createSearchProvider, deduplicateResults } from "./search-provider.js";
 import { attachSourceEvaluation } from "./source-evaluator.js";
@@ -183,6 +183,9 @@ async function completeVerification({
   signal,
   usageState = createModelUsageState(),
 }) {
+  // Recheck after extraction: it may have consumed the last model allowance.
+  // This is an authoritative admission check, not an atomic quota reservation.
+  await authorizeVerification({ env, authorization, fetchImpl, signal });
   const model = createModelCaller({ env, authorization, fetchImpl, signal, usageState });
   const searchProvider = createSearchProvider(env, fetchImpl);
   const searchRun = await runSearches(claims, searchProvider);
@@ -250,6 +253,7 @@ export async function extractVerificationClaims({
   const prepared = await prepareInput({ inputType, content, file, ocrText, ocrStatus });
   if (prepared.insufficientReport) return prepared.insufficientReport;
 
+  await authorizeVerification({ env, authorization, fetchImpl, signal });
   const usageState = createModelUsageState();
   const model = createModelCaller({ env, authorization, fetchImpl, signal, usageState });
   const claims = await extractClaims(prepared.normalizedContent, model, {
@@ -318,6 +322,7 @@ export async function verifyInput({
   const prepared = await prepareInput({ inputType, content, file, ocrText, ocrStatus });
   if (prepared.insufficientReport) return prepared.insufficientReport;
 
+  await authorizeVerification({ env, authorization, fetchImpl, signal });
   const usageState = createModelUsageState();
   const model = createModelCaller({ env, authorization, fetchImpl, signal, usageState });
   const claims = await extractClaims(prepared.normalizedContent, model, {

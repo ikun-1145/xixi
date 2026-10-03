@@ -23,7 +23,7 @@ test("verified active application identity is supplied only by the Worker", asyn
       assert.equal(options.method, "POST");
       assert.equal(options.headers.Authorization, "Bearer valid-token");
       assert.equal(options.body, "{}");
-      return workerResponse(200, { user_id: userId, identity_status: "active" });
+      return workerResponse(200, { user_id: userId, identity_status: "active", is_banned: false });
     });
   assert.deepEqual(result, { userId, status: 200 });
   assert.equal(calls, 1);
@@ -66,9 +66,9 @@ for (const [label, token] of [
 }
 
 for (const [label, payload] of [
-  ["missing user ID", { identity_status: "active" }],
-  ["empty user ID", { identity_status: "active", user_id: "" }],
-  ["invalid user ID", { identity_status: "active", user_id: "../victim" }],
+  ["missing user ID", { identity_status: "active", is_banned: false }],
+  ["empty user ID", { identity_status: "active", is_banned: false, user_id: "" }],
+  ["invalid user ID", { identity_status: "active", is_banned: false, user_id: "../victim" }],
   ["inactive user", { identity_status: "deleting", user_id: userId }],
 ]) {
   test(`${label} in identity response fails closed`, async () => {
@@ -93,14 +93,14 @@ test("nonexistent identity is rejected by Worker", async () => {
 test("forged pro/admin claims never become authority", async () => {
   const result = await verifiedActiveUserId(request("Bearer forged-claims", {
     user_id: "victim", pro: true, role: "admin",
-  }), async () => workerResponse(200, { user_id: userId, identity_status: "active" }));
+  }), async () => workerResponse(200, { user_id: userId, identity_status: "active", is_banned: false }));
   assert.deepEqual(result, { userId, status: 200 });
 });
 
 test("a replayed valid token is accepted while active and rejected after deletion", async () => {
   const req = request("Bearer signed");
   const active = await verifiedActiveUserId(req,
-    async () => workerResponse(200, { user_id: userId, identity_status: "active" }));
+    async () => workerResponse(200, { user_id: userId, identity_status: "active", is_banned: false }));
   const deleting = await verifiedActiveUserId(req,
     async () => workerResponse(403, { error: "ACCOUNT_NOT_ACTIVE" }));
   assert.equal(active.userId, userId);
@@ -126,4 +126,12 @@ test("Edge verifies before constructing the service-role client", () => {
   const source = readFileSync(new URL("../supabase/functions/comment-copilot/index.ts", import.meta.url), "utf8");
   assert.ok(source.indexOf("await verifiedActiveUserId(req)") < source.indexOf("const admin = createClient("));
   assert.doesNotMatch(source, /function decodeJwt\(/);
+});
+
+test("a successful identity response must explicitly confirm an unbanned account", async () => {
+  for (const [isBanned, status] of [[true, 403], [undefined, 503], ["false", 503], [null, 503]]) {
+    const result = await verifiedActiveUserId(request("Bearer signed"), async () =>
+      workerResponse(200, { user_id: userId, identity_status: "active", is_banned: isBanned }));
+    assert.deepEqual(result, { userId: null, status });
+  }
 });

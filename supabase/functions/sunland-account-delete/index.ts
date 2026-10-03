@@ -10,7 +10,7 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import {
   deleteAvatarObjectIfExists,
   deleteAvatarPrefixWithPages,
-  encodeAvatarOwnerKey,
+  avatarStorageNamespaces,
   extractStableUserId,
   matchesExternalOwnership,
 } from "./account-delete-core.js";
@@ -105,7 +105,7 @@ function randomDeletionToken(): string {
 async function verifyAppIdentity(appToken: string): Promise<string | null> {
   if (!appToken) return null;
   try {
-    const res = await fetch(`${API_BASE}/v1/account/identity`, {
+    const res = await fetch(`${API_BASE}/v1/account-delete/identity`, {
       method: "POST",
       headers: {
         Authorization: `Bearer ${appToken}`,
@@ -236,20 +236,22 @@ async function deleteAvatars(
   legacyAvatarPath: string | null,
   renewLease: () => Promise<boolean>,
 ): Promise<Error | null> {
-  const ownerKey = encodeAvatarOwnerKey(userId);
   try {
-    const prefixError = await deleteAvatarPrefixWithPages({
-      list: (prefix: string, options: Record<string, unknown>) =>
-        admin.storage.from(AVATAR_BUCKET).list(prefix, options),
-      remove: (paths: string[]) => admin.storage.from(AVATAR_BUCKET).remove(paths),
-      prefix: ownerKey,
-      renewLease,
-    });
-    if (prefixError) return prefixError;
+    for (const namespace of avatarStorageNamespaces(userId)) {
+      const prefixError = await deleteAvatarPrefixWithPages({
+        list: (prefix: string, options: Record<string, unknown>) =>
+          admin.storage.from(AVATAR_BUCKET).list(prefix, options),
+        remove: (paths: string[]) => admin.storage.from(AVATAR_BUCKET).remove(paths),
+        prefix: namespace,
+        renewLease,
+      });
+      if (prefixError) return prefixError;
+    }
     if (!legacyAvatarPath) return null;
     return await deleteAvatarObjectIfExists({
       remove: (paths: string[]) => admin.storage.from(AVATAR_BUCKET).remove(paths),
       path: legacyAvatarPath,
+      userId,
       renewLease,
     });
   } catch (error) {

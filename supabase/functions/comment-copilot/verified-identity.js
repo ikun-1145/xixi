@@ -35,9 +35,11 @@ export async function verifiedActiveUserId(req, fetchIdentity = fetch) {
 
   const identity = await response.json().catch(() => null);
   if (identity?.identity_status !== "active" ||
+      typeof identity.is_banned !== "boolean" ||
       typeof identity.user_id !== "string" ||
       !USER_ID_PATTERN.test(identity.user_id)) {
     return { userId: null, status: 503 };
   }
+  if (identity.is_banned) return { userId: null, status: 403 };
   return { userId: identity.user_id, status: 200 };
 }

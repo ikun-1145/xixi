@@ -3,6 +3,8 @@ import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import { fileURLToPath } from "node:url";
 import { dirname, join } from "node:path";
+import { stripTypeScriptTypes } from "node:module";
+import vm from "node:vm";
 
 import {
   deleteAvatarObjectIfExists,
@@ -11,6 +13,8 @@ import {
   extractStableUserId,
   isAlreadyRevokedResponse,
   matchesExternalOwnership,
+  avatarPathBelongsToUser,
+  avatarStorageNamespaces,
 } from "../supabase/functions/sunland-account-delete/account-delete-core.js";
 import { encodeAvatarOwnerKey as encodeFrontendAvatarOwnerKey } from "../ai/avatar-storage-key.js";
 import { collectAccountLocalStorageKeys } from "../ai/account-delete.js";
@@ -254,20 +258,21 @@ test("avatar cleanup fails closed on a middle-page list error then retries", asy
   assert.equal(objects.length, 0);
 });
 
-test("avatar cleanup rejects malformed, duplicate, and stale listings", async () => {
+test("avatar cleanup rejects unavailable listings and safely bounds duplicate or stale entries", async () => {
   const remove = async () => ({ error: null });
   for (const data of [null, [{ name: "a" }, { name: "a" }], [{ bad: "entry" }]]) {
     const error = await deleteAvatarPrefixWithPages({
       list: async () => ({ data, error: null }), remove, prefix: "owner",
     });
-    assert.ok(error);
+    if (data === null) assert.ok(error);
+    else assert.equal(error, null);
   }
   let calls = 0;
   const stale = await deleteAvatarPrefixWithPages({
     list: async () => { calls++; return { data: [{ name: "a" }], error: null }; },
     remove, prefix: "owner",
   });
-  assert.match(stale?.message ?? "", /did not advance/);
+  assert.equal(stale, null);
   assert.equal(calls, 2);
 });
 
@@ -278,8 +283,8 @@ test("avatar cleanup bounds alternating eventually consistent pages", async () =
     remove: async () => ({ error: null }),
     prefix: "owner", maxPages: 5,
   });
-  assert.match(error?.message ?? "", /page limit exceeded/);
-  assert.equal(calls, 5);
+  assert.equal(error, null);
+  assert.equal(calls, 3);
 });
 
 test("avatar cleanup can finish after an already-deleted object", async () => {
@@ -300,23 +305,111 @@ test("exact legacy avatar path deletion is idempotent on missing objects", async
       removed.push(...paths);
       return { error: null };
     },
-    path: "legacy/avatar.jpg",
+    userId: "legacy",
+    path: "legacy.png",
   });
 
   assert.equal(error, null);
-  assert.deepEqual(removed, ["legacy/avatar.jpg"]);
+  assert.deepEqual(removed, ["legacy.png"]);
 
   error = await deleteAvatarObjectIfExists({
     remove: async () => ({ error: { statusCode: 404, code: "NoSuchKey" } }),
-    path: "legacy/missing.jpg",
+    userId: "legacy",
+    path: "legacy.png",
   });
   assert.equal(error, null);
 
   error = await deleteAvatarObjectIfExists({
     remove: async () => ({ error: { statusCode: 404, code: "NoSuchBucket" } }),
-    path: "legacy/avatar.jpg",
+    userId: "legacy",
+    path: "legacy.png",
   });
   assert.equal(error?.code, "NoSuchBucket");
+});
+
+test("avatar deletion validates ownership for encoded and unambiguous legacy paths", () => {
+  const userId = "a@b.example";
+  const owner = encodeEdgeAvatarOwnerKey(userId);
+  const uuid = "11111111-1111-4111-8111-111111111111";
+  for (const path of [
+    `${owner}/photo.png`, `${userId}.png`, `${owner}/unknown extension.weird`,
+    `${owner}/旧头像 💙.jpeg`, `${owner}/photo.png?other`, `${owner}/50% off#old`,
+    `${owner}/nested/unknown`, `${owner}/photo%2fpng`,
+  ]) {
+    assert.equal(avatarPathBelongsToUser(path, userId), true);
+  }
+  assert.equal(avatarPathBelongsToUser(`${uuid}/photo.jpg`, uuid), true);
+  for (const path of [
+    "victim.png", `${encodeEdgeAvatarOwnerKey("victim")}/photo.png`,
+    `${userId}/photo.png`, `${owner}-other/photo.png`,
+    `${owner}/../victim.png`, `${owner}/..`, `${owner}/.`,
+    `${owner}/%2e%2e`, `${owner}/%252e%252e/victim`, `${owner}/photo\\png`,
+    `${owner}/%252f..%252fvictim`, `${owner}/a%5c..%5cvictim`,
+    `${owner}/photo\u0000.png`, `/${owner}/photo.png`,
+    `https://example.test/${owner}/photo.png`,
+    "", null, 123,
+  ]) assert.equal(avatarPathBelongsToUser(path, userId), false, String(path));
+  assert.equal(avatarPathBelongsToUser(`${owner}/photo.png`, "../victim"), false);
+  assert.equal(avatarPathBelongsToUser("null.png", null), false);
+});
+
+test("foreign paths from a profile or cached deletion job never reach service-role remove", async () => {
+  const deleteAvatarsSource = edgeIndex.slice(
+    edgeIndex.indexOf("async function deleteAvatars("),
+    edgeIndex.indexOf("async function handleAuthorize("),
+  );
+  const deleteAvatars = vm.runInNewContext(
+    `${stripTypeScriptTypes(deleteAvatarsSource)}; deleteAvatars`,
+    {
+      encodeAvatarOwnerKey: encodeEdgeAvatarOwnerKey,
+      avatarStorageNamespaces,
+      deleteAvatarPrefixWithPages,
+      deleteAvatarObjectIfExists,
+      AVATAR_BUCKET: "avatars",
+    },
+  );
+  for (const source of ["profile", "cached job"]) {
+    let removes = 0;
+    const admin = { storage: { from(bucket) {
+      assert.equal(bucket, "avatars");
+      return {
+        list: async (prefix) => {
+          assert.equal(prefix, encodeEdgeAvatarOwnerKey("user-a"));
+          return { data: [], error: null };
+        },
+        remove: async () => { removes += 1; return { error: null }; },
+      };
+    } } };
+    const error = await deleteAvatars(
+      admin, "user-a", `${encodeEdgeAvatarOwnerKey("user-b")}/photo.png`, async () => true,
+    );
+    assert.equal(error, null, source);
+    assert.equal(removes, 0, source);
+  }
+  assert.match(edgeIndex, /path: legacyAvatarPath,\s*userId,/);
+});
+
+test("avatar prefix cleanup skips traversal entries without blocking deletion", async () => {
+  for (const name of ["..", "../victim.png", "photo\\png", "%2e%2e", "%252e%252e/victim", "photo\u0000.png"]) {
+    let removes = 0;
+    const error = await deleteAvatarPrefixWithPages({
+      prefix: encodeEdgeAvatarOwnerKey("user-a"),
+      list: async () => ({ data: [{ name }], error: null }),
+      remove: async () => { removes++; return { error: null }; },
+    });
+    assert.equal(error, null);
+    assert.equal(removes, 0, name);
+  }
+});
+
+test("owned avatar removal still honors the deletion lease", async () => {
+  let removes = 0;
+  const error = await deleteAvatarObjectIfExists({
+    userId: "user-a", path: "user-a.png", renewLease: async () => false,
+    remove: async () => { removes += 1; return { error: null }; },
+  });
+  assert.equal(error.message, "lease lost");
+  assert.equal(removes, 0);
 });
 
 test("migration enforces service_role-only RLS and definer permissions", () => {

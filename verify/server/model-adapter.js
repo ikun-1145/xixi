@@ -89,6 +89,45 @@ function gatewayFetch(env, request, fetchImpl) {
   return fetchImpl(request);
 }
 
+function requireAuthorization(authorization) {
+  if (!/^Bearer\s+\S{10,4096}$/i.test(authorization || "")) {
+    throw new VerifyError("AUTH_REQUIRED", "请先登录霜蓝账号后再开始核验。", 401);
+  }
+}
+
+export async function authorizeVerification({ env, authorization, fetchImpl = fetch, signal }) {
+  requireAuthorization(authorization);
+  const timeout = AbortSignal.timeout(8_000);
+  const request = new Request(new URL("/v1/usage", DEFAULT_GATEWAY_URL), {
+    method: "POST",
+    headers: { "content-type": "application/json", authorization },
+    body: "{}",
+    signal: signal ? AbortSignal.any([signal, timeout]) : timeout,
+  });
+  let response;
+  try {
+    response = await gatewayFetch(env, request, fetchImpl);
+  } catch {
+    throw new VerifyError("MODEL_UNAVAILABLE", "身份与额度校验暂时不可用。", 503);
+  }
+  if (response.status === 401 || response.status === 403) {
+    throw new VerifyError("AUTH_REQUIRED", "登录状态已失效或账号当前不可用。", 401);
+  }
+  if (response.status === 429) {
+    throw new VerifyError("RATE_LIMITED", "今日使用次数已达上限或请求过于频繁。", 429);
+  }
+  const usage = response.ok ? await response.json().catch(() => null) : null;
+  if (typeof usage?.userId !== "string" || !/^[A-Za-z0-9][A-Za-z0-9@._+\-]{0,127}$/u.test(usage.userId)
+      || typeof usage.isPro !== "boolean" || !Number.isSafeInteger(usage.limit) || usage.limit <= 0
+      || !Number.isSafeInteger(usage.remain)
+      || (usage.isPro ? usage.remain !== -1 : usage.remain < 0 || usage.remain > usage.limit)) {
+    throw new VerifyError("MODEL_UNAVAILABLE", "身份与额度校验暂时不可用。", 503);
+  }
+  if (!usage.isPro && usage.remain === 0) {
+    throw new VerifyError("RATE_LIMITED", "今日使用次数已达上限或请求过于频繁。", 429);
+  }
+}
+
 export async function callDeepSeek({
   env,
   authorization,
@@ -100,9 +139,7 @@ export async function callDeepSeek({
   signal,
   onUsage,
 }) {
-  if (!/^Bearer\s+\S{10,4096}$/i.test(authorization || "")) {
-    throw new VerifyError("AUTH_REQUIRED", "请先登录霜蓝账号后再开始核验。", 401);
-  }
+  requireAuthorization(authorization);
 
   const timeoutSignal = AbortSignal.timeout(VERIFY_LIMITS.modelTimeoutMs);
   const combinedSignal = signal ? AbortSignal.any([signal, timeoutSignal]) : timeoutSignal;

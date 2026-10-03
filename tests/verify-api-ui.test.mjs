@@ -3,6 +3,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import vm from "node:vm";
 import { JSDOM } from "jsdom";
+import { usagePreflightResponse } from "./helpers/verify-gateway.mjs";
 
 import { onRequestGet, onRequestPost } from "../functions/api/verify.js";
 import { t } from "../verify/i18n.js";
@@ -10,7 +11,9 @@ import { renderReport, safeExternalUrl } from "../verify/render.js";
 
 function opinionGateway(remaining = null) {
   return {
-    async fetch() {
+    async fetch(request) {
+      const usage = usagePreflightResponse(request);
+      if (usage) return usage;
       return new Response(JSON.stringify({ choices: [{ message: { content: '{"claims":[]}' } }] }), {
         headers: {
           "content-type": "application/json",
@@ -126,6 +129,8 @@ test("verify API does not propagate an unsupported incoming request signal to mo
   const gateway = {
     async fetch(modelRequest) {
       assert.equal(modelRequest.signal.aborted, false);
+      const usage = usagePreflightResponse(modelRequest);
+      if (usage) return usage;
       return new Response(JSON.stringify({ choices: [{ message: { content: '{"claims":[]}' } }] }), {
         headers: { "content-type": "application/json" },
       });
