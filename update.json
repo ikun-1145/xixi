@@ -1,9 +1,9 @@
 {
-  "version": "1.5.1",
-  "build": 41,
+  "version": "1.5.2",
+  "build": 42,
   "force": false,
-  "url": "https://api.sunland.dev/v1/download/apk?v=1.5.1%2B41",
-  "ipaUrl": "https://api.sunland.dev/v1/download/ipa?v=1.5.1%2B41",
-  "desc": "安全边界修复：统一账号状态校验，强化头像删除归属检查，修复鸣谢墙安全渲染与事实核查入口额度检查，并保留 GitHub Release 下载代理。\n本次为非强制更新。",
-  "apk_url": "https://api.sunland.dev/v1/download/apk?v=1.5.1%2B41"
+  "url": "https://api.sunland.dev/v1/download/apk?v=1.5.2%2B42",
+  "ipaUrl": "https://api.sunland.dev/v1/download/ipa?v=1.5.2%2B42",
+  "desc": "霜蓝 AI 1.5.2\n\n- 新用户首次登录引导，历史账户保持直接进入主页。\n- OC 多档案、私有图库、AI 精选集与 Assistant 图片搜索。\n- 优化 OC 图片上传和分析处理链路。\n- 修复输入框布局、语音准备状态和设置页诊断卡片交互。\n\n本次为非强制更新。IPA 为未签名版本，需要自行签名后安装。",
+  "apk_url": "https://api.sunland.dev/v1/download/apk?v=1.5.2%2B42"
 }
