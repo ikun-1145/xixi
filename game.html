@@ -4,21 +4,44 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
-<script defer src="p/js/site-i18n-extra.js?v=20260808-2"></script>
-<script defer src="p/js/site-i18n.js?v=20260808-2"></script>
 <title>小游戏</title>
 
 <link rel="preload" as="image" href="p/chengshi.webp" type="image/webp">
 <link rel="preload" as="image" href="p/chengshi.png">
 <link rel="preload" as="image" href="p/bird.png">
 
-<link rel="stylesheet" href="p/css/tokens.css">
-<link rel="stylesheet" href="p/css/base.css">
 <style>
-/* ================= 游戏页面样式（依赖 tokens.css / base.css） ================= */
-body.preload { opacity: 0; }
+/* ================= CSS 变量（主页同款）================= */
+:root {
+  --bg-main: linear-gradient(135deg, #dcefff, #f8fdff), url('p/chengshi.png') center / cover no-repeat;
+  --card-bg: rgba(255,255,255,0.5);
+  --text-main: #1A1A1A;
+  --accent: #71f8fc;
+}
+
+body.night {
+  --bg-main: #161823;
+  --card-bg: rgba(22,24,35,0.95);
+  --text-main: #E8FFFF;
+  --accent: #3EEDE7;
+}
+
+/* ================= 基础样式 ================= */
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body.preload {
+  opacity: 0;
+}
 
 body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC",
+               "Hiragino Sans GB", "Microsoft YaHei", "Noto Sans CJK SC",
+               "Source Han Sans SC", Arial, sans-serif;
+  background: var(--bg-main);
   min-height: 100vh;
   min-height: 100svh;
   display: flex;
@@ -26,37 +49,113 @@ body {
   align-items: flex-start;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
-  /* 画布透明，城市背景即游戏场景 */
-  background: var(--bg) url('p/chengshi.png') center / cover no-repeat fixed;
-  transition: opacity var(--dur-slow) ease;
+  color: var(--text-main);
+  transition: opacity 0.8s ease;
+  overflow: hidden;
 }
 
 @supports (background-image: url("p/chengshi.webp")) {
-  body {
-    background-image: url('p/chengshi.webp');
+  :root {
+    --bg-main: linear-gradient(135deg, #dcefff, #f8fdff), url('p/chengshi.webp') center / cover no-repeat;
   }
 }
 
-body.night {
-  background-image: none;
+/* 主页同款粒子动画背景 */
+body::before {
+  content: "";
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background:
+    radial-gradient(circle at 20% 30%, rgba(255,255,255,0.45) 0, rgba(255,255,255,0) 60%),
+    radial-gradient(circle at 80% 70%, rgba(255,255,255,0.38) 0, rgba(255,255,255,0) 60%),
+    radial-gradient(circle at 40% 80%, rgba(255,255,255,0.42) 0, rgba(255,255,255,0) 60%);
+  background-size: 120% 120%;
+  animation: floatParticles 18s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: -1;
+}
+
+body.night::before {
+  background:
+    radial-gradient(circle at 30% 30%, rgba(62,237,231,0.12), transparent 60%),
+    radial-gradient(circle at 70% 70%, rgba(62,237,231,0.08), transparent 60%);
+}
+
+@keyframes floatParticles {
+  0% { background-position: 0% 0%; }
+  100% { background-position: 100% 100%; }
 }
 
 /* ================= 游戏容器 ================= */
 #gameWrapper {
   position: relative;
-  margin: 2vh auto;
+  margin: 2dvh auto;
+  width: min(96vw, calc(100dvh * 0.95 * 0.62));
+  max-width: min(96vw, 52rem);
+  aspect-ratio: 400 / 650;
   display: flex;
   justify-content: center;
-  animation: fade-in-up var(--dur-slow) var(--ease) both;
+  align-items: center;
+  animation: fadeInUp 1s ease-out;
+}
+
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 canvas {
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow-lg);
+  width: 100%;
+  height: 100%;
+  max-width: 100%;
+  max-height: 100%;
+  display: block;
+  border-radius: 16px;
+  box-shadow: 0 20px 50px rgba(80, 140, 200, 0.25), 
+              inset 0 0 40px rgba(200, 240, 255, 0.4), 
+              0 10px 30px rgba(0,0,0,0.08);
   touch-action: none;
+  animation: float 6s ease-in-out infinite;
 }
 
-/* ================= 游戏结束遮罩 ================= */
+@media (min-width: 1024px) {
+  #gameWrapper {
+    width: min(88vw, calc(100dvh * 0.92 * 0.615));
+    max-width: 58rem;
+  }
+}
+
+@media (min-width: 768px) and (max-width: 1023.98px) {
+  #gameWrapper {
+    width: min(92vw, calc(100dvh * 0.92 * 0.615));
+    max-width: 46rem;
+  }
+
+  .overlay h1 {
+    font-size: clamp(2rem, 4vw, 2.6rem);
+  }
+
+  .overlay button {
+    font-size: clamp(1rem, 2vw, 1.2rem);
+  }
+}
+
+@keyframes float {
+  0% { transform: translateY(0); }
+  50% { transform: translateY(-4px); }
+  100% { transform: translateY(0); }
+}
+
+/* ================= 游戏结束遮罩（主页同款毛玻璃）================= */
 .overlay {
   position: absolute;
   inset: 0;
@@ -64,98 +163,166 @@ canvas {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  gap: var(--space-4);
-  background: var(--glass-bg);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
-  border-radius: var(--r-lg);
+  gap: 20px;
+  background: var(--card-bg);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border-radius: 16px;
 }
 
 /* 兼容性兜底 */
 @supports not ((backdrop-filter: blur(10px)) or (-webkit-backdrop-filter: blur(10px))) {
-  .overlay { background: var(--surface); }
+  .overlay {
+    background: rgba(255,255,255,0.9);
+  }
+  body.night .overlay {
+    background: rgba(22,24,35,0.95);
+  }
 }
 
 .overlay h1 {
-  color: var(--text);
-  font-size: var(--title-lg);
-  font-weight: 700;
-  letter-spacing: -0.01em;
-  animation: modal-pop var(--dur-base) var(--ease);
+  color: var(--text-main);
+  font-size: 48px;
+  text-shadow: 0 0 20px rgba(113, 248, 252, 0.3);
+  animation: modalPop 0.5s ease;
 }
 
-@keyframes modal-pop {
-  from { opacity: 0; transform: scale(0.96); }
-  to   { opacity: 1; transform: scale(1); }
+@keyframes modalPop {
+  from {
+    opacity: 0;
+    transform: scale(0.8);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1);
+  }
 }
 
-/* ================= 重开按钮 ================= */
+/* ================= 按钮样式（主页同款）================= */
 .overlay button {
-  height: 44px;
-  padding: 0 var(--space-8);
-  font-family: inherit;
-  font-size: var(--text-base);
-  font-weight: 600;
-  border-radius: var(--r-md);
+  padding: 0.8rem 2.2rem;
+  font-size: 1.2rem;
+  font-weight: 700;
+  border-radius: 30px;
   border: none;
-  background: var(--brand);
-  color: var(--on-brand);
+  background: var(--accent);
+  color: #000;
   cursor: pointer;
-  transition: transform var(--dur-fast) var(--ease),
-              box-shadow var(--dur-fast) var(--ease),
-              background var(--dur-fast) var(--ease);
+  transition: transform 0.3s, box-shadow 0.3s, filter 0.3s;
+  animation: breatheGlow 3s ease-in-out infinite;
+  box-shadow: 0 0 12px rgba(113, 248, 252, 0.35);
+}
+
+@keyframes breatheGlow {
+  0% { box-shadow: 0 0 12px rgba(113, 248, 252, 0.35); }
+  50% { box-shadow: 0 0 22px rgba(113, 248, 252, 0.55); }
+  100% { box-shadow: 0 0 12px rgba(113, 248, 252, 0.35); }
 }
 
 .overlay button:hover {
-  background: var(--brand-strong);
-  transform: translateY(-1px);
-  box-shadow: var(--shadow-md);
+  transform: translateY(-3px);
+  box-shadow: 0 12px 28px rgba(80, 160, 255, 0.35);
+  filter: brightness(1.08);
 }
 
-.overlay button:active { transform: none; }
+.overlay button:active {
+  transform: translateY(-1px);
+}
 
-/* ================= 加载指示 ================= */
+/* ================= 加载动画（主页同款）================= */
 #loading {
   position: fixed;
   inset: 0;
-  z-index: 9998;
+  z-index: 9999;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-4);
-  background: var(--bg);
-  transition: opacity var(--dur-slow) ease;
+  gap: 1rem;
+  transition: opacity 0.6s ease;
+  background: radial-gradient(
+    circle at center,
+    rgba(113,248,252,0.18),
+    #ffffff 65%
+  );
+}
+
+body.night #loading {
+  background: radial-gradient(
+    circle at center,
+    rgba(62,237,231,0.14),
+    rgba(22,24,35,0.96) 65%
+  );
+}
+
+.loader {
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  border: 6px solid rgba(0,0,0,0.08);
+  border-top-color: var(--accent);
+  animation: spin 1s linear infinite;
+  box-shadow: 0 0 20px rgba(113,248,252,0.45);
+}
+
+body.night .loader {
+  border: 6px solid rgba(255,255,255,0.14);
+  box-shadow: 0 0 24px rgba(62,237,231,0.55);
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
 }
 
 #loading p {
-  margin: 0;
-  color: var(--text-2);
-  font-size: var(--text-sm);
+  color: var(--text-main);
+  font-size: 0.9rem;
+  opacity: 0.8;
 }
 
 /* ================= 横屏适配 ================= */
 @media (orientation: landscape) and (max-width: 900px) {
-  #gameWrapper { align-items: center; }
+  #gameWrapper {
+    align-items: center;
+  }
 
   .overlay {
     flex-direction: row;
     justify-content: center;
-    gap: var(--space-6);
+    gap: 24px;
   }
 
-  .overlay h1 { font-size: var(--title-md); }
+  .overlay h1 {
+    font-size: 36px;
+  }
+
+  .overlay button {
+    font-size: 1.1rem;
+    padding: 0.7rem 1.8rem;
+  }
 }
 
 /* ================= iOS 安全区 ================= */
 @supports (padding: env(safe-area-inset-bottom)) {
-  body { padding-bottom: env(safe-area-inset-bottom); }
-  .overlay { padding-bottom: env(safe-area-inset-bottom); }
+  body {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .overlay {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
 }
 
 /* ================= 移动端适配 ================= */
 @media (max-width: 480px) {
-  .overlay h1 { font-size: var(--title-md); }
+  .overlay h1 {
+    font-size: 36px;
+  }
+
+  .overlay button {
+    font-size: 1rem;
+    padding: 0.7rem 1.8rem;
+  }
 }
 </style>
 
@@ -163,8 +330,8 @@ canvas {
 
 <body class="preload">
 <!-- 加载动画（主页同款）-->
-<div id="loading" aria-label="加载中">
-  <div class="spinner" aria-hidden="true"></div>
+<div id="loading">
+  <div class="loader"></div>
   <p id="loadingText">加载中...</p>
 </div>
 
@@ -215,43 +382,16 @@ const i18n = {
     loading: "読み込み中...",
     tapToStart: "タップして開始",
     highScore: "最高"
-  },
-  "zh-Hant": {
-    title: "小遊戲",
-    gameOver: "遊戲結束",
-    restart: "再來一局",
-    loading: "載入中...",
-    tapToStart: "點擊螢幕開始",
-    highScore: "最高"
-  },
-  ko: {
-    title: "미니 게임",
-    gameOver: "게임 종료",
-    restart: "다시 하기",
-    loading: "로딩 중...",
-    tapToStart: "화면을 눌러 시작",
-    highScore: "최고 점수"
-  },
-  es: {
-    title: "Minijuego",
-    gameOver: "Fin del juego",
-    restart: "Jugar de nuevo",
-    loading: "Cargando...",
-    tapToStart: "Toca la pantalla para empezar",
-    highScore: "Récord"
   }
 };
 
 function detectLang(){
-  const saved = window.SiteI18n?.normalizeLanguage(localStorage.getItem("lang"));
+  const saved = localStorage.getItem("lang");
   if (saved && i18n[saved]) return saved;
 
   const nav = navigator.language || "zh";
-  if (/^zh-(hant|tw|hk|mo)/i.test(nav)) return "zh-Hant";
   if (nav.startsWith("ja")) return "ja";
   if (nav.startsWith("en")) return "en";
-  if (nav.startsWith("ko")) return "ko";
-  if (nav.startsWith("es")) return "es";
   return "zh";
 }
 
@@ -291,26 +431,22 @@ let scale = 1;
 function resize(){
   const dpr = window.devicePixelRatio || 1;
 
-  const availableW = window.innerWidth;
-  const availableH = window.innerHeight * 0.95;
+  const viewportW = window.innerWidth;
+  const viewportH = window.innerHeight;
+  const isPad = viewportW >= 768 && viewportW < 1024;
+  const verticalPadding = isPad ? 0.92 : 0.95;
 
-  let widthBased = availableW / CONFIG.LOGIC_W;
-  let heightBased = availableH / CONFIG.LOGIC_H;
+  const availableW = viewportW * 0.96;
+  const availableH = viewportH * verticalPadding;
 
-  // 判断是否为移动端（触控为主 or 窄屏）
-  const isMobile =
-    window.matchMedia("(pointer: coarse)").matches ||
-    Math.min(availableW, availableH) < 700;
+  const widthBased = availableW / CONFIG.LOGIC_W;
+  const heightBased = availableH / CONFIG.LOGIC_H;
 
-  // 📱 手机：cover（铺满）
-  // 💻 电脑：contain（完整显示）
-  if (isMobile) {
-    scale = Math.max(widthBased, heightBased);
-  } else {
-    scale = Math.min(widthBased, heightBased);
-  }
+  // 统一使用 contain，确保不变形、不裁剪
+  scale = Math.min(widthBased, heightBased);
 
   scale = Math.min(scale, CONFIG.MAX_SCALE);
+  scale = Math.max(scale, 0.5);
 
   // CSS 显示尺寸
   canvas.style.width = CONFIG.LOGIC_W * scale + "px";
@@ -567,7 +703,7 @@ function endGame(){
 
 /* ================= 输入处理 ================= */
 function jump(e){
-  if(e && e.code === "Space") e.preventDefault();
+  if(e && (e.code === "Space" || e.type.startsWith("touch"))) e.preventDefault();
   
   if(gameState === 'ready'){
     // 开始游戏
@@ -579,9 +715,23 @@ function jump(e){
   }
 }
 
+function handleTouchMove(e){
+  if (e.target === canvas && gameState !== 'gameOver') {
+    e.preventDefault();
+  }
+}
+
+function handleTouchEnd(e){
+  if (e.target === canvas) {
+    e.preventDefault();
+  }
+}
+
 document.addEventListener("keydown", jump);
 document.addEventListener("mousedown", jump);
-document.addEventListener("touchstart", jump, { passive: false });
+canvas.addEventListener("touchstart", jump, { passive: false });
+canvas.addEventListener("touchmove", handleTouchMove, { passive: false });
+canvas.addEventListener("touchend", handleTouchEnd, { passive: false });
 
 restartBtn.onclick = e => {
   e.stopPropagation();
@@ -590,9 +740,7 @@ restartBtn.onclick = e => {
 
 /* ================= iOS Safari 特殊适配 ================= */
 if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
-  document.body.addEventListener("touchmove", e => {
-    if (e.target === canvas) e.preventDefault();
-  }, { passive: false });
+  document.body.addEventListener("touchmove", handleTouchMove, { passive: false });
 
   // 强制重新计算尺寸（解决横竖屏切换高度不准）
   window.addEventListener("orientationchange", () => {
@@ -622,7 +770,7 @@ window.addEventListener('load', async function() {
 
     // 隐藏加载画面（主页同款动画）
     loadingEl.style.opacity = '0';
-    setTimeout(() => loadingEl.remove(), 400);
+    setTimeout(() => loadingEl.remove(), 600);
 
     // 启动游戏
     resetGame();
@@ -633,34 +781,11 @@ window.addEventListener('load', async function() {
     // 即使出错也隐藏加载画面并启动游戏
     document.body.classList.remove('preload');
     loadingEl.style.opacity = '0';
-    setTimeout(() => loadingEl.remove(), 400);
+    setTimeout(() => loadingEl.remove(), 600);
     resetGame();
   }
 });
-
-function showGlobalLoading() {
-  const el = document.getElementById("loadingBar");
-  if (el) el.classList.add("active");
-}
-
-function hideGlobalLoading() {
-  const el = document.getElementById("loadingBar");
-  if (el) el.classList.remove("active");
-}
-
-// 页面进入立即关闭 loading（防止跨页面残留）
-document.addEventListener("DOMContentLoaded", () => {
-  hideGlobalLoading();
-});
-
-document.querySelectorAll("a").forEach(a => {
-  a.addEventListener("click", () => {
-    showGlobalLoading();
-  });
-});
 </script>
 
-
-<div id="loadingBar" aria-hidden="true"><span class="bar"></span></div>
 </body>
 </html>
