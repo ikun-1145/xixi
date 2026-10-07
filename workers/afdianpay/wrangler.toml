@@ -15,6 +15,7 @@ crons = ["*/2 * * * *"]
 
 # 非敏感变量（可入库）
 [vars]
+AFDIAN_ROLLOUT_DIAGNOSTICS_ONLY = "false"
 SUPABASE_URL = "https://klyrasrqgxijwrxuoevj.supabase.co"
 USER_ID = "e736a9426c7311f1851452540025c377"
 AFDIAN_PLAN_ID = "4c2527fc6c7411f1bbe45254001e7c00"
@@ -22,6 +23,11 @@ AFDIAN_PLAN_ID = "4c2527fc6c7411f1bbe45254001e7c00"
 [observability]
 enabled = true
 head_sampling_rate = 1
+
+# api.sunland.dev is a same-zone Worker route: use its existing authenticated handler.
+[[services]]
+binding = "AFDIAN_IDENTITY_SERVICE"
+service = "ai"
 
 # 扫描游标 KV：付款订单幂等性由 Supabase 的 pro_payment_orders 账本保证。
 [[kv_namespaces]]

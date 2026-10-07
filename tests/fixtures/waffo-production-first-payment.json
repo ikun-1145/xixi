@@ -1,0 +1,121 @@
+{
+  "note": "Allowlisted projection of the first Production incident; identifiers replaced, personal/billing data omitted. Argument types from live introspection, not the documentation examples.",
+  "webhook": {
+    "id": "PAY_one",
+    "mode": "prod",
+    "eventId": "PAY_one",
+    "storeId": "STO_prod",
+    "eventType": "order.completed",
+    "timestamp": "2026-10-05T19:50:26.247Z",
+    "data": {
+      "orderId": "ORD_one",
+      "paymentId": "PAY_one",
+      "currency": "CNY",
+      "listPrice": {
+        "total": "15.00",
+        "taxName": "None",
+        "taxRate": 0,
+        "subtotal": "15.00",
+        "taxAmount": "0.00"
+      },
+      "orderStatus": "completed",
+      "chargedAmount": "15.00",
+      "paymentStatus": "succeeded",
+      "orderMerchantExternalId": "11111111-1111-4111-8111-111111111111",
+      "orderMetadata": {
+        "payment_reference": "11111111-1111-4111-8111-111111111111"
+      }
+    }
+  },
+  "graphql": {
+    "data": {
+      "merchant": {
+        "id": "MER_synthetic",
+        "storeMerchants": [
+          {
+            "store": {
+              "id": "STO_prod"
+            }
+          }
+        ]
+      },
+      "onetimeOrder": {
+        "id": "ORD_one",
+        "store": {
+          "id": "STO_prod"
+        },
+        "onetimeProduct": {
+          "id": "PROD_prod"
+        },
+        "testMode": false,
+        "currency": "CNY",
+        "status": "completed",
+        "orderMerchantExternalId": "11111111-1111-4111-8111-111111111111",
+        "payments": [
+          {
+            "id": "PAY_one",
+            "status": "succeeded",
+            "refunds": []
+          }
+        ]
+      }
+    }
+  },
+  "queryArguments": [
+    {
+      "name": "merchant",
+      "args": [
+        {
+          "name": "id",
+          "type": {
+            "kind": "NON_NULL",
+            "name": null,
+            "ofType": {
+              "kind": "SCALAR",
+              "name": "String"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "onetimeOrder",
+      "args": [
+        {
+          "name": "id",
+          "type": {
+            "kind": "NON_NULL",
+            "name": null,
+            "ofType": {
+              "kind": "SCALAR",
+              "name": "String"
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "invalidIdResponse": {
+    "data": null,
+    "errors": [
+      {
+        "message": "Unknown type \"ID\".",
+        "locations": [
+          {
+            "line": 1,
+            "column": 25
+          }
+        ]
+      },
+      {
+        "message": "Unknown type \"ID\".",
+        "locations": [
+          {
+            "line": 1,
+            "column": 41
+          }
+        ]
+      }
+    ]
+  }
+}

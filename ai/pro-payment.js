@@ -6,6 +6,10 @@
   const WAFFO_ENABLED = true;
   const PUBLIC_CHECKOUT_ENABLED = true;
   const LEGACY_CHECKOUT_ENABLED = false;
+  // Production purchases use a server-bound intent and freshly verified provider facts.
+  const AFDIAN_MERCHANDISE_ENABLED = true;
+  const MERCHANDISE_PRODUCT_ID = "16b23966c0a711f183dc5254001e7c00";
+  const MERCHANDISE_SKU_ID = "16b98478c0a711f1bb735254001e7c00";
   const WAFFO_CHECKOUT_ENDPOINT = "https://waffopay.sunland.dev/checkout/waffo/production";
   const CHECKOUT_TIMEOUT_MS = 30_000;
   const SUPPORT_URL = "pro_activation_support.html";
@@ -20,6 +24,7 @@
   const USER_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9@._+-]{0,127}$/;
   const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
   let activeMonitoring = null;
+  let checkoutInProgress = false;
 
   const COPY = {
     zh: {
@@ -228,6 +233,23 @@
     return intent;
   }
 
+  // The official orderCreate client accepts sku JSON and forwards custom_order_id.
+  // These parameters select checkout only; the server independently verifies paid facts.
+  function buildMerchandiseCheckoutUrl(paymentReference) {
+    if (!UUID_PATTERN.test(paymentReference || "")) throw new Error(text("intentError"));
+    const url = new URL(CHECKOUT_URL);
+    url.searchParams.set("product_type", "1");
+    url.searchParams.set("plan_id", MERCHANDISE_PRODUCT_ID);
+    url.searchParams.set("sku", JSON.stringify([{ sku_id: MERCHANDISE_SKU_ID, count: 1 }]));
+    url.searchParams.set("custom_order_id", paymentReference);
+    return url.toString();
+  }
+
+  async function createAfdianMerchandiseCheckout(options = {}) {
+    if (!PUBLIC_CHECKOUT_ENABLED || !AFDIAN_MERCHANDISE_ENABLED) throw new Error(text("reviewNotice"));
+    return createIntentCheckout(options, true);
+  }
+
   function buildCheckoutUrl(paymentReference) {
     const url = new URL(CHECKOUT_URL);
     url.searchParams.set("product_type", "0");
@@ -241,12 +263,18 @@
     if (WAFFO_ENABLED) return createWaffoCheckout({ expectedUserId, isExpectedUser });
     // Historical recovery code stays available; public Waffo never falls back to it.
     if (!LEGACY_CHECKOUT_ENABLED) throw new Error(text("reviewNotice"));
+    return createIntentCheckout({ supabase, expectedUserId, isExpectedUser });
+  }
+
+  async function createIntentCheckout({ supabase, expectedUserId = null, isExpectedUser = null }, merchandise = false) {
+    if (checkoutInProgress) throw new Error(text("connecting"));
     const checkoutEpoch = membership.identityVersion;
     const checkoutCredential = global.localStorage?.getItem("token") || null;
     const checkoutCurrent = () => membership.identityVersion === checkoutEpoch
       && (global.localStorage?.getItem("token") || null) === checkoutCredential;
     const popup = openPlaceholder();
     if (!popup) throw new Error(text("popupError"));
+    checkoutInProgress = true;
 
     let timer;
     const timeout = new Promise((_, reject) => {
@@ -257,6 +285,7 @@
       if (!checkoutCurrent() || (typeof isExpectedUser === "function" && !isExpectedUser(identity.userId))) {
         throw new Error(text("identityError"));
       }
+      if (popup.closed) throw new Error(text("popupError"));
       if (!supabase?.rpc) throw new Error(text("intentError"));
 
       const { data, error } = await Promise.race([supabase.rpc("sunland_get_or_create_pro_payment_intent"), timeout]);
@@ -272,26 +301,30 @@
         return { alreadyActivated: true, userId: identity.userId };
       }
 
+      if (merchandise && intent.status !== "pending") throw new Error(text("intentError"));
       if (popup.closed) throw new Error(text("popupError"));
       savePending(identity.userId, intent.payment_reference);
-      popup.location.replace(buildCheckoutUrl(intent.payment_reference));
+      popup.location.replace(merchandise ? buildMerchandiseCheckoutUrl(intent.payment_reference) : buildCheckoutUrl(intent.payment_reference));
       return { paymentReference: intent.payment_reference, userId: identity.userId };
     } catch (error) {
       closePopup(popup);
       throw error instanceof Error ? error : new Error(text("intentError"));
     } finally {
       global.clearTimeout(timer);
+      checkoutInProgress = false;
     }
   }
 
   async function createWaffoCheckout({ expectedUserId = null, isExpectedUser = null } = {}) {
     if (!PUBLIC_CHECKOUT_ENABLED || !WAFFO_ENABLED) throw new Error(text("reviewNotice"));
+    if (checkoutInProgress) throw new Error(text("connecting"));
     const token = global.localStorage?.getItem("token");
     if (!token) throw new Error(text("loginRequired"));
     const epoch = membership.identityVersion;
     const current = () => epoch === membership.identityVersion && global.localStorage?.getItem("token") === token;
     const popup = openPlaceholder();
     if (!popup) throw new Error(text("popupError"));
+    checkoutInProgress = true;
     const controller = new AbortController();
     let timer;
     const timeout = new Promise((_, reject) => {
@@ -332,7 +365,7 @@
     } catch (error) {
       closePopup(popup);
       throw error instanceof Error ? error : new Error(text("intentError"));
-    } finally { global.clearTimeout(timer); }
+    } finally { global.clearTimeout(timer); checkoutInProgress = false; }
   }
 
   // Membership is memory-only and scoped to the verified identity and credential epoch.
@@ -564,6 +597,9 @@
     PUBLIC_CHECKOUT_ENABLED,
     beginCheckout,
     createWaffoCheckout,
+    AFDIAN_MERCHANDISE_ENABLED,
+    createAfdianMerchandiseCheckout,
+    buildMerchandiseCheckoutUrl,
     getPending,
     clearPending,
     startActivationMonitoring,

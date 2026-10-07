@@ -67,8 +67,8 @@ export function validateProductionRefund(data, event, intent, env) {
 export async function queryProductionOrder(env, event, intent) {
   if (!env.WAFFO_PRIVATE_KEY_PRODUCTION || env.WAFFO_PRIVATE_KEY_PRODUCTION.replace(/\s/g, '')
     === String(env.WAFFO_PRIVATE_KEY_TEST || '').replace(/\s/g, '')) throw new ProofError('proof_key_unavailable');
-  // Fields/relations documented in the official GraphQL guide. No REST/GraphQL money-unit guessing.
-  const body = JSON.stringify({ query: `query PaymentProof($id: ID!, $merchant: ID!) {
+  // Production introspection defines these IDs as String!, unlike the guide's ID! examples.
+  const body = JSON.stringify({ query: `query PaymentProof($id: String!, $merchant: String!) {
     merchant(id: $merchant) { id storeMerchants { store { id } } }
     onetimeOrder(id: $id) { id store { id } onetimeProduct { id } testMode currency status
       orderMerchantExternalId payments { id status refunds { id status } } }

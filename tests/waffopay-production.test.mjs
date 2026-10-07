@@ -15,6 +15,7 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const PINNED = { mode: 'prod', merchant_id: 'MER_synthetic', store_id: 'STO_prod', product_id: 'PROD_prod', currency: 'CNY' };
 const CLOSED = ['refunded', 'revoked'];
 const read = name => readFileSync(new URL(`../workers/waffopay/production-backend/${name}`, import.meta.url), 'utf8');
+const incident = JSON.parse(readFileSync(new URL('./fixtures/waffo-production-first-payment.json', import.meta.url), 'utf8'));
 
 // In-memory mirror of the Supabase RPC contract (SQL itself is covered by verify-source-rpc.mjs on PGlite).
 class PgError extends Error { constructor(status, message) { super(message); this.status = status; } }
@@ -149,6 +150,14 @@ async function run(w, fn) {
         || init.headers.apikey || init.headers.Authorization || variables.id !== 'ORD_one' || variables.merchant !== 'MER_synthetic') {
         return Response.json({}, { status: 401 });
       }
+      // Live Production introspection requires String!, despite documentation examples using ID!.
+      const query = JSON.parse(init.body).query;
+      const types = Object.fromEntries(incident.queryArguments.map(field =>
+        [field.name === 'merchant' ? 'merchant' : 'id', field.args[0].type.ofType.name]));
+      if (Object.entries(types).some(([name, type]) => !query.includes(`$${name}: ${type}!`))) {
+        return Response.json(incident.invalidIdResponse);
+      }
+      if (w.provider.graphqlErrors) return Response.json(incident.invalidIdResponse);
       return Response.json({ data: proofData(w.provider) });
     }
     if (url === 'https://api.waffo.ai/v1/actions/checkout/create-session') {
@@ -193,6 +202,31 @@ async function cron(w) {
   await Promise.all(waits);
 }
 const granted = { ok: true, status: 'granted', paymentConfirmed: true, entitlementState: 'granted', version: 3, entitlementEnabled: true };
+
+test('first Production payload survives GraphQL failure; cron recovers and replay keeps one source', async () => {
+  const w = world({ otherSource: true }); seed(w);
+  await run(w, async () => {
+    const body = structuredClone(incident.webhook);
+    assert.equal(typeof body.timestamp, 'string');
+    assert.equal(body.data.productId, undefined);
+    assert.equal(body.data.orderMetadata.payment_reference, ref);
+    assert.deepEqual(proofData(w.provider), incident.graphql.data);
+    w.provider.graphqlErrors = true;
+    assert.deepEqual(await deliver(w, body), [503, { ok: false, reason: 'proof_response' }]);
+    assert.equal(outbox(w).state, 'pending');
+    assert.equal(applies(w), 0);
+    w.provider.graphqlErrors = false;
+    await cron(w);
+    assert.equal(outbox(w).state, 'delivered');
+    assert.equal(outbox(w).last_error, null);
+    assert.equal(w.sb.sources.get('waffo|ORD_one').active, true);
+    assert.equal(w.sb.sources.get('other|profile:fixture-user').active, true);
+    assert.deepEqual(await deliver(w, body), [200, { ...granted, status: 'duplicate' }]);
+    assert.equal(w.sb.events.size, 1);
+    assert.equal(w.sb.orders.get('ORD_one').version, 3);
+    assert.equal(w.sb.sources.size, 2);
+  });
+});
 
 test('trusted completion grants one Waffo source; replay is duplicate; mutated body conflicts before Supabase', async () => {
   const w = world(); seed(w);

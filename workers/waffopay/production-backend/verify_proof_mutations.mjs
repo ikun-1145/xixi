@@ -6,13 +6,14 @@ import { spawnSync } from 'node:child_process';
 const root = new URL('../../../', import.meta.url);
 const files = ['workers/waffopay/worker.js', 'workers/waffopay/production.js', 'workers/waffopay/payment-proof.js',
   'workers/waffopay/production-rpc.js', 'workers/waffopay/production-backend/schema.sql', 'workers/waffopay/production-backend/outbox.sql',
-  'tests/waffopay-payment-proof.test.mjs', 'tests/waffopay-production.test.mjs'];
+  'tests/waffopay-payment-proof.test.mjs', 'tests/waffopay-production.test.mjs',
+  'tests/fixtures/waffo-production-first-payment.json'];
 const folder = mkdtempSync(join(tmpdir(), 'waffo-proof-mutations-'));
 try {
-  for (const dir of ['workers/waffopay/production-backend', 'tests']) mkdirSync(join(folder, dir), { recursive: true });
+  for (const dir of ['workers/waffopay/production-backend', 'tests/fixtures']) mkdirSync(join(folder, dir), { recursive: true });
   for (const file of files) copyFileSync(new URL(file, root), join(folder, file));
   writeFileSync(join(folder, 'package.json'), '{"type":"module"}');
-  const run = () => spawnSync(process.execPath, ['--test', '--test-concurrency=1', ...files.filter(f => f.startsWith('tests/'))],
+  const run = () => spawnSync(process.execPath, ['--test', '--test-concurrency=1', ...files.filter(f => f.endsWith('.test.mjs'))],
     { cwd: folder, encoding: 'utf8', timeout: 30000 });
   if (run().status !== 0) throw new Error('Baseline tests failed; mutation result cannot be trusted.');
   const mutations = [];
@@ -27,6 +28,7 @@ try {
     mutations.push([`${code}@${start}`, proofFile, proof.slice(0, start) + ';' + proof.slice(end + 1)]);
   }
   for (const [code, file, before, after] of [
+    ['graphql_id_scalar', proofFile, '$id: String!, $merchant: String!', '$id: ID!, $merchant: ID!'],
     ['entitlement_gate', 'workers/waffopay/production.js', "payload.entitlement_enabled=env.WAFFO_PRODUCTION_ENTITLEMENT_ENABLED==='true';", 'payload.entitlement_enabled=true;'],
     ['refund_convergence', 'workers/waffopay/production.js', ".filter(r=>r.status==='succeeded')", '.filter(()=>false)'],
     ['refund_pending_retry', 'workers/waffopay/production.js', "if(!result&&event.eventType==='refund.succeeded')throw new ProofError('proof_refund_pending');", ';'],

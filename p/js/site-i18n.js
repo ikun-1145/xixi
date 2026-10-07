@@ -579,6 +579,10 @@
     ["客服支持", "Support", "サポート"],
 
     // Pricing page.
+    ["选择支付方式", "Choose a payment method", "支払い方法を選択", {"zh-Hant": "選擇付款方式", "ko": "결제 방법 선택", "es": "Elige un método de pago"}],
+    ["爱发电 · ¥15 CNY · 国内用户推荐", "Afdian · ¥15 CNY · Recommended in China", "愛発電 · ¥15 CNY · 中国国内向け", {"zh-Hant": "愛發電 · ¥15 CNY · 中國境內用戶推薦", "ko": "Afdian · ¥15 CNY · 중국 내 사용자 권장", "es": "Afdian · ¥15 CNY · Recomendado en China"}],
+    ["爱发电商品支付即将开放，正在完成受控付款验收。", "Afdian merchandise checkout is coming soon, pending controlled payment verification.", "愛発電の商品決済は、管理された支払い検証の完了後に公開します。", {"zh-Hant": "愛發電商品付款即將開放，正在完成受控付款驗收。", "ko": "Afdian 상품 결제는 통제된 결제 검증 완료 후 공개됩니다.", "es": "El pago de productos con Afdian estará disponible tras la verificación controlada del pago."}],
+    ["Waffo · ¥15 CNY · 国际 / 银行卡支付", "Waffo · ¥15 CNY · International / card payments", "Waffo · ¥15 CNY · 海外 / カード決済", {"zh-Hant": "Waffo · ¥15 CNY · 國際 / 銀行卡付款", "ko": "Waffo · ¥15 CNY · 국제 / 카드 결제", "es": "Waffo · ¥15 CNY · Pagos internacionales / con tarjeta"}],
     ["¥15 CNY · 一次性购买", "¥15 CNY · One-time purchase", "¥15 CNY · 買い切り", {"zh-Hant": "¥15 CNY · 一次性購買", "ko": "¥15 CNY · 일회성 구매", "es": "¥15 CNY · Compra única"}],
     ["Pro 为 ¥15 CNY 一次性购买，非订阅、不自动续费。", "Pro is a one-time purchase for ¥15 CNY, with no subscription or auto-renewal.", "Pro は ¥15 CNY の買い切りです。サブスクや自動更新はありません。", {"zh-Hant": "Pro 為 ¥15 CNY 一次性購買，非訂閱、不自動續費。", "ko": "Pro는 ¥15 CNY의 일회성 구매이며 구독이나 자동 갱신이 없습니다.", "es": "Pro es una compra única de ¥15 CNY, sin suscripción ni renovación automática."}],
     ["霜蓝 AI 提供服务", "Service provided by Sunland AI", "Sunland AI がサービスを提供", {"zh-Hant": "霜藍 AI 提供服務", "ko": "Sunland AI 제공 서비스", "es": "Servicio proporcionado por Sunland AI"}],

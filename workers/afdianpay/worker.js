@@ -21,6 +21,15 @@ MQIDAQAB
 
 export default {
   async scheduled(_controller, env) {
+    if (env.AFDIAN_ROLLOUT_DIAGNOSTICS_ONLY === 'true') {
+      // Read-only upstream gate: no hints, leases, payment facts or entitlements.
+      const diagnostics = await Promise.allSettled([
+        queryProvider(env, { page: 1 }, true),
+        queryIdentityResponse('Bearer invalid-rollout-token', env),
+      ]);
+      if (diagnostics.some(result => result.status === 'rejected')) throw policyError('UPSTREAM_DIAGNOSTIC_FAILED');
+      return;
+    }
     // 独立通道：某页失败不阻断另一通道；游标只在持久化成功后推进。
     const outcomes = await Promise.allSettled([
       reconcilePage(env, 'recent', 'cron_recent'),
@@ -32,6 +41,9 @@ export default {
   },
   async fetch(request, env) {
     const path = new URL(request.url).pathname;
+    if (env.AFDIAN_ROLLOUT_DIAGNOSTICS_ONLY === 'true' && path !== '/payment/reconcile') {
+      return jsonResponse({ error: 'PAYMENT_MAINTENANCE' }, 503);
+    }
     if (path === '/payment/reconcile') return withCors(request, await handleUserReconcile(request, env));
     if (path === '/webhook/afdian') return handleAfdianWebhook(request, env);
     if (path === '/admin/reconcile') return handleAdminReconcile(request, env);
@@ -67,7 +79,16 @@ export function normalizeAndValidateProviderOrder(order) {
   const timestamp = order.pay_time;
   const date = typeof timestamp === 'number' && Number.isSafeInteger(timestamp) && timestamp > 0 && timestamp < 253402300800
     ? new Date(timestamp * 1000).toISOString() : null;
-  return { order_id: order.out_trade_no, payment_status: status, plan_id: order.plan_id,
+  let skuDetail = [];
+  if (order.product_type === 1) {
+    if (!Array.isArray(order.sku_detail) || order.sku_detail.length !== 1) throw policyError('INVALID_PRODUCT');
+    const sku = order.sku_detail[0];
+    if (!sku || typeof sku.sku_id !== 'string' || !/^[a-f0-9]{32}$/.test(sku.sku_id)
+      || !Number.isSafeInteger(sku.count) || sku.count < 1) throw policyError('INVALID_PRODUCT');
+    // Preserve only official SKU facts. Eligibility is checked by the database.
+    skuDetail = [{ sku_id: sku.sku_id, count: sku.count }];
+  }
+  return { provider: 'afdian', sku_detail: skuDetail, order_id: order.out_trade_no, payment_status: status, plan_id: order.plan_id,
     product_type: order.product_type, amount_cents: cents,
     total_amount: `${whole}.${fraction.padEnd(2, '0')}`, currency: 'CNY',
     binding_reference: reference, binding_source: source, paid_at: date };
@@ -90,28 +111,78 @@ async function dbRows(env, table, query) {
   if (!response.ok || !Array.isArray(rows)) throw policyError('DATABASE_UNAVAILABLE');
   return rows;
 }
-async function queryProvider(env, paramsObject) {
-  const backoff = await rpc(env, 'sunland_get_pro_payment_backoff');
-  if (backoff.retry_after_seconds > 0) throw policyError('PROVIDER_BACKOFF');
+async function queryProvider(env, paramsObject, diagnosticOnly = false) {
+  if (!diagnosticOnly) {
+    const backoff = await rpc(env, 'sunland_get_pro_payment_backoff');
+    if (backoff.retry_after_seconds > 0) throw policyError('PROVIDER_BACKOFF');
+  }
   if (!env.USER_ID || !env.TOKEN) throw policyError('PROVIDER_CREDENTIALS_UNAVAILABLE');
   const ts = Math.floor(Date.now() / 1000);
   const params = JSON.stringify(paramsObject);
   const sign = await md5(`${env.TOKEN}params${params}ts${ts}user_id${env.USER_ID}`);
   // Provider 429 不做立即重试；跨Worker共享退避。禁止URL覆盖/redirect到其它host。
-  const response = await fetchWithTimeout(AFDIAN_QUERY_ENDPOINT, {
-    method: 'POST', redirect: 'error', headers: { 'Content-Type': 'application/json' },
+  let response;
+  try { response = await fetchWithTimeout(AFDIAN_QUERY_ENDPOINT, {
+    method: 'POST', redirect: 'manual', headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ user_id: env.USER_ID, params, ts, sign }),
-  });
+  }); } catch (error) {
+    logEvent({ event: 'provider_query_diagnostic', stage: 'fetch', reason_code: safeFetchFailure(error) });
+    throw policyError('PROVIDER_QUERY_FAILED');
+  }
   if (response.status === 429) {
     const header = response.headers.get('Retry-After');
     const seconds = /^\d+$/.test(header || '') ? Math.min(3600, Math.max(1, Number(header))) : LIMITS.providerBackoffSeconds;
     await rpc(env, 'sunland_set_pro_payment_backoff', { p_retry_after_seconds: seconds });
     throw policyError('PROVIDER_BACKOFF');
   }
-  if (!response.ok) throw policyError('PROVIDER_QUERY_FAILED');
-  const payload = await response.json().catch(() => null);
-  if (payload?.ec !== 200 || !Array.isArray(payload?.data?.list) || payload.data.list.length > LIMITS.pageSize || !Number.isInteger(payload.data.total_page) || payload.data.total_page < 0) throw policyError('PROVIDER_QUERY_FAILED');
+  if (!response.ok) {
+    logEvent({ event: 'provider_query_diagnostic', stage: 'http', http_status: response.status });
+    throw policyError('PROVIDER_QUERY_FAILED');
+  }
+  let payload;
+  try { payload = await response.json(); } catch {
+    logEvent({ event: 'provider_query_diagnostic', stage: 'json_parse', http_status: response.status, content_type: safeContentType(response) });
+    throw policyError('PROVIDER_QUERY_FAILED');
+  }
+  const diagnostic = { event: 'provider_query_diagnostic', http_status: response.status,
+    content_type: safeContentType(response), ec: Number.isSafeInteger(payload?.ec) ? payload.ec : null,
+    list_type: Array.isArray(payload?.data?.list) ? 'array' : typeof payload?.data?.list,
+    list_length: Array.isArray(payload?.data?.list) ? payload.data.list.length : null,
+    total_page_type: typeof payload?.data?.total_page };
+  if (payload?.ec !== 200 || !Array.isArray(payload?.data?.list) || payload.data.list.length > LIMITS.pageSize || !Number.isInteger(payload.data.total_page) || payload.data.total_page < 0) {
+    logEvent({ ...diagnostic, stage: 'json_shape' });
+    throw policyError('PROVIDER_QUERY_FAILED');
+  }
+  logEvent({ ...diagnostic, stage: 'verified' });
   return { list: payload.data.list, totalPage: Math.max(1, payload.data.total_page) };
+}
+
+function safeContentType(response) {
+  const mime = (response.headers.get('Content-Type') || '').split(';')[0].trim().toLowerCase();
+  return ['application/json', 'text/html', 'text/plain'].includes(mime) ? mime : 'other';
+}
+
+function safeFetchFailure(error) {
+  if (error?.name === 'AbortError') return 'TIMEOUT';
+  const message = typeof error?.message === 'string' ? error.message : '';
+  if (/redirect/i.test(message)) return 'REDIRECT_REJECTED';
+  if (/same.zone|cross.worker|service.binding/i.test(message)) return 'WORKER_ROUTING';
+  if (/unsupported|invalid.*(mode|option)|not implemented/i.test(message)) return 'UNSUPPORTED_REQUEST_OPTION';
+  if (/dns|resolve|lookup/i.test(message)) return 'DNS_FAILURE';
+  if (/ssl|tls|certificate/i.test(message)) return 'TLS_FAILURE';
+  return 'NETWORK_ERROR';
+}
+
+async function queryIdentityResponse(authorization, env) {
+  let response;
+  try {
+    response = await fetchWithTimeout(IDENTITY_ENDPOINT, { method: 'POST', headers: { Authorization: authorization, 'Content-Type': 'application/json' }, body: '{}', redirect: 'manual' }, env?.AFDIAN_IDENTITY_SERVICE);
+  } catch (error) {
+    logEvent({ event: 'identity_query_diagnostic', stage: 'fetch', reason_code: safeFetchFailure(error) });
+    throw policyError('IDENTITY_UNAVAILABLE');
+  }
+  logEvent({ event: 'identity_query_diagnostic', stage: 'response', http_status: response.status, content_type: safeContentType(response) });
+  return response;
 }
 export async function queryProviderOrder(env, orderId) {
   if (!normalizeOrderId(orderId)) throw policyError('INVALID_BINDING');
@@ -244,7 +315,7 @@ async function handleUserReconcile(request, env) {
   const auth = request.headers.get('Authorization') || '';
   if (!/^Bearer \S+$/.test(auth)) return jsonResponse({ error: 'UNAUTHORIZED' }, 401);
   try {
-    const identityResponse = await fetchWithTimeout(IDENTITY_ENDPOINT, { method: 'POST', headers: { Authorization: auth, 'Content-Type': 'application/json' }, body: '{}', redirect: 'error' });
+    const identityResponse = await queryIdentityResponse(auth, env);
     const identity = await identityResponse.json().catch(() => null);
     if (!identityResponse.ok) {
       const error = identityResponse.status === 403 && identity?.error === 'ACCOUNT_NOT_ACTIVE'
@@ -363,11 +434,12 @@ async function fetchWithRetry(url, init) {
   throw lastError || new Error("request failed");
 }
 
-async function fetchWithTimeout(url, init) {
+async function fetchWithTimeout(url, init, service) {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
-    return await fetch(url, { ...init, signal: controller.signal });
+    const options = { ...init, signal: controller.signal };
+    return await (service ? service.fetch(new Request(url, options)) : fetch(url, options));
   } finally {
     clearTimeout(timeout);
   }
@@ -513,7 +585,8 @@ function md5Hex(input) {
 }
 
 function bytesToWords(bytes) {
-  const words = [];
+  // MD5 padding words must be zero, not sparse undefined values (NaN in add32).
+  const words = new Array(Math.ceil((bytes.length + 9) / 64) * 16).fill(0);
   for (let i = 0; i < bytes.length; i += 1) {
     words[i >> 2] = (words[i >> 2] || 0) | (bytes[i] << ((i % 4) * 8));
   }

@@ -19,7 +19,7 @@ function databaseToken(id = "e736a9426c7311f1851452540025c377") {
   })}.signature`;
 }
 
-function loadPaymentModule({ token = databaseToken(), popup = {}, getToken = async () => token, enableLegacyInFixture = false } = {}) {
+function loadPaymentModule({ token = databaseToken(), popup = {}, getToken = async () => token, enableLegacyInFixture = false, enableMerchandiseInFixture = false } = {}) {
   const saved = new Map();
   const opened = [];
   let expire;
@@ -55,7 +55,8 @@ function loadPaymentModule({ token = databaseToken(), popup = {}, getToken = asy
     clearTimeout,
   });
   const fixture = source.replace("const WAFFO_ENABLED = true;", "const WAFFO_ENABLED = false;")
-    .replace("const PUBLIC_CHECKOUT_ENABLED = true;", `const PUBLIC_CHECKOUT_ENABLED = ${enableLegacyInFixture};`)
+    .replace("const PUBLIC_CHECKOUT_ENABLED = true;", `const PUBLIC_CHECKOUT_ENABLED = ${enableLegacyInFixture || enableMerchandiseInFixture};`)
+    .replace(/const AFDIAN_MERCHANDISE_ENABLED = (?:true|false);/, `const AFDIAN_MERCHANDISE_ENABLED = ${enableMerchandiseInFixture};`)
     .replace("const LEGACY_CHECKOUT_ENABLED = false;", `const LEGACY_CHECKOUT_ENABLED = ${enableLegacyInFixture};`);
   vm.runInContext(fixture, context);
   return { api: window.SunlandProPayment, opened, saved, expire: () => expire?.() };
@@ -223,4 +224,60 @@ test("static settings payment retry labels agree with the shared payment module 
       dom.window.SunlandProPayment.text("checkStatus"), language);
   }
   dom.window.close();
+});
+
+
+test("disabled merchandise checkout fails closed and its builder binds exact SKU", async () => {
+  const { api, opened } = loadPaymentModule();
+  let rpcCalled = false;
+  await assert.rejects(() => api.createAfdianMerchandiseCheckout({ supabase: { rpc() { rpcCalled = true; } } }), /审核中/);
+  assert.equal(opened.length, 0);
+  assert.equal(rpcCalled, false);
+  const reference = "11111111-2222-4333-8444-555555555555";
+  const url = new URL(api.buildMerchandiseCheckoutUrl(reference));
+  assert.equal(url.origin, "https://afdian.com");
+  assert.equal(url.pathname, "/order/create");
+  assert.equal(url.searchParams.get("product_type"), "1");
+  assert.equal(url.searchParams.get("plan_id"), "16b23966c0a711f183dc5254001e7c00");
+  assert.deepEqual(JSON.parse(url.searchParams.get("sku")), [{ sku_id: "16b98478c0a711f1bb735254001e7c00", count: 1 }]);
+  assert.equal(url.searchParams.get("custom_order_id"), reference);
+  assert.throws(() => api.buildMerchandiseCheckoutUrl("untrusted-user-id"));
+});
+
+
+test("Production merchandise adapter uses verified intent and rejects unknown intent states", async () => {
+  for (const status of ["pending", "cancelled", "unresolved", "unknown"]) {
+    const { api, opened } = loadPaymentModule({ enableMerchandiseInFixture: true });
+    let calls = 0;
+    const options = { expectedUserId: "e736a9426c7311f1851452540025c377", supabase: { rpc: async name => {
+      assert.equal(name, "sunland_get_or_create_pro_payment_intent"); calls++;
+      return { data: [{ payment_reference: "11111111-2222-4333-8444-555555555555", status }], error: null };
+    } } };
+    if (status === "pending") {
+      const result = await api.createAfdianMerchandiseCheckout(options);
+      assert.equal(result.userId, options.expectedUserId);
+      assert.equal(new URL(opened[0].url).searchParams.get("product_type"), "1");
+      assert.equal(api.getState().state, "UNKNOWN", "checkout navigation cannot activate membership");
+    } else {
+      await assert.rejects(() => api.createAfdianMerchandiseCheckout(options), /安全付款引用/);
+      assert.equal(opened[0].url, undefined);
+      assert.equal(opened[0].closed, true);
+    }
+    assert.equal(calls, 1);
+  }
+});
+
+test("checkout rejects duplicate calls and closing pending popup prevents intent creation", async () => {
+  let identityReady;
+  const { api, opened } = loadPaymentModule({ enableLegacyInFixture: true,
+    getToken: () => new Promise(resolve => { identityReady = resolve; }) });
+  let calls = 0;
+  const options = { supabase: { rpc: async () => { calls++; } } };
+  const first = api.beginCheckout(options);
+  await assert.rejects(() => api.beginCheckout(options), /正在安全连接/);
+  assert.equal(opened.length, 1);
+  opened[0].closed = true;
+  identityReady(databaseToken());
+  await assert.rejects(() => first, /无法打开支付窗口/);
+  assert.equal(calls, 0);
 });

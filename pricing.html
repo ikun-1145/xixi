@@ -3,9 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <script src="ai/pro-payment.js?v=20261002-waffo-prod"></script>
+  <script src="/p/vendor/supabase-2.110.7.js"></script>
+  <script src="/ai/database-token-client.js"></script>
+  <script src="ai/pro-payment.js?v=20261007-dual-payment-live"></script>
   <script defer src="p/js/site-i18n-extra.js?v=20261001-review-1"></script>
-  <script defer src="p/js/site-i18n.js?v=20261001-review-1"></script>
+  <script defer src="p/js/site-i18n.js?v=20261005-dual-payment"></script>
   <title>Sunland AI · Beta 定价</title>
   <meta name="description" content="Sunland AI · Beta 定价说明：免费版与霜蓝 AI Pro 的权益与价格。Pro 为一次性买断 ¥15，永久有效，非订阅、不自动续费。">
   <!-- 网站 favicon -->
@@ -127,12 +129,16 @@
       transform: translateY(-1px);
     }
     .plan-cta.secondary {
+      background: transparent;
       border: 1px solid var(--border-strong);
       color: var(--text);
     }
     .plan-cta.secondary:hover {
       background: var(--surface-2);
     }
+    .payment-options { margin-top: var(--space-4); }
+    .payment-options .plan-cta { width: 100%; margin-top: var(--space-3); white-space: normal; }
+    .plan-cta:disabled { cursor: not-allowed; opacity: .6; }
     .pricing-notes {
       margin: var(--space-8) 0 0;
       padding: var(--space-4) var(--space-6);
@@ -202,7 +208,13 @@
           <li>优先响应速度</li>
           <li>一次付费，永久解锁，后续无需再付费</li>
         </ul>
-        <button type="button" id="purchaseProBtn" class="plan-cta primary" aria-controls="purchaseStatus">购买 Pro</button>
+        <button type="button" id="purchaseProBtn" class="plan-cta primary" aria-controls="paymentOptions" aria-expanded="false">购买 Pro · ¥15 CNY</button>
+        <section id="paymentOptions" class="payment-options" aria-label="选择支付方式" hidden>
+          <h2>选择支付方式</h2>
+          <button type="button" id="cancelPurchaseBtn" class="plan-cta secondary">取消</button>
+          <button type="button" id="afdianPurchaseBtn" class="plan-cta secondary" disabled>爱发电 · ¥15 CNY · 国内用户推荐</button>
+          <button type="button" id="waffoPurchaseBtn" class="plan-cta primary" aria-controls="purchaseStatus">Waffo · ¥15 CNY · 国际 / 银行卡支付</button>
+        </section>
         <p id="purchaseStatus" class="plan-billing" role="status" hidden>支付服务正在上线审核中，暂不收款。</p>
       </div>
     </div>
@@ -234,20 +246,68 @@ function hideGlobalLoading() {
   if (el) el.classList.remove("active");
 }
 
-document.getElementById("purchaseProBtn").addEventListener("click", async () => {
-  const button = document.getElementById("purchaseProBtn");
+document.getElementById("purchaseProBtn").addEventListener("click", () => {
+  document.getElementById("paymentOptions").hidden = false;
+  document.getElementById("purchaseProBtn").setAttribute("aria-expanded", "true");
+  document.getElementById("waffoPurchaseBtn").focus();
+});
+
+document.getElementById("cancelPurchaseBtn").addEventListener("click", () => {
+  document.getElementById("paymentOptions").hidden = true;
+  document.getElementById("purchaseProBtn").setAttribute("aria-expanded", "false");
+  document.getElementById("purchaseProBtn").focus();
+});
+
+document.getElementById("paymentOptions").addEventListener("keydown", event => {
+  if (event.key === "Escape") document.getElementById("cancelPurchaseBtn").click();
+});
+
+const afdianButton = document.getElementById("afdianPurchaseBtn");
+afdianButton.disabled = !window.SunlandProPayment?.AFDIAN_MERCHANDISE_ENABLED;
+
+function paymentDatabaseClient() {
+  window._supabaseClient = window._supabaseClient || window.supabase.createClient(
+    "https://klyrasrqgxijwrxuoevj.supabase.co",
+    "sb_publishable_4ZIHfHr8wI0QFusEf_m7wA_pthBhxsI",
+    { accessToken: () => window.SunlandDatabaseToken.get() }
+  );
+  return window._supabaseClient;
+}
+
+async function purchasePro(channel) {
+  const button = document.getElementById(channel === "afdian" ? "afdianPurchaseBtn" : "waffoPurchaseBtn");
   const status = document.getElementById("purchaseStatus");
-  button.disabled = true;
+  if (button.disabled) return;
+  document.getElementById("waffoPurchaseBtn").disabled = true;
+  afdianButton.disabled = true;
+  document.getElementById("cancelPurchaseBtn").disabled = true;
   status.hidden = false;
   const payment = window.SunlandProPayment;
   status.textContent = payment.text("connecting");
   try {
-    await payment.createWaffoCheckout();
-    status.textContent = payment.text("processing");
+    const result = channel === "afdian"
+      ? await payment.createAfdianMerchandiseCheckout({ supabase: paymentDatabaseClient() })
+      : await payment.createWaffoCheckout();
+    status.textContent = payment.text(result?.alreadyActivated ? "alreadyActivated" : "processing");
+    if (channel === "afdian" && result?.userId && !result.alreadyActivated) {
+      payment.setIdentity(result.userId);
+      payment.startActivationMonitoring({ supabase: paymentDatabaseClient(),
+        getExpectedUserId: () => payment.getState().userId,
+        onActivated: () => { status.textContent = payment.text("alreadyActivated"); },
+        onTimeout: () => { status.textContent = payment.text("pending"); }
+      });
+    }
   } catch (error) {
     status.textContent = error.message || payment.text("intentError");
-  } finally { button.disabled = false; }
-});
+  } finally {
+    document.getElementById("waffoPurchaseBtn").disabled = false;
+    afdianButton.disabled = !payment.AFDIAN_MERCHANDISE_ENABLED;
+    document.getElementById("cancelPurchaseBtn").disabled = false;
+  }
+}
+
+document.getElementById("waffoPurchaseBtn").addEventListener("click", () => purchasePro("waffo"));
+afdianButton.addEventListener("click", () => purchasePro("afdian"));
 
 // 页面进入立即关闭 loading（防止跨页面残留）
 document.addEventListener("DOMContentLoaded", () => {
