@@ -70,8 +70,13 @@ export class HistorySync {
     if (!this.isCurrent()) return;
     if (error) {
       if (error.code === 'PT409' || error.status === 409) {
-        for (const item of operation.upserts) this.block(String(item.record.id));
-        for (const item of operation.deletes) this.block(String(item.id));
+        const ids = [...operation.upserts.map(item => String(item.record.id)), ...operation.deletes.map(item => String(item.id))];
+        let conflictingId;
+        try {
+          const details = typeof error.details === 'string' ? JSON.parse(error.details) : error.details;
+          if (typeof details?.conversation_id === 'string' && ids.includes(details.conversation_id)) conflictingId = details.conversation_id;
+        } catch (_) { /* Older servers have no per-record conflict details. */ }
+        for (const id of conflictingId ? [conflictingId] : ids) this.block(id);
         this.state.pending = null; this.persist(); throw new HistoryConflict('HISTORY_CONFLICT');
       }
       throw error;

@@ -10,16 +10,18 @@ function server() {
     async rpc(params) {
       this.calls.push(copy(params));
       if (!this.receipts.has(params.p_operation_id)) {
+        let workingRows=copy(this.rows); const workingDeleted=new Set(this.deleted);
         for (const item of params.p_upserts) {
-          const current = this.rows.find(row => String(row.id) === String(item.record.id)) || null;
-          if (!assertionEqual(current,item.expected_record) || this.deleted.has(String(item.record.id))) return { error: { code:'PT409' } };
-          this.rows = this.rows.filter(row => String(row.id) !== String(item.record.id)); this.rows.push(copy(item.record));
+          const current = workingRows.find(row => String(row.id) === String(item.record.id)) || null;
+          if (!assertionEqual(current,item.expected_record) || workingDeleted.has(String(item.record.id))) return { error: { code:'PT409', details: JSON.stringify({conversation_id:String(item.record.id)}) } };
+          workingRows = workingRows.filter(row => String(row.id) !== String(item.record.id)); workingRows.push(copy(item.record));
         }
         for (const item of params.p_deletes) {
-          const current = this.rows.find(row => String(row.id) === item.id) || null;
-          if (!assertionEqual(current,item.expected_record)) return { error: { code:'PT409' } };
-          this.rows = this.rows.filter(row => String(row.id) !== item.id); this.deleted.add(item.id);
+          const current = workingRows.find(row => String(row.id) === item.id) || null;
+          if (!assertionEqual(current,item.expected_record)) return { error: { code:'PT409', details: JSON.stringify({conversation_id:item.id}) } };
+          workingRows = workingRows.filter(row => String(row.id) !== item.id); workingDeleted.add(item.id);
         }
+        this.rows=workingRows; this.deleted=workingDeleted;
         this.receipts.add(params.p_operation_id);
       }
       if (this.loseReply) { this.loseReply = false; throw new Error('reply lost after commit'); }
@@ -158,4 +160,25 @@ test('reload resumes a lost delete receipt without another save', async () => {
   assert.equal(remote.calls.length,2); assert.deepEqual(remote.calls[0],remote.calls[1]);
   assert.deepEqual(restarted.reconcile([record()],[],['same']),[]);
   assert.deepEqual(restarted.state.contextDeletes,['same']);
+});
+
+test('a single stale record in an atomic batch cannot permanently block an independent chat', async () => {
+  const remote=server(),sync=device(remote); remote.rows=[record(['M1','remote'])];
+  const branch=record(['M1','offline']),fresh={...record(['fresh']),id:'fresh'};
+  await assert.rejects(sync.save(()=>[fresh,branch]),HistoryConflict);
+  assert.equal(remote.rows.some(row=>row.id==='fresh'),false);
+  await assert.rejects(sync.save(()=>[branch,fresh]),HistoryConflict);
+  assert.equal(remote.rows.find(row=>row.id==='fresh').history[0].content,'fresh');
+  assert.equal(remote.rows.find(row=>row.id==='same').history.at(-1).content,'remote');
+});
+test('missing, malformed or foreign conflict details never upgrade the original edit base', async () => {
+  for(const details of [undefined,'not-json','{}','{"conversation_id":"foreign"}','{"conversation_id":42}']) {
+    const remote=server();let calls=0;
+    const sync=new HistorySync({userId:'user',storage:storage(),isCurrent:()=>true,rpc:async()=>{calls++;return {error:{code:'PT409',details}};}});
+    sync.reconcile([],remote.rows);
+    const before=copy(sync.state.bases),branch=record(['M1','offline']),fresh={...record(['fresh']),id:'fresh'};
+    await assert.rejects(sync.save(()=>[branch,fresh]),HistoryConflict);
+    await assert.rejects(sync.save(()=>[fresh]),HistoryConflict);
+    assert.equal(calls,1);assert.deepEqual(sync.state.bases,before);assert.equal(branch.history.at(-1).content,'offline');
+  }
 });
