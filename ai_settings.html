@@ -1392,6 +1392,17 @@ body.dark .usage-hint {
       </div>
     </details>
 
+    <div class="section-label">历史备份与恢复</div>
+    <div class="card" style="padding:16px;">
+      <p>保留本机未同步分支。恢复仅创建新会话，不覆盖已有云端历史；备份含私密消息，远程附件保留原始引用。</p>
+      <div class="diagnostics-actions">
+        <button id="historyExportBtn" class="diagnostics-action-btn" type="button">导出完整本机历史</button>
+        <button id="historyRecoverBtn" class="diagnostics-action-btn" type="button">恢复保留的本机分支</button>
+        <label class="diagnostics-action-btn">导入备份<input id="historyImportFile" type="file" accept=".json,application/json"></label>
+      </div>
+      <a href="ai.html">打开聊天查看恢复会话</a>
+      <div id="historyBackupStatus" role="status" aria-live="polite"></div>
+    </div>
     <!-- 其他 -->
     <div class="section-label">其他</div>
     <div class="card">
@@ -2002,6 +2013,7 @@ document.querySelectorAll("a").forEach(a => {   a.addEventListener("click", () =
 <script type="module" src="ai/sunland-data-controls.js"></script>
 <script type="module" src="ai/sunland-beta-diagnostics.js"></script>
 <script type="module" src="ai/account-delete.js"></script>
+<script type="module" src="ai/history-controls.js"></script>
 
 <div id="loadingBar" aria-hidden="true"><span class="bar"></span></div>
 <dialog

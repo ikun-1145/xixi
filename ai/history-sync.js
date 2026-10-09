@@ -25,13 +25,48 @@ export class HistorySync {
   constructor({ userId, storage, rpc, isCurrent }) {
     this.userId = userId; this.storage = storage; this.rpc = rpc; this.isCurrent = isCurrent;
     this.key = `conversation_sync_${userId}`;
-    // sessionStorage isolates the bases of concurrent tabs; localStorage remains
-    // the existing conversation cache. A new tab with an unknown branch conflicts.
+    // The adapter stores each tab's bases with its independent durable branch.
+    // A cache with an unknown base produces a conflict instead of an overwrite.
     this.state = JSON.parse(storage.getItem(this.key) || 'null') || { bases: {}, acknowledged: {}, blocked: [], deleted: [], contextDeletes: [], pending: null };
     this.queue = Promise.resolve(); this.revision = 0;
-    this.replacements = new Set();
+    this.replacements = new Set(this.state.replacements || []);
+    this.state.regenerations ||= {};
   }
-  persist() { if (this.isCurrent()) this.storage.setItem(this.key, JSON.stringify(this.state)); }
+  persist() { this.state.replacements = [...this.replacements]; if (this.isCurrent()) this.storage.setItem(this.key, JSON.stringify(this.state)); }
+  hasUnresolvedRegeneration(id) { return ["pending","unknown","ready"].includes(this.state.regenerations[String(id)]?.status); }
+  beginRegeneration(record) {
+    const id = String(record.id);
+    if (!this.isCurrent() || this.hasUnresolvedRegeneration(id) || this.state.pending ||
+        this.state.blocked.includes(id) || !equal(this.state.acknowledged[id],view(record)) ||
+        record.history.at(-1)?.role !== "assistant") throw new HistoryConflict("请先同步或恢复冲突，原回答已保留");
+    const intent = {requestId:newHistoryOperationId(),original:copy(record),
+      expected:copy(this.state.bases[id]),status:"pending",draft:""};
+    this.state.regenerations[id] = intent;
+    try { this.persist(); } catch(error) { delete this.state.regenerations[id]; throw error; }
+    return intent;
+  }
+  markRegenerationUnknown(id,draft) {
+    const intent = this.state.regenerations[String(id)];
+    if (!intent || intent.status !== "pending") return;
+    intent.status = "unknown"; intent.draft = draft; this.persist();
+  }
+  checkpointRegeneration(id,draft) {
+    const intent = this.state.regenerations[String(id)];
+    if (!intent || intent.status !== "pending") return;
+    intent.draft = draft; this.persist();
+  }
+  completeRegeneration(record,message) {
+    const id = String(record.id), intent = this.state.regenerations[id];
+    if (!intent || intent.status !== "pending" || !message.content?.trim() ||
+        !equal(record,intent.original) || !equal(this.state.bases[id],intent.expected)) {
+      throw new HistoryConflict("重新生成冲突，原回答已保留");
+    }
+    const next = {...copy(record),history:[...copy(record.history.slice(0,-1)),copy(message)]};
+    intent.status = "ready"; intent.result = copy(next);
+    this.replacements.add(id);
+    try { this.persist(); } catch(error) { intent.status="unknown"; this.replacements.delete(id); throw error; }
+    return next;
+  }
   enqueue(action) {
     const next = this.queue.then(() => this.isCurrent() ? action() : undefined);
     this.queue = next.catch(() => {});
@@ -47,6 +82,12 @@ export class HistorySync {
       const record = cached[id], raw = byId[id], remote = raw && this.project(raw), old = this.state.acknowledged[id];
       if (record && remote && hasConversationStarted(record) && record.provider !== remote.provider) {
         this.block(id); result.push(record); continue;
+      }
+      const intent = this.state.regenerations[id];
+      if (intent && ["pending","unknown","ready"].includes(intent.status)) {
+        if (deleted.includes(id) || !equal(raw,intent.expected)) this.block(id);
+        result.push(intent.status === "ready" ? copy(intent.result) : (record || copy(intent.original)));
+        continue;
       }
       const clean = !record || (old && equal(old, view(record)));
       if (deleted.includes(id)) {
@@ -88,6 +129,7 @@ export class HistorySync {
       else this.block(id); // Receipt replay may return a newer version or deletion.
       this.state.acknowledged[id] = view(item.record);
       this.replacements.delete(id);
+      if (this.state.regenerations[id]?.status === "ready") this.state.regenerations[id].status = "completed";
     }
     for (const item of operation.deletes) {
       const id = String(item.id);
@@ -104,11 +146,14 @@ export class HistorySync {
       if (!this.isCurrent()) return;
       const upserts = [];
       let conflicted = false;
-      for (const record of source()) {
+      for (let record of source()) {
+        if (this.state.regenerations[String(record.id)]?.status === "ready") record = this.state.regenerations[String(record.id)].result;
         const id = String(record.id);
+        if (["pending","unknown"].includes(this.state.regenerations[id]?.status)) continue;
         if (this.state.deleted.includes(id) || equal(this.state.acknowledged[id], view(record))) continue;
         if (this.state.blocked.includes(id)) { conflicted = true; continue; }
-        upserts.push({ expected_record: this.state.bases[id] || null, record: copy(record),
+        upserts.push({ expected_record: this.state.regenerations[id]?.status === "ready"
+          ? this.state.regenerations[id].expected : (this.state.bases[id] || null), record: copy(record),
           ...(this.replacements.has(id) ? { mode: 'replace' } : {}) });
       }
       if (!upserts.length) { if (conflicted) throw new HistoryConflict('HISTORY_CONFLICT'); return; }

@@ -1,4 +1,5 @@
 import { normalizeUserId } from "./user-identity.js";
+import { vaultPrefix } from './history-vault.js';
 
 const API_BASE = "https://klyrasrqgxijwrxuoevj.supabase.co/functions/v1/sunland-account-delete";
 const SEND_CODE_URL = "https://api.sunland.dev/send-code";
@@ -239,6 +240,16 @@ export function collectAccountLocalStorageKeys(userId) {
 
 export async function clearAccountLocalStorage(userId, { clearDiagnostics = async () => {} } = {}) {
   const keys = collectAccountLocalStorageKeys(userId);
+  const owner=normalizeUserId(userId),prefix=vaultPrefix(owner);
+  for (let i=0;i<localStorage.length;i++) {
+    const key=localStorage.key(i);
+    if(key?.startsWith(prefix)) {
+      let branch;
+      try { branch=JSON.parse(localStorage.getItem(key)); }
+      catch { throw new Error('本机分支格式无效，原数据已保留'); }
+      if(branch?.owner===owner) keys.push(key);
+    }
+  }
   try {
     await clearDiagnostics();
   } catch {}

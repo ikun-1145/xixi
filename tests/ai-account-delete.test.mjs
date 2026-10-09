@@ -14,6 +14,8 @@ class MockStorage {
   getItem(key) {
     return this.map.get(key) ?? null;
   }
+  get length() { return this.map.size; }
+  key(index) { return [...this.map.keys()][index]; }
 
   setItem(key, value) {
     this.map.set(key, String(value));
@@ -46,6 +48,8 @@ test("clearAccountLocalStorage removes account keys and preserves device setting
     "conversations_user-a": "[]",
     "current_conversation_user-a": "1",
     "xixi_profile_user-a": "{}",
+    "sunland_history_v1_user-a_A": '{"owner":"user-a"}',
+    "sunland_history_v1_user-a_other_B": '{"owner":"user-a_other"}',
     lang: "zh",
     theme: "dark",
   });
@@ -57,6 +61,8 @@ test("clearAccountLocalStorage removes account keys and preserves device setting
     assert.equal(globalThis.localStorage.getItem("conversations_user-a"), null);
     assert.equal(globalThis.localStorage.getItem("current_conversation_user-a"), null);
     assert.equal(globalThis.localStorage.getItem("xixi_profile_user-a"), null);
+    assert.equal(globalThis.localStorage.getItem("sunland_history_v1_user-a_A"),null);
+    assert.equal(globalThis.localStorage.getItem("sunland_history_v1_user-a_other_B"),'{"owner":"user-a_other"}');
     assert.equal(globalThis.localStorage.getItem("lang"), "zh");
     assert.equal(globalThis.localStorage.getItem("theme"), "dark");
   } finally {

@@ -786,6 +786,7 @@ import {
 } from './conversation-recovery.js';
 import { renderSafeMarkdown } from './safe-markdown.js';
 import { HistorySync, HistoryConflict, newHistoryOperationId } from './history-sync.js';
+import { HistoryVault, recoveredAttachments } from './history-vault.js';
 import {
   clearChatErrorNotices,
   showChatErrorNotice,
@@ -2140,8 +2141,9 @@ async function checkLogin(options = {}) {
           fallbackCurrentId: previousUserId === session.userId ? currentId : null,
         });
 
-        conversations = restored.conversations;
-        currentId = restored.currentId;
+        const vault = getHistoryVault(session.userId);
+        conversations = vault.snapshot.records.length ? vault.snapshot.records : restored.conversations;
+        currentId = vault.snapshot.currentId ?? restored.currentId;
         if (restored.status === "damaged" || restored.status === "invalid") {
           console.warn("本地会话数据无法解析，已保留可用的内存会话");
         }
@@ -2618,11 +2620,36 @@ let lastUserMessage = null;
 let syncTimer = null;
 let cloudSyncRequest = null;
 const historySyncs = new Map();
+const historyVaults = new Map();
+window.addEventListener("storage", event => {
+  const owner=getCurrentUserId();
+  if (owner && event.key?.startsWith("sunland_history_v1_"+encodeURIComponent(owner)+"_")) {
+    let branch;
+    try { branch=JSON.parse(event.newValue || event.oldValue || 'null'); }
+    catch { return; } // Unknown-owner bytes remain untouched.
+    if(branch?.owner!==owner)return;
+    showToast("另一个标签页保存了历史分支。当前内容已保留，可在设置中恢复或导出。");
+  }
+});
+function getHistoryVault(userId) {
+  const generation = historySessionGeneration;
+  let vault = historyVaults.get(userId);
+  if (!vault || vault.generation !== generation) {
+    vault = new HistoryVault({owner:userId,storage:localStorage,tabStorage:sessionStorage});
+    vault.generation = generation;
+    if (!vault.snapshot.sync) {
+      const legacy = sessionStorage.getItem("conversation_sync_" + userId);
+      if (legacy) vault.update({sync:JSON.parse(legacy)});
+    }
+    historyVaults.set(userId,vault);
+  }
+  return vault;
+}
 function getHistorySync(userId) {
   const generation = historySessionGeneration;
   if (historySyncs.get(userId)?.generation !== generation) {
     const sync = new HistorySync({
-      userId, storage: sessionStorage,
+      userId, storage: getHistoryVault(userId).syncStorage(),
       isCurrent: () => getCurrentUserId() === userId && historySessionGeneration === generation,
       rpc: params => supabase.rpc("sunland_apply_conversation_patch", params),
     });
@@ -2755,18 +2782,10 @@ async function syncToCloud(expectedUserId = getCurrentUserId()) {
 
 function persistConversationStateLocally(userId) {
   if (!userId || getCurrentUserId() !== userId) return false;
-  let conversationsSaved = false;
-  try {
-    localStorage.setItem(
-      "conversations_" + userId,
-      JSON.stringify(conversations)
-    );
-    conversationsSaved = true;
-  } catch (error) {
-    // A long image-heavy chat can exhaust the browser quota. Keep the in-memory
-    // conversation alive and still allow the independent cloud save to run.
-    console.warn("本地对话缓存保存失败:", error);
-  }
+  const vault = getHistoryVault(userId);
+  try { vault.update({records:conversations,currentId}); }
+  catch(error) { console.warn("本地对话缓存保存失败:",error); throw error; }
+  const conversationsSaved = true;
   const currentIdSaved = persistCurrentConversationId(
     localStorage,
     userId,
@@ -2993,10 +3012,27 @@ function loadChat(id) {
       getVisionHistoryPreviews(m).forEach(preview => {
         addMessage(preview.name, "user", { imageSrc: preview.dataUrl });
       });
-      if (m.content || messageType === "ai") {
+      let restoredAttachments=[];
+      if (m.recoveryOutbox) {
+        try { restoredAttachments=recoveredAttachments(m.recoveryOutbox,getCurrentUserId()); }
+        catch { showToast(uiText("恢复附件无效，原始备份仍保留")); }
+      }
+      if (m.content || messageType === "ai" || restoredAttachments.length) {
         addMessage(m.content, messageType, {
           reasoningContent: getAssistantReasoning(m),
         });
+        const bubble=chatInner.lastElementChild?.querySelector('.bubble'),owner=getCurrentUserId();
+        for (const attachment of restoredAttachments) {
+          const button=document.createElement('button');button.type='button';
+          button.textContent=uiText('下载恢复附件');
+          button.onclick=()=>{
+            if(getCurrentUserId()!==owner)return;
+            const url=URL.createObjectURL(new Blob([attachment.bytes()],{type:'application/octet-stream'}));
+            const link=document.createElement('a');link.href=url;link.download=attachment.fileName;
+            document.body.append(link);link.click();link.remove();setTimeout(()=>URL.revokeObjectURL(url),1000);
+          };
+          bubble?.append(button);
+        }
       }
     });
 
@@ -3451,22 +3487,35 @@ function addRegenerateButton(requestContext, fullText) {
   regenWrap.appendChild(regenBtn);
   bubble.appendChild(regenWrap);
 
-  regenBtn.onclick = () => {
-    if (currentId !== requestContext.conversationId) return;
+  regenBtn.onclick = async () => {
     const conversation = conversations.find(item => item.id === requestContext.conversationId);
-    if (!conversation || conversation.userId !== requestContext.userId) return;
-    if (requestCoordinator.activeForConversation(conversation.id)) return;
-
-    if (conversation.history.at(-1)?.role === "assistant") {
-      getHistorySync(requestContext.userId).replacements.add(String(conversation.id));
-      conversation.history = conversation.history.slice(0, -1);
-      conversation.updatedAt = Date.now();
-      history = cloneRequestHistory(conversation.history);
-      saveConversations();
+    if (currentId !== conversation?.id || conversation.userId !== getCurrentUserId() ||
+        requestCoordinator.activeForConversation(conversation.id)) return;
+    let context;
+    const sync = getHistorySync(conversation.userId);
+    try {
+      const intent = sync.beginRegeneration(conversation);
+      context = requestCoordinator.begin({conversation,identity:getCurrentVerifiedIdentity(),
+        userId:conversation.userId,providerId:"deepseek",model:conversation.model,
+        deep:requestContext.deep,history:intent.original.history.slice(0,-1)});
+      if (!context) throw new Error("无法开始重新生成；原回答已保留");
+      context.regenerationId = intent.requestId;
+      context.userText = requestContext.userText;
+      addMessage("", "ai", {thinking:true,deepThinking:context.deep});
+      context.bubble = chatInner.lastElementChild?.querySelector(".bubble");
+      updateRequestUiState();
+      await runDeepSeekRequest(context);
+    } catch (error) { showToast(error.message || "重新生成失败，原回答已保留"); }
+    finally {
+      if (context) {
+        try {
+          if (sync.state.regenerations?.[String(conversation.id)]?.status === "pending") {
+            sync.markRegenerationUnknown(conversation.id, context.partialContent || "");
+          }
+        } catch (error) { showToast(error.message || "恢复状态保存失败，请导出本机历史"); }
+        finally { requestCoordinator.finish(context); updateRequestUiState(); }
+      }
     }
-    input.value = requestContext.userText || "";
-    loadChat(conversation.id);
-    send();
   };
 }
 
@@ -3569,7 +3618,7 @@ async function runDeepSeekRequest(requestContext) {
   let fullText = "";
   let reasoning = "";
   let attempt = 0;
-  const quotaRequestId = newHistoryOperationId();
+  const quotaRequestId = requestContext.regenerationId || newHistoryOperationId();
 
   while (attempt < (window._isMobile ? 2 : 1)) {
     attempt += 1;
@@ -3578,6 +3627,7 @@ async function runDeepSeekRequest(requestContext) {
     requestContext.partialContent = "";
     requestContext.reasoningContent = "";
     let softTimeoutShown = false;
+    let eventBuffer = "", completed = false;
     const timeoutId = setTimeout(() => {
       if (!softTimeoutShown && isRequestVisible(requestContext) && !fullText) {
         if (!requestContext.deep) {
@@ -3664,10 +3714,12 @@ async function runDeepSeekRequest(requestContext) {
         if (abortMissingTarget(requestContext)) continue;
 
         const chunk = decoder.decode(value, { stream: true });
-        for (const line of chunk.split("\n")) {
+        eventBuffer += chunk;
+        const lines = eventBuffer.split("\n"); eventBuffer = lines.pop();
+        for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
           const raw = line.slice(6).trim();
-          if (raw === "[DONE]") break;
+          if (raw === "[DONE]") { completed = true; continue; }
 
           let parsed;
           try {
@@ -3676,6 +3728,7 @@ async function runDeepSeekRequest(requestContext) {
             continue;
           }
           if (!requestCoordinator.canWrite(requestContext)) continue;
+          if (parsed.choices?.[0]?.finish_reason) completed = true;
           const delta = parsed.choices?.[0]?.delta || {};
 
           if (requestContext.deep && delta.reasoning_content) {
@@ -3692,6 +3745,11 @@ async function runDeepSeekRequest(requestContext) {
           if (delta.content) {
             fullText += delta.content;
             requestContext.partialContent = fullText;
+            if (requestContext.regenerationId && (!requestContext.regenerationCheckpointAt ||
+                Date.now() - requestContext.regenerationCheckpointAt >= 1000)) {
+              getHistorySync(requestContext.userId).checkpointRegeneration(requestContext.conversationId,fullText);
+              requestContext.regenerationCheckpointAt = Date.now();
+            }
             if (isRequestVisible(requestContext)) {
               const contentTarget = requestContext.deep
                 ? ensureAssistantContent(requestContext.bubble)
@@ -3704,7 +3762,13 @@ async function runDeepSeekRequest(requestContext) {
       }
 
       if (!requestCoordinator.canWrite(requestContext)) return;
-      if (!appendRequestMessage(
+      if (requestContext.regenerationId) {
+        if (!completed || !fullText.trim()) throw new Error("重新生成未完整完成");
+        const target = requestCoordinator.target(requestContext);
+        const next = getHistorySync(requestContext.userId).completeRegeneration(
+          target, createAssistantHistoryMessage(fullText,reasoning));
+        target.history = next.history; saveConversations();
+      } else if (!appendRequestMessage(
         requestContext,
         createAssistantHistoryMessage(fullText, reasoning),
       )) return;
@@ -3715,7 +3779,7 @@ async function runDeepSeekRequest(requestContext) {
       return;
     } catch (err) {
       if (requestContext.controller.signal.aborted || err?.name === "AbortError") return;
-      if (fullText && requestCoordinator.canWrite(requestContext)) {
+      if (!requestContext.regenerationId && fullText && requestCoordinator.canWrite(requestContext)) {
         appendRequestMessage(
           requestContext,
           createAssistantHistoryMessage(fullText, reasoning),
@@ -3779,6 +3843,10 @@ async function send() {
     hideGlobalLoading();
     return;
   }
+  if (getHistorySync(getCurrentUserId()).hasUnresolvedRegeneration(sendingConversation.id)) {
+    showToast("重新生成结果未确认，原回答已保留。请在设置中导出或恢复该分支。");
+    hideGlobalLoading(); return;
+  }
   if (requestCoordinator.activeForConversation(sendingConversation.id)) {
     console.warn("当前会话已有请求，跳过重复发送");
     hideGlobalLoading();
@@ -3805,7 +3873,8 @@ async function send() {
     return;
   }
 
-  const text = input.value.trim();
+  const composerDraft = input.value;
+  const text = composerDraft.trim();
   const isSunlandConversation = sendingConversation.provider === "sunland";
   const previousFurryCard = getLatestFurryEventCard(sendingConversation.history);
   const furrySearchRequired = shouldSearchFurryEvents(
@@ -3919,7 +3988,6 @@ async function send() {
   requestContext.visionPrompt = visionPrompt;
   requestContext.reasoningContent = "";
   requestContext.partialContent = "";
-  clearPendingAttachments();
   updateRequestUiState();
 
   try {
@@ -3999,7 +4067,9 @@ async function send() {
     }
 
     lastUserMessage = visionPrompt;
-    input.value = "";
+    if (currentId === requestContext.conversationId && input.value === composerDraft) input.value = "";
+    if (currentId === requestContext.conversationId && pendingFiles.length === files.length &&
+        pendingFiles.every((file,index) => file === files[index])) clearPendingAttachments();
     input.style.height = "auto";
     if (currentId === requestContext.conversationId) {
       requestErrorsByConversation.delete(conversationIdKey(requestContext.conversationId));

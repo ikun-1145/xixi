@@ -297,6 +297,7 @@ export function buildVisionMessages(messages, { images = [], prompt = "", detail
       // upstream, which may reject unknown message fields.
       const {
         imagePreviews: _imagePreviews,
+        recoveryOutbox: _recoveryOutbox,
         reasoningContent: _reasoningContent,
         ...modelMessage
       } = message;

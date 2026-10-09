@@ -1,0 +1,7 @@
+{
+  "format": "sunland-history",
+  "version": 1,
+  "ownerId": "interop-owner",
+  "payload": "{\"branches\":[{\"id\":\"numeric\",\"records\":[{\"id\":\"original\",\"userId\":\"interop-owner\",\"title\":\"Unicode 🧊\",\"history\":[{\"id\":\"m1\",\"role\":\"user\",\"content\":\"  原始\\u2028🐾  \",\"metadata\":{\"ratio\":0.0}}]}]}],\"chatOutbox\":[]}",
+  "sha256": "440cb62a8590e9de56599989aa0fd69abed145fa07efa770bab15ff8e6c471a4"
+}

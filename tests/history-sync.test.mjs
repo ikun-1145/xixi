@@ -3,6 +3,7 @@ import test from 'node:test';
 import { HistorySync, HistoryConflict } from '../ai/history-sync.js';
 const copy = value => structuredClone(value);
 const record = (texts = ['M1'], title = '会话', updatedAt = 1) => ({ id: 'same', title, createdAt: 1, provider: 'deepseek', model: 'deepseek-v4-flash', updatedAt, history: texts.map(content => ({ role: 'user', content })) });
+const regenRecord = () => ({...record(['M1','old']),history:[{role:'user',content:'M1'},{role:'assistant',content:'old'}]});
 const storage = () => { const values = new Map(); return { getItem: key => values.get(key), setItem: (key, value) => values.set(key,value) }; };
 function server() {
   return {
@@ -181,4 +182,49 @@ test('missing, malformed or foreign conflict details never upgrade the original 
     await assert.rejects(sync.save(()=>[fresh]),HistoryConflict);
     assert.equal(calls,1);assert.deepEqual(sync.state.bases,before);assert.equal(branch.history.at(-1).content,'offline');
   }
+});
+test('regeneration intent keeps the original answer and fixed request ID across a lost worker response',async()=>{
+  const remote=server(),tab=storage(),sync=device(remote,tab),original=regenRecord();
+  remote.rows=[copy(original)];sync.reconcile([],remote.rows);
+  const intent=sync.beginRegeneration(original);
+  sync.checkpointRegeneration('same','partial before refresh');
+  const refreshed=new HistorySync({userId:'user',storage:tab,rpc:p=>remote.rpc(p),isCurrent:()=>true});
+  assert.equal(refreshed.state.regenerations.same.draft,'partial before refresh');
+  assert.equal(refreshed.state.regenerations.same.requestId,intent.requestId);
+  sync.markRegenerationUnknown('same','partial');
+  const resumed=new HistorySync({userId:'user',storage:tab,rpc:p=>remote.rpc(p),isCurrent:()=>true});
+  assert.equal(resumed.state.regenerations.same.requestId,intent.requestId);
+  assert.equal(resumed.state.regenerations.same.original.history.at(-1).content,'old');
+  await resumed.save(()=>[original]);assert.equal(remote.calls.length,0);
+  assert.throws(()=>resumed.beginRegeneration(original),HistoryConflict);
+});
+test('ready regen survives crash and receipt retry without adding a second user message',async()=>{
+  const remote=server(),tab=storage(),sync=device(remote,tab),original=regenRecord();
+  remote.rows=[copy(original)];sync.reconcile([],remote.rows);
+  sync.beginRegeneration(original);
+  const next=sync.completeRegeneration(original,{role:'assistant',content:'new'});
+  remote.loseReply=true;
+  await assert.rejects(sync.save(()=>[next]));
+  const resumed=new HistorySync({userId:'user',storage:tab,rpc:p=>remote.rpc(p),isCurrent:()=>true});
+  await resumed.save(()=>[next]);
+  assert.deepEqual(remote.calls[0],remote.calls[1]);assert.equal(remote.calls[0].p_upserts[0].mode,'replace');
+  assert.equal(remote.rows[0].history.length,2);assert.equal(remote.rows[0].history.at(-1).content,'new');
+});
+test('crash between ready intent and snapshot cannot upgrade CAS to another devices new answer',async()=>{
+  const remote=server(),tab=storage(),sync=device(remote,tab),original=regenRecord();
+  remote.rows=[copy(original)];sync.reconcile([],remote.rows);
+  sync.beginRegeneration(original);sync.completeRegeneration(original,{role:'assistant',content:'A1'});
+  remote.rows=[record(['M1','B1'])];
+  const resumed=new HistorySync({userId:'user',storage:tab,rpc:p=>remote.rpc(p),isCurrent:()=>true});
+  const kept=resumed.reconcile([original],remote.rows);
+  await assert.rejects(resumed.save(()=>kept),HistoryConflict);
+  assert.equal(remote.calls.length,0);assert.equal(remote.rows[0].history.at(-1).content,'B1');
+  assert.equal(kept[0].history.at(-1).content,'A1');
+  assert.deepEqual(resumed.state.regenerations.same.expected,original);
+});
+test('persistence failure prevents regen from mutating an original or sending a request',()=>{
+  const remote=server(),tab=storage(),sync=device(remote,tab),original=regenRecord();
+  sync.reconcile([], [original]);tab.setItem=()=>{throw new Error('full')};
+  assert.throws(()=>sync.beginRegeneration(original),/full/);
+  assert.equal(original.history.at(-1).content,'old');assert.equal(remote.calls.length,0);
 });
