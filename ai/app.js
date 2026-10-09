@@ -785,6 +785,7 @@ import {
   restoreLocalConversationState,
 } from './conversation-recovery.js';
 import { renderSafeMarkdown } from './safe-markdown.js';
+import { HistorySync, HistoryConflict, newHistoryOperationId } from './history-sync.js';
 import {
   clearChatErrorNotices,
   showChatErrorNotice,
@@ -893,6 +894,7 @@ const supabaseReady = import('../p/js/supabaseClient.js')
   });
 
 let session = null;
+let historySessionGeneration = 0;
 let stopProActivationPolling = null;
 const PROFILE_META_ID = "__xixi_user_profile__";
 const PROFILE_CACHE_PREFIX = "xixi_profile_";
@@ -1118,7 +1120,10 @@ async function resolveAndStoreIdentity(options = {}) {
 function setSession(identity) {
   const previousUserId = session?.userId ?? null;
   const nextUserId = getVerifiedUserId(identity);
-  if (previousUserId !== nextUserId) stopAccountBanRealtime();
+  if (previousUserId !== nextUserId) {
+    ++historySessionGeneration;
+    stopAccountBanRealtime();
+  }
   window.SunlandDatabaseToken?.clear?.();
 
   if (identity != null && !isVerifiedIdentity(identity)) {
@@ -2612,39 +2617,77 @@ let lastUserMessage = null;
 
 let syncTimer = null;
 let cloudSyncRequest = null;
+const historySyncs = new Map();
+function getHistorySync(userId) {
+  const generation = historySessionGeneration;
+  if (historySyncs.get(userId)?.generation !== generation) {
+    const sync = new HistorySync({
+      userId, storage: sessionStorage,
+      isCurrent: () => getCurrentUserId() === userId && historySessionGeneration === generation,
+      rpc: params => supabase.rpc("sunland_apply_conversation_patch", params),
+    });
+    sync.generation = generation;
+    historySyncs.set(userId, sync);
+  }
+  return historySyncs.get(userId);
+}
+function showHistorySyncError(error) {
+  showToast(error instanceof HistoryConflict
+    ? "对话在其他设备上有新修改，本机内容已保留，暂未同步。请复制未同步内容到新对话后重试。"
+    : "云端同步暂时失败，本机内容已保留，将在下次同步时重试。");
+}
+async function retryDeletedContexts(sync) {
+  for (const id of [...sync.state.contextDeletes]) {
+    if (!sync.isCurrent()) return;
+    try {
+      const identity = getCurrentVerifiedIdentity();
+      if (getVerifiedUserId(identity) !== sync.userId) return;
+      const result = await authenticatedFetch(
+        `https://ai-core.sunland.dev/v1/conversations/${encodeURIComponent(id)}/context`,
+        { method: "DELETE" }, false,
+        { userId: sync.userId, token: getVerifiedToken(identity) },
+      );
+      if (!sync.isCurrent()) return;
+      if (!result?.ok) throw new Error("context cleanup unavailable");
+      sync.state.contextDeletes = sync.state.contextDeletes.filter(item => item !== id);
+      sync.persist();
+    } catch (_) {
+      if (sync.isCurrent()) showToast("历史已删除，AI 上下文暂未清理，将在下次同步时重试。");
+      return;
+    }
+  }
+}
 
 async function syncFromCloudForUser(userId) {
+  const sync = getHistorySync(userId);
   try {
+    await sync.enqueue(() => sync.deliver());
+    if (!sync.isCurrent()) return;
+    const readRevision = sync.revision;
     const { data, error } = await supabase
       .from("conversations")
       .select("data")
       .eq("user_id", userId)
       .maybeSingle();
 
-    if (getCurrentUserId() !== userId) return;
+    if (!sync.isCurrent()) return;
 
     if (error) {
-      console.warn("云端拉取失败:", error);
-      return;
+      throw error;
     }
 
-    if (data && data.data) {
-      const cloudConversations = filterConversationsForUser(
-        normalizeCloudData(data.data, userId),
-        userId,
-      ).filter(conversation => !isConversationDeleted(conversation));
-// ⭐兼容旧数据（没有updatedAt）
-conversations.forEach(c => {
-  if (!c.updatedAt) c.updatedAt = c.id;
-});
-
-cloudConversations.forEach(c => {
-  if (!c.updatedAt) c.updatedAt = c.id;
-});
-// ⭐ 合并本地与云端；Provider 不变量由统一 merge 策略保护。
-conversations = mergeConversationCollections(conversations, cloudConversations)
-  .filter(conversation => !isConversationDeleted(conversation))
-  .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+    const { data: tombstones, error: deletedError } = await supabase
+      .from("deleted_conversations").select("conv_id").eq("user_id", userId);
+    if (!sync.isCurrent()) return;
+    if (deletedError) throw deletedError;
+    {
+      const cloudConversations = normalizeCloudData(data?.data || [], userId);
+      const merged = await sync.enqueue(() => sync.reconcile(conversations, cloudConversations,
+        (tombstones || []).map(row => String(row.conv_id)), readRevision));
+      if (!sync.isCurrent() || !merged) return;
+      conversations = merged.filter(conversation => !isConversationDeleted(conversation))
+        .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+      if (sync.state.blocked.length) showHistorySyncError(new HistoryConflict());
 // ⭐ 防止当前会话丢失
 if (currentId) {
   const stillExists = conversations.find(c => c.id === currentId);
@@ -2653,7 +2696,7 @@ if (currentId) {
   }
 }
 
-      if (getCurrentUserId() === userId) {
+      if (sync.isCurrent()) {
         persistConversationStateLocally(userId);
       }
       renderChatList();
@@ -2668,19 +2711,21 @@ if (currentId) {
           loadChat(currentId);
         }
       }
+      await retryDeletedContexts(sync);
     }
   } catch (e) {
     console.warn("云端拉取失败:", e);
+    if (sync.isCurrent()) showHistorySyncError(e);
   }
 }
 
 async function syncFromCloud() {
   const userId = getCurrentUserId();
   if (!userId) return;
-  if (cloudSyncRequest?.userId === userId) return cloudSyncRequest.promise;
+  if (cloudSyncRequest?.userId === userId && cloudSyncRequest.generation === historySessionGeneration) return cloudSyncRequest.promise;
 
   const promise = syncFromCloudForUser(userId);
-  cloudSyncRequest = { userId, promise };
+  cloudSyncRequest = { userId, promise, generation: historySessionGeneration };
   try {
     await promise;
   } finally {
@@ -2688,31 +2733,18 @@ async function syncFromCloud() {
   }
 }
 
-async function writeConversationsToCloud(
-  expectedUserId,
-  sourceConversations = conversations,
-) {
+async function writeConversationsToCloud(expectedUserId, sourceConversations = null) {
   const userId = getCurrentUserId();
   if (!userId || userId !== expectedUserId || supabase.__offline) return false;
-
+  const sync = getHistorySync(userId);
   try {
-    const data = buildCloudData(userId, sourceConversations);
-
-    const { error } = await supabase
-      .from("conversations")
-      .upsert({
-        user_id: userId,
-        data,
-      }, {
-        onConflict: "user_id"
-      });
-    if (error || getCurrentUserId() !== userId) {
-      if (error) console.warn("云端保存失败:", error);
-      return false;
-    }
+    await sync.save(() => buildCloudData(userId, sourceConversations || conversations)
+      .filter(record => record.id !== PROFILE_META_ID));
+    if (!sync.isCurrent()) return false;
+    await retryDeletedContexts(sync);
     return true;
-  } catch (e) {
-    console.warn("云端保存失败:", e);
+  } catch (error) {
+    if (sync.isCurrent()) showHistorySyncError(error);
     return false;
   }
 }
@@ -2779,6 +2811,7 @@ async function deleteConversationForCurrentUser(targetConversation) {
   if (deletingConversationIds.has(targetKey)) return false;
   if (!confirm("确定删除这个对话吗？删除后无法恢复。")) return false;
 
+  const sync = getHistorySync(userId);
   const targetWasCurrentAtStart = conversationIdKey(currentId) === targetKey;
   deletingConversationIds.add(targetKey);
   deletedConversationIds.add(targetKey);
@@ -2808,27 +2841,19 @@ async function deleteConversationForCurrentUser(targetConversation) {
     nextConversations.push(replacement);
   }
 
-  if (target.provider === "sunland") {
-    const contextDeleted = await authenticatedFetch(
-      `https://ai-core.sunland.dev/v1/conversations/${encodeURIComponent(targetKey)}/context`,
-      { method: "DELETE" },
-    );
-    if (!contextDeleted?.ok || getCurrentUserId() !== userId) {
-      deletedConversationIds.delete(targetKey);
-      deletingConversationIds.delete(targetKey);
-      renderChatList();
-      showToast("暂时无法清理这个对话的 AI 上下文，请稍后再试。");
-      return false;
-    }
-  }
-
   clearTimeout(syncTimer);
-  const cloudDeleted = await writeConversationsToCloud(userId, nextConversations);
-  if (!cloudDeleted || getCurrentUserId() !== userId) {
+  let cloudDeleted = false;
+  try {
+    await sync.delete(targetKey, target.provider === "sunland");
+    cloudDeleted = sync.isCurrent();
+  } catch (error) {
+    if (sync.isCurrent()) showHistorySyncError(error);
+  }
+  if (!cloudDeleted || !sync.isCurrent()) {
     deletedConversationIds.delete(targetKey);
     deletingConversationIds.delete(targetKey);
     if (
-      getCurrentUserId() === userId &&
+      sync.isCurrent() &&
       !conversations.some(conversation => conversationIdKey(conversation.id) === targetKey)
     ) {
       conversations = mergeConversationCollections(conversations, [target]).sort(
@@ -2863,6 +2888,8 @@ async function deleteConversationForCurrentUser(targetConversation) {
   saveConversations();
   loadChat(currentId);
   updateRequestUiState();
+  await retryDeletedContexts(sync);
+  if (!sync.isCurrent()) return false;
   showToast("对话已删除。");
   return true;
 }
@@ -3431,6 +3458,7 @@ function addRegenerateButton(requestContext, fullText) {
     if (requestCoordinator.activeForConversation(conversation.id)) return;
 
     if (conversation.history.at(-1)?.role === "assistant") {
+      getHistorySync(requestContext.userId).replacements.add(String(conversation.id));
       conversation.history = conversation.history.slice(0, -1);
       conversation.updatedAt = Date.now();
       history = cloneRequestHistory(conversation.history);
@@ -3541,6 +3569,7 @@ async function runDeepSeekRequest(requestContext) {
   let fullText = "";
   let reasoning = "";
   let attempt = 0;
+  const quotaRequestId = newHistoryOperationId();
 
   while (attempt < (window._isMobile ? 2 : 1)) {
     attempt += 1;
@@ -3582,6 +3611,7 @@ async function runDeepSeekRequest(requestContext) {
           : requestContext.model,
         messages: requestMessages,
         deep: requestContext.deep,
+        request_id: quotaRequestId,
       }, false, requestContext.controller.signal, requestContext.traceContext);
       if (!res) return;
       requestContext.traceId = observeTraceResponse("api-worker", res, requestContext.traceId);

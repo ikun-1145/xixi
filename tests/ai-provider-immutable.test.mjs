@@ -150,14 +150,17 @@ test('provider selection is allowed only before the conversation starts', () => 
   assert.equal(setConversationProvider(fresh, 'unknown'), false);
 });
 
-test('live local and cloud code use the centralized provider merge policy', () => {
+test('live local and cloud code preserve provider invariants with versioned history reconciliation', () => {
   const assignments = [...aiApp.matchAll(/\.provider\s*=(?!=)/g)];
   assert.equal(assignments.length, 0);
   assert.match(aiApp, /setConversationProvider\(c, model\.provider, model\.modelName\)/);
   assert.match(aiApp, /setConversationProvider\(c, model\.provider, currentModel\)/);
   assert.match(aiApp, /const hasStarted = hasConversationStarted\(c\)/);
   assert.match(aiApp, /latest && !hasConversationStarted\(latest\)/);
-  assert.match(aiApp, /mergeConversationCollections\(conversations, cloudConversations\)/);
+  assert.match(aiApp, /sync\.reconcile\(conversations, cloudConversations/);
+  const syncSource = fs.readFileSync(new URL('../ai/history-sync.js', import.meta.url), 'utf8');
+  assert.match(syncSource, /filterConversationsForUser\(\[copy\(record\)\], this\.userId\)/);
+  assert.match(syncSource, /hasConversationStarted\(record\) && record\.provider !== remote\.provider/);
   assert.match(aiApp, /!isSupportedProviderId\(sendingConversation\.provider\)/);
 });
 
@@ -166,7 +169,7 @@ test('web deletion survives cloud object replacement and mixed id types', () => 
   assert.match(aiApp, /deletedConversationIds\.add\(targetKey\)/);
   assert.match(
     aiApp,
-    /mergeConversationCollections\(conversations, cloudConversations\)\s*\.filter\(conversation => !isConversationDeleted\(conversation\)\)/,
+    /merged\.filter\(conversation => !isConversationDeleted\(conversation\)\)/,
   );
   assert.doesNotMatch(aiApp, /conversation !== target/);
 });

@@ -887,6 +887,9 @@
     "ko": "지금 이 채팅을 삭제할 수 없습니다. 나중에 다시 시도하십시오.",
     "es": "Incapaz de borrar este chat ahora mismo. Por favor, intente de nuevo más tarde."
   },
+  "对话在其他设备上有新修改，本机内容已保留，暂未同步。请复制未同步内容到新对话后重试。": {"zh-Hant": "對話在其他裝置上有新修改，本機內容已保留，暫未同步。請複製未同步內容到新對話後重試。", "ko": "다른 기기에서 채팅이 변경되었습니다. 이 기기의 내용은 보관되었지만 동기화되지 않았습니다. 새 채팅에 복사한 후 다시 시도하세요.", "es": "El chat cambió en otro dispositivo. El contenido local se conserva sin sincronizar. Cópialo a un chat nuevo para continuar."},
+  "云端同步暂时失败，本机内容已保留，将在下次同步时重试。": {"zh-Hant": "雲端同步暫時失敗，本機內容已保留，將在下次同步時重試。", "ko": "동기화가 일시적으로 실패했습니다. 이 기기의 내용은 보관되었으며 다음 동기화 때 다시 시도합니다.", "es": "La sincronización falló temporalmente. El contenido local se conserva y se reintentará en la próxima sincronización."},
+  "历史已删除，AI 上下文暂未清理，将在下次同步时重试。": {"zh-Hant": "歷史已刪除，AI 上下文暫未清理，將在下次同步時重試。", "ko": "기록이 삭제되었습니다. AI 컨텍스트 정리는 다음 동기화 때 다시 시도합니다.", "es": "El historial se eliminó. La limpieza del contexto de IA se reintentará en la próxima sincronización."},
   "对话已删除。": {
     "zh-Hant": "對話已刪除。",
     "ko": "채팅 삭제.",
@@ -3544,6 +3547,9 @@
     "es": "Enviar mensaje",
     "ko": "메시지 보내기"
   },
+  "对话在其他设备上有新修改，本机内容已保留，暂未同步。请复制未同步内容到新对话后重试。": {"zh-Hant": "對話在其他裝置上有新修改，本機內容已保留，暫未同步。請複製未同步內容到新對話後重試。", "ko": "다른 기기에서 채팅이 변경되었습니다. 이 기기의 내용은 보관되었지만 동기화되지 않았습니다. 새 채팅에 복사한 후 다시 시도하세요.", "es": "El chat cambió en otro dispositivo. El contenido local se conserva sin sincronizar. Cópialo a un chat nuevo para continuar."},
+  "云端同步暂时失败，本机内容已保留，将在下次同步时重试。": {"zh-Hant": "雲端同步暫時失敗，本機內容已保留，將在下次同步時重試。", "ko": "동기화가 일시적으로 실패했습니다. 이 기기의 내용은 보관되었으며 다음 동기화 때 다시 시도합니다.", "es": "La sincronización falló temporalmente. El contenido local se conserva y se reintentará en la próxima sincronización."},
+  "历史已删除，AI 上下文暂未清理，将在下次同步时重试。": {"zh-Hant": "歷史已刪除，AI 上下文暫未清理，將在下次同步時重試。", "ko": "기록이 삭제되었습니다. AI 컨텍스트 정리는 다음 동기화 때 다시 시도합니다.", "es": "El historial se eliminó. La limpieza del contexto de IA se reintentará en la próxima sincronización."},
   "对话已删除。": {
     "es": "Chat eliminado.",
     "ko": "채팅이 삭제되었습니다."
