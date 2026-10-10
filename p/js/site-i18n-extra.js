@@ -6,6 +6,7 @@
   "use strict";
 
   const generatedCatalog = {
+  "QQ交流群": {"zh-Hant":"QQ交流群","en":"QQ community group","ja":"QQ交流グループ","ko":"QQ 커뮤니티 채팅방","es":"Grupo de QQ"},
   "下载恢复附件": {"zh-Hant":"下載恢復附件","en":"Download recovered attachment","ja":"復元した添付をダウンロード","ko":"복구된 첨부 다운로드","es":"Descargar adjunto recuperado"},
   "恢复附件无效，原始备份仍保留": {"zh-Hant":"恢復附件無效，原始備份仍保留","en":"Invalid recovered attachment. The original backup is retained.","ja":"復元した添付は無効です。元のバックアップは保持されています。","ko":"복구된 첨부가 잘못되었습니다. 원본 백업은 보관됩니다.","es":"Adjunto recuperado inválido. Se conserva la copia original."},
   "历史备份与恢复": {"zh-Hant": "歷史備份與恢復", "en": "History backup and recovery", "ja": "履歴のバックアップと復元", "ko": "기록 백업 및 복구", "es": "Copia y recuperación del historial"},

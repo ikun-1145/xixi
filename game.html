@@ -5,6 +5,8 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
 <title>小游戏</title>
+<script defer src="p/js/site-i18n-extra.js?v=20261010-phase6a"></script>
+<script defer src="p/js/site-i18n.js?v=20261001-review-1"></script>
 
 <link rel="preload" as="image" href="p/chengshi.webp" type="image/webp">
 <link rel="preload" as="image" href="p/chengshi.png">
@@ -396,7 +398,7 @@ function detectLang(){
 }
 
 const LANG = detectLang();
-const T = i18n[LANG] || i18n.zh;
+const T = { ...(i18n[LANG] || i18n.zh) };
 
 /* ================= 游戏配置 ================= */
 const CONFIG = {
@@ -748,14 +750,26 @@ if (/iPad|iPhone|iPod/.test(navigator.userAgent)) {
   });
 }
 
+// Canvas text is outside DOM translation; keep it on the shared language state.
+function syncGameLanguage() {
+  if (window.SiteI18n) {
+    for (const key of Object.keys(i18n.zh)) {
+      T[key] = window.SiteI18n.translate(i18n.zh[key]);
+    }
+  }
+  document.title = T.title;
+  document.getElementById("overText").textContent = T.gameOver;
+  restartBtn.textContent = T.restart;
+  loadingEl.querySelector('p').textContent = T.loading;
+  if (gameState !== 'loading') draw();
+}
+window.addEventListener('site-language-change', syncGameLanguage);
+
 /* ================= 启动游戏 ================= */
 window.addEventListener('load', async function() {
   try {
     // 更新 UI 文本
-    document.title = T.title;
-    document.getElementById("overText").textContent = T.gameOver;
-    document.getElementById("restart").textContent = T.restart;
-    loadingEl.querySelector('p').textContent = T.loading;
+    syncGameLanguage();
 
     console.log('Starting to load assets...');
     

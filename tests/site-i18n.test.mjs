@@ -361,3 +361,31 @@ test("furry-event cards localize their interface while preserving event data", (
     dom.window.close();
   }
 });
+
+test("game canvas follows all six shared languages without resetting saved scores", () => {
+  const html = fs.readFileSync(new URL("../game.html", import.meta.url), "utf8");
+  const dom = createDom(html, "en");
+  const rendered = [];
+  const context = new Proxy({}, {
+    get: (_, key) => key === "fillText" ? value => rendered.push(String(value)) : () => {},
+    set: () => true,
+  });
+  dom.window.HTMLCanvasElement.prototype.getContext = () => context;
+  dom.window.requestAnimationFrame = () => 1;
+  dom.window.cancelAnimationFrame = () => {};
+  dom.window.localStorage.setItem("highScore", "17");
+  const gameScript = [...dom.window.document.scripts].find(script => !script.src);
+  dom.window.eval(gameScript.textContent);
+  dom.window.eval("resetGame();");
+  for (const language of ["ko", "es", "ja", "zh-Hant", "en", "zh"]) {
+    rendered.length = 0;
+    dom.window.SiteI18n.setLanguage(language, { persist: false });
+    assert.ok(rendered.includes(`${dom.window.SiteI18n.translate("最高")}: 17`), language);
+    assert.ok(rendered.includes(dom.window.SiteI18n.translate("点击屏幕开始")), language);
+    assert.equal(dom.window.document.getElementById("restart").textContent,
+      dom.window.SiteI18n.translate("再来一局"));
+    assert.equal(dom.window.document.title, dom.window.SiteI18n.translate("小游戏"));
+    assert.equal(dom.window.localStorage.getItem("highScore"), "17");
+  }
+  dom.window.close();
+});
