@@ -1,0 +1,12 @@
+{
+  "feature": "afdian-worker-resource-fix",
+  "flowProfile": "debug-fix",
+  "currentStage": "review-candidate",
+  "scopeApproval": "2026-10-11 user five-phase repair instruction",
+  "scope": "Local Worker fix, review-only migration, synthetic tests and commit",
+  "externalWritesAuthorized": false,
+  "requirementsEvidence": "../../../afdianpay-cpu-reconciliation-audit.md",
+  "verificationEvidence": "06-verification/final-acceptance-report.md",
+  "gateToolStatus": "Required lifecycle/completion MCP tools absent from this session catalog; no tool gate claimed",
+  "productionAcceptance": "Not performed"
+}

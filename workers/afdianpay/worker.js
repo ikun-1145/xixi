@@ -20,7 +20,9 @@ MQIDAQAB
 
 
 export default {
-  async scheduled(_controller, env) {
+  async scheduled(controller, env) {
+    logEvent({ event: 'reconciliation_started', cron: controller?.cron ?? null,
+      scheduled_time: controller?.scheduledTime ?? null });
     if (env.AFDIAN_ROLLOUT_DIAGNOSTICS_ONLY === 'true') {
       // Read-only upstream gate: no hints, leases, payment facts or entitlements.
       const diagnostics = await Promise.allSettled([
@@ -30,12 +32,15 @@ export default {
       if (diagnostics.some(result => result.status === 'rejected')) throw policyError('UPSTREAM_DIAGNOSTIC_FAILED');
       return;
     }
+    // Share only the fresh official page response inside this invocation, never across runs.
+    const providerPages = new Map();
     // 独立通道：某页失败不阻断另一通道；游标只在持久化成功后推进。
     const outcomes = await Promise.allSettled([
-      reconcilePage(env, 'recent', 'cron_recent'),
-      reconcilePage(env, 'history', 'cron_history'),
-      retryKnownOrders(env),
+      reconcilePage(env, 'recent', 'cron_recent', null, providerPages),
+      reconcilePage(env, 'history', 'cron_history', null, providerPages),
     ]);
+    // Process durable due hints after pages, so newly verified page orders are not queried again.
+    outcomes.push(await Promise.allSettled([retryKnownOrders(env)]).then(results => results[0]));
     const errors = outcomes.filter(result => result.status === 'rejected');
     if (errors.length) throw new Error('RECONCILIATION_INCOMPLETE');
   },
@@ -191,25 +196,21 @@ export async function queryProviderOrder(env, orderId) {
   if (matches.length !== 1) throw policyError('PROVIDER_QUERY_FAILED');
   return normalizeAndValidateProviderOrder(matches[0]);
 }
-async function persistVerified(env, observation, source, traceId, cached = false) {
-  const result = await rpc(env, 'sunland_process_verified_pro_order', {
-    p_order: observation, p_processing_source: source, p_trace_id: traceId, p_use_cached: cached,
+async function persistVerified(env, observation, source, traceId, leaseToken) {
+  const result = await rpc(env, 'sunland_finish_pro_payment_order_query', {
+    p_order: observation, p_processing_source: source, p_trace_id: traceId, p_lease_token: leaseToken,
   });
   if (!DURABLE_PAYMENT_STATUSES.has(result?.status)) throw policyError('DATABASE_UNAVAILABLE');
+  if (result.reason_code === 'LEASE_FENCED') return result;
   logEvent({ event: 'payment_persisted', trace_id: traceId, order_id: observation.order_id, source,
     state_before: result.state_before ?? null, state_after: result.state_after ?? result.status,
     attempt: result.attempt_count ?? null, reason_code: result.reason_code || null,
-    cached, commit_outcome: 'confirmed_by_rpc' });
+    cached: false, commit_outcome: 'confirmed_by_rpc' });
   return result;
 }
 async function recordHints(env, ids, source, traceId) {
   if (!ids.length) return;
   await rpc(env, 'sunland_record_pro_payment_hints', { p_order_ids: ids, p_processing_source: source, p_trace_id: traceId });
-}
-async function noteRetry(env, id, reason, source, traceId) {
-  const allowed = new Set(['PROVIDER_QUERY_FAILED','AMOUNT_MISMATCH','INVALID_PRODUCT','INVALID_BINDING']);
-  await rpc(env, 'sunland_note_pro_payment_retry', { p_order_id: id,
-    p_reason_code: allowed.has(reason) ? reason : 'PROVIDER_QUERY_FAILED', p_processing_source: source, p_trace_id: traceId });
 }
 async function processKnownOrder(env, row, source, traceId) {
   const claim = await rpc(env, 'sunland_claim_pro_payment_order_query', { p_order_id: row.order_id });
@@ -217,37 +218,83 @@ async function processKnownOrder(env, row, source, traceId) {
     if (!DURABLE_PAYMENT_STATUSES.has(claim?.status)) throw policyError('DATABASE_UNAVAILABLE');
     return claim;
   }
+  if (!UUID_PATTERN.test(claim.lease_token || '')) throw policyError('DATABASE_UNAVAILABLE');
   try {
-    return await persistVerified(env, await queryProviderOrder(env, row.order_id), source, traceId);
+    return await persistVerified(env, await queryProviderOrder(env, row.order_id), source, traceId, claim.lease_token);
   } catch (error) {
     logEvent({ event: 'payment_attempt_failed', trace_id: traceId, order_id: row.order_id, source,
       reason_code: error.code || 'PROVIDER_QUERY_FAILED', commit_outcome: 'unknown' });
-    await noteRetry(env, row.order_id, error.code, source, traceId);
+    const allowed = ['PROVIDER_QUERY_FAILED', 'AMOUNT_MISMATCH', 'INVALID_PRODUCT', 'INVALID_BINDING'];
+    await rpc(env, 'sunland_fail_pro_payment_order_query', { p_order_id: row.order_id,
+      p_reason_code: allowed.includes(error.code) ? error.code : 'PROVIDER_QUERY_FAILED',
+      p_processing_source: source, p_trace_id: traceId, p_lease_token: claim.lease_token });
     throw error;
   }
 }
 async function retryKnownOrders(env, userId = null) {
-  const traceId = crypto.randomUUID();
-  const owner = userId ? `&bound_user_id=eq.${encodeURIComponent(userId)}` : '';
-  const rows = await dbRows(env, 'pro_payment_orders', `select=order_id&status=eq.unresolved&next_retry_at=lte.${encodeURIComponent(new Date().toISOString())}&order=next_retry_at.asc&limit=${LIMITS.ordersPerRun}${owner}`);
-  // 真幂等RPC处理commit unknown，下次读取authoritative ledger再决定，不猜上次是否提交。
-  const results = [];
-  for (const row of rows) {
-    try { results.push(await processKnownOrder(env, row, userId ? 'user_reconcile' : 'cron_recent', traceId)); }
-    catch { results.push({ status: 'unresolved', reason_code: 'PROVIDER_QUERY_FAILED' }); }
+  const lease = userId ? null : await rpc(env, 'sunland_claim_pro_payment_scan', { p_state_key: 'retry' });
+  if (lease && !lease.acquired) return [];
+  try {
+    const traceId = crypto.randomUUID();
+    const owner = userId ? `&bound_user_id=eq.${encodeURIComponent(userId)}` : '';
+    const rows = await dbRows(env, 'pro_payment_orders', `select=order_id&status=eq.unresolved&next_retry_at=lte.${encodeURIComponent(new Date().toISOString())}&order=next_retry_at.asc&limit=${LIMITS.ordersPerRun}${owner}`);
+    // 真幂等RPC处理commit unknown，下次读取authoritative ledger再决定，不猜上次是否提交。
+    const results = [];
+    const startedAt = Date.now();
+    for (const row of rows) {
+      try { results.push(await processKnownOrder(env, row, userId ? 'user_reconcile' : 'cron_recent', traceId)); }
+      catch (error) {
+        results.push({ status: 'unresolved', reason_code: 'PROVIDER_QUERY_FAILED' });
+        if (error.code === 'PROVIDER_BACKOFF') break;
+      }
+      // Keep the bounded retry lane inside its persistent lease, including a final slow request.
+      if (Date.now() - startedAt >= 45_000) break;
+    }
+    if (lease) {
+      const completion = await rpc(env, 'sunland_complete_pro_payment_scan', {
+        p_state_key: 'retry', p_lease_token: lease.lease_token, p_generation: lease.generation,
+        p_next_page: 1, p_total_pages: 1, p_order_ids: [],
+      });
+      if (completion?.advanced !== true) throw policyError('SCAN_LEASE_LOST');
+    }
+    return results;
+  } finally {
+    if (lease) await rpc(env, 'sunland_release_pro_payment_scan', {
+      p_state_key: 'retry', p_lease_token: lease.lease_token, p_generation: lease.generation,
+    }).catch(() => {});
   }
-  return results;
 }
-export async function reconcilePage(env, key, source, userId = null) {
+export async function reconcilePage(env, key, source, userId = null, providerPages = null) {
   const lease = await rpc(env, 'sunland_claim_pro_payment_scan', { p_state_key: key });
   if (!lease?.acquired) return { acquired: false, retry_after_seconds: lease?.retry_after_seconds || 0 };
   const traceId = crypto.randomUUID();
   try {
     const page = key === 'history' ? lease.next_page : 1;
-    const response = await queryProvider(env, { page });
+    if (providerPages && !providerPages.has(page)) providerPages.set(page, queryProvider(env, { page }));
+    const response = await (providerPages ? providerPages.get(page) : queryProvider(env, { page }));
     const ids = response.list.map(order => normalizeOrderId(order?.out_trade_no));
     if (ids.some(id => !id) || new Set(ids).size !== ids.length) throw policyError('PROVIDER_FACT_CONFLICT');
     await recordHints(env, ids, source, traceId);
+    const observations = [];
+    for (const raw of response.list) {
+      try { observations.push(normalizeAndValidateProviderOrder(raw)); }
+      catch (error) { observations.push({ provider: 'afdian', order_id: raw.out_trade_no,
+        validation_error: error.code }); }
+    }
+    // Admission and verified processing share a database transaction and the order locks.
+    // All page facts participate; choosing the first eight forever starves later old orders.
+    const batch = await rpc(env, 'sunland_process_pro_payment_scan_orders', {
+      p_orders: observations, p_processing_source: source, p_trace_id: traceId,
+    });
+    if (!Number.isInteger(batch?.processed) || batch.processed < 0 || batch.processed > LIMITS.ordersPerRun
+      || !Number.isInteger(batch?.skipped) || batch.skipped < 0
+      || batch.processed + batch.skipped !== observations.length
+      || !Array.isArray(batch.results) || batch.results.length !== batch.processed
+      || batch.results.some(result => !DURABLE_PAYMENT_STATUSES.has(result?.status))) {
+      throw policyError('DATABASE_UNAVAILABLE');
+    }
+    logEvent({ event: 'payment_scan_processed', source, trace_id: traceId,
+      observed: observations.length, processed: batch.processed, skipped: batch.skipped });
     const completion = await rpc(env, 'sunland_complete_pro_payment_scan', {
       p_state_key: key, p_lease_token: lease.lease_token, p_generation: lease.generation,
       p_next_page: key !== 'history' || page >= response.totalPage ? 1 : page + 1,
@@ -255,11 +302,6 @@ export async function reconcilePage(env, key, source, userId = null) {
     });
     if (completion?.advanced !== true) throw policyError('SCAN_LEASE_LOST');
     if (userId) await retryKnownOrders(env, userId);
-    // 页面只处理有限个；其余ID已持久为due hints，后续逐ID可信查询。
-    for (const raw of response.list.slice(0, LIMITS.ordersPerRun)) {
-      try { await persistVerified(env, normalizeAndValidateProviderOrder(raw), source, traceId); }
-      catch (error) { await noteRetry(env, raw.out_trade_no, error.code, source, traceId); }
-    }
     return { acquired: true };
   } catch (error) {
     await rpc(env, 'sunland_release_pro_payment_scan', { p_state_key: key, p_lease_token: lease.lease_token, p_generation: lease.generation }).catch(() => {});
@@ -284,8 +326,8 @@ async function handleAfdianWebhook(request, env) {
   } catch {
     // hint已durable可ACK，未durable则返回503以请求平台重投。
     if (!hintDurable) return jsonResponse({ ec: 503, em: 'temporary processing failure' }, 503);
-    try { await noteRetry(env, order.out_trade_no, 'PROVIDER_QUERY_FAILED', 'webhook', traceId); return jsonResponse({ ec: 200, em: '' }); }
-    catch { return jsonResponse({ ec: 503, em: 'temporary processing failure' }, 503); }
+    // processKnownOrder records its own fenced retry; a durable hint also survives claim outages.
+    return jsonResponse({ ec: 200, em: '' });
   }
 }
 async function handleAdminReconcile(request, env) {
@@ -485,7 +527,14 @@ function logEvent(event) {
 
 // MD5 函数：爱发电 Open API 的既有签名协议要求 MD5；不用于密码或新安全设计。
 async function md5(str) {
-  return md5Hex(str);
+  try {
+    const digest = await crypto.subtle.digest('MD5', new TextEncoder().encode(str));
+    return Array.from(new Uint8Array(digest), byte => byte.toString(16).padStart(2, '0')).join('');
+  } catch (error) {
+    // Node/browser test runtimes lack Workers' native legacy MD5 extension.
+    if (error?.name !== 'NotSupportedError') throw error;
+    return md5Hex(str);
+  }
 }
 
 function md5Hex(input) {

@@ -1,6 +1,6 @@
 # afdianpay 部署与对账
 
-该 Worker 使用两条独立链路处理付款：爱发电 Webhook 实时处理，以及每 2 分钟的 `query-order` 对账。订单幂等与最终状态保存在 Supabase 的 `pro_payment_orders`，KV 只保存分页扫描进度。
+该 Worker 使用两条独立链路处理付款：爱发电 Webhook 实时处理，以及每 2 分钟的 `query-order` 对账。订单幂等与最终状态保存在 Supabase 的 `pro_payment_orders`，扫描游标、代次和租约保存在 Supabase `pro_payment_reconciliation_state`；KV 绑定为历史兼容配置，不承担当前游标或付款幂等。
 
 ## 固定上线顺序
 
@@ -42,10 +42,14 @@ Webhook 使用爱发电公开 RSA-SHA256 规则验证签名。只有付款订单
 
 ## 对账与历史回放
 
-- 每轮都会读取最新一页（每页 100 条）。
-- 每天从第一页开始并按 `total_page` 续扫所有历史页；进度在 KV 中保存。分页过多或 KV 暂时不可用时，下一轮会从安全的重叠页继续，订单账本不会丢失。
-- 只会给 `status=2` 且固定方案 ID 的订单激活 Pro；金额非 ¥10 倍数、无绑定或异常订单会持久化为 `unresolved`，不会静默跳过。
-- Cloudflare 新增或更新 Cron 可能需要最多约 15 分钟才会在全网生效。部署后等待该时限，再检查 `pro-reconcile:last-full-scan-day` 与 `pro-reconcile:next-page` 两个 KV 键，并通过 `wrangler tail` 确认存在 `reconciliation_complete` 汇总日志，才可认定历史回放已经启动。
+- 每轮读取最新一页及一页历史（当前响应最多50笔）。最近与历史同页时，只在本次 invocation 内共享新鲜官方响应。
+- 历史游标逐轮推进，到 `total_page` 后回到第一页；全部ID先成为持久hints，批量处理成功后才通过token/generation完成扫描。故障保留游标，未处理新订单进入due重试队列。
+- 新迁移 `20261011030000_afdian_scan_admission.sql` 只供审查，须单独批准并先应用数据库、后部署Worker；新Worker依赖批量准入及带token的完成/失败RPC。上线前必须核验生产函数定义与ACL，不能把仓库迁移视为活跃目录证据。
+- unchanged unresolved遵守next_retry_at；稳定activated/ineligible/blocked至少间隔24小时后，在扫描再次遇见时复核。付款事实变化进入既有可信校验；活跃精确查询租约保护扫描重叠。订单预算为每批8笔，按变化和最老核验排序，避免固定前8导致历史尾部饿死。
+- 既有商品/金额/绑定、退款墓碑和权益来源校验保持不变。退款记录付款事实，不直接设置pro=false；异常不会被网络失败误判为付款失败。
+- 精确查询有2分钟token租约；扫描租约3分钟。重试lane有20秒冷却及45秒软预算，预算耗尽的订单仍保持due。
+- Cron改变官方最多约15分钟传播。2026-10-11只读审计发现API的 `*/2 * * * *` 与真实scheduled的 `* * * * *` 不一致已持续超出该窗口，原因待Cloudflare核查；禁止凭此删除触发器。对照 `reconciliation_started` 的controller信息、平台requestId/version和触发时间。
+- 检查 `payment_scan_processed` 的observed/processed/skipped，以及数据库历史next_page/cycle_id/last_success_at，完成整个周期才确认历史恢复。不能只看一次cron outcome=ok。
 
 如需按订单号立即重查（例如支持申诉），使用受保护接口：
 
@@ -60,4 +64,6 @@ curl -X POST "https://afdianpay.sunland.dev/admin/reconcile" \
 
 ## 人工补发
 
-支持人员仅可在确认订单后，通过受控的 service-role 环境调用 `sunland_resolve_pro_payment(order_id, user_id)`。它只能处理账本中指定方案的 `unresolved` 订单，并在同一事务中开通 `user_profiles.pro`、记录绑定用户与解决时间。不要把 service-role key 或该 RPC 暴露给浏览器。
+人工处理必须先核验官方付款事实与可信用户绑定，通过现有受控服务流程重新查询；旧 `sunland_resolve_pro_payment` 不能替代新鲜官方付款证明。任何真实权益补发、撤销或改动需单独授权。service-role key 与付款RPC不得暴露给浏览器。
+
+本次本地修复的生产证据、性能模型和验收边界见 [审查报告](../../docs/afdianpay-cpu-reconciliation-audit.md)。
