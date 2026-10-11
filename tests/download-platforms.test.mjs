@@ -3,6 +3,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { JSDOM } from 'jsdom';
 
 const projectRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const downloadHtml = fs.readFileSync(path.join(projectRoot, 'download.html'), 'utf8');
@@ -16,6 +17,40 @@ test('update manifest provides both release download URLs', () => {
   assert.ok(Number.isInteger(updateManifest.build));
   assert.ok(new URL(updateManifest.url).protocol.startsWith('http'));
   assert.ok(new URL(updateManifest.ipaUrl).protocol.startsWith('http'));
+});
+
+test('Android43 forced manifest pins the Worker asset and its signed APK checksum', () => {
+  assert.equal(updateManifest.version,'1.5.3');
+  assert.equal(updateManifest.build,43);
+  assert.equal(updateManifest.android_min_build,43);
+  assert.equal(updateManifest.force,true);
+  assert.equal(updateManifest.url,'https://api.sunland.dev/v1/download/apk?v=1.5.3%2B43');
+  assert.equal(updateManifest.apk_url,updateManifest.url);
+  assert.equal(updateManifest.apk_sha256,'b98ced5e9184d5f12047863b53f39b931fd7716ff90559ec5c896237e5e73e78');
+  assert.equal(updateManifest.apk_size,188821267);
+  assert.equal(updateManifest.ipaUrl,'https://api.sunland.dev/v1/download/ipa?v=1.5.2%2B42');
+});
+
+test('download page uses Android43 proxy while preserving the separate iOS42 link and label', async () => {
+  const dom=new JSDOM(`<a data-download-button="android" aria-disabled="true"><span data-release-version></span></a>
+    <a data-download-button="ios" aria-disabled="true"><span data-release-version></span></a>
+    <p data-release-description hidden></p>`,{url:'https://sunland.dev/download.html',runScripts:'outside-only'});
+  try {
+    dom.window.fetch=async(url,options)=>{
+      assert.equal(url,'update.json');assert.equal(options.cache,'no-store');
+      return {ok:true,json:async()=>updateManifest};
+    };
+    const script=downloadHtml.slice(downloadHtml.indexOf('  (async function() {',downloadHtml.indexOf('RELEASE MANIFEST')),
+      downloadHtml.indexOf('  /* ═',downloadHtml.indexOf('RELEASE MANIFEST')+30));
+    await dom.window.eval(script);
+    const android=dom.window.document.querySelector('[data-download-button="android"]');
+    const ios=dom.window.document.querySelector('[data-download-button="ios"]');
+    assert.equal(android.href,updateManifest.url);
+    assert.equal(android.textContent,'APK · v1.5.3+43');
+    assert.equal(android.hasAttribute('aria-disabled'),false);
+    assert.equal(ios.href,updateManifest.ipaUrl);
+    assert.equal(ios.textContent,'IPA · v1.5.2+42');
+  } finally {dom.window.close();}
 });
 
 test('download page loads release copy, version, and links from the update manifest', () => {

@@ -1893,8 +1893,11 @@
         || !isHttpUrl(manifest.url) || !isHttpUrl(manifest.ipaUrl)) throw new Error('invalid update manifest');
 
       const version = `v${manifest.version}+${manifest.build}`;
+      // Android and iOS releases can advance independently.
+      const ipaVersion = new URL(manifest.ipaUrl).searchParams.get('v');
       document.querySelectorAll('[data-release-version]').forEach(detail => {
-        detail.textContent = `${detail.closest('[data-download-button]').dataset.downloadButton === 'android' ? 'APK' : 'IPA'} · ${version}`;
+        const isAndroid = detail.closest('[data-download-button]').dataset.downloadButton === 'android';
+        detail.textContent = `${isAndroid ? 'APK' : 'IPA'} · ${!isAndroid && ipaVersion ? `v${ipaVersion}` : version}`;
       });
       const description = document.querySelector('[data-release-description]');
       if (typeof manifest.desc === 'string' && manifest.desc.trim()) {
