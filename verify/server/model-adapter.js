@@ -151,6 +151,7 @@ export async function callDeepSeek({
       authorization,
     },
     body: JSON.stringify({
+      request_id: crypto.randomUUID(),
       model,
       deep: false,
       // 核验接口只在完整流水线结束后返回报告，无需把模型分片转发给浏览器。

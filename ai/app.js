@@ -339,7 +339,7 @@ async function apiFetch(body, _retried = false, signal = undefined, traceContext
       "Content-Type": "application/json",
       ...(traceparent ? { traceparent } : {}),
     },
-    body: JSON.stringify(body),
+    body: JSON.stringify({ ...body, request_id: body.request_id ?? newHistoryOperationId() }),
     signal,
   }, _retried);
 }

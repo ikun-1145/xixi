@@ -427,3 +427,39 @@ test('live app binds async writes, title generation, abort, and delayed renderin
   assert.match(aiApp, /authenticatedFetch\(url, init, true,/);
   assert.match(aiApp, /\.\.\.init,[\s\S]*?signal/);
 });
+
+
+test('API boundary gives auxiliary calls one ID while preserving caller retry IDs', async () => {
+  const start=aiApp.indexOf('async function apiFetch(');
+  const end=aiApp.indexOf('/* ===== 页面进入动画触发 ===== */',start);
+  const requests=[];
+  const api=new Function('authenticatedFetch','traceparentFor','newHistoryOperationId',
+    `${aiApp.slice(start,end)};return apiFetch;`)(async(_,init)=>{requests.push(init);return new Response('{}');},
+      ()=>null,()=>`aux-operation-${requests.length}`);
+  const auxiliary={model:'deepseek-v4-flash',messages:[{role:'user',content:'title'}]};
+  await api(auxiliary);await api(auxiliary);
+  await api({...auxiliary,request_id:'persisted-retry-id'});
+  assert.equal(JSON.parse(requests[0].body).request_id,'aux-operation-0');
+  assert.equal(JSON.parse(requests[1].body).request_id,'aux-operation-1');
+  assert.equal(JSON.parse(requests[2].body).request_id,'persisted-retry-id');
+  assert.equal(auxiliary.request_id,undefined);
+});
+
+
+test('auxiliary API ID and payload survive actual authenticated 401 retry', async () => {
+  const start=aiApp.indexOf('async function authenticatedFetch(');
+  const end=aiApp.indexOf('/* ===== 页面进入动画触发 ===== */',start);
+  const sent=[];let token='old-token',generated=0;
+  const api=new Function('localStorage','session','getCurrentUserId','getCurrentVerifiedIdentity',
+    'getVerifiedToken','resolveIdentityResult','window','fetch','traceparentFor','newHistoryOperationId',
+    `${aiApp.slice(start,end)};return apiFetch;`)(
+      {getItem:()=>token},{userId:'user-a'},()=> 'user-a',()=>({token}),identity=>identity.token,
+      async()=>{token='new-token';return {identity:{token}};},{},
+      async(_,init)=>{sent.push(init);return new Response('{}',{status:sent.length===1?401:200});},
+      ()=>null,()=>{generated++;return 'auxiliary-401-id';});
+  const response=await api({messages:[{role:'user',content:'title'}]});
+  assert.equal(response.status,200);assert.equal(generated,1);assert.equal(sent.length,2);
+  assert.equal(sent[0].body,sent[1].body);assert.equal(JSON.parse(sent[1].body).request_id,'auxiliary-401-id');
+  assert.equal(sent[0].headers.authorization,'Bearer old-token');
+  assert.equal(sent[1].headers.authorization,'Bearer new-token');
+});

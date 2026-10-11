@@ -609,3 +609,16 @@ test("absurd claims with zero search results remain uncertain rather than zero",
   assert.equal(result.overallScore, 50);
   assert.match(result.limitations.at(-1), /搜不到不代表虚假/u);
 });
+
+
+test('distinct verify model stages each carry a valid request ID', async () => {
+  const ids=[];
+  for(const content of ['claims','judgment'])await callDeepSeek({
+    authorization:'Bearer valid-test-token',messages:[{role:'user',content}],
+    fetchImpl:async(request)=>{
+      const body=await request.json();assert.match(body.request_id,/^[A-Za-z0-9_-]{8,128}$/);
+      ids.push(body.request_id);return new Response('{"content":"ok"}');
+    }
+  });
+  assert.notEqual(ids[0],ids[1]);
+});
