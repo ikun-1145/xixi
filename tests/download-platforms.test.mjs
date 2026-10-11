@@ -28,10 +28,14 @@ test('Android43 forced manifest pins the Worker asset and its signed APK checksu
   assert.equal(updateManifest.apk_url,updateManifest.url);
   assert.equal(updateManifest.apk_sha256,'b98ced5e9184d5f12047863b53f39b931fd7716ff90559ec5c896237e5e73e78');
   assert.equal(updateManifest.apk_size,188821267);
-  assert.equal(updateManifest.ipaUrl,'https://api.sunland.dev/v1/download/ipa?v=1.5.2%2B42');
+  assert.equal(updateManifest.ipaUrl,'https://api.sunland.dev/v1/download/ipa?v=1.5.3%2B43');
+  assert.equal(updateManifest.ipa_unsigned,true);
+  assert.equal(updateManifest.ipa_sha256,'3779c54ac5512a29b0cf763362cc4cf2d8208ce301723b10516491750753c0ab');
+  assert.equal(updateManifest.ipa_size,43051028);
+  assert.equal(updateManifest.ios_min_build,43);
 });
 
-test('download page uses Android43 proxy while preserving the separate iOS42 link and label', async () => {
+test('download page uses Android43 and unsigned iOS43 proxy links and labels', async () => {
   const dom=new JSDOM(`<a data-download-button="android" aria-disabled="true"><span data-release-version></span></a>
     <a data-download-button="ios" aria-disabled="true"><span data-release-version></span></a>
     <p data-release-description hidden></p>`,{url:'https://sunland.dev/download.html',runScripts:'outside-only'});
@@ -49,7 +53,7 @@ test('download page uses Android43 proxy while preserving the separate iOS42 lin
     assert.equal(android.textContent,'APK · v1.5.3+43');
     assert.equal(android.hasAttribute('aria-disabled'),false);
     assert.equal(ios.href,updateManifest.ipaUrl);
-    assert.equal(ios.textContent,'IPA · v1.5.2+42');
+    assert.equal(ios.textContent,'IPA · v1.5.3+43');
   } finally {dom.window.close();}
 });
 
@@ -90,4 +94,30 @@ test('dark mode keeps black platform artwork on a light high-contrast surface', 
   assert.match(downloadHtml, /\.btn-dl\s*\{[^}]*background:\s*#f7fbff;/su);
   assert.match(downloadHtml, /\.btn-dl\s*\{[^}]*color:\s*#0b1220;/su);
   assert.match(downloadHtml, /\.btn-dl:focus-visible\s*\{/u);
+});
+
+
+test('unsigned iOS download copy warns about signing and data preservation in each language', () => {
+  assert.match(downloadHtml, /未签名 IPA/);
+  assert.match(downloadHtml, /备份前不要卸载旧版/);
+  assert.match(downloadHtml, /unsigned IPA/);
+  assert.match(downloadHtml, /back up before removing the old app/);
+  assert.match(downloadHtml, /未署名 IPA/);
+  assert.match(downloadHtml, /バックアップ前に旧版を削除しない/);
+});
+
+
+test('platform labels remain independent when the iOS release differs from Android', async () => {
+  const dom = new JSDOM(`<a data-download-button="android"><span data-release-version></span></a>
+    <a data-download-button="ios"><span data-release-version></span></a>
+    <p data-release-description hidden></p>`, {url:'https://sunland.dev/download.html',runScripts:'outside-only'});
+  try {
+    const manifest = {...updateManifest, ipaUrl:'https://api.sunland.dev/v1/download/ipa?v=1.5.2%2B42'};
+    dom.window.fetch = async () => ({ok:true,json:async()=>manifest});
+    const start = downloadHtml.indexOf('  (async function() {', downloadHtml.indexOf('RELEASE MANIFEST'));
+    const end = downloadHtml.indexOf('  /* ═', downloadHtml.indexOf('RELEASE MANIFEST')+30);
+    await dom.window.eval(downloadHtml.slice(start,end));
+    assert.equal(dom.window.document.querySelector('[data-download-button="android"]').textContent,'APK · v1.5.3+43');
+    assert.equal(dom.window.document.querySelector('[data-download-button="ios"]').textContent,'IPA · v1.5.2+42');
+  } finally {dom.window.close();}
 });
