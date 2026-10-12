@@ -1,0 +1,109 @@
+[
+  {
+    "worker": "afdianpay",
+    "settings_status": 200,
+    "afdianpay_service_bindings": [],
+    "schedules_status": 200,
+    "schedules": [
+      {
+        "cron": "*/2 * * * *",
+        "created_on": "2026-10-07T10:39:10.692099Z",
+        "modified_on": "2026-10-07T10:41:53.290811Z"
+      }
+    ]
+  },
+  {
+    "worker": "ai",
+    "settings_status": 200,
+    "afdianpay_service_bindings": [],
+    "schedules_status": 200,
+    "schedules": [
+      {
+        "cron": "*/5 * * * *",
+        "created_on": "2026-09-20T06:44:52.89349Z",
+        "modified_on": "2026-10-11T11:33:54.986809Z"
+      }
+    ]
+  },
+  {
+    "worker": "ai-parse",
+    "settings_status": 200,
+    "afdianpay_service_bindings": [],
+    "schedules_status": 200,
+    "schedules": []
+  },
+  {
+    "worker": "download-worker",
+    "settings_status": 200,
+    "afdianpay_service_bindings": [],
+    "schedules_status": 200,
+    "schedules": []
+  },
+  {
+    "worker": "sunland-ai-api-staging",
+    "settings_status": 200,
+    "afdianpay_service_bindings": [],
+    "schedules_status": 200,
+    "schedules": []
+  },
+  {
+    "worker": "sunland-ai-core",
+    "settings_status": 200,
+    "afdianpay_service_bindings": [],
+    "schedules_status": 200,
+    "schedules": [
+      {
+        "cron": "17 3 * * *",
+        "created_on": "2026-08-10T07:44:58.195747Z",
+        "modified_on": "2026-08-10T07:44:58.195747Z"
+      }
+    ]
+  },
+  {
+    "worker": "sunland-ai-core-staging",
+    "settings_status": 200,
+    "afdianpay_service_bindings": [],
+    "schedules_status": 200,
+    "schedules": [
+      {
+        "cron": "17 3 * * *",
+        "created_on": "2026-08-10T02:37:12.973079Z",
+        "modified_on": "2026-08-10T06:27:37.478632Z"
+      }
+    ]
+  },
+  {
+    "worker": "sunland-api-gateway-staging",
+    "settings_status": 200,
+    "afdianpay_service_bindings": [],
+    "schedules_status": 200,
+    "schedules": []
+  },
+  {
+    "worker": "sunland-data-worker",
+    "settings_status": 200,
+    "afdianpay_service_bindings": [],
+    "schedules_status": 200,
+    "schedules": []
+  },
+  {
+    "worker": "sunland-oc-b2-smoke",
+    "settings_status": 200,
+    "afdianpay_service_bindings": [],
+    "schedules_status": 200,
+    "schedules": []
+  },
+  {
+    "worker": "waffopay",
+    "settings_status": 200,
+    "afdianpay_service_bindings": [],
+    "schedules_status": 200,
+    "schedules": [
+      {
+        "cron": "*/5 * * * *",
+        "created_on": "2026-10-02T07:12:54.301182Z",
+        "modified_on": "2026-10-07T11:36:48.422075Z"
+      }
+    ]
+  }
+]

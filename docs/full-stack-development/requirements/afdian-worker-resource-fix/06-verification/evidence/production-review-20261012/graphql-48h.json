@@ -1,0 +1,74 @@
+{
+  "window": {
+    "account": "5d99df0919786bd4d9de3dd5bdcbfb4d",
+    "start": "2026-10-10T11:00:57Z",
+    "end": "2026-10-12T11:00:57Z"
+  },
+  "status": 200,
+  "response": {
+    "data": {
+      "viewer": {
+        "accounts": [
+          {
+            "workersInvocationsAdaptive": [
+              {
+                "avg": {
+                  "sampleInterval": 1.0132223310479922
+                },
+                "dimensions": {
+                  "status": "exceededResources"
+                },
+                "quantiles": {
+                  "cpuTimeP50": 10000,
+                  "cpuTimeP95": 10000,
+                  "cpuTimeP99": 10000
+                },
+                "sum": {
+                  "errors": 2069,
+                  "requests": 2069,
+                  "subrequests": 33157
+                }
+              },
+              {
+                "avg": {
+                  "sampleInterval": 1.0166051660516606
+                },
+                "dimensions": {
+                  "status": "success"
+                },
+                "quantiles": {
+                  "cpuTimeP50": 17941,
+                  "cpuTimeP95": 45855,
+                  "cpuTimeP99": 58324
+                },
+                "sum": {
+                  "errors": 0,
+                  "requests": 1653,
+                  "subrequests": 52440
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "errors": null
+  },
+  "metric_schema_evidence": {
+    "type": "AccountWorkersInvocationsAdaptiveQuantiles",
+    "fields": [
+      {
+        "description": "CPU time 50th percentile - microseconds",
+        "name": "cpuTimeP50"
+      },
+      {
+        "description": "CPU time 95th percentile - microseconds",
+        "name": "cpuTimeP95"
+      },
+      {
+        "description": "CPU time 99th percentile - microseconds",
+        "name": "cpuTimeP99"
+      }
+    ]
+  }
+}

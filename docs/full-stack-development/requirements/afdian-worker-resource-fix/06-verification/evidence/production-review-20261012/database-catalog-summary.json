@@ -1,0 +1,668 @@
+{
+  "reconciliation": {
+    "columns": [
+      {
+        "column_default": null,
+        "column_name": "order_id",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "table_name": "pro_payment_orders"
+      },
+      {
+        "column_default": null,
+        "column_name": "plan_id",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "table_name": "pro_payment_orders"
+      },
+      {
+        "column_default": null,
+        "column_name": "total_amount",
+        "data_type": "numeric",
+        "is_nullable": "YES",
+        "table_name": "pro_payment_orders"
+      },
+      {
+        "column_default": null,
+        "column_name": "paid_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "YES",
+        "table_name": "pro_payment_orders"
+      },
+      {
+        "column_default": null,
+        "column_name": "bound_user_id",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "table_name": "pro_payment_orders"
+      },
+      {
+        "column_default": null,
+        "column_name": "binding_source",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "table_name": "pro_payment_orders"
+      },
+      {
+        "column_default": null,
+        "column_name": "status",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "table_name": "pro_payment_orders"
+      },
+      {
+        "column_default": "1",
+        "column_name": "attempt_count",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "table_name": "pro_payment_orders"
+      },
+      {
+        "column_default": null,
+        "column_name": "last_error_code",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "table_name": "pro_payment_orders"
+      },
+      {
+        "column_default": "now()",
+        "column_name": "first_seen_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO",
+        "table_name": "pro_payment_orders"
+      },
+      {
+        "column_default": "now()",
+        "column_name": "last_seen_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO",
+        "table_name": "pro_payment_orders"
+      },
+      {
+        "column_default": null,
+        "column_name": "activated_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "YES",
+        "table_name": "pro_payment_orders"
+      },
+      {
+        "column_default": null,
+        "column_name": "resolved_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "YES",
+        "table_name": "pro_payment_orders"
+      },
+      {
+        "column_default": "'afdian'::text",
+        "column_name": "provider",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "table_name": "pro_payment_orders"
+      },
+      {
+        "column_default": null,
+        "column_name": "verified_product",
+        "data_type": "jsonb",
+        "is_nullable": "YES",
+        "table_name": "pro_payment_orders"
+      },
+      {
+        "column_default": "'unknown'::text",
+        "column_name": "payment_status",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "table_name": "pro_payment_orders"
+      },
+      {
+        "column_default": null,
+        "column_name": "last_verified_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "YES",
+        "table_name": "pro_payment_orders"
+      },
+      {
+        "column_default": null,
+        "column_name": "next_retry_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "YES",
+        "table_name": "pro_payment_orders"
+      },
+      {
+        "column_default": null,
+        "column_name": "verified_binding_reference",
+        "data_type": "text",
+        "is_nullable": "YES",
+        "table_name": "pro_payment_orders"
+      },
+      {
+        "column_default": null,
+        "column_name": "binding_reference_verified_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "YES",
+        "table_name": "pro_payment_orders"
+      },
+      {
+        "column_default": null,
+        "column_name": "state_key",
+        "data_type": "text",
+        "is_nullable": "NO",
+        "table_name": "pro_payment_reconciliation_state"
+      },
+      {
+        "column_default": "1",
+        "column_name": "next_page",
+        "data_type": "integer",
+        "is_nullable": "NO",
+        "table_name": "pro_payment_reconciliation_state"
+      },
+      {
+        "column_default": "extensions.gen_random_uuid()",
+        "column_name": "cycle_id",
+        "data_type": "uuid",
+        "is_nullable": "NO",
+        "table_name": "pro_payment_reconciliation_state"
+      },
+      {
+        "column_default": null,
+        "column_name": "lease_token",
+        "data_type": "uuid",
+        "is_nullable": "YES",
+        "table_name": "pro_payment_reconciliation_state"
+      },
+      {
+        "column_default": null,
+        "column_name": "lease_until",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "YES",
+        "table_name": "pro_payment_reconciliation_state"
+      },
+      {
+        "column_default": "0",
+        "column_name": "generation",
+        "data_type": "bigint",
+        "is_nullable": "NO",
+        "table_name": "pro_payment_reconciliation_state"
+      },
+      {
+        "column_default": null,
+        "column_name": "last_success_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "YES",
+        "table_name": "pro_payment_reconciliation_state"
+      },
+      {
+        "column_default": null,
+        "column_name": "provider_backoff_until",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "YES",
+        "table_name": "pro_payment_reconciliation_state"
+      },
+      {
+        "column_default": "now()",
+        "column_name": "updated_at",
+        "data_type": "timestamp with time zone",
+        "is_nullable": "NO",
+        "table_name": "pro_payment_reconciliation_state"
+      }
+    ],
+    "constraints": [
+      {
+        "definition": "CHECK ((attempt_count > 0))",
+        "name": "pro_payment_orders_attempt_count_check",
+        "table": "pro_payment_orders"
+      },
+      {
+        "definition": "CHECK ((binding_source = ANY (ARRAY['intent'::text, 'legacy'::text, 'unresolved'::text, 'support'::text])))",
+        "name": "pro_payment_orders_binding_source_check",
+        "table": "pro_payment_orders"
+      },
+      {
+        "definition": "CHECK (((bound_user_id IS NULL) OR (bound_user_id ~ '^[A-Za-z0-9][A-Za-z0-9@._+-]{0,127}$'::text)))",
+        "name": "pro_payment_orders_bound_user_id_check",
+        "table": "pro_payment_orders"
+      },
+      {
+        "definition": "CHECK ((order_id ~ '^[A-Za-z0-9_-]{6,128}$'::text))",
+        "name": "pro_payment_orders_order_id_check",
+        "table": "pro_payment_orders"
+      },
+      {
+        "definition": "CHECK ((payment_status = ANY (ARRAY['unknown'::text, 'paid'::text, 'refunded'::text, 'cancelled'::text])))",
+        "name": "pro_payment_orders_payment_status_check",
+        "table": "pro_payment_orders"
+      },
+      {
+        "definition": "PRIMARY KEY (order_id)",
+        "name": "pro_payment_orders_pkey",
+        "table": "pro_payment_orders"
+      },
+      {
+        "definition": "CHECK ((provider = 'afdian'::text))",
+        "name": "pro_payment_orders_provider_check",
+        "table": "pro_payment_orders"
+      },
+      {
+        "definition": "CHECK ((status = ANY (ARRAY['activated'::text, 'unresolved'::text, 'ineligible'::text])))",
+        "name": "pro_payment_orders_status_check",
+        "table": "pro_payment_orders"
+      },
+      {
+        "definition": "CHECK (((verified_binding_reference IS NULL) = (binding_reference_verified_at IS NULL)))",
+        "name": "pro_payment_orders_verified_reference_check",
+        "table": "pro_payment_orders"
+      },
+      {
+        "definition": "CHECK ((next_page > 0))",
+        "name": "pro_payment_reconciliation_state_next_page_check",
+        "table": "pro_payment_reconciliation_state"
+      },
+      {
+        "definition": "PRIMARY KEY (state_key)",
+        "name": "pro_payment_reconciliation_state_pkey",
+        "table": "pro_payment_reconciliation_state"
+      },
+      {
+        "definition": "CHECK ((state_key = ANY (ARRAY['recent'::text, 'history'::text, 'retry'::text, 'provider'::text])))",
+        "name": "pro_payment_reconciliation_state_state_key_check",
+        "table": "pro_payment_reconciliation_state"
+      }
+    ],
+    "functions": [
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "config": [
+          "search_path=pg_catalog, public, extensions"
+        ],
+        "definer": false,
+        "owner": "postgres",
+        "signature": "sunland_process_verified_pro_order(jsonb,text,uuid,boolean)",
+        "definition_sha256": "180647c7536e47c9d83e83a144cde022ded644cf9005a2fed093d4c6d5ace5cd"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "config": [
+          "search_path=pg_catalog, public, extensions"
+        ],
+        "definer": false,
+        "owner": "postgres",
+        "signature": "sunland_record_pro_payment_hints(text[],text,uuid)",
+        "definition_sha256": "9981dbd0d22e436b71dcce89bd27d394235eec6f2a3d71152a423e3ff2921c8f"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "config": [
+          "search_path=pg_catalog, public"
+        ],
+        "definer": false,
+        "owner": "postgres",
+        "signature": "sunland_get_pro_payment_backoff()",
+        "definition_sha256": "eded4d3c133c69dc3602ee9c550ae5f06f5e22d1f2db87e0b470ccf7490f7956"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "config": [
+          "search_path=pg_catalog, public, extensions"
+        ],
+        "definer": false,
+        "owner": "postgres",
+        "signature": "sunland_set_pro_payment_backoff(integer)",
+        "definition_sha256": "c3e27e1bb8bdedb1cc5afc05f12a8b0cabfe645a4a42cc4d204bd999916a6fa3"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "config": [
+          "search_path=pg_catalog, public, extensions"
+        ],
+        "definer": false,
+        "owner": "postgres",
+        "signature": "sunland_complete_pro_payment_scan(text,uuid,bigint,integer,integer,text[])",
+        "definition_sha256": "70eaefb102dee662d14d8a8589b725d239d58b0c8c05fea6aff1cfe556039507"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "config": [
+          "search_path=pg_catalog, public"
+        ],
+        "definer": false,
+        "owner": "postgres",
+        "signature": "sunland_claim_pro_payment_order_query(text)",
+        "definition_sha256": "3bdd5207147cb9aeeb298f6c843293df613c5e4521d8f29d2986fe15604b1340"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "config": [
+          "search_path=pg_catalog, public"
+        ],
+        "definer": false,
+        "owner": "postgres",
+        "signature": "sunland_release_pro_payment_scan(text,uuid,bigint)",
+        "definition_sha256": "f790798732309324065e138ac5053d804f100fa17f3e6183cd24eba0aaef23fc"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "config": [
+          "search_path=pg_catalog, public, extensions"
+        ],
+        "definer": false,
+        "owner": "postgres",
+        "signature": "sunland_claim_pro_payment_scan(text)",
+        "definition_sha256": "cf0f92bcba4e5903a34c7faa0911b404c4e0ba3845e80bb749b00ff1e968364f"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "config": [
+          "search_path=pg_catalog, public, extensions"
+        ],
+        "definer": false,
+        "owner": "postgres",
+        "signature": "sunland_note_pro_payment_retry(text,text,text,uuid)",
+        "definition_sha256": "1c143ac9d82b6544677946a81f9b8cd0baa78e26b43588283d5e963491d31052"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "config": [
+          "search_path=pg_catalog, public"
+        ],
+        "definer": false,
+        "owner": "postgres",
+        "signature": "sunland_serialize_pro_payment_order_insert()",
+        "definition_sha256": "524574943c719e1455aecb3c4f0d903bfb61a625ce5728e8313fd1008cc2e03d"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres",
+          "authenticated=X/postgres"
+        ],
+        "config": [
+          "search_path=pg_catalog, public, extensions"
+        ],
+        "definer": true,
+        "owner": "postgres",
+        "signature": "sunland_get_or_create_pro_payment_intent()",
+        "definition_sha256": "fb2f7f2a4745e0e88eff0d48502268ba6cb16665dab009fda454417cd1fdcacf"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "config": [
+          "search_path=pg_catalog, public, extensions"
+        ],
+        "definer": false,
+        "owner": "postgres",
+        "signature": "sunland_resolve_pro_payment(text,text)",
+        "definition_sha256": "39224c547411416aa13992bfd0c0b135a956a45b2294a769380a70eab648b32d"
+      }
+    ],
+    "indexes": [
+      {
+        "indexdef": "CREATE UNIQUE INDEX pro_payment_orders_pkey ON public.pro_payment_orders USING btree (order_id)",
+        "indexname": "pro_payment_orders_pkey",
+        "tablename": "pro_payment_orders"
+      },
+      {
+        "indexdef": "CREATE INDEX pro_payment_orders_status_first_seen_idx ON public.pro_payment_orders USING btree (status, first_seen_at DESC)",
+        "indexname": "pro_payment_orders_status_first_seen_idx",
+        "tablename": "pro_payment_orders"
+      },
+      {
+        "indexdef": "CREATE INDEX pro_payment_orders_retry_idx ON public.pro_payment_orders USING btree (next_retry_at, order_id) WHERE ((status = 'unresolved'::text) AND (next_retry_at IS NOT NULL))",
+        "indexname": "pro_payment_orders_retry_idx",
+        "tablename": "pro_payment_orders"
+      },
+      {
+        "indexdef": "CREATE INDEX pro_payment_orders_verified_reference_idx ON public.pro_payment_orders USING btree (verified_binding_reference) WHERE (verified_binding_reference IS NOT NULL)",
+        "indexname": "pro_payment_orders_verified_reference_idx",
+        "tablename": "pro_payment_orders"
+      },
+      {
+        "indexdef": "CREATE UNIQUE INDEX pro_payment_reconciliation_state_pkey ON public.pro_payment_reconciliation_state USING btree (state_key)",
+        "indexname": "pro_payment_reconciliation_state_pkey",
+        "tablename": "pro_payment_reconciliation_state"
+      }
+    ],
+    "migrations": [
+      "20260927065855",
+      "20260928103402",
+      "20260928103436",
+      "20260928103512",
+      "20261002071010",
+      "20261004064912",
+      "20261004075743",
+      "20261004120853",
+      "20261005104026",
+      "20261005122300",
+      "20261009005912",
+      "20261009010000"
+    ],
+    "observed_at": "2026-10-12T11:01:47.442606+00:00",
+    "policies": [
+      {
+        "cmd": "ALL",
+        "policyname": "pro_payment_orders_service_role_only",
+        "qual": "true",
+        "roles": [
+          "service_role"
+        ],
+        "schemaname": "public",
+        "tablename": "pro_payment_orders",
+        "with_check": "true"
+      },
+      {
+        "cmd": "ALL",
+        "policyname": "pro_payment_reconciliation_state_service_only",
+        "qual": "true",
+        "roles": [
+          "service_role"
+        ],
+        "schemaname": "public",
+        "tablename": "pro_payment_reconciliation_state",
+        "with_check": "true"
+      }
+    ],
+    "tables": [
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwdDxtm/postgres"
+        ],
+        "force_rls": false,
+        "name": "pro_payment_orders",
+        "owner": "postgres",
+        "rls": true
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwdDxtm/postgres"
+        ],
+        "force_rls": false,
+        "name": "pro_payment_reconciliation_state",
+        "owner": "postgres",
+        "rls": true
+      }
+    ]
+  },
+  "payment_authority": {
+    "functions": [
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "config": [
+          "search_path=\"\""
+        ],
+        "definer": true,
+        "signature": "waffo_prod.capture_profile_source()",
+        "definition_sha256": "b962583df94163e83b0e6856e1853b808a518693fe42b51ae473073639b15983"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres"
+        ],
+        "config": [
+          "search_path=\"\""
+        ],
+        "definer": true,
+        "signature": "waffo_prod.capture_legacy_payment(text,text)",
+        "definition_sha256": "436913dc88199e9450571e08c4d0d5215bbe53db338cf80cdc79bf16ec6825da"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "config": [
+          "search_path=\"\""
+        ],
+        "definer": true,
+        "signature": "sunland_waffo_register_intent(jsonb)",
+        "definition_sha256": "83b2ea5385e7ef2da4e8177e2ea8cd5a7f3213a61d796502f2ee8c3b38b43a0b"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "config": [
+          "search_path=\"\""
+        ],
+        "definer": true,
+        "signature": "sunland_waffo_apply_event(jsonb)",
+        "definition_sha256": "cd889c263a6cbd10afad01723d68efb5077d6f141d780f4288edd531631d8614"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "config": [
+          "search_path=\"\""
+        ],
+        "definer": true,
+        "signature": "sunland_waffo_status(text,uuid)",
+        "definition_sha256": "bb6a5beac68c7b5842c995fc521a9405bf40ba3df2fd7e23a20aca9e366066b4"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "config": [
+          "search_path=pg_catalog, public, extensions"
+        ],
+        "definer": false,
+        "signature": "sunland_activate_pro_from_payment(text,text,text,text,numeric,timestamp with time zone)",
+        "definition_sha256": "3ca61e2ef85aaadfb6ce2a1fe5a553bff10d1dd8c1b86115bb96cb35c106fc22"
+      },
+      {
+        "acl": [
+          "postgres=X/postgres",
+          "service_role=X/postgres"
+        ],
+        "config": [
+          "search_path=\"\""
+        ],
+        "definer": true,
+        "signature": "sunland_activate_pro_from_payment(text,text)",
+        "definition_sha256": "2a1f89cb42754df0832bb45e3f387c5f71a543a512168d1d7542d53109534ea9"
+      }
+    ],
+    "observed_at": "2026-10-12T11:07:04.821065+00:00",
+    "tables": [
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwdDxtm/postgres"
+        ],
+        "rls": true,
+        "table": "pro_activations"
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwdDxtm/postgres",
+          "authenticated=r/postgres"
+        ],
+        "rls": true,
+        "table": "user_profiles"
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres",
+          "service_role=arwdDxtm/postgres",
+          "authenticated=r/postgres"
+        ],
+        "rls": true,
+        "table": "pro_payment_intents"
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres"
+        ],
+        "rls": true,
+        "table": "waffo_prod.payment_intents"
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres"
+        ],
+        "rls": true,
+        "table": "waffo_prod.orders"
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres"
+        ],
+        "rls": true,
+        "table": "waffo_prod.entitlement_sources"
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres"
+        ],
+        "rls": true,
+        "table": "waffo_prod.events"
+      },
+      {
+        "acl": [
+          "postgres=arwdDxtm/postgres"
+        ],
+        "rls": true,
+        "table": "waffo_prod.projection_context"
+      }
+    ]
+  }
+}

@@ -1,0 +1,125 @@
+{
+  "window": {
+    "account": "5d99df0919786bd4d9de3dd5bdcbfb4d",
+    "start": "2026-10-12T10:51:42Z",
+    "end": "2026-10-12T11:06:42Z"
+  },
+  "status": 200,
+  "response": {
+    "data": {
+      "viewer": {
+        "accounts": [
+          {
+            "workersInvocationsAdaptive": [
+              {
+                "avg": {
+                  "sampleInterval": 1
+                },
+                "dimensions": {
+                  "datetimeMinute": "2026-10-12T10:52:00Z",
+                  "status": "success"
+                },
+                "sum": {
+                  "errors": 0,
+                  "requests": 1
+                }
+              },
+              {
+                "avg": {
+                  "sampleInterval": 1
+                },
+                "dimensions": {
+                  "datetimeMinute": "2026-10-12T10:54:00Z",
+                  "status": "success"
+                },
+                "sum": {
+                  "errors": 0,
+                  "requests": 1
+                }
+              },
+              {
+                "avg": {
+                  "sampleInterval": 1
+                },
+                "dimensions": {
+                  "datetimeMinute": "2026-10-12T10:56:00Z",
+                  "status": "success"
+                },
+                "sum": {
+                  "errors": 0,
+                  "requests": 1
+                }
+              },
+              {
+                "avg": {
+                  "sampleInterval": 1
+                },
+                "dimensions": {
+                  "datetimeMinute": "2026-10-12T10:58:00Z",
+                  "status": "success"
+                },
+                "sum": {
+                  "errors": 0,
+                  "requests": 1
+                }
+              },
+              {
+                "avg": {
+                  "sampleInterval": 1
+                },
+                "dimensions": {
+                  "datetimeMinute": "2026-10-12T11:00:00Z",
+                  "status": "success"
+                },
+                "sum": {
+                  "errors": 0,
+                  "requests": 1
+                }
+              },
+              {
+                "avg": {
+                  "sampleInterval": 1
+                },
+                "dimensions": {
+                  "datetimeMinute": "2026-10-12T11:02:00Z",
+                  "status": "success"
+                },
+                "sum": {
+                  "errors": 0,
+                  "requests": 1
+                }
+              },
+              {
+                "avg": {
+                  "sampleInterval": 1
+                },
+                "dimensions": {
+                  "datetimeMinute": "2026-10-12T11:04:00Z",
+                  "status": "success"
+                },
+                "sum": {
+                  "errors": 0,
+                  "requests": 1
+                }
+              },
+              {
+                "avg": {
+                  "sampleInterval": 1
+                },
+                "dimensions": {
+                  "datetimeMinute": "2026-10-12T11:06:00Z",
+                  "status": "success"
+                },
+                "sum": {
+                  "errors": 0,
+                  "requests": 1
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "errors": null
+  }
+}

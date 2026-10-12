@@ -1,0 +1,51 @@
+{
+  "scope": "isolated SQL only; timestamp updates simulate elapsed lease and retry time",
+  "oldGeneration": 1,
+  "newGeneration": 2,
+  "newer": {
+    "results": [
+      {
+        "cached": false,
+        "status": "unresolved",
+        "order_id": "isolated-stale-scan-order",
+        "reason_code": "PROVIDER_VERIFICATION_REQUIRED",
+        "retry_class": "retryable",
+        "state_after": "unresolved",
+        "state_before": "unresolved",
+        "attempt_count": 2,
+        "payment_status": "unknown",
+        "already_processed": false
+      }
+    ],
+    "skipped": 0,
+    "processed": 1
+  },
+  "stale": {
+    "results": [
+      {
+        "cached": false,
+        "status": "activated",
+        "order_id": "isolated-stale-scan-order",
+        "reason_code": null,
+        "retry_class": "terminal",
+        "state_after": "activated",
+        "state_before": "unresolved",
+        "attempt_count": 3,
+        "payment_status": "paid",
+        "already_processed": false
+      }
+    ],
+    "skipped": 0,
+    "processed": 1
+  },
+  "completed": {
+    "advanced": false,
+    "reason_code": "LEASE_FENCED"
+  },
+  "final": {
+    "payment_status": "paid",
+    "status": "activated",
+    "pro": true
+  },
+  "finding": "P1 reproduced; no production access"
+}
