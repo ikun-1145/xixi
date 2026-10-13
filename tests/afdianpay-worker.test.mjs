@@ -11,7 +11,7 @@ function harness({provider,db,identity}={}){
  globalThis.fetch=async(input,init={})=>{
   const url=String(input);const body=init.body?JSON.parse(init.body):null;calls.push({url,body,init});
   if(url.includes('/account/identity'))return identity?.(body,init)||Response.json({user_id:'synthetic-owner',identity_status:'active'});
-  if(url.includes('query-order'))return provider?.(JSON.parse(body.params))||Response.json({ec:200,data:{list:[paidOrder()],total_page:1}});
+  if(url.includes('query-order'))return provider?.(JSON.parse(body.params),init)||Response.json({ec:200,data:{list:[paidOrder()],total_page:1}});
   const result=db?.(url,body,init); if(result) return result;
   if(url.includes('get_pro_payment_backoff'))return Response.json({retry_after_seconds:0});
   if(url.includes('claim_pro_payment_order_query'))return Response.json({acquired:true,status:'unresolved',lease_token:REF});
@@ -215,5 +215,116 @@ test('native Workers MD5 and portable fallback preserve exact provider signing b
   await reconcilePage(env,'recent','cron_recent');
   const body=h.calls.find(x=>x.url.includes('query-order')).body;
   assert.equal(body.sign,createHash('md5').update(`${env.TOKEN}params${body.params}ts${body.ts}user_id${env.USER_ID}`).digest('hex'));
+ });
+});
+
+test('page batch submits the acquired scan token, generation and matching lane',t=>run(t,{},async h=>{
+ await reconcilePage(env,'history','cron_history');
+ const body=h.calls.find(x=>x.url.includes('process_pro_payment_scan_orders')).body;
+ assert.equal(body.p_scan_state_key,'history');assert.equal(body.p_scan_token,REF);assert.equal(body.p_scan_generation,1);
+ assert.deepEqual(Object.keys(body).sort(),['p_orders','p_processing_source','p_trace_id','p_scan_state_key','p_scan_token','p_scan_generation'].sort());
+}));
+
+test('database rejection of a stale batch cannot advance cursor or submit through legacy entry',t=>run(t,{
+ db:url=>url.includes('process_pro_payment_scan_orders')?Response.json({code:'55000',message:'LEASE_FENCED'},{status:500}):null,
+},async h=>{
+ await assert.rejects(reconcilePage(env,'history','cron_history'),/DATABASE_UNAVAILABLE/);
+ assert.equal(h.calls.filter(x=>x.url.includes('process_pro_payment_scan_orders')).length,3);
+ assert.equal(h.calls.some(x=>x.url.includes('complete_pro_payment_scan')),false);
+ assert.equal(h.calls.some(x=>x.url.includes('process_verified_pro_order')),false);
+ assert.equal(h.calls.filter(x=>x.url.includes('release_pro_payment_scan')).length,1);
+}));
+
+test('rollout maintenance blocks every payment entry without a database or provider call',t=>run(t,{},async h=>{
+ const maintenance={...signedEnv,AFDIAN_ROLLOUT_DIAGNOSTICS_ONLY:'true'};
+ for(const request of [user({}),admin({out_trade_no:'fixture-order-1'}),signedRequest(keys.privateKey,paidOrder())]){
+  const response=await worker.fetch(request,maintenance);
+  assert.equal(response.status,503);assert.equal((await response.json()).error,'PAYMENT_MAINTENANCE');
+ }
+ assert.equal(h.calls.length,0);
+}));
+
+test('rollout scheduled diagnostics remain read only',t=>run(t,{},async h=>{
+ await worker.scheduled(null,{...env,AFDIAN_ROLLOUT_DIAGNOSTICS_ONLY:'true'});
+ assert.equal(h.calls.filter(x=>x.url.includes('query-order')).length,1);
+ assert.equal(h.calls.filter(x=>x.url.includes('/account/identity')).length,1);
+ assert.equal(h.calls.some(x=>x.url.includes('db.test')),false);
+}));
+
+test('response headers do not end the timeout; stalled body aborts without payment or cursor writes',async t=>{
+ const savedTimeout=globalThis.setTimeout,savedClear=globalThis.clearTimeout;
+ const pending=new Set();let providerSignal,bodyAborted=false,timeoutFired=false;
+ globalThis.setTimeout=(callback,delay,...args)=>{
+  let handle;handle=savedTimeout(()=>{pending.delete(handle);if(delay===8000)timeoutFired=true;callback(...args);},delay===8000?20:delay);
+  pending.add(handle);return handle;
+ };
+ globalThis.clearTimeout=handle=>{pending.delete(handle);savedClear(handle);};
+ try{
+  await run(t,{provider:(_params,init)=>{
+   providerSignal=init.signal;
+   return new Response(new ReadableStream({start(controller){
+    init.signal.addEventListener('abort',()=>{bodyAborted=true;controller.error(new DOMException('Synthetic stalled body aborted','AbortError'));},{once:true});
+   }}),{status:200,headers:{'Content-Type':'application/json'}});
+  }},async h=>{
+   await assert.rejects(reconcilePage(env,'history','cron_history'),/PROVIDER_QUERY_FAILED/);
+   assert.equal(timeoutFired,true);assert.equal(providerSignal.aborted,true);assert.equal(bodyAborted,true);
+   assert.equal(h.calls.some(x=>x.url.includes('process_pro_payment_scan_orders')),false);
+   assert.equal(h.calls.some(x=>x.url.includes('complete_pro_payment_scan')),false);
+   assert.equal(h.calls.some(x=>x.url.includes('finish_pro_payment_order_query')),false);
+   assert.equal(h.calls.filter(x=>x.url.includes('release_pro_payment_scan')).length,1);
+   assert.equal(h.calls.filter(x=>x.url.includes('query-order')).length,1);
+  });
+  assert.equal(pending.size,0);
+ }finally{for(const handle of pending)savedClear(handle);globalThis.setTimeout=savedTimeout;globalThis.clearTimeout=savedClear;}
+});
+
+test('successful complete response bodies clear their timeout before later abort',async t=>{
+ let signal;
+ await run(t,{provider:(_params,init)=>{signal=init.signal;return Response.json({ec:200,data:{total_page:1,list:[]}});}},async()=>{
+  await reconcilePage(env,'recent','cron_recent');assert.equal(signal.aborted,false);
+ });
+});
+
+test('scheduled shared page fetch waits until both scan claims have resolved',async t=>{
+ const resolvers=new Map();let bothStarted;
+ const started=new Promise(resolve=>{bothStarted=resolve;});
+ await run(t,{db:(url,body)=>{
+  if(!url.includes('claim_pro_payment_scan')||body.p_state_key==='retry')return null;
+  const promise=new Promise(resolve=>resolvers.set(body.p_state_key,resolve));
+  if(resolvers.size===2)bothStarted();return promise;
+ }},async h=>{
+  const scheduled=worker.scheduled({cron:'*/2 * * * *'},env);
+  await started;assert.equal(h.calls.some(x=>x.url.includes('query-order')),false);
+  resolvers.get('history')(Response.json({acquired:true,lease_token:REF,generation:2,next_page:1}));
+  await new Promise(resolve=>setImmediate(resolve));
+  assert.equal(h.calls.some(x=>x.url.includes('query-order')),false);
+  resolvers.get('recent')(Response.json({acquired:true,lease_token:REF,generation:1,next_page:1}));
+  await scheduled;
+  assert.equal(h.calls.filter(x=>x.url.includes('claim_pro_payment_scan')&&x.body.p_state_key!=='retry').length,2);
+  assert.equal(h.calls.filter(x=>x.url.includes('query-order')).length,1);
+  const batches=h.calls.filter(x=>x.url.includes('process_pro_payment_scan_orders'));
+  assert.equal(batches.length,2);assert.equal(batches.find(x=>x.body.p_scan_state_key==='recent').body.p_scan_generation,1);
+  assert.equal(batches.find(x=>x.body.p_scan_state_key==='history').body.p_scan_generation,2);
+ });
+});
+
+test('429 headers with a stalled body preserve shared 120 second backoff',t=>{
+ let cancelled=false;
+ return run(t,{provider:()=>new Response(new ReadableStream({cancel(){cancelled=true;}}),{status:429,headers:{'Retry-After':'120'}})},async h=>{
+  await assert.rejects(reconcilePage(env,'recent','cron_recent'),/PROVIDER_BACKOFF/);
+  assert.equal(cancelled,true);
+  assert.equal(h.calls.find(x=>x.url.includes('set_pro_payment_backoff')).body.p_retry_after_seconds,120);
+  assert.equal(h.calls.filter(x=>x.url.includes('query-order')).length,1);
+  assert.equal(h.calls.some(x=>x.url.includes('process_pro_payment_scan_orders')),false);
+  assert.equal(h.calls.some(x=>x.url.includes('complete_pro_payment_scan')),false);
+ });
+});
+
+test('database 5xx stalled bodies retain the original three attempt retry classification',t=>{
+ let cancelled=0;
+ return run(t,{db:url=>url.includes('process_pro_payment_scan_orders')?new Response(new ReadableStream({cancel(){cancelled++;}}),{status:503}):null},async h=>{
+  await assert.rejects(reconcilePage(env,'recent','cron_recent'),/DATABASE_UNAVAILABLE/);
+  assert.equal(h.calls.filter(x=>x.url.includes('process_pro_payment_scan_orders')).length,3);
+  assert.equal(cancelled,3);assert.equal(h.calls.some(x=>x.url.includes('complete_pro_payment_scan')),false);
  });
 });

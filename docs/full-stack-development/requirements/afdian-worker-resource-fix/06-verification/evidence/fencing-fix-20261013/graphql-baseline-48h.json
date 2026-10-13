@@ -1,0 +1,53 @@
+{
+  "window": {
+    "start": "2026-10-11T00:03:22Z",
+    "end": "2026-10-13T00:03:22Z"
+  },
+  "response": {
+    "data": {
+      "viewer": {
+        "accounts": [
+          {
+            "workersInvocationsAdaptive": [
+              {
+                "avg": {
+                  "sampleInterval": 1.0105820105820107
+                },
+                "dimensions": {
+                  "status": "exceededResources"
+                },
+                "quantiles": {
+                  "cpuTimeP50": 10000,
+                  "cpuTimeP95": 10000,
+                  "cpuTimeP99": 10000
+                },
+                "sum": {
+                  "errors": 1719,
+                  "requests": 1719
+                }
+              },
+              {
+                "avg": {
+                  "sampleInterval": 1.0219244823386116
+                },
+                "dimensions": {
+                  "status": "success"
+                },
+                "quantiles": {
+                  "cpuTimeP50": 24059,
+                  "cpuTimeP95": 55885,
+                  "cpuTimeP99": 62596
+                },
+                "sum": {
+                  "errors": 0,
+                  "requests": 839
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "errors": null
+  }
+}

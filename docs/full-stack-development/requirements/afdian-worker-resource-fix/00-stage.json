@@ -1,12 +1,12 @@
 {
   "feature": "afdian-worker-resource-fix",
   "flowProfile": "debug-fix",
-  "currentStage": "review-candidate",
-  "scopeApproval": "2026-10-11 user five-phase repair instruction",
-  "scope": "Local Worker fix, review-only migration, synthetic tests and commit",
-  "externalWritesAuthorized": false,
+  "currentStage": "release-gate",
+  "scopeApproval": "2026-10-12 user P1 repair and conditional production release, resumed 2026-10-13",
+  "scope": "Minimal lease fencing/body timeout repair, real PostgreSQL16/PostgREST integration and conditional production release",
+  "externalWritesAuthorized": true,
   "requirementsEvidence": "../../../afdianpay-cpu-reconciliation-audit.md",
-  "verificationEvidence": "06-verification/final-acceptance-report.md",
+  "verificationEvidence": "../../../afdianpay-cpu-fencing-release-20261013.md",
   "gateToolStatus": "Required lifecycle/completion MCP tools absent from this session catalog; no tool gate claimed",
-  "productionAcceptance": "Not performed"
+  "productionAcceptance": "Pending release gate; no production writes yet"
 }

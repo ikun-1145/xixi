@@ -1,0 +1,14 @@
+{
+  "result": {
+    "schedules": [
+      {
+        "cron": "*/2 * * * *",
+        "created_on": "2026-10-07T10:39:10.692099Z",
+        "modified_on": "2026-10-07T10:41:53.290811Z"
+      }
+    ]
+  },
+  "success": true,
+  "errors": [],
+  "messages": []
+}

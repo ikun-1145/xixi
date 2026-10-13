@@ -1,0 +1,14 @@
+{
+  "status": 200,
+  "parts": [
+    {
+      "name": "worker.js",
+      "type": "text/plain",
+      "bytes": 31687
+    }
+  ],
+  "bytes": 31687,
+  "sha256": "ef2a287480b022fc96d5711705a2c8f16c6726e539f59e6e66488d3bd6542eb3",
+  "legacyFactCall": true,
+  "batchCall": false
+}

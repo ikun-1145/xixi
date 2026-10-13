@@ -100,6 +100,10 @@ function model(after) {
         return json(result);
       }
       case 'sunland_process_pro_payment_scan_orders': {
+        const key=args.p_processing_source==='cron_history'?'history':'recent';
+        const scan=scans.get(key);
+        assert.equal(args.p_scan_state_key,key);assert.equal(args.p_scan_token,scan.token);
+        assert.equal(args.p_scan_generation,scan.generation);assert.ok(scan.leaseUntil>clock);
         // These facts remain unchanged: activated/blocked rows recheck daily;
         // actionable unresolved rows obey their durable due date. SQL tests cover changes.
         const admitted = args.p_orders.filter(observation => {
@@ -119,6 +123,7 @@ async function run(source, after) {
   const mock = model(after);
   globalThis.fetch = mock.fetch;
   const startCpu = process.cpuUsage();
+  const startWall = performance.now();
   for (let invocation = 0; invocation < 4; invocation++) {
     clock = START + invocation * 30_000;
     const before = { databaseRequests: mock.counts.databaseRequests, rpcRequests: mock.counts.rpcRequests,
@@ -127,7 +132,7 @@ async function run(source, after) {
     mock.counts.perInvocation.push(Object.fromEntries(Object.keys(before).map(key => [key, mock.counts[key] - before[key]])));
   }
   const cpu = process.cpuUsage(startCpu);
-  return { ...mock.counts, nodeSyntheticCpuMicroseconds: cpu.user + cpu.system };
+  return { ...mock.counts, nodeSyntheticCpuMicroseconds: cpu.user + cpu.system, nodeSyntheticWallMilliseconds:performance.now()-startWall, databaseExecutionMilliseconds:null, networkWaitMilliseconds:null };
 }
 
 const original = { fetch: globalThis.fetch, cryptoDescriptor: Object.getOwnPropertyDescriptor(globalThis, 'crypto'), Date: globalThis.Date, log: console.log };
@@ -151,7 +156,7 @@ try {
   assert.equal(after.processed, 4);
   assert.ok(Object.values(after.byOrder).every(count => count <= 1));
   assert.equal(after.externalCalls, 4);
-  assert.ok(after.databaseRequests < before.databaseRequests);
+  assert.equal(after.databaseRequests,52);
   result = { baseline: BASELINE, invocations: 4, intervalSeconds: 30, syntheticOrderCount: facts.length,
     scope: '合成 HTTP/RPC 模型；非生产测量；不证明真实 SQL 并发正确性',
     cpuScope: 'Node process.cpuUsage，包含 Mock、JSON 与 Response 成本，不能等同 Cloudflare CPU 或用于声称生产改善百分比',

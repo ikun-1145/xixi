@@ -32,13 +32,17 @@ export default {
       if (diagnostics.some(result => result.status === 'rejected')) throw policyError('UPSTREAM_DIAGNOSTIC_FAILED');
       return;
     }
-    // Share only the fresh official page response inside this invocation, never across runs.
+    // Acquire every participating lease before starting a shared provider request.
+    // Otherwise a later claim could incorrectly give an older shared page a newer cutoff.
+    const lanes = [['recent', 'cron_recent'], ['history', 'cron_history']];
+    const claims = await Promise.allSettled(lanes.map(([key]) =>
+      rpc(env, 'sunland_claim_pro_payment_scan', { p_state_key: key })));
     const providerPages = new Map();
     // 独立通道：某页失败不阻断另一通道；游标只在持久化成功后推进。
-    const outcomes = await Promise.allSettled([
-      reconcilePage(env, 'recent', 'cron_recent', null, providerPages),
-      reconcilePage(env, 'history', 'cron_history', null, providerPages),
-    ]);
+    const outcomes = await Promise.allSettled(lanes.map(async ([key, source], index) => {
+      if (claims[index].status === 'rejected') throw claims[index].reason;
+      return reconcilePage(env, key, source, null, providerPages, claims[index].value);
+    }));
     // Process durable due hints after pages, so newly verified page orders are not queried again.
     outcomes.push(await Promise.allSettled([retryKnownOrders(env)]).then(results => results[0]));
     const errors = outcomes.filter(result => result.status === 'rejected');
@@ -46,8 +50,8 @@ export default {
   },
   async fetch(request, env) {
     const path = new URL(request.url).pathname;
-    if (env.AFDIAN_ROLLOUT_DIAGNOSTICS_ONLY === 'true' && path !== '/payment/reconcile') {
-      return jsonResponse({ error: 'PAYMENT_MAINTENANCE' }, 503);
+    if (env.AFDIAN_ROLLOUT_DIAGNOSTICS_ONLY === 'true') {
+      return withCors(request, jsonResponse({ error: 'PAYMENT_MAINTENANCE' }, 503));
     }
     if (path === '/payment/reconcile') return withCors(request, await handleUserReconcile(request, env));
     if (path === '/webhook/afdian') return handleAfdianWebhook(request, env);
@@ -264,8 +268,8 @@ async function retryKnownOrders(env, userId = null) {
     }).catch(() => {});
   }
 }
-export async function reconcilePage(env, key, source, userId = null, providerPages = null) {
-  const lease = await rpc(env, 'sunland_claim_pro_payment_scan', { p_state_key: key });
+export async function reconcilePage(env, key, source, userId = null, providerPages = null, claimedLease = null) {
+  const lease = claimedLease ?? await rpc(env, 'sunland_claim_pro_payment_scan', { p_state_key: key });
   if (!lease?.acquired) return { acquired: false, retry_after_seconds: lease?.retry_after_seconds || 0 };
   const traceId = crypto.randomUUID();
   try {
@@ -285,6 +289,7 @@ export async function reconcilePage(env, key, source, userId = null, providerPag
     // All page facts participate; choosing the first eight forever starves later old orders.
     const batch = await rpc(env, 'sunland_process_pro_payment_scan_orders', {
       p_orders: observations, p_processing_source: source, p_trace_id: traceId,
+      p_scan_state_key: key, p_scan_token: lease.lease_token, p_scan_generation: lease.generation,
     });
     if (!Number.isInteger(batch?.processed) || batch.processed < 0 || batch.processed > LIMITS.ordersPerRun
       || !Number.isInteger(batch?.skipped) || batch.skipped < 0
@@ -481,7 +486,17 @@ async function fetchWithTimeout(url, init, service) {
   const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);
   try {
     const options = { ...init, signal: controller.signal };
-    return await (service ? service.fetch(new Request(url, options)) : fetch(url, options));
+    const response = await (service ? service.fetch(new Request(url, options)) : fetch(url, options));
+    // Keep the AbortSignal alive until the network body is completely consumed.
+    // Callers still classify HTTP status and parse JSON exactly as before.
+    if (shouldRetryStatus(response.status)) {
+      // These statuses are classified from headers; discard their unused bodies.
+      // A stalled 429 body must not hide the shared provider backoff instruction.
+      if (response.body) response.body.cancel().catch(() => {});
+      return new Response(null, { status: response.status, statusText: response.statusText, headers: response.headers });
+    }
+    const body = response.body === null ? null : await response.arrayBuffer();
+    return new Response(body, { status: response.status, statusText: response.statusText, headers: response.headers });
   } finally {
     clearTimeout(timeout);
   }

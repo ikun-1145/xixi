@@ -16,14 +16,19 @@ try {
   if (error.code !== 'ERR_MODULE_NOT_FOUND') throw error;
 }
 
-test('admission migration keeps protected grants and existing verified transaction untouched', () => {
-  assert.doesNotMatch(migration, /create (?:or replace )?function public\.sunland_(?:process_verified_pro_order|activate_pro_from_payment|waffo_)/);
+test('admission migration preserves business code behind a permanently fenced legacy entry', () => {
+  assert.doesNotMatch(migration, /create (?:or replace )?function public\.sunland_(?:activate_pro_from_payment|waffo_)/);
+  assert.match(migration, /LEGACY_PAYMENT_ENTRY_DISABLED/);
+  assert.match(migration, /revoke all on schema afdian_private from public, anon, authenticated, service_role/);
   assert.match(migration, /enable row level security/);
   for (const name of ['sunland_finish_pro_payment_order_query', 'sunland_fail_pro_payment_order_query', 'sunland_process_pro_payment_scan_orders']) {
     assert.match(migration, new RegExp(`revoke all on function public\\.${name}\\([^;]+from public, anon, authenticated`));
     assert.match(migration, new RegExp(`grant execute on function public\\.${name}\\([^;]+to service_role`));
   }
-  assert.doesNotMatch(migration, /pro\s*=\s*false|security definer/i);
+  assert.doesNotMatch(migration, /pro\s*=\s*false/i);
+  assert.equal((migration.match(/security definer/g) || []).length, 2);
+  assert.match(migration, /p_scan_state_key text, p_scan_token uuid, p_scan_generation bigint/);
+  assert.match(migration, /raise exception 'LEASE_FENCED' using errcode = '55000'/);
   const batch = migration.slice(migration.indexOf('create function public.sunland_process_pro_payment_scan_orders'));
   assert.ok(batch.indexOf('pg_advisory_xact_lock(20261011, 30000)') < batch.indexOf('pg_advisory_xact_lock(hashtext(v_id))'));
 });
@@ -44,7 +49,17 @@ test('synthetic PostgreSQL scan admission and fenced order queries', {
     await query('insert into public.pro_payment_intents(payment_reference,user_id) values($1::uuid,$2)', [uuid(n), `buyer-${n}`]);
   };
   const hints = orders => call('sunland_record_pro_payment_hints', [orders.map(o => o.order_id), 'cron_recent', trace], ['text[]', 'text', 'uuid']);
-  const scan = (orders, source = 'cron_recent') => call('sunland_process_pro_payment_scan_orders', [JSON.stringify(orders), source, trace], ['jsonb', 'text', 'uuid']);
+  const rawScan = (orders, source, key, lease) => call('sunland_process_pro_payment_scan_orders',
+    [JSON.stringify(orders), source, trace, key, lease.lease_token, lease.generation], ['jsonb', 'text', 'uuid', 'text', 'uuid', 'bigint']);
+  const scan = async (orders, source = 'cron_recent') => {
+    const key = source === 'cron_history' ? 'history' : 'recent';
+    await query('update pro_payment_reconciliation_state set last_success_at=null where state_key=$1', [key]);
+    await query('select pg_sleep(0.002)');
+    const lease = await call('sunland_claim_pro_payment_scan', [key], ['text']);
+    assert.equal(lease.acquired, true);
+    try { return await rawScan(orders, source, key, lease); }
+    finally { await call('sunland_release_pro_payment_scan', [key, lease.lease_token, lease.generation], ['text', 'uuid', 'bigint']); }
+  };
   const claim = id => call('sunland_claim_pro_payment_order_query', [id], ['text']);
   const finish = (o, token) => call('sunland_finish_pro_payment_order_query', [JSON.stringify(o), 'webhook', trace, token], ['jsonb', 'text', 'uuid', 'uuid']);
   const fail = (id, token) => call('sunland_fail_pro_payment_order_query', [id, 'PROVIDER_QUERY_FAILED', 'webhook', trace, token], ['text', 'text', 'text', 'uuid', 'uuid']);
@@ -55,7 +70,7 @@ test('synthetic PostgreSQL scan admission and fenced order queries', {
   try {
     const base = await read('supabase/migrations/20260905014430_pro_payment_activation_reliability.sql');
     await db.exec(`create role anon; create role authenticated; create role service_role bypassrls;
-      create schema extensions; create function extensions.gen_random_uuid() returns uuid language sql as $$select gen_random_uuid()$$;
+      create schema extensions; grant usage on schema extensions to service_role; create function extensions.gen_random_uuid() returns uuid language sql as $$select gen_random_uuid()$$;
       create schema auth; create function auth.jwt() returns jsonb language sql as $$select '{}'::jsonb$$;
       create table public.user_profiles(user_id text primary key,pro boolean default false,
         identity_status text default 'active',is_banned boolean default false,updated_at timestamptz default now());
@@ -74,8 +89,29 @@ test('synthetic PostgreSQL scan admission and fenced order queries', {
       where pronamespace='public'::regnamespace and (proname='sunland_process_verified_pro_order'
       or proname='sunland_activate_pro_from_payment' or proname like 'sunland_waffo_%') order by 1`;
     const protectedBefore = await query(protectedSql);
+    // Measure the real old public entry before the migration disables it permanently.
+    const metricOrders = [];
+    for (let n = 80; n < 92; n++) { await fixture(n); metricOrders.push(proof(n)); }
+    await hints(metricOrders);
+    for (const o of metricOrders) await call('sunland_process_verified_pro_order', [JSON.stringify(o), 'cron_recent', trace, false], ['jsonb', 'text', 'uuid', 'boolean']);
+    await db.exec(`create table public.admission_update_metric(n integer); insert into admission_update_metric values(0);
+      create function public.admission_count_update() returns trigger language plpgsql as $$begin
+        update public.admission_update_metric set n=n+1; return new; end;$$;
+      create trigger admission_count_update after update on pro_payment_orders for each row execute function public.admission_count_update();`);
+    let beforeRequests = 0;
+    for (let i = 0; i < 4; i++) for (const o of metricOrders) {
+      await call('sunland_process_verified_pro_order', [JSON.stringify(o), 'cron_recent', trace, false], ['jsonb', 'text', 'uuid', 'boolean']); beforeRequests++;
+    }
+    const beforeWrites = (await query('select n from admission_update_metric'))[0].n;
+    await db.exec('update admission_update_metric set n=0');
     await db.exec(migration);
-    assert.deepEqual(await query(protectedSql), protectedBefore);
+    const protectedAfter = await query(protectedSql);
+    assert.deepEqual(protectedAfter.filter(o => !o.signature.startsWith('sunland_process_verified_pro_order(')),
+      protectedBefore.filter(o => !o.signature.startsWith('sunland_process_verified_pro_order(')));
+    const privateDefinition = (await query("select pg_get_functiondef('afdian_private.sunland_process_verified_pro_order(jsonb,text,uuid,boolean)'::regprocedure) definition"))[0].definition;
+    assert.equal(privateDefinition.replace('afdian_private.sunland_process_verified_pro_order', 'public.sunland_process_verified_pro_order'),
+      protectedBefore.find(o => o.signature.startsWith('sunland_process_verified_pro_order(')).definition);
+    await assert.rejects(() => call('sunland_process_verified_pro_order', [JSON.stringify(proof(1)), 'cron_recent', trace, false], ['jsonb', 'text', 'uuid', 'boolean']), /LEGACY_PAYMENT_ENTRY_DISABLED/);
 
     await t.test('new paid order activates once; duplicate recent/history batches do not write', async () => {
       await fixture(1); const o = proof(1); await hints([o]);
@@ -85,6 +121,51 @@ test('synthetic PostgreSQL scan admission and fenced order queries', {
       assert.deepEqual(await row(o.order_id), before);
       assert.equal(await pro(1), true);
       assert.equal((await query('select count(*)::int n from pro_activations where order_id=$1', [o.order_id]))[0].n, 1);
+    });
+    await t.test('expired generation cannot submit old paid facts after replacement unknown or advance its cursor', async () => {
+      await fixture(100); const paid = proof(100), unknown = proof(100, { status: 0 }); await hints([paid]);
+      const first = await call('sunland_claim_pro_payment_scan', ['history'], ['text']);
+      await query("update pro_payment_reconciliation_state set lease_until=clock_timestamp()-interval '1 second' where state_key='history'");
+      const second = await call('sunland_claim_pro_payment_scan', ['history'], ['text']);
+      assert.equal(second.generation, first.generation + 1);
+      assert.equal((await rawScan([unknown], 'cron_history', 'history', second)).processed, 1);
+      const before = await row(paid.order_id);
+      await due(paid.order_id); const beforeStale = await row(paid.order_id);
+      await assert.rejects(() => rawScan([paid], 'cron_history', 'history', first), /LEASE_FENCED/);
+      assert.deepEqual(await row(paid.order_id), beforeStale);assert.equal(await pro(100), false);
+      assert.equal(before.payment_status, 'unknown');
+      assert.equal((await call('sunland_complete_pro_payment_scan', ['history', first.lease_token, first.generation, 2, 2, [paid.order_id]],
+        ['text', 'uuid', 'bigint', 'integer', 'integer', 'text[]'])).advanced, false);
+      assert.equal((await call('sunland_complete_pro_payment_scan', ['history', second.lease_token, second.generation, 2, 2, [paid.order_id]],
+        ['text', 'uuid', 'bigint', 'integer', 'integer', 'text[]'])).advanced, true);
+      assert.equal((await scan([paid], 'cron_history')).results[0].status, 'activated');assert.equal(await pro(100), true);
+    });
+    await t.test('another lane cannot overwrite facts certified after its database claim time', async () => {
+      await fixture(101); const paid = proof(101); await hints([paid]);
+      const old = await call('sunland_claim_pro_payment_scan', ['history'], ['text']);
+      assert.equal((await scan([proof(101, { status: 0 })])).processed, 1);
+      await due(paid.order_id);const before = await row(paid.order_id);
+      assert.equal((await rawScan([paid], 'cron_history', 'history', old)).processed, 0);
+      assert.deepEqual(await row(paid.order_id), before);assert.equal(await pro(101), false);
+      await call('sunland_release_pro_payment_scan', ['history', old.lease_token, old.generation], ['text', 'uuid', 'bigint']);
+    });
+    await t.test('expiry during grant writes aborts the entire batch, including ledger and Pro', async () => {
+      await fixture(102);const paid=proof(102);await hints([paid]);
+      const lease=await call('sunland_claim_pro_payment_scan',['history'],['text']);
+      await query("update pro_payment_reconciliation_state set lease_until=clock_timestamp()+interval '20 milliseconds' where state_key='history'");
+      await db.exec(`create function public.admission_expiry_wait() returns trigger language plpgsql as $$begin
+        if new.order_id='admission-order-102' and new.status='activated' then perform pg_sleep(0.05); end if;return new;end;$$;
+        create trigger admission_expiry_wait before update on pro_payment_orders for each row execute function public.admission_expiry_wait();`);
+      const before=await row(paid.order_id);
+      try {
+        await assert.rejects(()=>rawScan([paid],'cron_history','history',lease),/LEASE_FENCED/);
+        assert.deepEqual(await row(paid.order_id),before);assert.equal(await pro(102),false);
+        assert.equal((await query('select count(*)::int n from pro_activations where order_id=$1',[paid.order_id]))[0].n,0);
+      } finally {
+        await db.exec('drop trigger admission_expiry_wait on pro_payment_orders;drop function public.admission_expiry_wait();');
+        await call('sunland_release_pro_payment_scan',['history',lease.lease_token,lease.generation],['text','uuid','bigint']);
+      }
+      assert.equal((await scan([paid],'cron_history')).results[0].status,'activated');
     });
     await t.test('unresolved before due is skipped; later missing intent automatically recovers', async () => {
       const o = proof(2); await hints([o]);
@@ -191,6 +272,7 @@ test('synthetic PostgreSQL scan admission and fenced order queries', {
       const scanClaim = key => call('sunland_claim_pro_payment_scan', [key], ['text']);
       const complete = (key, lease, page = 1, total = 1) => call('sunland_complete_pro_payment_scan',
         [key, lease.lease_token, lease.generation, page, total, []], ['text', 'uuid', 'bigint', 'integer', 'integer', 'text[]']);
+      await query("update pro_payment_reconciliation_state set next_page=1 where state_key='history'");
       const first = await scanClaim('history'); assert.equal(first.acquired, true);
       assert.equal((await scanClaim('history')).acquired, false);
       assert.equal((await complete('history', first, 2, 3)).advanced, true);
@@ -203,6 +285,7 @@ test('synthetic PostgreSQL scan admission and fenced order queries', {
       const recent = await scanClaim('recent');
       const seconds = (await query("select extract(epoch from lease_until-clock_timestamp())::int n from pro_payment_reconciliation_state where state_key='recent'"))[0].n;
       assert.ok(seconds >= 175 && seconds <= 180); assert.equal(recent.acquired, true);
+      await call('sunland_release_pro_payment_scan', ['recent', recent.lease_token, recent.generation], ['text','uuid','bigint']);
     });
     await t.test('committed batch survives expired cursor lease; replacement scanner replays without writes', async () => {
       await fixture(52); const o = proof(52); await hints([o]);
@@ -212,7 +295,7 @@ test('synthetic PostgreSQL scan admission and fenced order queries', {
       await query("update pro_payment_reconciliation_state set lease_until=now()-interval '1 second' where state_key='history'");
       const lease = await call('sunland_claim_pro_payment_scan', ['history'], ['text']);
       assert.equal(lease.acquired, true); assert.notEqual(lease.lease_token, oldToken);
-      await scan([o], 'cron_history'); const before = await row(o.order_id);
+      await rawScan([o], 'cron_history', 'history', lease); const before = await row(o.order_id);
       await query("update pro_payment_reconciliation_state set lease_until=now()-interval '1 second' where state_key='history'");
       const complete = await call('sunland_complete_pro_payment_scan',
         ['history', lease.lease_token, lease.generation, lease.next_page < 3 ? lease.next_page + 1 : 1, 3, [o.order_id]],
@@ -220,7 +303,8 @@ test('synthetic PostgreSQL scan admission and fenced order queries', {
       assert.equal(complete.advanced, false); assert.equal(complete.reason_code, 'LEASE_FENCED');
       const replacement = await call('sunland_claim_pro_payment_scan', ['history'], ['text']);
       assert.equal(replacement.next_page, lease.next_page);
-      assert.equal((await scan([o], 'cron_history')).processed, 0);
+      assert.equal((await rawScan([o], 'cron_history', 'history', replacement)).processed, 0);
+      await call('sunland_release_pro_payment_scan', ['history', replacement.lease_token, replacement.generation], ['text', 'uuid', 'bigint']);
       assert.deepEqual(await row(o.order_id), before); assert.equal(await pro(52), true);
     });
     await t.test('Waffo and Afdian sources coexist; Afdian refund does not revoke any source', async () => {
@@ -243,7 +327,10 @@ test('synthetic PostgreSQL scan admission and fenced order queries', {
     });
     await t.test('service-role execution works and ordinary roles cannot call admission or read leases', async () => {
       await fixture(61); const o = proof(61); await hints([o]); await db.exec('set role service_role');
-      assert.equal((await scan([o])).results[0].status, 'activated'); await db.exec('reset role');
+      assert.equal((await scan([o])).results[0].status, 'activated');
+      await assert.rejects(() => query('select afdian_private.sunland_process_verified_pro_order($1::jsonb,$2::text,$3::uuid,false)', [JSON.stringify(o), 'cron_recent', trace]), /permission denied/);
+      await assert.rejects(() => call('sunland_process_verified_pro_order', [JSON.stringify(o), 'cron_recent', trace, false], ['jsonb','text','uuid','boolean']), /LEGACY_PAYMENT_ENTRY_DISABLED/);
+      await db.exec('reset role');
       for (const role of ['anon', 'authenticated']) {
         await db.exec(`set role ${role}`);
         await assert.rejects(() => scan([o]), /permission denied/);
@@ -251,6 +338,7 @@ test('synthetic PostgreSQL scan admission and fenced order queries', {
         await assert.rejects(() => claim(o.order_id), /permission denied/);
         await assert.rejects(() => finish(o, uuid(1000)), /permission denied/);
         await assert.rejects(() => fail(o.order_id, uuid(1000)), /permission denied/);
+        await assert.rejects(() => query('select afdian_private.sunland_process_verified_pro_order($1::jsonb,$2::text,$3::uuid,false)', [JSON.stringify(o), 'cron_recent', trace]), /permission denied/);
         await db.exec('reset role');
       }
     });
@@ -281,19 +369,7 @@ test('synthetic PostgreSQL scan admission and fenced order queries', {
       assert.equal((await scan(orders)).processed, 2);
     });
     await t.test('measured stable 12-order replay: 48 verified RPCs/96 row updates become 4 batches/0 updates', async () => {
-      const orders = [];
-      for (let n = 80; n < 92; n++) { await fixture(n); orders.push(proof(n)); }
-      await hints(orders); await scan(orders); await scan(orders);
-      await db.exec(`create table public.admission_update_metric(n integer); insert into admission_update_metric values(0);
-        create function public.admission_count_update() returns trigger language plpgsql as $$begin
-          update public.admission_update_metric set n=n+1; return new; end;$$;
-        create trigger admission_count_update after update on pro_payment_orders for each row execute function public.admission_count_update();`);
-      let beforeRequests = 0;
-      for (let i = 0; i < 4; i++) for (const o of orders) {
-        await call('sunland_process_verified_pro_order', [JSON.stringify(o), 'cron_recent', trace, false], ['jsonb', 'text', 'uuid', 'boolean']);
-        beforeRequests++;
-      }
-      const beforeWrites = (await query('select n from admission_update_metric'))[0].n;
+      const orders = metricOrders;
       await db.exec('update admission_update_metric set n=0'); let afterRequests = 0; let processed = 0;
       for (let i = 0; i < 4; i++) { processed += (await scan(orders)).processed; afterRequests++; }
       const afterWrites = (await query('select n from admission_update_metric'))[0].n;

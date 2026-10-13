@@ -1,0 +1,123 @@
+{
+  "baseline": "94be7928a7ba6ed4108359d21e577a1e5d905958",
+  "invocations": 4,
+  "intervalSeconds": 30,
+  "syntheticOrderCount": 12,
+  "scope": "合成 HTTP/RPC 模型；非生产测量；不证明真实 SQL 并发正确性",
+  "cpuScope": "Node process.cpuUsage，包含 Mock、JSON 与 Response 成本，不能等同 Cloudflare CPU 或用于声称生产改善百分比",
+  "before": {
+    "databaseRequests": 112,
+    "rpcRequests": 108,
+    "externalCalls": 12,
+    "processed": 68,
+    "transitions": {
+      "unresolved → unresolved": 36,
+      "activated → activated": 32
+    },
+    "byOrder": {
+      "synthetic_08": 1,
+      "synthetic_00": 8,
+      "synthetic_01": 8,
+      "synthetic_02": 8,
+      "synthetic_09": 1,
+      "synthetic_03": 8,
+      "synthetic_04": 8,
+      "synthetic_05": 8,
+      "synthetic_06": 8,
+      "synthetic_10": 1,
+      "synthetic_07": 8,
+      "synthetic_11": 1
+    },
+    "byRpc": {
+      "sunland_claim_pro_payment_scan": 8,
+      "sunland_get_pro_payment_backoff": 12,
+      "sunland_claim_pro_payment_order_query": 4,
+      "sunland_record_pro_payment_hints": 8,
+      "sunland_complete_pro_payment_scan": 8,
+      "sunland_process_verified_pro_order": 68
+    },
+    "perInvocation": [
+      {
+        "databaseRequests": 37,
+        "rpcRequests": 36,
+        "externalCalls": 6,
+        "processed": 20
+      },
+      {
+        "databaseRequests": 25,
+        "rpcRequests": 24,
+        "externalCalls": 2,
+        "processed": 16
+      },
+      {
+        "databaseRequests": 25,
+        "rpcRequests": 24,
+        "externalCalls": 2,
+        "processed": 16
+      },
+      {
+        "databaseRequests": 25,
+        "rpcRequests": 24,
+        "externalCalls": 2,
+        "processed": 16
+      }
+    ],
+    "nodeSyntheticCpuMicroseconds": 43901,
+    "nodeSyntheticWallMilliseconds": 98.59170799999998,
+    "databaseExecutionMilliseconds": null,
+    "networkWaitMilliseconds": null
+  },
+  "after": {
+    "databaseRequests": 52,
+    "rpcRequests": 48,
+    "externalCalls": 4,
+    "processed": 4,
+    "transitions": {
+      "unresolved → unresolved": 4
+    },
+    "byOrder": {
+      "synthetic_08": 1,
+      "synthetic_09": 1,
+      "synthetic_10": 1,
+      "synthetic_11": 1
+    },
+    "byRpc": {
+      "sunland_claim_pro_payment_scan": 12,
+      "sunland_get_pro_payment_backoff": 4,
+      "sunland_record_pro_payment_hints": 8,
+      "sunland_process_pro_payment_scan_orders": 8,
+      "sunland_complete_pro_payment_scan": 12,
+      "sunland_release_pro_payment_scan": 4
+    },
+    "perInvocation": [
+      {
+        "databaseRequests": 13,
+        "rpcRequests": 12,
+        "externalCalls": 1,
+        "processed": 4
+      },
+      {
+        "databaseRequests": 13,
+        "rpcRequests": 12,
+        "externalCalls": 1,
+        "processed": 0
+      },
+      {
+        "databaseRequests": 13,
+        "rpcRequests": 12,
+        "externalCalls": 1,
+        "processed": 0
+      },
+      {
+        "databaseRequests": 13,
+        "rpcRequests": 12,
+        "externalCalls": 1,
+        "processed": 0
+      }
+    ],
+    "nodeSyntheticCpuMicroseconds": 8011,
+    "nodeSyntheticWallMilliseconds": 9.462458000000026,
+    "databaseExecutionMilliseconds": null,
+    "networkWaitMilliseconds": null
+  }
+}

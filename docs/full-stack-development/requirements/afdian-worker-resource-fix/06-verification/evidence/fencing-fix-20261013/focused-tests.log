@@ -1,0 +1,555 @@
+✔ admission migration preserves business code behind a permanently fenced legacy entry (1.151416ms)
+▶ synthetic PostgreSQL scan admission and fenced order queries
+  ✔ new paid order activates once; duplicate recent/history batches do not write (46.327333ms)
+  ✔ expired generation cannot submit old paid facts after replacement unknown or advance its cursor (9.755125ms)
+  ✔ another lane cannot overwrite facts certified after its database claim time (7.933125ms)
+  ✔ expiry during grant writes aborts the entire batch, including ledger and Pro (115.645584ms)
+  ✔ unresolved before due is skipped; later missing intent automatically recovers (13.040625ms)
+  ✔ active query lease fences both scans and duplicate claims (7.059667ms)
+  ✔ lost success response replay reports durable status without granting or writing twice (3.228208ms)
+  ✔ expired tokens cannot commit or fail a newly claimed lease (3.668458ms)
+  ✔ provider failure releases only owned lease and preserves scheduled recovery (12.304667ms)
+  ✔ refund/cancel/unknown facts are admitted immediately and never revoke Pro (39.907167ms)
+  ✔ binding/product conflicts reach verified guard once and stay blocked until periodic check (15.737792ms)
+  ✔ all page hints remain durable; bounded eight-order batches eventually process tail (33.609ms)
+  ✔ daily historical recheck rotates by oldest verification; equivalent timestamps do not trigger (37.397625ms)
+  ✔ invalid observations cannot change activated rows or write blocked hints repeatedly (11.169583ms)
+  ✔ database commit failures rollback ledger, lease, grant and preserve recovery (4.837ms)
+  ✔ scan leases fence stale completion, persist cursors and throttle duplicate retry schedulers (3.937ms)
+  ✔ committed batch survives expired cursor lease; replacement scanner replays without writes (5.32575ms)
+  ✔ Waffo and Afdian sources coexist; Afdian refund does not revoke any source (12.707375ms)
+  ✔ service-role execution works and ordinary roles cannot call admission or read leases (7.16525ms)
+  ✔ unrecorded or duplicate scan inputs fail closed without advancing or granting (6.383834ms)
+  ✔ authenticated user reconcile uses shared admission and preserves periodic recovery (11.527167ms)
+  ✔ malformed observation is isolated while a transaction failure aborts the whole scan (18.348416ms)
+  ✔ measured stable 12-order replay: 48 verified RPCs/96 row updates become 4 batches/0 updates (15.671416ms)
+✔ synthetic PostgreSQL scan admission and fenced order queries (1682.244125ms)
+ℹ {"fixture":"4 replays of 12 stable activated orders","beforeRequests":48,"beforeWrites":96,"afterRequests":4,"afterWrites":0,"processed":0,"cpu":"not measured"}
+{"event":"provider_query_diagnostic","stage":"fetch","reason_code":"TIMEOUT"}
+{"event":"scan_failed","source":"cron_history","trace_id":"7c3d0d03-675e-47a0-ab33-de6d3ed1d381","reason_code":"PROVIDER_QUERY_FAILED"}
+✔ native fetch aborts stalled successful HTTP body after receiving headers (111.944459ms)
+{"event":"scan_failed","source":"cron_recent","trace_id":"4e8d623c-a23d-41f3-b758-04dd3b0e125c","reason_code":"PROVIDER_BACKOFF"}
+✔ native fetch preserves 429 header backoff while discarding stalled HTTP body (11.044541ms)
+✔ verified payment migration keeps payment facts separate and its order lock first (0.761042ms)
+✔ all payment overloads lose direct grant while the fresh deletion body keeps existing tables (0.827375ms)
+✔ new payment RPCs are service-only and scheduler uses a fenced persistent cursor (0.823708ms)
+✔ order query claims fence signed webhook replays without altering verified facts (0.35475ms)
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":0,"total_page_type":"number","stage":"verified"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":2,"total_page_type":"number","stage":"verified"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":400005,"list_type":"array","list_length":1,"total_page_type":"undefined","stage":"json_shape"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"object","list_length":null,"total_page_type":"number","stage":"json_shape"}
+{"event":"provider_query_diagnostic","stage":"http","http_status":302}
+{"event":"identity_query_diagnostic","stage":"response","http_status":302,"content_type":"other"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+{"event":"identity_query_diagnostic","stage":"response","http_status":401,"content_type":"application/json"}
+✔ policy normalizes cents and custom UUID intent without remark override (0.602375ms)
+✔ policy rejects unsafe amount NaN (0.158708ms)
+✔ policy rejects unsafe amount Infinity (0.047667ms)
+✔ policy rejects unsafe amount 1e1 (0.062916ms)
+✔ policy rejects unsafe amount 10.001 (0.069291ms)
+✔ policy rejects unsafe amount -10.00 (0.043792ms)
+✔ policy rejects unsafe amount 9007199254740992 (0.044958ms)
+✔ policy rejects unsafe amount NaN (0.038ms)
+✔ policy rejects unsafe amount Infinity (0.051916ms)
+✔ policy rejects unsafe amount 10 (0.080166ms)
+✔ policy rejects explicit foreign currency and malformed binding (0.117667ms)
+✔ policy parses product/amount mismatch without granting and separates refund (0.191708ms)
+✔ query order rejects zero/duplicate exact matches and ignores caller endpoint (10.942041ms)
+✔ query rejects API error and invalid schema without forwarding raw payload (0.671166ms)
+✔ fetch diagnostics classify failure without logging credentials or raw exception (0.354375ms)
+✔ provider uses edge-compatible manual redirects and never follows credential redirects (0.310625ms)
+✔ identity uses manual redirects and rejects redirect without forwarding bearer (1.060167ms)
+✔ provider signing matches standard MD5 across padding and multiblock boundaries (1.855541ms)
+✔ same-zone identity service binding preserves authenticated endpoint and rejects invalid token (0.431625ms)
+✔ a real custom_order_id UUID is an intent, never a legacy user (0.44525ms)
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+{"event":"payment_persisted","trace_id":"64521001-3aa2-40a0-98f4-9d7678cde71c","order_id":"fixture-order-1","source":"manual_query","state_before":null,"state_after":"activated","attempt":null,"reason_code":null,"cached":false,"commit_outcome":"confirmed_by_rpc"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":20,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_recent","trace_id":"972ac15f-4966-437f-a034-f1d5c058eca7","observed":20,"processed":8,"skipped":12}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":0,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_history","trace_id":"6194e469-7025-4b0d-b245-ca68b5a368f7","observed":0,"processed":0,"skipped":0}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":0,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_history","trace_id":"45975929-4683-4cb0-ac5c-e963e98749f2","observed":0,"processed":0,"skipped":0}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":0,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_history","trace_id":"975cfce7-78b8-4740-b19f-18cf89be5536","observed":0,"processed":0,"skipped":0}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":0,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_history","trace_id":"adec60a6-7351-4851-ace2-80b051c64e17","observed":0,"processed":0,"skipped":0}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":0,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_history","trace_id":"47a15897-fe73-4eaa-bd9a-287ec2243a2c","observed":0,"processed":0,"skipped":0}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":0,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_history","trace_id":"c0a39d1d-980d-46c8-be1f-8401e41da04d","observed":0,"processed":0,"skipped":0}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":0,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_history","trace_id":"fe91dd1d-a107-4cac-af69-dab20fdf2773","observed":0,"processed":0,"skipped":0}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":0,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_history","trace_id":"3d1f122e-510f-486b-b91e-d642f74abfaf","observed":0,"processed":0,"skipped":0}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":0,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_history","trace_id":"46ae829e-5058-4252-81a6-d6a9a8158fcf","observed":0,"processed":0,"skipped":0}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":0,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_history","trace_id":"f9a190d5-98e6-4db3-baa5-5a915fe0c21e","observed":0,"processed":0,"skipped":0}
+{"event":"provider_query_diagnostic","stage":"http","http_status":503}
+{"event":"scan_failed","source":"cron_history","trace_id":"7953f7af-3654-428b-8dfb-c8154fe75d43","reason_code":"PROVIDER_QUERY_FAILED"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":0,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_history","trace_id":"19d78f41-83cb-4c3e-9c66-82faa5eed27f","observed":0,"processed":0,"skipped":0}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":0,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_history","trace_id":"9cd25935-cba4-4b8a-b910-a6029b95ba4c","observed":0,"processed":0,"skipped":0}
+{"event":"scan_failed","source":"cron_recent","trace_id":"157029d0-8344-49a9-9f04-19897ff1b71e","reason_code":"PROVIDER_BACKOFF"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_history","trace_id":"1ff07927-f99a-4723-bda8-b58d1f672dab","observed":1,"processed":1,"skipped":0}
+{"event":"scan_failed","source":"cron_history","trace_id":"1ff07927-f99a-4723-bda8-b58d1f672dab","reason_code":"SCAN_LEASE_LOST"}
+✔ afdianpay prefers a verified custom UUID over buyer remark (12.388875ms)
+✔ only canonical legacy remark may bind when custom intent absent (0.548042ms)
+✔ partial page processes eight and durably queues all remaining IDs (1.036291ms)
+✔ history cursor traverses two complete four-page cycles (4.008667ms)
+✔ history page three failure releases lease and retries same page (1.468125ms)
+✔ 429 persists global backoff without immediate provider retry (0.384833ms)
+✔ fenced completion cannot claim success (0.544375ms)
+✔ admin hidden from unauthenticated callers and cannot accept facts (0.657583ms)
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+{"event":"payment_persisted","trace_id":"7d38f9de-20d8-4470-bf0a-0b4cd1b1fb68","order_id":"fixture-order-1","source":"webhook","state_before":null,"state_after":"activated","attempt":null,"reason_code":null,"cached":false,"commit_outcome":"confirmed_by_rpc"}
+✔ signed webhook tampering in unsigned fields cannot change provider binding (5.3425ms)
+{"event":"provider_query_diagnostic","stage":"http","http_status":503}
+{"event":"payment_attempt_failed","trace_id":"ec25c40d-bc9d-41a0-bcbe-48b49a8c5a9a","order_id":"fixture-order-1","source":"webhook","reason_code":"PROVIDER_QUERY_FAILED","commit_outcome":"unknown"}
+✔ invalid signature creates no hint and webhook durably queued outage ACKs (1.860917ms)
+{"event":"identity_query_diagnostic","stage":"response","http_status":200,"content_type":"application/json"}
+{"event":"identity_query_diagnostic","stage":"response","http_status":200,"content_type":"application/json"}
+✔ webhook database failure cannot ACK an undurable hint (306.114625ms)
+✔ user reconciliation ignores no caller identity/facts overrides (6.694375ms)
+{"event":"identity_query_diagnostic","stage":"response","http_status":503,"content_type":"text/plain"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":0,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_recent","trace_id":"d50df344-5690-47d3-9a62-123b0d3f082b","observed":0,"processed":0,"skipped":0}
+✔ membership read failure is unknown never confirmed free (307.394417ms)
+✔ identity unavailable returns 503 and forbidden identity stays forbidden (1.371875ms)
+✔ recent page never advances historical cursor even with four provider pages (1.99175ms)
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":0,"total_page_type":"number","stage":"verified"}
+{"event":"payment_attempt_failed","trace_id":"170a09e8-de2d-4458-afb0-6ea57b0ca4bf","order_id":"fixture-order-1","source":"webhook","reason_code":"PROVIDER_QUERY_FAILED","commit_outcome":"unknown"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+{"event":"payment_persisted","trace_id":"b6162159-1b4e-43f2-ad2c-d819789e3010","order_id":"fixture-order-1","source":"manual_query","state_before":null,"state_after":"activated","attempt":null,"reason_code":null,"cached":false,"commit_outcome":"confirmed_by_rpc"}
+✔ temporarily invisible signed order remains retryable then verified paid recovers (5.760334ms)
+{"event":"reconciliation_started","cron":null,"scheduled_time":null}
+{"event":"provider_query_diagnostic","stage":"http","http_status":503}
+{"event":"payment_attempt_failed","trace_id":"15b6a8e7-4b46-4278-84f8-899f9d57d7ab","order_id":"fixture-order-1","source":"cron_recent","reason_code":"PROVIDER_QUERY_FAILED","commit_outcome":"unknown"}
+{"event":"identity_query_diagnostic","stage":"response","http_status":403,"content_type":"application/json"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+✔ atomic per-order query claim suppresses replay provider calls (2.870291ms)
+✔ a previously paid unresolved order requires a fresh provider result before grant (2.063084ms)
+✔ canonical inactive identity is propagated, with no membership/provider query (0.528083ms)
+{"event":"scan_failed","source":"cron_history","trace_id":"008efc2f-a9c9-4c1d-a307-ec883298ff47","reason_code":"DATABASE_UNAVAILABLE"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+✔ batch database failure preserves the page cursor and releases only its scan lease (307.171875ms)
+{"event":"payment_scan_processed","source":"cron_recent","trace_id":"7e819ee6-00b9-443c-9939-fcff03a55f0d","observed":1,"processed":0,"skipped":1}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+✔ batch commit with lost response is replayed through durable admission (80.898708ms)
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_recent","trace_id":"6ef9e5bd-5a76-479c-b26d-8d013c601c7e","observed":1,"processed":1,"skipped":0}
+{"event":"identity_query_diagnostic","stage":"response","http_status":200,"content_type":"application/json"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"user_reconcile","trace_id":"37b3947c-4d21-410f-849c-24cd261874f0","observed":1,"processed":1,"skipped":0}
+{"event":"reconciliation_started","cron":"*/2 * * * *","scheduled_time":123}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_recent","trace_id":"f3a15dac-5ae2-43de-bd31-2f7b67906323","observed":1,"processed":1,"skipped":0}
+{"event":"payment_scan_processed","source":"cron_history","trace_id":"ed12c2f0-932c-4b82-a967-3eda104d6bba","observed":1,"processed":1,"skipped":0}
+{"event":"provider_query_diagnostic","stage":"fetch","reason_code":"TIMEOUT"}
+{"event":"payment_attempt_failed","trace_id":"2eae16c1-5f14-4e92-9628-9f1e5591355a","order_id":"fixture-order-1","source":"manual_query","reason_code":"PROVIDER_QUERY_FAILED","commit_outcome":"unknown"}
+{"event":"payment_attempt_failed","trace_id":"d677ad65-609a-4ea2-b30a-26bb1296a33b","order_id":"fixture-order-1","source":"manual_query","reason_code":"PROVIDER_BACKOFF","commit_outcome":"unknown"}
+{"event":"provider_query_diagnostic","stage":"http","http_status":500}
+{"event":"payment_attempt_failed","trace_id":"61acea19-746e-4c59-a354-bfa88e3aa7c1","order_id":"fixture-order-1","source":"manual_query","reason_code":"PROVIDER_QUERY_FAILED","commit_outcome":"unknown"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_recent","trace_id":"7fb80d12-d193-42a1-ab45-b664ee610641","observed":1,"processed":1,"skipped":0}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_recent","trace_id":"4d038ff0-60da-4450-8b1e-7931c11e7302","observed":1,"processed":1,"skipped":0}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_history","trace_id":"6dcb2306-7207-459f-9ccd-61662c427f81","observed":1,"processed":1,"skipped":0}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+✔ claimed commit with lost response retries the same lease without another grant (78.418208ms)
+✔ invalid page facts use batch admission rather than unfenced retry writes (1.295833ms)
+✔ non-Pro user reconciliation preserves its authenticated batch source (1.759334ms)
+✔ one scheduled invocation shares a fresh official response for overlapping pages (1.68625ms)
+✔ precise query timeout preserves retryability and never persists a failed payment (1.100666ms)
+✔ precise query 429 preserves retryability and never persists a failed payment (0.832375ms)
+✔ precise query 500 preserves retryability and never persists a failed payment (0.649666ms)
+✔ native Workers MD5 and portable fallback preserve exact provider signing bytes (1.819083ms)
+✔ page batch submits the acquired scan token, generation and matching lane (0.948542ms)
+{"event":"scan_failed","source":"cron_history","trace_id":"d3201d6d-95b8-4e6d-a79a-9ddeae921b78","reason_code":"DATABASE_UNAVAILABLE"}
+{"event":"reconciliation_started","cron":null,"scheduled_time":null}
+{"event":"identity_query_diagnostic","stage":"response","http_status":200,"content_type":"application/json"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+✔ database rejection of a stale batch cannot advance cursor or submit through legacy entry (308.216042ms)
+✔ rollout maintenance blocks every payment entry without a database or provider call (3.730834ms)
+✔ rollout scheduled diagnostics remain read only (1.417167ms)
+{"event":"provider_query_diagnostic","stage":"fetch","reason_code":"TIMEOUT"}
+{"event":"scan_failed","source":"cron_history","trace_id":"b3684191-fce3-4bb6-aeb6-ea3a945fb8eb","reason_code":"PROVIDER_QUERY_FAILED"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":0,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_recent","trace_id":"6f7caa0a-2d03-4f2c-a1fa-dc40e23a1c52","observed":0,"processed":0,"skipped":0}
+{"event":"reconciliation_started","cron":"*/2 * * * *","scheduled_time":null}
+✔ response headers do not end the timeout; stalled body aborts without payment or cursor writes (21.570166ms)
+✔ successful complete response bodies clear their timeout before later abort (0.596583ms)
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+{"event":"payment_scan_processed","source":"cron_recent","trace_id":"64d13beb-d05b-4ab2-bb89-9aeb584cfb93","observed":1,"processed":1,"skipped":0}
+{"event":"payment_scan_processed","source":"cron_history","trace_id":"60d48ff5-b5f6-4fed-a742-d51cfa2f38b3","observed":1,"processed":1,"skipped":0}
+{"event":"scan_failed","source":"cron_recent","trace_id":"7174c992-c1b0-4047-8696-3768b5d8026f","reason_code":"PROVIDER_BACKOFF"}
+{"event":"provider_query_diagnostic","http_status":200,"content_type":"application/json","ec":200,"list_type":"array","list_length":1,"total_page_type":"number","stage":"verified"}
+✔ scheduled shared page fetch waits until both scan claims have resolved (1.3195ms)
+✔ 429 headers with a stalled body preserve shared 120 second backoff (0.558625ms)
+{"event":"scan_failed","source":"cron_recent","trace_id":"404e033b-b9a5-408e-82e4-0902ec4b2b9f","reason_code":"DATABASE_UNAVAILABLE"}
+✔ database 5xx stalled bodies retain the original three attempt retry classification (305.698125ms)
+✔ public purchase uses server identity and Production only, never legacy RPC or Test checkout (2.59625ms)
+✔ disabled Waffo fails closed without Afdian fallback (1.460208ms)
+✔ public checkout rejects unsafe URL, changed identity or Test response {"invalidUrl":true} (0.535709ms)
+✔ public checkout rejects unsafe URL, changed identity or Test response {"switchAccount":true} (0.452708ms)
+✔ public checkout rejects unsafe URL, changed identity or Test response {"responseMode":"test"} (0.441333ms)
+✔ late checkout after timeout cannot navigate or grant Pro (0.528ms)
+✔ untrusted or missing parameters return silently:  (4.3395ms)
+✔ untrusted or missing parameters return silently: #status=success (0.72375ms)
+✔ untrusted or missing parameters return silently: #checkout=ORD_sensitive&status=success (0.535167ms)
+✔ untrusted or missing parameters return silently: #checkout=invalid (0.471ms)
+✔ unknown/failure state never shows success or changes storage (0.599667ms)
+✔ unknown/failure state never shows success or changes storage (11.059958ms)
+✔ unknown/failure state never shows success or changes storage (0.552167ms)
+✔ unknown/failure state never shows success or changes storage (0.500166ms)
+✔ unknown/failure state never shows success or changes storage (0.504875ms)
+✔ unknown/failure state never shows success or changes storage (0.506583ms)
+✔ server confirmation shows truthful pending message, then returns after 1.8s; no IDs rendered (0.529917ms)
+✔ unresponsive status request aborts and returns silently within four seconds (0.485625ms)
+✔ localized return UI: zh (0.629666ms)
+✔ localized return UI: zh-Hant (0.946041ms)
+✔ localized return UI: en (0.572584ms)
+✔ localized return UI: ja (0.568292ms)
+✔ localized return UI: ko (0.60875ms)
+✔ localized return UI: es (0.517416ms)
+✔ page includes fixed accessible immediate return and no-JavaScript fallback, shared site styling (0.257042ms)
+✔ server proof with production enabled: pending (0.608042ms)
+✔ server proof with production enabled: failed (0.42725ms)
+✔ server proof with production enabled: granted (0.3995ms)
+✔ observation alone is not payment proof (0.406916ms)
+✔ trusted proof validates signed money and server product, store, merchant, mode and order/payment binding (1.856625ms)
+✔ proof rejects actual product (0.232667ms)
+✔ proof rejects actual store (0.073292ms)
+✔ proof rejects merchant (0.059875ms)
+✔ proof rejects merchant store relationship (0.063584ms)
+✔ proof rejects Test order (0.065125ms)
+✔ proof rejects missing mode (0.060708ms)
+✔ proof rejects currency (0.079333ms)
+✔ proof rejects pending order (0.062083ms)
+✔ proof rejects cancelled order (0.097458ms)
+✔ proof rejects unknown order (0.058208ms)
+✔ proof rejects external intent (0.042875ms)
+✔ proof rejects order id (0.034583ms)
+✔ proof rejects payment id (0.049917ms)
+✔ proof rejects pending payment (0.036167ms)
+✔ proof rejects missing payments (0.033125ms)
+✔ proof rejects missing refund details (0.035875ms)
+✔ proof rejects successful refund (0.039333ms)
+✔ proof rejects pending refund (0.052333ms)
+✔ proof rejects charged amount below price (0.065458ms)
+✔ proof rejects charged amount above price (0.036291ms)
+✔ proof rejects missing charged amount (0.038459ms)
+✔ proof rejects numeric charged amount (0.032708ms)
+✔ proof rejects wrong due total (0.033917ms)
+✔ proof rejects invalid arithmetic (0.045125ms)
+✔ proof rejects webhook currency (0.033292ms)
+✔ proof rejects webhook state (0.03675ms)
+✔ proof rejects webhook order state (0.030167ms)
+✔ proof rejects webhook product (0.038375ms)
+✔ proof rejects Test webhook (0.030667ms)
+✔ proof rejects different event id (0.032375ms)
+✔ proof rejects user binding (0.049208ms)
+✔ proof rejects intent product (0.030542ms)
+✔ proof rejects intent price (0.024458ms)
+✔ completion proof rejects refund events and refund proof rejects completion events (0.136ms)
+✔ refund proof binds the Waffo refund record and its payment without a webhook paymentId (0.123625ms)
+✔ refund proof rejects unknown refund id (0.054167ms)
+✔ refund proof rejects duplicated refund id (0.037709ms)
+✔ refund proof rejects unsafe refund id (0.03475ms)
+✔ refund proof rejects refund status (0.033542ms)
+✔ refund proof rejects refund on another reported payment (0.045666ms)
+✔ refund proof rejects non-payment refund parent (0.03725ms)
+✔ refund proof rejects missing payments (0.042083ms)
+✔ refund proof rejects Test order refund (0.039708ms)
+✔ refund proof rejects other intent refund (0.03375ms)
+✔ production RPC sends the separate service credential only to the allowlisted Supabase RPC (12.538709ms)
+✔ production RPC rejects missing service credential before any network call (0.138666ms)
+✔ production RPC rejects anon key reused as service credential before any network call (0.05575ms)
+✔ production RPC rejects non-allowlisted RPC before any network call (0.039875ms)
+✔ unrecognized RPC response is never trusted ([{"status":"granted","paymentConfirmed":true,"entitlementState":"granted","version":3}]) (0.381542ms)
+✔ unrecognized RPC response is never trusted ([]) (0.307708ms)
+✔ unrecognized RPC response is never trusted (null) (0.273292ms)
+✔ unrecognized RPC response is never trusted ({"status":"activated"}) (0.200917ms)
+✔ unrecognized RPC response is never trusted ({"status":"granted","paymentConfirmed":true,"entitlementState":"granted","version":-1}) (0.640542ms)
+✔ unrecognized RPC response is never trusted ({"status":"granted","paymentConfirmed":true,"entitlementState":"granted","version":"3"}) (0.184833ms)
+✔ unrecognized RPC response is never trusted ({"status":"granted","paymentConfirmed":"true","entitlementState":"granted","version":3}) (0.203166ms)
+✔ unrecognized RPC response is never trusted ({"status":"granted","paymentConfirmed":true,"entitlementState":"refunded","version":3}) (0.2495ms)
+✔ unrecognized RPC response is never trusted ({"status":"granted","paymentConfirmed":false,"entitlementState":"granted","version":3}) (0.178542ms)
+✔ production RPC maps HTTP and network failures to retryable codes without leaking text (0.402708ms)
+✔ first Production payload survives GraphQL failure; cron recovers and replay keeps one source (33.195042ms)
+✔ trusted completion grants one Waffo source; replay is duplicate; mutated body conflicts before Supabase (7.727584ms)
+✔ entitlement disabled confirms payment without granting; a later enabled replay grants exactly once (5.396166ms)
+✔ refund revokes only its Waffo order source (other source: false) (12.453417ms)
+✔ refund revokes only its Waffo order source (other source: true) (12.095042ms)
+✔ refund delivered before completion tombstones the order; late completion never grants (5.043125ms)
+✔ missed refund webhook: any later event converges on the GraphQL refund record and revokes (5.467875ms)
+✔ refund webhook ahead of GraphQL stays pending; cron retries until revoked (6.428917ms)
+✔ Supabase failure before commit leaves a pending outbox row; retry is idempotent (6.509667ms)
+✔ Supabase failure after commit leaves a pending outbox row; retry is idempotent (6.699667ms)
+✔ concurrent duplicate completions grant once; concurrent refund and completion end revoked (6.939333ms)
+✔ untrusted proof (wrong product) never reaches Supabase or confirms the return page (3.247541ms)
+✔ untrusted proof (incomplete order) never reaches Supabase or confirms the return page (2.965959ms)
+✔ untrusted proof (pending refund) never reaches Supabase or confirms the return page (2.623541ms)
+✔ missing service credential fails closed before Supabase and before any Waffo checkout session (3.111458ms)
+✔ anon key reused as service credential fails closed before Supabase and before any Waffo checkout session (2.713542ms)
+✔ missing signature rejects before ledger (0.555583ms)
+✔ Test key forged prod mode rejects before ledger (2.086292ms)
+✔ stale signature rejects before ledger (1.104959ms)
+✔ future signature rejects before ledger (0.966333ms)
+✔ wrong production store rejected; unknown reference recorded unbound without outbox or Supabase (2.153291ms)
+✔ Test and Production public key reuse fails closed (0.95375ms)
+✔ production checkout binds server identity in D1 and Supabase with stable idempotency (3.469541ms)
+✔ checkout refuses a Supabase intent binding conflict or inactive Supabase account before any Waffo session (1.130416ms)
+✔ production checkout rejects inactive identity before any intent or provider call (0.529125ms)
+✔ production checkout rejects identity outside the optional E2E restriction before any intent or provider call (0.462959ms)
+✔ production checkout requires the exact deployed PRODUCTION secret name; old alias fails closed (0.364292ms)
+✔ production identity diagnostics never expose token, body or unknown exception text (0.445292ms)
+✔ production identity uses bound Worker service; missing binding fails closed (0.601208ms)
+✔ return status reads Supabase for the verified caller only; refund turns it off; read never grants (7.584542ms)
+✔ return status rejects missing auth, invalid context and identities outside the optional E2E restriction (0.874334ms)
+✔ legacy Production return redirects to the fixed page without forwarding provider parameters; Test return stays isolated (0.113042ms)
+✔ checkout rejects an unauthenticated caller and never calls Waffo (11.125417ms)
+✔ checkout rejects the ingest bot token before any backend call (0.6445ms)
+✔ checkout rejects legacy checkout role before any backend call (0.512916ms)
+✔ checkout rejects anon role before any backend call (0.439459ms)
+✔ checkout rejects service role before any backend call (0.397125ms)
+✔ checkout rejects missing audience before any backend call (0.309792ms)
+✔ checkout rejects wrong audience before any backend call (0.772333ms)
+✔ checkout rejects array audience before any backend call (0.251791ms)
+✔ checkout rejects missing subject before any backend call (0.246792ms)
+✔ checkout rejects malformed subject before any backend call (0.2755ms)
+✔ checkout rejects array subject before any backend call (0.176416ms)
+✔ checkout rejects missing expiry before any backend call (0.166917ms)
+✔ checkout rejects expired token before any backend call (0.171917ms)
+✔ checkout rejects string expiry before any backend call (0.152334ms)
+✔ checkout rejects fractional expiry before any backend call (0.123666ms)
+✔ checkout rejects unsafe expiry before any backend call (0.134333ms)
+✔ checkout rejects future not-before before any backend call (0.115083ms)
+{"scope":"waffopay","event":"waffo_checkout_created","reference":"11111111-1111-1111-1111-111111111111"}
+{"scope":"waffopay","event":"waffo_intent_failed","reason":"intent_unauthorized","stage":"http","http_status":401,"content_type":"other","body_bytes":0,"json_type":"null","elapsed_ms":1}
+{"scope":"waffopay","event":"waffo_intent_failed","reason":"intent_unauthorized","stage":"http","http_status":403,"content_type":"other","body_bytes":0,"json_type":"null","elapsed_ms":0}
+✔ checkout accepts standard authenticated claims with a configurable session lifetime (10.354708ms)
+✔ checkout requires PostgREST authentication and RLS approval (401) (0.526708ms)
+✔ checkout requires PostgREST authentication and RLS approval (403) (0.31475ms)
+{"scope":"waffopay","event":"waffo_checkout_created","reference":"11111111-1111-1111-1111-111111111111"}
+{"scope":"waffopay","event":"waffo_intent_failed","reason":"intent_unauthorized","stage":"http","http_status":401,"content_type":"text/plain","body_bytes":2,"json_type":"null","elapsed_ms":0}
+✔ checkout creates a Waffo session with the server-generated reference as orderMerchantExternalId (1.968458ms)
+✔ checkout fails closed when the isolated intent is not pending (0.461375ms)
+✔ checkout maps an unauthorized intent RPC to 401 (0.324292ms)
+{"scope":"waffopay","event":"waffo_checkout_failed","reason":"waffo checkout returned 500"}
+{"scope":"waffopay","event":"waffo_webhook_rejected","reason":"bad_signature_header"}
+✔ a Waffo API failure surfaces as 502 and never as a paid success (1.672917ms)
+✔ webhook rejects a missing signature header (1.345458ms)
+{"scope":"waffopay","event":"waffo_webhook_rejected","reason":"signature_mismatch"}
+{"scope":"waffopay","event":"waffo_webhook_rejected","reason":"timestamp_out_of_tolerance"}
+✔ webhook rejects a tampered body under a valid-looking signature (1.231541ms)
+✔ webhook rejects a timestamp outside the 45-minute tolerance (0.755417ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"waffo entitlement contract unapproved"}
+✔ even prod key + production flag cannot grant Pro before the verification contract is approved (1.848041ms)
+{"scope":"waffopay","event":"waffo_entitlement_suppressed","environment":"test","productionEnabled":false,"paymentId":"PAY_abc123","reference":"11111111-1111-1111-1111-111111111111"}
+✔ a verified test-mode webhook records an isolated observation and never grants Pro (2.041791ms)
+{"scope":"waffopay","event":"waffo_entitlement_suppressed","environment":"test","productionEnabled":false,"paymentId":"PAY_abc123","reference":"11111111-1111-1111-1111-111111111111"}
+{"scope":"waffopay","event":"waffo_entitlement_suppressed","environment":"test","productionEnabled":false,"paymentId":"PAY_abc123","reference":"11111111-1111-1111-1111-111111111111"}
+{"scope":"waffopay","event":"waffo_entitlement_suppressed","environment":"test","productionEnabled":false,"paymentId":"PAY_abc123","reference":"11111111-1111-1111-1111-111111111111"}
+✔ test ledger uses the ingest bot token, caches it, and never stores the refresh token (3.788417ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"test ingest authentication failed"}
+✔ test ledger fails closed on rejected password grant without calling record_event (1.124ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"test ingest authentication failed"}
+✔ test ledger fails closed on token for a different subject without calling record_event (1.811125ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"test ingest authentication failed"}
+✔ test ledger fails closed on non-authenticated token without calling record_event (1.176333ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"test ingest authentication failed"}
+✔ test ledger fails closed on expired token without calling record_event (1.021458ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"test ingest authentication failed"}
+✔ test ledger fails closed on missing token without calling record_event (0.964375ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"test ledger configuration unavailable"}
+✔ test ledger with missing bot email returns 503 before any backend call (0.855667ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"test ledger configuration unavailable"}
+✔ test ledger with missing bot password returns 503 before any backend call (0.794625ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"test ledger configuration unavailable"}
+✔ test ledger with missing bot subject returns 503 before any backend call (0.832125ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"test ledger configuration unavailable"}
+✔ test ledger with malformed bot subject returns 503 before any backend call (0.77ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"test ledger persistence failed"}
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"test ledger persistence failed"}
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"test ledger persistence failed"}
+{"scope":"waffopay","event":"waffo_entitlement_suppressed","environment":"test","productionEnabled":false,"paymentId":"PAY_abc123","reference":"11111111-1111-1111-1111-111111111111"}
+✔ a rejected ingest token is dropped so the Waffo retry re-authenticates (4.020125ms)
+{"scope":"waffopay","event":"waffo_webhook_rejected","reason":"signature_mismatch"}
+{"scope":"waffopay","event":"waffo_webhook_rejected","reason":"bad_signature_header"}
+✔ an unsigned or forged test webhook never triggers the ingest password grant (1.498916ms)
+{"scope":"waffopay","event":"waffo_entitlement_suppressed","environment":"test","productionEnabled":true,"paymentId":"PAY_abc123","reference":"11111111-1111-1111-1111-111111111111"}
+✔ test mode remains isolated when production entitlement is enabled (1.010125ms)
+{"scope":"waffopay","event":"waffo_entitlement_suppressed","environment":"prod","productionEnabled":false,"paymentId":"PAY_abc123","reference":"11111111-1111-1111-1111-111111111111"}
+✔ a verified prod webhook with the production flag OFF does not grant Pro (0.890958ms)
+{"scope":"waffopay","event":"waffo_entitlement_suppressed","environment":"prod","productionEnabled":false,"paymentId":"PAY_abc123","reference":"11111111-1111-1111-1111-111111111111"}
+{"scope":"waffopay","event":"waffo_webhook_duplicate_delivery","deliveryId":"evt_delivery_1"}
+✔ a duplicate delivery id is deduplicated within the same environment and event type (1.564958ms)
+{"scope":"waffopay","event":"waffo_webhook_unknown_type","type":"subscription.renewed"}
+✔ an unknown event type is acknowledged without any business action (1.492083ms)
+{"scope":"waffopay","event":"waffo_currency_mismatch","got":"USD","expected":"CNY"}
+✔ a currency mismatch is recorded but never grants Pro (0.839583ms)
+{"scope":"waffopay","event":"waffo_missing_reference","paymentId":"PAY_abc123"}
+✔ a completed order missing the trusted reference is not activated (0.861916ms)
+{"scope":"waffopay","event":"waffo_refund_recorded","refundEvent":"refund.succeeded","refundId":"REF_1","reference":"11111111-1111-1111-1111-111111111111","environment":"prod"}
+✔ a refund.succeeded event is recorded and never revokes Pro this round (0.79125ms)
+{"scope":"waffopay","event":"waffo_webhook_malformed"}
+✔ a malformed JSON body under a valid signature returns 400 (0.807625ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"waffo entitlement contract unapproved"}
+✔ an unapproved production entitlement returns 503 for retry and performs no downstream write (0.803917ms)
+✔ webhook rejects non-POST methods (0.084875ms)
+✔ signApiRequest signs the canonical METHOD\nPATH\nTS\nSHA256(body) string (1.38875ms)
+✔ parseWaffoSignatureHeader extracts t and v1 and rejects malformed headers (0.056666ms)
+✔ normalizeWaffoEvent never treats deprecated amount as proof of an actual charge (0.04325ms)
+{"scope":"waffopay","event":"waffo_checkout_created","reference":"11111111-1111-1111-1111-111111111111"}
+{"scope":"waffopay","event":"waffo_webhook_rejected","reason":"timestamp_out_of_tolerance"}
+✔ checkout signs a seconds timestamp and includes a per-operation idempotency key (1.718791ms)
+✔ duplicate signature fields and excessive future timestamps are rejected (0.702459ms)
+✔ a disallowed Origin cannot trigger checkout side effects (0.120042ms)
+{"scope":"waffopay","event":"waffo_checkout_created","reference":"11111111-1111-1111-1111-111111111111"}
+{"scope":"waffopay","event":"waffo_intent_failed","reason":"intent_http","stage":"http","http_status":500,"content_type":"text/plain","body_bytes":4,"json_type":"null","elapsed_ms":1}
+✔ checkout ignores all caller-supplied business fields and forwards only the caller token to intent RPC (1.619042ms)
+✔ checkout fails closed for missing mode without network calls (0.149792ms)
+✔ checkout fails closed for invalid mode without network calls (0.114375ms)
+✔ checkout fails closed for missing store without network calls (0.130334ms)
+✔ checkout fails closed for invalid product without network calls (0.110083ms)
+✔ checkout fails closed for invalid currency without network calls (0.13125ms)
+✔ checkout fails closed for missing test key without network calls (0.105125ms)
+✔ checkout fails closed for missing test backend ref without network calls (0.096625ms)
+✔ checkout fails closed for test backend url mismatch without network calls (0.106792ms)
+✔ checkout rejects invalid JSON structure { (0.175583ms)
+✔ checkout rejects invalid JSON structure null (0.144584ms)
+✔ checkout rejects invalid JSON structure [] (0.145875ms)
+✔ checkout rejects invalid JSON structure "text" (0.120167ms)
+✔ CORS preflight permits exact known origin and rejects an unrelated origin (0.113292ms)
+✔ intent service failure is 503, distinct from authentication rejection (0.271084ms)
+{"scope":"waffopay","event":"waffo_checkout_failed","reason":"waffo returned no checkout url"}
+✔ checkout rejects API errors beside data (3.116083ms)
+{"scope":"waffopay","event":"waffo_checkout_failed","reason":"waffo returned no checkout url"}
+✔ checkout rejects malformed errors (1.572792ms)
+{"scope":"waffopay","event":"waffo_checkout_failed","reason":"waffo returned no checkout url"}
+✔ checkout rejects untrusted redirect (1.521875ms)
+{"scope":"waffopay","event":"waffo_checkout_failed","reason":"waffo returned no checkout url"}
+✔ checkout rejects credentials in URL (1.435459ms)
+{"scope":"waffopay","event":"waffo_checkout_failed","reason":"waffo returned no checkout url"}
+✔ checkout rejects HTTP redirect (1.395ms)
+{"scope":"waffopay","event":"waffo_checkout_failed","reason":"waffo returned no checkout url"}
+✔ checkout rejects nonofficial response shape (1.381875ms)
+{"scope":"waffopay","event":"waffo_checkout_created","reference":"11111111-1111-1111-1111-111111111111"}
+{"scope":"waffopay","event":"waffo_checkout_created","reference":"11111111-1111-1111-1111-111111111111"}
+✔ two independent checkout operations get different idempotency keys (2.545334ms)
+{"scope":"waffopay","event":"waffo_checkout_failed","reason":"waffo checkout returned 400"}
+✔ Waffo API HTTP 400 never retries a write or reports payment success (1.263208ms)
+{"scope":"waffopay","event":"waffo_checkout_failed","reason":"waffo checkout returned 401"}
+✔ Waffo API HTTP 401 never retries a write or reports payment success (1.209875ms)
+{"scope":"waffopay","event":"waffo_checkout_failed","reason":"waffo checkout returned 409"}
+✔ Waffo API HTTP 409 never retries a write or reports payment success (1.243916ms)
+{"scope":"waffopay","event":"waffo_checkout_failed","reason":"waffo checkout returned 429"}
+✔ Waffo API HTTP 429 never retries a write or reports payment success (1.295333ms)
+{"scope":"waffopay","event":"waffo_checkout_failed","reason":"waffo checkout returned 500"}
+✔ Waffo API HTTP 500 never retries a write or reports payment success (1.24925ms)
+{"scope":"waffopay","event":"waffo_checkout_failed","reason":"aborted"}
+✔ checkout response-body timeout aborts and fails closed after headers arrived (1.659167ms)
+{"scope":"waffopay","event":"waffo_entitlement_suppressed","environment":"prod","productionEnabled":false,"paymentId":"PAY_abc123","reference":"11111111-1111-1111-1111-111111111111"}
+✔ raw webhook whitespace and key ordering are verified without reserialization (0.831167ms)
+{"scope":"waffopay","event":"waffo_webhook_mode_mismatch","keyEnv":"prod","payloadMode":"prod","deliveryId":"evt_delivery_1"}
+✔ webhook rejects different store without a downstream action (0.816833ms)
+{"scope":"waffopay","event":"waffo_webhook_mode_mismatch","keyEnv":"prod","payloadMode":"","deliveryId":"evt_delivery_1"}
+✔ webhook rejects missing mode without a downstream action (0.782542ms)
+{"scope":"waffopay","event":"waffo_webhook_mode_mismatch","keyEnv":"prod","payloadMode":"test","deliveryId":"evt_delivery_1"}
+✔ webhook rejects prod key with test mode without a downstream action (0.731084ms)
+{"scope":"waffopay","event":"waffo_webhook_mode_mismatch","keyEnv":"test","payloadMode":"prod","deliveryId":"evt_delivery_1"}
+✔ webhook rejects test key with forged prod mode without a downstream action (0.738791ms)
+{"scope":"waffopay","event":"waffo_webhook_rejected","reason":"signature_mismatch"}
+✔ webhook rejects test signature at prod endpoint without a downstream action (0.712375ms)
+{"scope":"waffopay","event":"waffo_webhook_rejected","reason":"signature_mismatch"}
+{"scope":"waffopay","event":"waffo_webhook_rejected","reason":"signature_mismatch"}
+{"scope":"waffopay","event":"waffo_webhook_rejected","reason":"signature_mismatch"}
+✔ webhook rejects prod signature at test endpoint without a downstream action (0.736333ms)
+✔ webhook rejects missing configured store without a downstream action (0.588958ms)
+✔ webhook rejects missing prod key without a downstream action (0.597458ms)
+✔ webhook rejects same key assigned to test and prod without a downstream action (0.737583ms)
+{"scope":"waffopay","event":"waffo_webhook_no_delivery_id"}
+✔ webhook rejects missing event id without a downstream action (1.043583ms)
+{"scope":"waffopay","event":"waffo_webhook_no_delivery_id"}
+✔ webhook rejects missing delivery id without a downstream action (0.7865ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"waffo entitlement contract unapproved"}
+✔ unapproved production missing currency remains retryable and performs no entitlement action (0.810333ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"waffo entitlement contract unapproved"}
+✔ unapproved production whitespace currency remains retryable and performs no entitlement action (0.765166ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"waffo entitlement contract unapproved"}
+✔ unapproved production payment failed despite completed order remains retryable and performs no entitlement action (0.743458ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"waffo entitlement contract unapproved"}
+✔ unapproved production pending order despite successful payment remains retryable and performs no entitlement action (0.757042ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"waffo entitlement contract unapproved"}
+✔ unapproved production mismatched business payment id remains retryable and performs no entitlement action (0.730125ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"waffo entitlement contract unapproved"}
+✔ unapproved production legacy-looking account binding remains retryable and performs no entitlement action (0.737083ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"waffo entitlement contract unapproved"}
+✔ unapproved production charged amount absent even with deprecated amount remains retryable and performs no entitlement action (0.74125ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"waffo entitlement contract unapproved"}
+✔ unapproved production missing price breakdown remains retryable and performs no entitlement action (0.986208ms)
+✔ amount validation rejects null (0.054708ms)
+✔ amount validation rejects 15 (0.022041ms)
+✔ amount validation rejects "NaN" (0.016542ms)
+✔ amount validation rejects "Infinity" (0.0145ms)
+✔ amount validation rejects "-Infinity" (0.015167ms)
+✔ amount validation rejects "1e2" (0.01425ms)
+✔ amount validation rejects "0x0f" (0.014209ms)
+✔ amount validation rejects "+15" (0.017042ms)
+✔ amount validation rejects "-15" (0.017917ms)
+✔ amount validation rejects "15.001" (0.01575ms)
+✔ amount validation rejects " 15.00" (0.016417ms)
+✔ amount validation rejects "15.00 " (0.014375ms)
+✔ amount validation rejects "015.00" (0.013375ms)
+✔ amount validation rejects "1,500" (0.013083ms)
+✔ amount validation rejects "15000000000" (0.013125ms)
+✔ amount validation rejects "0.00" (0.014125ms)
+✔ tax arithmetic is exact and a list-price mismatch or unknown discount is not accepted (0.036042ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"waffo entitlement contract unapproved"}
+{"scope":"waffopay","event":"waffo_entitlement_suppressed","environment":"test","productionEnabled":false,"paymentId":"PAY_abc123","reference":"11111111-1111-1111-1111-111111111111"}
+✔ official completed payload with no productId is observed in test but cannot grant in prod (3.526041ms)
+{"scope":"waffopay","event":"waffo_refund_recorded","refundEvent":"refund.succeeded","refundId":"REF_123","reference":"11111111-1111-1111-1111-111111111111","environment":"prod"}
+{"scope":"waffopay","event":"waffo_refund_recorded","refundEvent":"refund.failed","refundId":"REF_123","reference":"11111111-1111-1111-1111-111111111111","environment":"prod"}
+✔ refund success and failure sharing an entity id are separately recorded without revoking Pro (1.6695ms)
+{"scope":"waffopay","event":"waffo_entitlement_suppressed","environment":"prod","productionEnabled":false,"paymentId":"PAY_abc123","reference":"11111111-1111-1111-1111-111111111111"}
+{"scope":"waffopay","event":"waffo_entitlement_suppressed","environment":"test","productionEnabled":false,"paymentId":"PAY_abc123","reference":"11111111-1111-1111-1111-111111111111"}
+✔ test and prod observations cannot share a delivery cache key (1.76ms)
+{"scope":"waffopay","event":"waffo_entitlement_suppressed","environment":"prod","productionEnabled":false,"paymentId":"PAY_abc123","reference":"11111111-1111-1111-1111-111111111111"}
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"waffo entitlement contract unapproved"}
+✔ suppressed observations do not mark a later entitlement attempt processed (1.555292ms)
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"waffo entitlement contract unapproved"}
+{"scope":"waffopay","event":"waffo_webhook_processing_failed","reason":"waffo entitlement contract unapproved"}
+{"scope":"waffopay","event":"waffo_request_failed","reason":"body_too_large"}
+{"scope":"waffopay","event":"waffo_request_failed","reason":"body_too_large"}
+✔ KV outage cannot trigger entitlement writes and a retry remains fail closed (1.536583ms)
+✔ request body size is bounded even without Content-Length (0.405333ms)
+✔ an allowed checkout Origin receives CORS even on a streamed body-size error (0.252875ms)
+{"scope":"waffopay","event":"waffo_checkout_created","reference":"11111111-1111-1111-1111-111111111111"}
+{"scope":"waffopay","event":"waffo_intent_failed","reason":"intent_redirect","stage":"http","http_status":302,"content_type":"other","elapsed_ms":0}
+✔ an inherited property name is not a cashier language (1.407167ms)
+✔ intent diagnostics classify failures without exposing credentials or response text (1.928666ms)
+✔ intent diagnostics distinguish timeout during response body reading (0.282375ms)
+✔ checkout uses workerd-supported manual redirects and rejects credential forwarding (0.19675ms)
+{"scope":"waffopay","event":"waffo_webhook_mode_mismatch","keyEnv":"test","payloadMode":"test","deliveryId":"evt_delivery_1"}
+{"scope":"waffopay","event":"waffo_entitlement_suppressed","environment":"test","productionEnabled":false,"paymentId":"PAY_abc123","reference":"11111111-1111-1111-1111-111111111111"}
+✔ Test webhook store IDs are case-sensitive opaque identifiers including l versus 1 (2.538792ms)
+✔ intent diagnostic byte count measures raw stream bytes before UTF-8 decoding (0.366708ms)
+ℹ tests 344
+ℹ suites 0
+ℹ pass 344
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 4732.805042

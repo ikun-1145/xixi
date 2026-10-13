@@ -1,0 +1,3 @@
+{"rows": 12, "scope": "server clock wall time, including SQL lock/execution; excludes Docker/client/network; not Worker CPU", "iterations": 4, "after_sql_ms": 5.004000, "before_sql_ms": 17.858000, "databaseVersion": "PostgreSQL16"}
+Afdian isolated PostgreSQL 16 concurrency: 86 checks passed across independent connections.
+Owned temporary PostgreSQL container removed. Existing containers untouched.

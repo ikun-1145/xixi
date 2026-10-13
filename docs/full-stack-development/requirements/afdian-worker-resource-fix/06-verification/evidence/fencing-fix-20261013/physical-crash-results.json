@@ -1,0 +1,53 @@
+[
+  {
+    "point": "before-provider-query",
+    "registeredOwnedChildGuard": {
+      "owner": "a35d71d2-9cca-4cb8-ace8-1aa6e4c52270",
+      "stage": "before-provider-query",
+      "pid": 33128,
+      "run": "32c564f9-7ab4-4c14-bd4b-427712183349",
+      "committed": false
+    },
+    "terminated": {
+      "code": null,
+      "signal": "SIGKILL"
+    },
+    "leaseBeforeExpiryRefused": true,
+    "activatedOnce": true,
+    "commitPreserved": false
+  },
+  {
+    "point": "after-provider-query",
+    "registeredOwnedChildGuard": {
+      "owner": "a35d71d2-9cca-4cb8-ace8-1aa6e4c52270",
+      "stage": "after-provider-query",
+      "pid": 33168,
+      "run": "a2ef095d-3881-4d53-92d1-f36118503e24",
+      "committed": false
+    },
+    "terminated": {
+      "code": null,
+      "signal": "SIGKILL"
+    },
+    "leaseBeforeExpiryRefused": true,
+    "activatedOnce": true,
+    "commitPreserved": false
+  },
+  {
+    "point": "after-commit-response-lost",
+    "registeredOwnedChildGuard": {
+      "owner": "a35d71d2-9cca-4cb8-ace8-1aa6e4c52270",
+      "stage": "after-commit-response-lost",
+      "pid": 33286,
+      "run": "b6283e33-106c-450e-a0b4-c3dc264347b8",
+      "committed": true
+    },
+    "terminated": {
+      "code": null,
+      "signal": "SIGKILL"
+    },
+    "leaseBeforeExpiryRefused": true,
+    "activatedOnce": true,
+    "commitPreserved": true
+  }
+]

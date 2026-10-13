@@ -1,0 +1,7 @@
+{
+  "checks": 17,
+  "postgres": "PostgreSQL 16.15 on aarch64-unknown-linux-musl, compiled by gcc (Alpine 15.2.0) 15.2.0, 64-bit",
+  "migrationFailure": "atomic rollback with pause retained",
+  "recovery": "retain schema, facts, entitlements and permanent legacy barrier; maintenance Worker then forward repair",
+  "productionWrites": false
+}
