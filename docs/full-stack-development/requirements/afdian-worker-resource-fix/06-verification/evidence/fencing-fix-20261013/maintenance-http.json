@@ -1,0 +1,17 @@
+[
+  {
+    "path": "/health",
+    "status": 503,
+    "body": "{\"error\":\"PAYMENT_MAINTENANCE\"}"
+  },
+  {
+    "path": "/reconcile",
+    "status": 503,
+    "body": "{\"error\":\"PAYMENT_MAINTENANCE\"}"
+  },
+  {
+    "path": "/webhook",
+    "status": 503,
+    "body": "{\"error\":\"PAYMENT_MAINTENANCE\"}"
+  }
+]

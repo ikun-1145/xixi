@@ -1,0 +1,59 @@
+ℹ tests 813
+ℹ suites 0
+ℹ pass 811
+ℹ fail 2
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 16227.986209
+
+✖ failing tests:
+
+test at tests/site-i18n.test.mjs:56:1
+✖ all public pages load the shared language runtime and inherit the saved language (508.618083ms)
+  AssertionError [ERR_ASSERTION]: download.html should not leave Chinese interface copy in English mode
+  + actual - expected
+
+  + [
+  +   'Android 7.0+；iOS 提供未签名 IPA，需自行签名。数据保留取决于签名与安装方式，备份前不要卸载旧版。'
+  + ]
+  - []
+
+      at TestContext.<anonymous> (file:///Users/liuxize/Developer/xixi/tests/site-i18n.test.mjs:91:12)
+      at Test.runInAsyncScope (node:async_hooks:214:14)
+      at Test.run (node:internal/test_runner/test:1106:25)
+      at Test.start (node:internal/test_runner/test:1003:17)
+      at startSubtestAfterBootstrap (node:internal/test_runner/harness:358:17) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'Android 7.0+；iOS 提供未签名 IPA，需自行签名。数据保留取决于签名与安装方式，备份前不要卸载旧版。' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }
+
+test at tests/site-i18n.test.mjs:181:1
+✖ new languages translate every public page and preserve semantic html language tags (465.93375ms)
+  AssertionError [ERR_ASSERTION]: download.html should not leave Chinese interface copy in ko
+  + actual - expected
+
+  + [
+  +   'Android 7.0+；iOS 提供未签名 IPA，需自行签名。数据保留取决于签名与安装方式，备份前不要卸载旧版。'
+  + ]
+  - []
+
+      at TestContext.<anonymous> (file:///Users/liuxize/Developer/xixi/tests/site-i18n.test.mjs:205:16)
+      at Test.runInAsyncScope (node:async_hooks:214:14)
+      at Test.run (node:internal/test_runner/test:1106:25)
+      at Test.processPendingSubtests (node:internal/test_runner/test:788:18)
+      at Test.postRun (node:internal/test_runner/test:1235:19)
+      at Test.run (node:internal/test_runner/test:1163:12)
+      at process.processTicksAndRejections (node:internal/process/task_queues:105:5)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:788:7) {
+    generatedMessage: false,
+    code: 'ERR_ASSERTION',
+    actual: [ 'Android 7.0+；iOS 提供未签名 IPA，需自行签名。数据保留取决于签名与安装方式，备份前不要卸载旧版。' ],
+    expected: [],
+    operator: 'deepStrictEqual',
+    diff: 'simple'
+  }

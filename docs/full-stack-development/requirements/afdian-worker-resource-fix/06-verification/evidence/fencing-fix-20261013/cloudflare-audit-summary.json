@@ -1,0 +1,634 @@
+{
+  "success": true,
+  "status": 200,
+  "errors": [],
+  "logs": [
+    {
+      "id": "65954916-a056-4363-8788-b4c37f539376",
+      "when": "2026-10-12T17:06:02.040229Z",
+      "action": {
+        "info": "Finished tailing logs for script afdianpay",
+        "result": true,
+        "type": "tail_logs_end"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "script_name"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "569a6a0c-5737-4575-b36b-eaaee47775b1",
+      "when": "2026-10-12T11:04:34.670461Z",
+      "action": {
+        "info": "Started tailing logs for script afdianpay",
+        "result": true,
+        "type": "tail_logs_start"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "script_name"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "4a3c73ce-7f8a-4b0b-bc31-4b25e90d0366",
+      "when": "2026-10-12T11:03:41.282645Z",
+      "action": {
+        "info": "Started tailing logs for script afdianpay",
+        "result": true,
+        "type": "tail_logs_start"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "script_name"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "3e299f2d-bb50-4d08-9021-7d2da832e7af",
+      "when": "2026-10-11T11:33:55.008466Z",
+      "action": {
+        "info": "Configured 1 schedules on script ai",
+        "result": true,
+        "type": "script_schedules"
+      },
+      "resource": {
+        "id": "ai",
+        "type": "script"
+      },
+      "metadataKeys": [],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "8693f861-8768-4671-bec2-65af11b44cba",
+      "when": "2026-10-11T11:20:20.803131Z",
+      "action": {
+        "info": "Removed schedules from script sunland-api-gateway-staging",
+        "result": true,
+        "type": "script_schedules"
+      },
+      "resource": {
+        "id": "sunland-api-gateway-staging",
+        "type": "script"
+      },
+      "metadataKeys": [],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "4e405ec8-c4b5-4aef-9165-5e9a744dd6cd",
+      "when": "2026-10-11T11:11:50.838041Z",
+      "action": {
+        "info": "Configured 1 schedules on script ai",
+        "result": true,
+        "type": "script_schedules"
+      },
+      "resource": {
+        "id": "ai",
+        "type": "script"
+      },
+      "metadataKeys": [],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "9fbb40a2-cf67-4f3d-b705-09c7abfff77a",
+      "when": "2026-10-07T16:28:38.026503Z",
+      "action": {
+        "info": "Finished tailing logs for script afdianpay",
+        "result": true,
+        "type": "tail_logs_end"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "script_name"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "516d9e47-f5aa-4485-b31c-79a78b9f76a3",
+      "when": "2026-10-07T11:36:48.446236Z",
+      "action": {
+        "info": "Configured 1 schedules on script waffopay",
+        "result": true,
+        "type": "script_schedules"
+      },
+      "resource": {
+        "id": "waffopay",
+        "type": "script"
+      },
+      "metadataKeys": [],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "501425d5-01cf-4b70-b41e-f7de07612285",
+      "when": "2026-10-07T10:41:53.392418Z",
+      "action": {
+        "info": "Configured 1 schedules on script afdianpay",
+        "result": true,
+        "type": "script_schedules"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "b2a2056d-74e0-4955-8c21-a0fbb59dfaf2",
+      "when": "2026-10-07T10:41:51.556205Z",
+      "action": {
+        "info": "Worker script afdianpay: workers.dev disabled, previews disabled",
+        "result": true,
+        "type": "script_on_subdomain"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "34417c51-81ec-46f0-b4e1-97241a847857",
+      "when": "2026-10-07T10:41:50.93422Z",
+      "action": {
+        "info": "Updated script settings for script afdianpay",
+        "result": true,
+        "type": "patch_settings"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "log_push_enabled",
+        "observability_enabled",
+        "script_tag",
+        "tags_length",
+        "tail_consumers_length"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "b20fee84-2868-4822-9f26-fa08be5c24c7",
+      "when": "2026-10-07T10:41:50.442138Z",
+      "action": {
+        "info": "Deployed script afdianpay",
+        "result": true,
+        "type": "script_deploy"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "deployment_id"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "d51e836d-aba9-4f92-bc9f-737a92dc07dd",
+      "when": "2026-10-07T10:41:50.001951Z",
+      "action": {
+        "info": "Script afdianpay version v457a3e69-307a-4c4c-a26e-fa1cd3c0e580 uploaded",
+        "result": true,
+        "type": "script_update"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "script_tag",
+        "version_id"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "5096aec9-9672-4bb0-a9b5-f152f84d469a",
+      "when": "2026-10-07T10:39:10.709351Z",
+      "action": {
+        "info": "Configured 1 schedules on script afdianpay",
+        "result": true,
+        "type": "script_schedules"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "a7906919-b5f0-4ee4-bce4-25ed0a5b5ac7",
+      "when": "2026-10-07T10:39:08.049079Z",
+      "action": {
+        "info": "Worker script afdianpay: workers.dev disabled, previews disabled",
+        "result": true,
+        "type": "script_on_subdomain"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "b5f510af-a2b8-43cb-9cb8-cbf8bf459cbd",
+      "when": "2026-10-07T10:39:07.315773Z",
+      "action": {
+        "info": "Updated script settings for script afdianpay",
+        "result": true,
+        "type": "patch_settings"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "log_push_enabled",
+        "observability_enabled",
+        "script_tag",
+        "tags_length",
+        "tail_consumers_length"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "0fc9301b-db6e-47c4-a30e-384ceb9576a4",
+      "when": "2026-10-07T10:39:06.720232Z",
+      "action": {
+        "info": "Deployed script afdianpay",
+        "result": true,
+        "type": "script_deploy"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "deployment_id"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "70308d41-9e03-43fe-bbfb-bbe5856f0d99",
+      "when": "2026-10-07T10:39:06.18113Z",
+      "action": {
+        "info": "Script afdianpay version v4a6876ed-d31a-417a-b6bc-19d5dd76371a uploaded",
+        "result": true,
+        "type": "script_update"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "script_tag",
+        "version_id"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "cb8bc521-f51c-4daf-ac23-814dab2e14d2",
+      "when": "2026-10-07T10:36:13.718155Z",
+      "action": {
+        "info": "Configured 1 schedules on script afdianpay",
+        "result": true,
+        "type": "script_schedules"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "c7e8aed6-99fe-4e27-a078-7f0e40c1571c",
+      "when": "2026-10-07T10:36:12.008145Z",
+      "action": {
+        "info": "Worker script afdianpay: workers.dev disabled, previews disabled",
+        "result": true,
+        "type": "script_on_subdomain"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "489372b9-4ee7-44c1-be90-a3cf5f2208fd",
+      "when": "2026-10-07T10:36:10.684258Z",
+      "action": {
+        "info": "Updated script settings for script afdianpay",
+        "result": true,
+        "type": "patch_settings"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "log_push_enabled",
+        "observability_enabled",
+        "script_tag",
+        "tags_length",
+        "tail_consumers_length"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "ea90fca1-ba42-4170-831d-a5ab37c2f289",
+      "when": "2026-10-07T10:36:09.877418Z",
+      "action": {
+        "info": "Deployed script afdianpay",
+        "result": true,
+        "type": "script_deploy"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "deployment_id"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "e64733dd-92a1-4591-bd31-746cdd605042",
+      "when": "2026-10-07T10:36:09.233697Z",
+      "action": {
+        "info": "Script afdianpay version v84461c0a-b9d5-41f5-a301-66848bb751b6 uploaded",
+        "result": true,
+        "type": "script_update"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "script_tag",
+        "version_id"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "3baeadaa-0106-4252-84e4-fe1b4c88a5cf",
+      "when": "2026-10-07T10:33:54.070698Z",
+      "action": {
+        "info": "Configured 1 schedules on script afdianpay",
+        "result": true,
+        "type": "script_schedules"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "972057a2-457e-4f0e-a8ad-3e5a2112c7c5",
+      "when": "2026-10-07T10:33:51.341742Z",
+      "action": {
+        "info": "Worker script afdianpay: workers.dev disabled, previews disabled",
+        "result": true,
+        "type": "script_on_subdomain"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "b6ebb5aa-98c9-4050-8e1b-f49defd2285c",
+      "when": "2026-10-07T10:33:50.283269Z",
+      "action": {
+        "info": "Updated script settings for script afdianpay",
+        "result": true,
+        "type": "patch_settings"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "log_push_enabled",
+        "observability_enabled",
+        "script_tag",
+        "tags_length",
+        "tail_consumers_length"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "85233d91-5cda-43e7-8d20-e9356ad3e801",
+      "when": "2026-10-07T10:33:49.333704Z",
+      "action": {
+        "info": "Deployed script afdianpay",
+        "result": true,
+        "type": "script_deploy"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "deployment_id"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "f7871f71-1ea4-440e-bf7c-9aee9ca4f5dd",
+      "when": "2026-10-07T10:33:48.79962Z",
+      "action": {
+        "info": "Script afdianpay version v3b87864c-acae-4f2a-b9cb-d9fa2a08697a uploaded",
+        "result": true,
+        "type": "script_update"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "script_tag",
+        "version_id"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "d1cd49d2-98fe-4b59-9c9b-59b6ea3bdecc",
+      "when": "2026-10-07T10:32:23.182932Z",
+      "action": {
+        "info": "Configured 1 schedules on script afdianpay",
+        "result": true,
+        "type": "script_schedules"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "bee749ab-020b-4bf4-968c-ed56caf65252",
+      "when": "2026-10-07T10:32:21.3445Z",
+      "action": {
+        "info": "Worker script afdianpay: workers.dev disabled, previews disabled",
+        "result": true,
+        "type": "script_on_subdomain"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "d13b728e-07af-4982-a64d-69fe66558a0f",
+      "when": "2026-10-07T10:32:20.598507Z",
+      "action": {
+        "info": "Updated script settings for script afdianpay",
+        "result": true,
+        "type": "patch_settings"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "log_push_enabled",
+        "observability_enabled",
+        "script_tag",
+        "tags_length",
+        "tail_consumers_length"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "402988a7-1b47-4c78-81f9-65e51170fc07",
+      "when": "2026-10-07T10:32:20.026808Z",
+      "action": {
+        "info": "Deployed script afdianpay",
+        "result": true,
+        "type": "script_deploy"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "deployment_id"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "e58d426a-c9cd-4daf-bed8-d64a5a61bd43",
+      "when": "2026-10-07T10:32:19.258608Z",
+      "action": {
+        "info": "Script afdianpay version vcd063a86-daed-4b97-89aa-95b870521c7f uploaded",
+        "result": true,
+        "type": "script_update"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "script_tag",
+        "version_id"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "5cb6efbd-0cbd-432d-a5b4-6d1a2215b3d6",
+      "when": "2026-10-07T10:30:34.892482Z",
+      "action": {
+        "info": "Started tailing logs for script afdianpay",
+        "result": true,
+        "type": "tail_logs_start"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "script_name"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    },
+    {
+      "id": "c423ddb7-500e-4cf4-a861-53882e5ec169",
+      "when": "2026-10-07T10:26:03.511042Z",
+      "action": {
+        "info": "Started tailing logs for script afdianpay",
+        "result": true,
+        "type": "tail_logs_start"
+      },
+      "resource": {
+        "id": "afdianpay",
+        "type": "script"
+      },
+      "metadataKeys": [
+        "script_name"
+      ],
+      "oldKeys": [],
+      "newKeys": []
+    }
+  ]
+}

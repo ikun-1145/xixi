@@ -1,0 +1,216 @@
+{
+  "original_business_definition_preserved": true,
+  "waffo_activation_definitions_acl_unchanged": true,
+  "functions": [
+    {
+      "signature": "sunland_waffo_status(text,uuid)",
+      "owner": "postgres",
+      "definer": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_sha256": "bb6a5beac68c7b5842c995fc521a9405bf40ba3df2fd7e23a20aca9e366066b4"
+    },
+    {
+      "signature": "sunland_waffo_register_intent(jsonb)",
+      "owner": "postgres",
+      "definer": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_sha256": "83b2ea5385e7ef2da4e8177e2ea8cd5a7f3213a61d796502f2ee8c3b38b43a0b"
+    },
+    {
+      "signature": "sunland_waffo_apply_event(jsonb)",
+      "owner": "postgres",
+      "definer": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_sha256": "cd889c263a6cbd10afad01723d68efb5077d6f141d780f4288edd531631d8614"
+    },
+    {
+      "signature": "sunland_record_pro_payment_hints(text[],text,uuid)",
+      "owner": "postgres",
+      "definer": false,
+      "config": [
+        "search_path=pg_catalog, public, extensions"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_sha256": "9981dbd0d22e436b71dcce89bd27d394235eec6f2a3d71152a423e3ff2921c8f"
+    },
+    {
+      "signature": "sunland_get_pro_payment_backoff()",
+      "owner": "postgres",
+      "definer": false,
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_sha256": "eded4d3c133c69dc3602ee9c550ae5f06f5e22d1f2db87e0b470ccf7490f7956"
+    },
+    {
+      "signature": "afdian_private.sunland_process_verified_pro_order(jsonb,text,uuid,boolean)",
+      "owner": "postgres",
+      "definer": false,
+      "config": [
+        "search_path=pg_catalog, public, extensions"
+      ],
+      "acl": "{postgres=X/postgres}",
+      "definition_sha256": "9c64399444c2dc3470a80e1a4ca8a81fecd26e08365a4ae8a238f53322a32f2b"
+    },
+    {
+      "signature": "sunland_set_pro_payment_backoff(integer)",
+      "owner": "postgres",
+      "definer": false,
+      "config": [
+        "search_path=pg_catalog, public, extensions"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_sha256": "c3e27e1bb8bdedb1cc5afc05f12a8b0cabfe645a4a42cc4d204bd999916a6fa3"
+    },
+    {
+      "signature": "sunland_complete_pro_payment_scan(text,uuid,bigint,integer,integer,text[])",
+      "owner": "postgres",
+      "definer": false,
+      "config": [
+        "search_path=pg_catalog, public, extensions"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_sha256": "dc51985a83a55d634f91a0583e9c9bd62ef467d7010367ea9961e7cdeb9dcd9d"
+    },
+    {
+      "signature": "sunland_claim_pro_payment_order_query(text)",
+      "owner": "postgres",
+      "definer": false,
+      "config": [
+        "search_path=pg_catalog, public, extensions"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_sha256": "77cbe32a8ed4098e0df66a3f0a41e23356118397a1d1be9edf28da27c18c3510"
+    },
+    {
+      "signature": "sunland_release_pro_payment_scan(text,uuid,bigint)",
+      "owner": "postgres",
+      "definer": false,
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_sha256": "f790798732309324065e138ac5053d804f100fa17f3e6183cd24eba0aaef23fc"
+    },
+    {
+      "signature": "sunland_note_pro_payment_retry(text,text,text,uuid)",
+      "owner": "postgres",
+      "definer": false,
+      "config": [
+        "search_path=pg_catalog, public, extensions"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_sha256": "1c143ac9d82b6544677946a81f9b8cd0baa78e26b43588283d5e963491d31052"
+    },
+    {
+      "signature": "sunland_serialize_pro_payment_order_insert()",
+      "owner": "postgres",
+      "definer": false,
+      "config": [
+        "search_path=pg_catalog, public"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_sha256": "524574943c719e1455aecb3c4f0d903bfb61a625ce5728e8313fd1008cc2e03d"
+    },
+    {
+      "signature": "sunland_process_verified_pro_order(jsonb,text,uuid,boolean)",
+      "owner": "postgres",
+      "definer": false,
+      "config": [
+        "search_path=pg_catalog"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_sha256": "98ac47881b97375b5097de25b660c69eca0130b270ec91abfc04b14fa4718926"
+    },
+    {
+      "signature": "sunland_claim_pro_payment_scan(text)",
+      "owner": "postgres",
+      "definer": false,
+      "config": [
+        "search_path=pg_catalog, public, extensions"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_sha256": "7961ef782ad2f6f7c6f5a9def14afd34ca81117c9e469d9013bc31f4709dea48"
+    },
+    {
+      "signature": "sunland_finish_pro_payment_order_query(jsonb,text,uuid,uuid)",
+      "owner": "postgres",
+      "definer": true,
+      "config": [
+        "search_path=pg_catalog, public, extensions"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_sha256": "f3ada5141f8cef096393cfc765cae9cdb324e13549166c0e503ca5cfa4e8205f"
+    },
+    {
+      "signature": "sunland_fail_pro_payment_order_query(text,text,text,uuid,uuid)",
+      "owner": "postgres",
+      "definer": false,
+      "config": [
+        "search_path=pg_catalog, public, extensions"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_sha256": "97a7782df378e3d5dbd1e7bc7290a471d8c9cdcb1881e2e26b0bdede8bcaf7f8"
+    },
+    {
+      "signature": "sunland_process_pro_payment_scan_orders(jsonb,text,uuid,text,uuid,bigint)",
+      "owner": "postgres",
+      "definer": true,
+      "config": [
+        "search_path=pg_catalog, public, extensions"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_sha256": "9111551ad888d16a3fe69c30450cb386078f5fb2bc05487f948015e9176044da"
+    },
+    {
+      "signature": "sunland_get_or_create_pro_payment_intent()",
+      "owner": "postgres",
+      "definer": true,
+      "config": [
+        "search_path=pg_catalog, public, extensions"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres,authenticated=X/postgres}",
+      "definition_sha256": "fb2f7f2a4745e0e88eff0d48502268ba6cb16665dab009fda454417cd1fdcacf"
+    },
+    {
+      "signature": "sunland_activate_pro_from_payment(text,text,text,text,numeric,timestamp with time zone)",
+      "owner": "postgres",
+      "definer": false,
+      "config": [
+        "search_path=pg_catalog, public, extensions"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_sha256": "3ca61e2ef85aaadfb6ce2a1fe5a553bff10d1dd8c1b86115bb96cb35c106fc22"
+    },
+    {
+      "signature": "sunland_resolve_pro_payment(text,text)",
+      "owner": "postgres",
+      "definer": false,
+      "config": [
+        "search_path=pg_catalog, public, extensions"
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_sha256": "39224c547411416aa13992bfd0c0b135a956a45b2294a769380a70eab648b32d"
+    },
+    {
+      "signature": "sunland_activate_pro_from_payment(text,text)",
+      "owner": "postgres",
+      "definer": true,
+      "config": [
+        "search_path=\"\""
+      ],
+      "acl": "{postgres=X/postgres,service_role=X/postgres}",
+      "definition_sha256": "2a1f89cb42754df0832bb45e3f387c5f71a543a512168d1d7542d53109534ea9"
+    }
+  ]
+}

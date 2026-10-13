@@ -1,0 +1,80 @@
+{
+  "result": {
+    "placement": {},
+    "compatibility_date": "2026-09-05",
+    "compatibility_flags": [],
+    "usage_model": "standard",
+    "tags": [],
+    "tail_consumers": [],
+    "logpush": false,
+    "observability": {
+      "enabled": true,
+      "head_sampling_rate": 1,
+      "redact_query_string": false,
+      "logs": {
+        "enabled": true,
+        "head_sampling_rate": 1,
+        "persist": true,
+        "invocation_logs": true
+      },
+      "traces": {
+        "enabled": false,
+        "persist": true,
+        "head_sampling_rate": 1
+      }
+    },
+    "annotations": {
+      "workers/message": "Enable fenced reconciliation ae32288 after SQL gate",
+      "workers/tag": "afdian-fencing-ae32288-open",
+      "workers/triggered_by": "version_upload"
+    },
+    "bindings": [
+      {
+        "name": "ADMIN_TOKEN",
+        "type": "secret_text"
+      },
+      {
+        "environment": "production",
+        "name": "AFDIAN_IDENTITY_SERVICE",
+        "service": "ai",
+        "type": "service"
+      },
+      {
+        "name": "AFDIAN_PLAN_ID",
+        "text": "4c2527fc6c7411f1bbe45254001e7c00",
+        "type": "plain_text"
+      },
+      {
+        "name": "AFDIAN_ROLLOUT_DIAGNOSTICS_ONLY",
+        "text": "false",
+        "type": "plain_text"
+      },
+      {
+        "name": "ORDERS",
+        "namespace_id": "c331b9a7fe3e4589a373d46f814b3d14",
+        "type": "kv_namespace"
+      },
+      {
+        "name": "SUPABASE_KEY",
+        "type": "secret_text"
+      },
+      {
+        "name": "SUPABASE_URL",
+        "text": "https://klyrasrqgxijwrxuoevj.supabase.co",
+        "type": "plain_text"
+      },
+      {
+        "name": "TOKEN",
+        "type": "secret_text"
+      },
+      {
+        "name": "USER_ID",
+        "text": "e736a9426c7311f1851452540025c377",
+        "type": "plain_text"
+      }
+    ]
+  },
+  "success": true,
+  "errors": [],
+  "messages": []
+}

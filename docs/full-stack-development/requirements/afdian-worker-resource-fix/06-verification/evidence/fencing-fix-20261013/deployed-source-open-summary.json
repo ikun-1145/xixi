@@ -1,0 +1,9 @@
+{
+  "sha256": "a512bdccaaa3168f3ed56a3009e2a317f8651160930315bed1c2b1850503ec4a",
+  "bytes": 34978,
+  "batch_fencing_parameters": true,
+  "finish_rpc": true,
+  "legacy_verified_call_absent": true,
+  "full_body_timeout": true,
+  "maintenance_guard_count": 2
+}

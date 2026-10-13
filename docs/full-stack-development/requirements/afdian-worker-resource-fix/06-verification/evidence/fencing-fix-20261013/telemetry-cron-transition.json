@@ -1,0 +1,117 @@
+{
+  "success": true,
+  "timeframe": {
+    "from": 1791714600000,
+    "to": 1791718800000
+  },
+  "statistics": {
+    "elapsed": 1.059161742,
+    "rows_read": 2695174,
+    "bytes_read": 407331341,
+    "abr_level": 1
+  },
+  "returned": 107,
+  "groups": {
+    "*/2 * * * *": {
+      "count": 11,
+      "first": 1791717487948,
+      "last": 1791718685838,
+      "version": [
+        "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+      ],
+      "outcomes": {
+        "ok": 11
+      }
+    },
+    "* * * * *": {
+      "count": 96,
+      "first": 1791714613181,
+      "last": 1791717454994,
+      "version": [
+        "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+      ],
+      "outcomes": {
+        "exceededCpu": 95,
+        "ok": 1
+      }
+    }
+  },
+  "duplicateMinutes": [
+    [
+      "29861910",
+      [
+        {
+          "timestamp": 1791714638739,
+          "requestId": "4ec38c4f0be180581ca1ac0497f90538",
+          "cron": "* * * * *",
+          "scheduledTime": 1791714634,
+          "outcome": "exceededCpu"
+        },
+        {
+          "timestamp": 1791714613181,
+          "requestId": "433277fc051483827a857927ed513335",
+          "cron": "* * * * *",
+          "scheduledTime": 1791714610,
+          "outcome": "exceededCpu"
+        }
+      ]
+    ],
+    [
+      "29861911",
+      [
+        {
+          "timestamp": 1791714694935,
+          "requestId": "de23ff7aba93eeccaac7760f1199695b",
+          "cron": "* * * * *",
+          "scheduledTime": 1791714694,
+          "outcome": "exceededCpu"
+        },
+        {
+          "timestamp": 1791714673398,
+          "requestId": "b086acc3a9332c0fdd41a1ae061c6665",
+          "cron": "* * * * *",
+          "scheduledTime": 1791714670,
+          "outcome": "exceededCpu"
+        }
+      ]
+    ],
+    [
+      "29861912",
+      [
+        {
+          "timestamp": 1791714755100,
+          "requestId": "fa2bcb0b12bbae3b1da4d085b6a922a0",
+          "cron": "* * * * *",
+          "scheduledTime": 1791714754,
+          "outcome": "exceededCpu"
+        },
+        {
+          "timestamp": 1791714733230,
+          "requestId": "b28cfcdf412de017fba7119269865bca",
+          "cron": "* * * * *",
+          "scheduledTime": 1791714730,
+          "outcome": "exceededCpu"
+        }
+      ]
+    ],
+    [
+      "29861913",
+      [
+        {
+          "timestamp": 1791714814988,
+          "requestId": "7a6615548fcc6d4a28ae61dec7e0eaf8",
+          "cron": "* * * * *",
+          "scheduledTime": 1791714814,
+          "outcome": "exceededCpu"
+        },
+        {
+          "timestamp": 1791714793177,
+          "requestId": "e9af7c552eab76becdebbf884a0001c4",
+          "cron": "* * * * *",
+          "scheduledTime": 1791714790,
+          "outcome": "exceededCpu"
+        }
+      ]
+    ]
+  ]
+}

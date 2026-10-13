@@ -1,0 +1,192 @@
+{
+  "phase": "open",
+  "observed_at": "2026-10-13T00:12:38.499747+00:00",
+  "maintenance": "false",
+  "deployments": {
+    "deployments": [
+      {
+        "id": "e30d8706-0ac8-49d4-a54a-7c9b957edd72",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "liuxizekali@outlook.com",
+        "annotations": {
+          "workers/message": "Enable fenced reconciliation ae32288 after SQL gate",
+          "workers/triggered_by": "deployment"
+        },
+        "versions": [
+          {
+            "version_id": "a84fa755-4a9e-456a-94eb-8746c7f11d1b",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-10-13T00:11:56.911179Z"
+      },
+      {
+        "id": "1826507b-b617-4215-a1bf-3d0fd4c605a6",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "liuxizekali@outlook.com",
+        "annotations": {
+          "workers/message": "Fenced payment rollout maintenance ae32288",
+          "workers/triggered_by": "deployment"
+        },
+        "versions": [
+          {
+            "version_id": "6c158d66-172e-4511-8f5d-5221261ba0f6",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-10-13T00:10:50.770651Z"
+      },
+      {
+        "id": "f1ae0c79-b3a2-4594-be1d-957516c7d66d",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "liuxizekali@outlook.com",
+        "annotations": {
+          "workers/triggered_by": "deployment"
+        },
+        "versions": [
+          {
+            "version_id": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-10-07T10:41:50.395837Z"
+      },
+      {
+        "id": "e66ba30a-b38f-4b87-8f33-35da6dcae70d",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "liuxizekali@outlook.com",
+        "annotations": {
+          "workers/triggered_by": "deployment"
+        },
+        "versions": [
+          {
+            "version_id": "4a6876ed-d31a-417a-b6bc-19d5dd76371a",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-10-07T10:39:06.677028Z"
+      },
+      {
+        "id": "fe2d14b2-358a-49b4-8329-f5d5b8e4e02c",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "liuxizekali@outlook.com",
+        "annotations": {
+          "workers/triggered_by": "deployment"
+        },
+        "versions": [
+          {
+            "version_id": "84461c0a-b9d5-41f5-a301-66848bb751b6",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-10-07T10:36:09.827741Z"
+      },
+      {
+        "id": "cf8f75b3-a782-4fcf-a73e-a861da2dc1ad",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "liuxizekali@outlook.com",
+        "annotations": {
+          "workers/triggered_by": "deployment"
+        },
+        "versions": [
+          {
+            "version_id": "3b87864c-acae-4f2a-b9cb-d9fa2a08697a",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-10-07T10:33:49.275779Z"
+      },
+      {
+        "id": "922a83b2-af7a-4879-bf18-353cc4de0cfe",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "liuxizekali@outlook.com",
+        "annotations": {
+          "workers/triggered_by": "deployment"
+        },
+        "versions": [
+          {
+            "version_id": "cd063a86-daed-4b97-89aa-95b870521c7f",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-10-07T10:32:19.961606Z"
+      },
+      {
+        "id": "58e9a609-08af-4eeb-9b58-43d20fc15284",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "liuxizekali@outlook.com",
+        "annotations": {
+          "workers/triggered_by": "deployment"
+        },
+        "versions": [
+          {
+            "version_id": "7cb9eeb0-afa5-4b7c-bcc9-17af5706cb1b",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-10-05T12:39:54.852136Z"
+      },
+      {
+        "id": "6e6d7f67-d09a-4542-83b3-0f1201c19f0e",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "liuxizekali@outlook.com",
+        "annotations": {
+          "workers/triggered_by": "deployment"
+        },
+        "versions": [
+          {
+            "version_id": "85d1c185-29a2-4082-8bcf-15a43bb65f64",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-10-05T12:30:12.42361Z"
+      },
+      {
+        "id": "a22e037a-9548-4861-a250-329fd3b69cfc",
+        "source": "wrangler",
+        "strategy": "percentage",
+        "author_email": "liuxizekali@outlook.com",
+        "annotations": {
+          "workers/triggered_by": "deployment"
+        },
+        "versions": [
+          {
+            "version_id": "998abf05-41a0-4399-9c9c-3415eb7a3c37",
+            "percentage": 100
+          }
+        ],
+        "created_on": "2026-10-05T12:24:13.342439Z"
+      }
+    ]
+  },
+  "schedules": {
+    "schedules": [
+      {
+        "cron": "*/2 * * * *",
+        "created_on": "2026-10-07T10:39:10.692099Z",
+        "modified_on": "2026-10-13T00:11:59.990706Z"
+      }
+    ]
+  },
+  "binding_names": [
+    "ADMIN_TOKEN",
+    "AFDIAN_IDENTITY_SERVICE",
+    "AFDIAN_PLAN_ID",
+    "AFDIAN_ROLLOUT_DIAGNOSTICS_ONLY",
+    "ORDERS",
+    "SUPABASE_KEY",
+    "SUPABASE_URL",
+    "TOKEN",
+    "USER_ID"
+  ],
+  "compatibility_date": "2026-09-05"
+}

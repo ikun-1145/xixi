@@ -1,0 +1,36 @@
+{
+  "window": {
+    "start": "2026-10-13T00:11:56Z",
+    "end": "2026-10-13T00:24:07Z"
+  },
+  "response": {
+    "data": {
+      "viewer": {
+        "accounts": [
+          {
+            "workersInvocationsAdaptive": [
+              {
+                "avg": {
+                  "sampleInterval": 1
+                },
+                "dimensions": {
+                  "status": "success"
+                },
+                "quantiles": {
+                  "cpuTimeP50": 7780,
+                  "cpuTimeP95": 28775,
+                  "cpuTimeP99": 28775
+                },
+                "sum": {
+                  "errors": 0,
+                  "requests": 9
+                }
+              }
+            ]
+          }
+        ]
+      }
+    },
+    "errors": null
+  }
+}

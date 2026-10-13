@@ -1,0 +1,19 @@
+
+ ⛅️ wrangler 4.103.0 (update available 4.149.0)
+───────────────────────────────────────────────
+Total Upload: 34.16 KiB / gzip: 9.68 KiB
+Worker Startup Time: 2 ms
+Your Worker has access to the following bindings:
+Binding                                                                               Resource
+env.ORDERS (c331b9a7fe3e4589a373d46f814b3d14)                                         KV Namespace
+env.AFDIAN_IDENTITY_SERVICE (ai)                                                      Worker
+env.AFDIAN_ROLLOUT_DIAGNOSTICS_ONLY ("(hidden)")                                      Environment Variable
+env.SUPABASE_URL ("https://klyrasrqgxijwrxuoevj.supabase...")                         Environment Variable
+env.USER_ID ("e736a9426c7311f1851452540025c377")                                      Environment Variable
+env.AFDIAN_PLAN_ID ("4c2527fc6c7411f1bbe45254001e7c00")                               Environment Variable
+
+Uploaded afdianpay (2.54 sec)
+Deployed afdianpay triggers (2.45 sec)
+  afdianpay.sunland.dev (custom domain)
+  schedule: */2 * * * *
+Current Version ID: 6c158d66-172e-4511-8f5d-5221261ba0f6

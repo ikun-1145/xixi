@@ -1,0 +1,65 @@
+{
+  "success": true,
+  "timeframe": {
+    "from": 1791677379393,
+    "to": 1791850179393
+  },
+  "statistics": {
+    "elapsed": 2.615332819,
+    "rows_read": 2282760,
+    "bytes_read": 2314525334,
+    "abr_level": 10
+  },
+  "count": 154,
+  "captured": 154,
+  "groups": {
+    "*/2 * * * *": {
+      "captured": 63,
+      "first": 1791727203185,
+      "last": 1791828002547,
+      "versions": [
+        "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+      ],
+      "sample": [
+        {
+          "timestamp": 1791828002547,
+          "requestId": "0ca20174a356c7859ab0a407f190a675",
+          "outcome": "exceededCpu",
+          "cpuTimeMs": 10,
+          "scheduledTime": 1791828002
+        },
+        {
+          "timestamp": 1791825602996,
+          "requestId": "06b908eea0ed4999f20d519a4ddbee14",
+          "outcome": "exceededCpu",
+          "cpuTimeMs": 10,
+          "scheduledTime": 1791825602
+        }
+      ]
+    },
+    "* * * * *": {
+      "captured": 91,
+      "first": 1791677794859,
+      "last": 1791717314161,
+      "versions": [
+        "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+      ],
+      "sample": [
+        {
+          "timestamp": 1791717314161,
+          "requestId": "e16881c1eafc2cb7c4ff6b707101e7d5",
+          "outcome": "exceededCpu",
+          "cpuTimeMs": 10,
+          "scheduledTime": 1791717310
+        },
+        {
+          "timestamp": 1791716975027,
+          "requestId": "e75e8cc10b3ca5c1e67fea354e4b1aab",
+          "outcome": "exceededCpu",
+          "cpuTimeMs": 10,
+          "scheduledTime": 1791716974
+        }
+      ]
+    }
+  }
+}

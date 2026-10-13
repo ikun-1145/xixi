@@ -1,0 +1,291 @@
+{
+  "success": true,
+  "run": {
+    "id": "lls8lym10y2hf92gcbwbz2cu",
+    "query": {
+      "id": "afdian-old-cron-cadence-safe",
+      "description": "",
+      "name": "",
+      "generated": false,
+      "parameters": {
+        "filters": [
+          {
+            "key": "$workers.scriptName",
+            "operation": "eq",
+            "value": "afdianpay",
+            "type": "string"
+          },
+          {
+            "key": "$workers.outcome",
+            "operation": "exists",
+            "type": "string"
+          }
+        ]
+      },
+      "workspaceId": "5d99df0919786bd4d9de3dd5bdcbfb4d",
+      "environmentId": "cloudflare",
+      "userId": "e0d46e6607db44e40a3ba5fcb444ba2c",
+      "created": "2026-10-13T00:14:54.730Z",
+      "updated": "2026-10-13T00:14:54.730Z"
+    },
+    "accountId": "5d99df0919786bd4d9de3dd5bdcbfb4d",
+    "timeframe": {
+      "from": 1791848379000,
+      "to": 1791850179000
+    },
+    "userId": "e0d46e6607db44e40a3ba5fcb444ba2c",
+    "status": "COMPLETED",
+    "granularity": 30000,
+    "dry": true,
+    "statistics": {
+      "elapsed": 0.386685953,
+      "rows_read": 10469697,
+      "bytes_read": 500455931,
+      "abr_level": 1
+    }
+  },
+  "count": 15,
+  "returned": 15,
+  "events": [
+    {
+      "timestamp": 1791850082855,
+      "id": "01M4S9CWH7000000000000004F",
+      "requestId": "4b010932d774d5811db9eb7ca2cd6917",
+      "trigger": "*/2 * * * *",
+      "scriptVersion": {
+        "id": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+      },
+      "executionModel": "stateless",
+      "eventType": "scheduled",
+      "outcome": "ok",
+      "cpuTimeMs": 32,
+      "wallTimeMs": 709,
+      "cron": "*/2 * * * *",
+      "scheduledTime": 1791850082
+    },
+    {
+      "timestamp": 1791849963013,
+      "id": "01M4S997G5000000000000004X",
+      "requestId": "19e2eb3fee99b38a42f5a78a77e0a573",
+      "trigger": "*/2 * * * *",
+      "scriptVersion": {
+        "id": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+      },
+      "executionModel": "stateless",
+      "eventType": "scheduled",
+      "outcome": "ok",
+      "cpuTimeMs": 32,
+      "wallTimeMs": 866,
+      "cron": "*/2 * * * *",
+      "scheduledTime": 1791849962
+    },
+    {
+      "timestamp": 1791849843039,
+      "id": "01M4S95JAZ000000000000004F",
+      "requestId": "4ec89ed0fc7b891742572f933005972f",
+      "trigger": "*/2 * * * *",
+      "scriptVersion": {
+        "id": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+      },
+      "executionModel": "stateless",
+      "eventType": "scheduled",
+      "outcome": "ok",
+      "cpuTimeMs": 30,
+      "wallTimeMs": 892,
+      "cron": "*/2 * * * *",
+      "scheduledTime": 1791849842
+    },
+    {
+      "timestamp": 1791849723668,
+      "id": "01M4S91XRM000000000000004X",
+      "requestId": "bdeda3c9637fb446edcfc62283bd4f6d",
+      "trigger": "*/2 * * * *",
+      "scriptVersion": {
+        "id": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+      },
+      "executionModel": "stateless",
+      "eventType": "scheduled",
+      "outcome": "ok",
+      "cpuTimeMs": 35,
+      "wallTimeMs": 1521,
+      "cron": "*/2 * * * *",
+      "scheduledTime": 1791849722
+    },
+    {
+      "timestamp": 1791849602881,
+      "id": "01M4S8Y7T1000000000000004F",
+      "requestId": "4b02c9b01122d20f394e6276c1158c24",
+      "trigger": "*/2 * * * *",
+      "scriptVersion": {
+        "id": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+      },
+      "executionModel": "stateless",
+      "eventType": "scheduled",
+      "outcome": "ok",
+      "cpuTimeMs": 37,
+      "wallTimeMs": 736,
+      "cron": "*/2 * * * *",
+      "scheduledTime": 1791849602
+    },
+    {
+      "timestamp": 1791849483384,
+      "id": "01M4S8TK3R000000000000004X",
+      "requestId": "5b27fe188cdf1052bfbcaae3775e41a8",
+      "trigger": "*/2 * * * *",
+      "scriptVersion": {
+        "id": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+      },
+      "executionModel": "stateless",
+      "eventType": "scheduled",
+      "outcome": "ok",
+      "cpuTimeMs": 34,
+      "wallTimeMs": 1235,
+      "cron": "*/2 * * * *",
+      "scheduledTime": 1791849482
+    },
+    {
+      "timestamp": 1791849362915,
+      "id": "01M4S8PXF3000000000000004F",
+      "requestId": "f00b7d98280dcbd819423cef12004755",
+      "trigger": "*/2 * * * *",
+      "scriptVersion": {
+        "id": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+      },
+      "executionModel": "stateless",
+      "eventType": "scheduled",
+      "outcome": "ok",
+      "cpuTimeMs": 33,
+      "wallTimeMs": 771,
+      "cron": "*/2 * * * *",
+      "scheduledTime": 1791849362
+    },
+    {
+      "timestamp": 1791849243025,
+      "id": "01M4S8K8CH000000000000004X",
+      "requestId": "cde843f7fa72deaf6a46c6e46d70a0a2",
+      "trigger": "*/2 * * * *",
+      "scriptVersion": {
+        "id": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+      },
+      "executionModel": "stateless",
+      "eventType": "scheduled",
+      "outcome": "ok",
+      "cpuTimeMs": 34,
+      "wallTimeMs": 874,
+      "cron": "*/2 * * * *",
+      "scheduledTime": 1791849242
+    },
+    {
+      "timestamp": 1791849123517,
+      "id": "01M4S8FKNX000000000000004F",
+      "requestId": "7f25e374303789abf60c02c429bb4459",
+      "trigger": "*/2 * * * *",
+      "scriptVersion": {
+        "id": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+      },
+      "executionModel": "stateless",
+      "eventType": "scheduled",
+      "outcome": "ok",
+      "cpuTimeMs": 37,
+      "wallTimeMs": 1375,
+      "cron": "*/2 * * * *",
+      "scheduledTime": 1791849122
+    },
+    {
+      "timestamp": 1791849003295,
+      "id": "01M4S8BY8Z000000000000004X",
+      "requestId": "c80584de44b847a0a381a637bf171fde",
+      "trigger": "*/2 * * * *",
+      "scriptVersion": {
+        "id": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+      },
+      "executionModel": "stateless",
+      "eventType": "scheduled",
+      "outcome": "ok",
+      "cpuTimeMs": 43,
+      "wallTimeMs": 1148,
+      "cron": "*/2 * * * *",
+      "scheduledTime": 1791849002
+    },
+    {
+      "timestamp": 1791848882903,
+      "id": "01M4S888PQ000000000000004F",
+      "requestId": "197a6d29d2e4163f6e77981d389fe7d8",
+      "trigger": "*/2 * * * *",
+      "scriptVersion": {
+        "id": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+      },
+      "executionModel": "stateless",
+      "eventType": "scheduled",
+      "outcome": "ok",
+      "cpuTimeMs": 28,
+      "wallTimeMs": 753,
+      "cron": "*/2 * * * *",
+      "scheduledTime": 1791848882
+    },
+    {
+      "timestamp": 1791848763055,
+      "id": "01M4S84KNF000000000000004X",
+      "requestId": "848908f8e766aa112e920198b12de168",
+      "trigger": "*/2 * * * *",
+      "scriptVersion": {
+        "id": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+      },
+      "executionModel": "stateless",
+      "eventType": "scheduled",
+      "outcome": "ok",
+      "cpuTimeMs": 34,
+      "wallTimeMs": 905,
+      "cron": "*/2 * * * *",
+      "scheduledTime": 1791848762
+    },
+    {
+      "timestamp": 1791848643072,
+      "id": "01M4S80YG0000000000000004F",
+      "requestId": "62238cef14ebae9803afe05dabe4b3bd",
+      "trigger": "*/2 * * * *",
+      "scriptVersion": {
+        "id": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+      },
+      "executionModel": "stateless",
+      "eventType": "scheduled",
+      "outcome": "ok",
+      "cpuTimeMs": 27,
+      "wallTimeMs": 922,
+      "cron": "*/2 * * * *",
+      "scheduledTime": 1791848642
+    },
+    {
+      "timestamp": 1791848523204,
+      "id": "01M4S7X9E4000000000000004X",
+      "requestId": "3bbaa41d9636cd419c56bdf6ff3c04e0",
+      "trigger": "*/2 * * * *",
+      "scriptVersion": {
+        "id": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+      },
+      "executionModel": "stateless",
+      "eventType": "scheduled",
+      "outcome": "ok",
+      "cpuTimeMs": 34,
+      "wallTimeMs": 1056,
+      "cron": "*/2 * * * *",
+      "scheduledTime": 1791848522
+    },
+    {
+      "timestamp": 1791848402813,
+      "id": "01M4S7SKVX000000000000004F",
+      "requestId": "af4afdca5eba11c93297edc42869e46b",
+      "trigger": "*/2 * * * *",
+      "scriptVersion": {
+        "id": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+      },
+      "executionModel": "stateless",
+      "eventType": "scheduled",
+      "outcome": "ok",
+      "cpuTimeMs": 34,
+      "wallTimeMs": 667,
+      "cron": "*/2 * * * *",
+      "scheduledTime": 1791848402
+    }
+  ]
+}

@@ -1,0 +1,378 @@
+{
+  "success": true,
+  "errors": [],
+  "messages": [
+    {
+      "message": "Successful request"
+    }
+  ],
+  "result": {
+    "run": {
+      "id": "02p0fuedxmyrlhx6c621vwgs",
+      "query": {
+        "id": "afdian-before-48h-exact",
+        "description": "",
+        "name": "",
+        "generated": false,
+        "parameters": {
+          "filters": [
+            {
+              "key": "$workers.scriptName",
+              "operation": "eq",
+              "value": "afdianpay",
+              "type": "string"
+            },
+            {
+              "key": "$workers.cpuTimeMs",
+              "operation": "exists",
+              "type": "number"
+            }
+          ],
+          "calculations": [
+            {
+              "alias": "invocations",
+              "operator": "count"
+            },
+            {
+              "keyType": "number",
+              "alias": "cpuP50Ms",
+              "key": "$workers.cpuTimeMs",
+              "operator": "median"
+            },
+            {
+              "keyType": "number",
+              "alias": "cpuP95Ms",
+              "key": "$workers.cpuTimeMs",
+              "operator": "p95"
+            },
+            {
+              "keyType": "number",
+              "alias": "cpuP99Ms",
+              "key": "$workers.cpuTimeMs",
+              "operator": "p99"
+            }
+          ],
+          "groupBys": [
+            {
+              "type": "string",
+              "value": "$workers.outcome"
+            },
+            {
+              "type": "string",
+              "value": "$workers.eventType"
+            },
+            {
+              "type": "string",
+              "value": "$workers.scriptVersion.id"
+            }
+          ]
+        },
+        "workspaceId": "5d99df0919786bd4d9de3dd5bdcbfb4d",
+        "environmentId": "cloudflare",
+        "userId": "e0d46e6607db44e40a3ba5fcb444ba2c",
+        "created": "2026-10-13T00:13:58.436Z",
+        "updated": "2026-10-13T00:13:58.436Z"
+      },
+      "accountId": "5d99df0919786bd4d9de3dd5bdcbfb4d",
+      "timeframe": {
+        "from": 1791677379393,
+        "to": 1791850179393
+      },
+      "userId": "e0d46e6607db44e40a3ba5fcb444ba2c",
+      "status": "COMPLETED",
+      "granularity": 2880000,
+      "dry": true,
+      "statistics": {
+        "elapsed": 2.152826769,
+        "rows_read": 12676213,
+        "bytes_read": 6732341670,
+        "abr_level": 1
+      }
+    },
+    "calculations": [
+      {
+        "alias": "invocations",
+        "calculation": "count",
+        "aggregates": [
+          {
+            "groups": [
+              {
+                "key": "$workers.outcome",
+                "value": "ok"
+              },
+              {
+                "key": "$workers.eventType",
+                "value": "scheduled"
+              },
+              {
+                "key": "$workers.scriptVersion.id",
+                "value": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+              }
+            ],
+            "groupKey": "ok ⬤ scheduled ⬤ 457a3e69-307a-4c4c-a26e-fa1cd3c0e580",
+            "value": 733,
+            "interval": 1.0251748251748252,
+            "sampleInterval": 1.0251748251748252,
+            "count": 733
+          },
+          {
+            "groups": [
+              {
+                "key": "$workers.outcome",
+                "value": "exceededCpu"
+              },
+              {
+                "key": "$workers.eventType",
+                "value": "scheduled"
+              },
+              {
+                "key": "$workers.scriptVersion.id",
+                "value": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+              }
+            ],
+            "groupKey": "exceededCpu ⬤ scheduled ⬤ 457a3e69-307a-4c4c-a26e-fa1cd3c0e580",
+            "value": 1728,
+            "interval": 1.0212765957446808,
+            "sampleInterval": 1.0212765957446808,
+            "count": 1728
+          },
+          {
+            "groups": [
+              {
+                "key": "$workers.outcome",
+                "value": "ok"
+              },
+              {
+                "key": "$workers.eventType",
+                "value": "fetch"
+              },
+              {
+                "key": "$workers.scriptVersion.id",
+                "value": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+              }
+            ],
+            "groupKey": "ok ⬤ fetch ⬤ 457a3e69-307a-4c4c-a26e-fa1cd3c0e580",
+            "value": 61,
+            "interval": 1.1730769230769231,
+            "sampleInterval": 1.1730769230769231,
+            "count": 61
+          }
+        ]
+      },
+      {
+        "alias": "cpuP50Ms",
+        "calculation": "median($workers.cpuTimeMs)",
+        "aggregates": [
+          {
+            "groups": [
+              {
+                "key": "$workers.outcome",
+                "value": "ok"
+              },
+              {
+                "key": "$workers.eventType",
+                "value": "scheduled"
+              },
+              {
+                "key": "$workers.scriptVersion.id",
+                "value": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+              }
+            ],
+            "groupKey": "ok ⬤ scheduled ⬤ 457a3e69-307a-4c4c-a26e-fa1cd3c0e580",
+            "value": 28,
+            "interval": 1.0251748251748252,
+            "sampleInterval": 1.0251748251748252,
+            "count": 733
+          },
+          {
+            "groups": [
+              {
+                "key": "$workers.outcome",
+                "value": "exceededCpu"
+              },
+              {
+                "key": "$workers.eventType",
+                "value": "scheduled"
+              },
+              {
+                "key": "$workers.scriptVersion.id",
+                "value": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+              }
+            ],
+            "groupKey": "exceededCpu ⬤ scheduled ⬤ 457a3e69-307a-4c4c-a26e-fa1cd3c0e580",
+            "value": 10,
+            "interval": 1.0212765957446808,
+            "sampleInterval": 1.0212765957446808,
+            "count": 1728
+          },
+          {
+            "groups": [
+              {
+                "key": "$workers.outcome",
+                "value": "ok"
+              },
+              {
+                "key": "$workers.eventType",
+                "value": "fetch"
+              },
+              {
+                "key": "$workers.scriptVersion.id",
+                "value": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+              }
+            ],
+            "groupKey": "ok ⬤ fetch ⬤ 457a3e69-307a-4c4c-a26e-fa1cd3c0e580",
+            "value": 6,
+            "interval": 1.1730769230769231,
+            "sampleInterval": 1.1730769230769231,
+            "count": 61
+          }
+        ]
+      },
+      {
+        "alias": "cpuP95Ms",
+        "calculation": "p95($workers.cpuTimeMs)",
+        "aggregates": [
+          {
+            "groups": [
+              {
+                "key": "$workers.outcome",
+                "value": "ok"
+              },
+              {
+                "key": "$workers.eventType",
+                "value": "scheduled"
+              },
+              {
+                "key": "$workers.scriptVersion.id",
+                "value": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+              }
+            ],
+            "groupKey": "ok ⬤ scheduled ⬤ 457a3e69-307a-4c4c-a26e-fa1cd3c0e580",
+            "value": 56,
+            "interval": 1.0251748251748252,
+            "sampleInterval": 1.0251748251748252,
+            "count": 733
+          },
+          {
+            "groups": [
+              {
+                "key": "$workers.outcome",
+                "value": "exceededCpu"
+              },
+              {
+                "key": "$workers.eventType",
+                "value": "scheduled"
+              },
+              {
+                "key": "$workers.scriptVersion.id",
+                "value": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+              }
+            ],
+            "groupKey": "exceededCpu ⬤ scheduled ⬤ 457a3e69-307a-4c4c-a26e-fa1cd3c0e580",
+            "value": 10,
+            "interval": 1.0212765957446808,
+            "sampleInterval": 1.0212765957446808,
+            "count": 1728
+          },
+          {
+            "groups": [
+              {
+                "key": "$workers.outcome",
+                "value": "ok"
+              },
+              {
+                "key": "$workers.eventType",
+                "value": "fetch"
+              },
+              {
+                "key": "$workers.scriptVersion.id",
+                "value": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+              }
+            ],
+            "groupKey": "ok ⬤ fetch ⬤ 457a3e69-307a-4c4c-a26e-fa1cd3c0e580",
+            "value": 23,
+            "interval": 1.1730769230769231,
+            "sampleInterval": 1.1730769230769231,
+            "count": 61
+          }
+        ]
+      },
+      {
+        "alias": "cpuP99Ms",
+        "calculation": "p99($workers.cpuTimeMs)",
+        "aggregates": [
+          {
+            "groups": [
+              {
+                "key": "$workers.outcome",
+                "value": "ok"
+              },
+              {
+                "key": "$workers.eventType",
+                "value": "scheduled"
+              },
+              {
+                "key": "$workers.scriptVersion.id",
+                "value": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+              }
+            ],
+            "groupKey": "ok ⬤ scheduled ⬤ 457a3e69-307a-4c4c-a26e-fa1cd3c0e580",
+            "value": 62,
+            "interval": 1.0251748251748252,
+            "sampleInterval": 1.0251748251748252,
+            "count": 733
+          },
+          {
+            "groups": [
+              {
+                "key": "$workers.outcome",
+                "value": "exceededCpu"
+              },
+              {
+                "key": "$workers.eventType",
+                "value": "scheduled"
+              },
+              {
+                "key": "$workers.scriptVersion.id",
+                "value": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+              }
+            ],
+            "groupKey": "exceededCpu ⬤ scheduled ⬤ 457a3e69-307a-4c4c-a26e-fa1cd3c0e580",
+            "value": 10,
+            "interval": 1.0212765957446808,
+            "sampleInterval": 1.0212765957446808,
+            "count": 1728
+          },
+          {
+            "groups": [
+              {
+                "key": "$workers.outcome",
+                "value": "ok"
+              },
+              {
+                "key": "$workers.eventType",
+                "value": "fetch"
+              },
+              {
+                "key": "$workers.scriptVersion.id",
+                "value": "457a3e69-307a-4c4c-a26e-fa1cd3c0e580"
+              }
+            ],
+            "groupKey": "ok ⬤ fetch ⬤ 457a3e69-307a-4c4c-a26e-fa1cd3c0e580",
+            "value": 29,
+            "interval": 1.1730769230769231,
+            "sampleInterval": 1.1730769230769231,
+            "count": 61
+          }
+        ]
+      }
+    ],
+    "statistics": {
+      "elapsed": 2.152826769,
+      "rows_read": 12676213,
+      "bytes_read": 6732341670,
+      "abr_level": 1
+    }
+  },
+  "status": 200
+}

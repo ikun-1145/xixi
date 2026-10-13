@@ -1,0 +1,249 @@
+{
+  "success": true,
+  "run": {
+    "id": "6pm1b1872f6nonvtmlguqntg",
+    "query": {
+      "id": "afdian-open-final-versioned",
+      "description": "",
+      "name": "",
+      "generated": false,
+      "parameters": {
+        "filters": [
+          {
+            "key": "$workers.scriptName",
+            "operation": "eq",
+            "value": "afdianpay",
+            "type": "string"
+          },
+          {
+            "key": "$workers.scriptVersion.id",
+            "operation": "eq",
+            "value": "a84fa755-4a9e-456a-94eb-8746c7f11d1b",
+            "type": "string"
+          },
+          {
+            "key": "$workers.outcome",
+            "operation": "exists",
+            "type": "string"
+          }
+        ],
+        "calculations": [
+          {
+            "alias": "invocations",
+            "operator": "count"
+          },
+          {
+            "keyType": "number",
+            "alias": "cpuP50Ms",
+            "key": "$workers.cpuTimeMs",
+            "operator": "median"
+          },
+          {
+            "keyType": "number",
+            "alias": "cpuP95Ms",
+            "key": "$workers.cpuTimeMs",
+            "operator": "p95"
+          },
+          {
+            "keyType": "number",
+            "alias": "cpuP99Ms",
+            "key": "$workers.cpuTimeMs",
+            "operator": "p99"
+          }
+        ],
+        "groupBys": [
+          {
+            "type": "string",
+            "value": "$workers.outcome"
+          },
+          {
+            "type": "string",
+            "value": "$workers.eventType"
+          }
+        ]
+      },
+      "workspaceId": "5d99df0919786bd4d9de3dd5bdcbfb4d",
+      "environmentId": "cloudflare",
+      "userId": "e0d46e6607db44e40a3ba5fcb444ba2c",
+      "created": "2026-10-13T00:23:45.295Z",
+      "updated": "2026-10-13T00:23:45.295Z"
+    },
+    "accountId": "5d99df0919786bd4d9de3dd5bdcbfb4d",
+    "timeframe": {
+      "from": 1791850316911,
+      "to": 1791851024507
+    },
+    "userId": "e0d46e6607db44e40a3ba5fcb444ba2c",
+    "status": "COMPLETED",
+    "granularity": 12000,
+    "dry": true,
+    "statistics": {
+      "elapsed": 0.375654748,
+      "rows_read": 8959276,
+      "bytes_read": 189287386,
+      "abr_level": 1
+    }
+  },
+  "calculations": [
+    {
+      "alias": "invocations",
+      "calculation": "count",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "$workers.outcome",
+              "value": "ok"
+            },
+            {
+              "key": "$workers.eventType",
+              "value": "scheduled"
+            }
+          ],
+          "groupKey": "ok ⬤ scheduled",
+          "value": 6,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 6
+        },
+        {
+          "groups": [
+            {
+              "key": "$workers.outcome",
+              "value": "ok"
+            },
+            {
+              "key": "$workers.eventType",
+              "value": "fetch"
+            }
+          ],
+          "groupKey": "ok ⬤ fetch",
+          "value": 1,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "alias": "cpuP50Ms",
+      "calculation": "median($workers.cpuTimeMs)",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "$workers.outcome",
+              "value": "ok"
+            },
+            {
+              "key": "$workers.eventType",
+              "value": "scheduled"
+            }
+          ],
+          "groupKey": "ok ⬤ scheduled",
+          "value": 8,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 6
+        },
+        {
+          "groups": [
+            {
+              "key": "$workers.outcome",
+              "value": "ok"
+            },
+            {
+              "key": "$workers.eventType",
+              "value": "fetch"
+            }
+          ],
+          "groupKey": "ok ⬤ fetch",
+          "value": 1,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "alias": "cpuP95Ms",
+      "calculation": "p95($workers.cpuTimeMs)",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "$workers.outcome",
+              "value": "ok"
+            },
+            {
+              "key": "$workers.eventType",
+              "value": "scheduled"
+            }
+          ],
+          "groupKey": "ok ⬤ scheduled",
+          "value": 28,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 6
+        },
+        {
+          "groups": [
+            {
+              "key": "$workers.outcome",
+              "value": "ok"
+            },
+            {
+              "key": "$workers.eventType",
+              "value": "fetch"
+            }
+          ],
+          "groupKey": "ok ⬤ fetch",
+          "value": 1,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        }
+      ]
+    },
+    {
+      "alias": "cpuP99Ms",
+      "calculation": "p99($workers.cpuTimeMs)",
+      "aggregates": [
+        {
+          "groups": [
+            {
+              "key": "$workers.outcome",
+              "value": "ok"
+            },
+            {
+              "key": "$workers.eventType",
+              "value": "scheduled"
+            }
+          ],
+          "groupKey": "ok ⬤ scheduled",
+          "value": 28,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 6
+        },
+        {
+          "groups": [
+            {
+              "key": "$workers.outcome",
+              "value": "ok"
+            },
+            {
+              "key": "$workers.eventType",
+              "value": "fetch"
+            }
+          ],
+          "groupKey": "ok ⬤ fetch",
+          "value": 1,
+          "interval": 1,
+          "sampleInterval": 1,
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,24 @@
+{
+  "candidate_commit": "ae32288431ce44eba3e13cc34e5c7f877696ebd2",
+  "deployment_id": "e30d8706-0ac8-49d4-a54a-7c9b957edd72",
+  "version_id": "a84fa755-4a9e-456a-94eb-8746c7f11d1b",
+  "opened_at": "2026-10-13T00:11:56.911179Z",
+  "final_settings_verified_at": "2026-10-13T00:24:06.993682+00:00",
+  "bindings_unchanged": true,
+  "cron": "*/2 * * * *",
+  "captured_cron_invocations": 6,
+  "captured_cron_intervals_seconds": [
+    120,
+    120,
+    120,
+    120,
+    120
+  ],
+  "captured_system_events": 9,
+  "captured_exceededCpu": 0,
+  "captured_other_exceptions": 0,
+  "old_version_events": 0,
+  "deployed_bundle_matches_dry_run_sha256": true,
+  "payment_production_test_writes": false,
+  "verdict": "DEPLOYED_PENDING_OBSERVATION"
+}

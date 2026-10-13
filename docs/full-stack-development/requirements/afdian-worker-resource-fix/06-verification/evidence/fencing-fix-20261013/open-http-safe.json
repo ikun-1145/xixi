@@ -1,0 +1,26 @@
+[
+  {
+    "host": "afdianpay.sunland.dev",
+    "path": "/payment/reconcile",
+    "status": 405,
+    "body": "Method not allowed"
+  },
+  {
+    "host": "afdianpay.sunland.dev",
+    "path": "/admin/reconcile",
+    "status": 405,
+    "body": "Method not allowed"
+  },
+  {
+    "host": "afdianpay.sunland.dev",
+    "path": "/webhook/afdian",
+    "status": 405,
+    "body": "Method not allowed"
+  },
+  {
+    "host": "waffopay.sunland.dev",
+    "path": "/checkout/waffo/production/status",
+    "status": 405,
+    "body": "{\"error\":\"method not allowed\"}"
+  }
+]
