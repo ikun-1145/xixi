@@ -14,9 +14,9 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Sunland AI · Beta">
-<link rel="apple-touch-icon" href="/p/ailogo.png">
-<link rel="icon" type="image/png" href="p/ailogo.png">
-<link rel="shortcut icon" href="p/ailogo.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="icon" type="image/png" href="/favicon.png">
+<link rel="shortcut icon" href="/favicon.png">
 
 <!-- CSP for GeeTest -->
 <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;
@@ -214,13 +214,13 @@ body::before {
   margin: 0 auto var(--space-4);
   border-radius: var(--r-lg);
   overflow: hidden;
-  border: 1px solid var(--border);
-  box-shadow: var(--shadow-sm);
+  border: 0;
+  box-shadow: none;
   display: flex;
   align-items: center;
   justify-content: center;
 }
-.brand img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.brand img { width: 100%; height: 100%; object-fit: contain; display: block; }
 
 .title {
   margin: 0 0 var(--space-1);
@@ -384,7 +384,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       <span class="close">×</span>
 
       <div class="brand">
-        <img src="p/ailogo.png" alt="Sunland AI · Beta">
+        <img src="p/branding/sunland-logo-transparent.png" alt="Sunland AI · Beta">
       </div>
 
       <h2 class="title">登录 Sunland AI · Beta</h2>

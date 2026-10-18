@@ -99,9 +99,9 @@ button {
   width: 36px;
   height: 36px;
   flex: 0 0 auto;
-  border-radius: var(--r-md);
-  object-fit: cover;
-  background: var(--brand-soft);
+  border-radius: 0;
+  object-fit: contain;
+  background: transparent;
 }
 
 .brand .bname {
@@ -777,7 +777,7 @@ textarea#comment::placeholder {
   display: block;
   margin: 0 auto var(--space-3);
   border-radius: var(--r-md);
-  object-fit: cover;
+  object-fit: contain;
 }
 
 /* ---------- Toast ---------- */

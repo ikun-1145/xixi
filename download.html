@@ -184,23 +184,16 @@
     }
     .logo-img {
       width: 120px; height: 120px;
-      border-radius: 28px;
-      object-fit: cover;
+      border-radius: 0;
+      object-fit: contain;
       position: relative;
       z-index: 2;
-      animation: logoLev 8s ease-in-out infinite, breatheGlow 4s ease-in-out infinite;
-      box-shadow:
-        0 0 0 1px rgba(113,248,252,0.2),
-        0 16px 40px rgba(0,0,0,0.45),
-        0 0 40px rgba(113,248,252,0.12);
+      animation: logoLev 8s ease-in-out infinite;
+      filter: drop-shadow(0 0 18px rgba(113,248,252,0.15));
     }
     @keyframes logoLev {
       0%,100% { transform: translateY(0px) rotate(0deg); }
       50%      { transform: translateY(-12px) rotate(0.5deg); }
-    }
-    @keyframes breatheGlow {
-      0%,100% { box-shadow: 0 0 0 1px rgba(113,248,252,0.2), 0 16px 40px rgba(0,0,0,0.45), 0 0 40px rgba(113,248,252,0.12); }
-      50%      { box-shadow: 0 0 0 1px rgba(113,248,252,0.35), 0 16px 40px rgba(0,0,0,0.45), 0 0 60px rgba(113,248,252,0.25); }
     }
 
     /* Orbiting rings */
@@ -578,8 +571,8 @@
     }
     .chat-header-icon {
       width: 32px; height: 32px;
-      border-radius: 10px;
-      object-fit: cover;
+      border-radius: 0;
+      object-fit: contain;
       box-shadow: 0 0 12px rgba(113,248,252,0.2);
     }
     .chat-header-info { flex: 1; }
@@ -633,8 +626,8 @@
     }
     .chat-avatar {
       width: 30px; height: 30px;
-      border-radius: 50%;
-      object-fit: cover;
+      border-radius: 0;
+      object-fit: contain;
       flex-shrink: 0;
       margin-top: 2px;
     }
@@ -1041,8 +1034,8 @@
     }
     .foot-logo-img {
       width: 30px; height: 30px;
-      border-radius: 8px;
-      object-fit: cover;
+      border-radius: 0;
+      object-fit: contain;
       opacity: 0.7;
       transition: opacity 0.3s ease;
     }
@@ -1146,7 +1139,7 @@
 
       <div class="hero-content">
         <div class="logo-wrap">
-          <img src="p/ailogo.png" alt="Sunland AI · Beta" class="logo-img">
+          <img src="p/branding/sunland-logo-transparent.png" alt="Sunland AI · Beta" class="logo-img">
           <div class="logo-ring"></div>
           <div class="logo-ring-2"></div>
         </div>
@@ -1228,7 +1221,7 @@
         <div class="showcase-wrap" data-obs>
           <div class="chat-window">
             <div class="chat-header">
-              <img src="p/ailogo.png" alt="Sunland AI · Beta" class="chat-header-icon">
+              <img src="p/branding/sunland-logo-transparent.png" alt="Sunland AI · Beta" class="chat-header-icon">
               <div class="chat-header-info">
                 <div class="chat-header-name">Sunland AI · Beta</div>
                 <div class="chat-header-status">
@@ -1242,7 +1235,7 @@
                 <div class="chat-bubble" data-i18n="chatUserMsg">你好，霜蓝！你能帮我写一段关于科技未来的文案吗？</div>
               </div>
               <div class="chat-msg ai" id="aiMsg1" style="animation-delay:0.8s">
-                <img src="p/ailogo.png" alt="Sunland AI · Beta" class="chat-avatar">
+                <img src="p/branding/sunland-logo-transparent.png" alt="Sunland AI · Beta" class="chat-avatar">
                 <div class="chat-bubble" id="aiBubble1">
                   <span id="typewriter1"></span><span class="typing-cursor" id="cursor1"></span>
                 </div>
@@ -1350,7 +1343,7 @@
     <footer>
       <div class="foot-inner">
         <div class="foot-logo">
-          <img src="p/ailogo.png" alt="Sunland AI · Beta" class="foot-logo-img">
+          <img src="p/branding/sunland-logo-transparent.png" alt="Sunland AI · Beta" class="foot-logo-img">
           <span class="foot-logo-name">Sunland AI · Beta</span>
         </div>
 

@@ -2594,6 +2594,11 @@
     "ko": "Android 및 iOS 다운로드",
     "es": "Descargas para Android e iOS"
   },
+  "Android 7.0+；iOS 提供未签名 IPA，需自行签名。数据保留取决于签名与安装方式，备份前不要卸载旧版。": {
+    "zh-Hant": "Android 7.0+；iOS 提供未簽署 IPA，需自行簽署。資料保留取決於簽署與安裝方式，備份前請勿解除安裝舊版。",
+    "ko": "Android 7.0 이상. iOS는 직접 서명이 필요한 미서명 IPA를 제공합니다. 데이터 보존 여부는 서명 및 설치 방식에 따라 달라집니다. 백업하기 전에 이전 버전을 삭제하지 마세요.",
+    "es": "Android 7.0+; iOS ofrece un IPA sin firmar que debes firmar por tu cuenta. La conservación de datos depende de la firma y del método de instalación. No desinstales la versión anterior antes de hacer una copia de seguridad."
+  },
   "Android 7.0+；iOS IPA 适用于已注册测试设备或自行签名安装": {
     "zh-Hant": "Android 7.0+；iOS IPA 適用於已註冊測試裝置或自行重新簽署安裝",
     "ko": "Android 7.0 이상. iOS IPA는 등록된 테스트 기기 또는 개인 재서명이 필요합니다",

@@ -566,6 +566,7 @@
     ["获取 Sunland AI · Beta", "Get Sunland AI · Beta", "Sunland AI · Beta を入手"],
     ["开启你的智能对话之旅", "Start your intelligent conversation journey", "インテリジェントな対話の旅を始めよう"],
     ["Android 与 iOS 下载", "Android & iOS downloads", "Android・iOS版ダウンロード"],
+    ["Android 7.0+；iOS 提供未签名 IPA，需自行签名。数据保留取决于签名与安装方式，备份前不要卸载旧版。", "Android 7.0+; iOS provides an unsigned IPA that requires your own signing. Data retention depends on signing and installation. Do not uninstall the old version before backing up.", "Android 7.0以降。iOSは未署名IPAのため、ご自身で署名する必要があります。データの保持は署名とインストール方法によって異なります。バックアップ前に旧版をアンインストールしないでください。"],
     ["Android 7.0+；iOS IPA 适用于已注册测试设备或自行签名安装", "Android 7.0+; the iOS IPA requires a registered test device or personal re-signing", "Android 7.0以降。iOS IPAは登録済みテスト端末または再署名が必要です"],
     ["Android APK · Apple IPA", "Android APK · Apple IPA", "Android APK・Apple IPA"],
     ["立即下载 Android APK", "Download Android APK", "Android APKをダウンロード"],
