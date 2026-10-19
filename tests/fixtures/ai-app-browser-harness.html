@@ -2,8 +2,15 @@
 <html lang="zh-CN">
 <head>
   <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' data: blob:; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline'; connect-src 'self' https://api.sunland.dev; img-src 'self' data: blob:;">
   <title>AI App Browser Harness</title>
+  <script src="../../p/vendor/supabase-2.110.7.js"></script>
+  <script src="../../p/vendor/marked-18.0.6.umd.js"></script>
+  <script src="../../p/vendor/dompurify-3.4.12.min.js"></script>
+  <script src="../../p/js/site-i18n-extra.js"></script>
+  <script src="../../p/js/site-i18n.js"></script>
+  <link rel="stylesheet" href="../../p/css/icons.css">
   <link rel="stylesheet" href="../../ai/styles-1.css">
   <link rel="stylesheet" href="../../ai/styles-2.css">
   <link rel="stylesheet" href="../../ai/model-menu.css">
@@ -15,6 +22,7 @@
     const encode = value => btoa(JSON.stringify(value))
       .replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
     const params = new URLSearchParams(location.search);
+    if (params.has('lang')) window.SiteI18n.setLanguage(params.get('lang'));
     const requestedUserId = params.get('userId') || 'browser-app-user';
     const userId = /^[A-Za-z0-9@._:-]{3,128}$/.test(requestedUserId)
       ? requestedUserId
@@ -30,6 +38,7 @@
     const failFirstAiRequest = params.get('failFirstAiRequest') === '1';
     const replyDelayMs = Math.min(Math.max(Number(params.get('replyDelayMs')) || 0, 0), 5000);
     let aiRequestCount = 0;
+    window.__aiRequests = [];
     if (params.get('autoConfirm') === '1') window.confirm = () => true;
     if (!preserve) {
       keys.forEach(key => localStorage.removeItem(key));
@@ -48,6 +57,11 @@
       ?.textContent;
     document.documentElement.className = shell.documentElement.className;
     document.body.className = shell.body.className;
+    if (params.get('largeText') === '1') {
+      const style = document.createElement('style');
+      style.textContent = '.input-toolbar #modelSelector { font-size: 22px; }';
+      document.head.append(style);
+    }
     for (const attribute of shell.body.attributes) {
       if (attribute.name !== 'class') document.body.setAttribute(attribute.name, attribute.value);
     }
@@ -85,6 +99,13 @@
           user: { id: userId, email: userEmail },
         }), { status: 200, headers: { 'Content-Type': 'application/json' } });
       }
+      if (target === 'https://api.sunland.dev/v1/usage') {
+        return Response.json({ userId, date: new Date(Date.now() + 8 * 3600000).toISOString().slice(0, 10), isPro: false, remain: 20 });
+      }
+      if (target.includes('/rest/v1/ai_models')) {
+        return Response.json([{ id: 'flash', provider: 'deepseek', display_name: 'DeepSeek V4 Flash',
+          model_name: 'deepseek-v4-flash', free_enabled: true, pro_enabled: true, enabled: true, sort_order: 0 }]);
+      }
       if (target.startsWith('https://klyrasrqgxijwrxuoevj.supabase.co/')) {
         return new Response('[]', {
           status: 200,
@@ -103,9 +124,14 @@
           await new Promise(resolve => setTimeout(resolve, replyDelayMs));
         }
         const body = JSON.parse(options.body || '{}');
+        window.__aiRequests.push(body);
         const encoder = new TextEncoder();
         const stream = new ReadableStream({
           start(controller) {
+            if (body.web_search && params.get('webSearch') !== 'legacy') {
+              controller.enqueue(encoder.encode(`data: ${JSON.stringify({ type: 'web_search_status',
+                status: params.get('webSearch') === 'failed' ? 'search_failed' : 'search_complete' })}\n\n`));
+            }
             if (body.deep) {
               controller.enqueue(encoder.encode(`data: ${JSON.stringify({ choices: [{ delta: { reasoning_content: 'mock reasoning' } }] })}\n`));
             }
@@ -116,11 +142,18 @@
         });
         return new Response(stream, { status: 200, headers: { 'Content-Type': 'text/event-stream', 'x-remain': '10' } });
       }
+      if (new URL(target, location.href).origin !== location.origin) {
+        throw new Error('External network blocked by the Mock harness');
+      }
       return nativeFetch(url, options);
     };
 
     try {
       await import(`../../ai/app.js?browser-harness=${Date.now()}`);
+      if (params.has('theme')) {
+        document.documentElement.classList.toggle('night', params.get('theme') === 'night');
+        document.body.classList.toggle('night', params.get('theme') === 'night');
+      }
       window.__aiHarness = {
         token,
         cleanup() { keys.forEach(key => localStorage.removeItem(key)); },

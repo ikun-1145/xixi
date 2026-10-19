@@ -971,3 +971,52 @@ body > [class*="geetest_"] {
   position: fixed !important;
   z-index: 9999999 !important;
 }
+
+/* Search stays in the existing composer; wrap tools before squeezing controls. */
+.left-tools {
+  min-width: 0;
+  flex-wrap: wrap;
+}
+.input-toolbar > #sendBtn,
+.left-tools > #modelSelector {
+  flex-shrink: 0;
+}
+.left-tools > #modelSelector {
+  max-width: 100%;
+  box-sizing: border-box;
+  height: auto;
+  min-height: var(--btn-size);
+}
+#webSearchBtn {
+  position: relative;
+  padding: 0;
+  color: #64748b;
+  transition: color 180ms ease, background-color 180ms ease, border-color 180ms ease;
+}
+body.night #webSearchBtn { color: #9ca3af; }
+#webSearchBtn.active {
+  color: #0e9aa7;
+  background: rgba(14,154,167,.12);
+  border-color: rgba(14,154,167,.35);
+}
+body.night #webSearchBtn.active {
+  color: #3eede7;
+  background: rgba(62,237,231,.14);
+  border-color: rgba(62,237,231,.35);
+}
+#webSearchBtn:disabled { opacity: .42; cursor: not-allowed; }
+#webSearchBtn:focus-visible { outline: 2px solid currentColor; outline-offset: 3px; }
+#webSearchBtn:focus-visible::after { opacity: 1; }
+.web-search-status {
+  display: block;
+  min-height: 1.5em;
+  font-size: .875em;
+  line-height: 1.5;
+  color: #64748b;
+}
+body.night .web-search-status { color: #cbd5e1; }
+.bubble:has(> .web-search-status) > .thinking,
+.bubble:has(> .web-search-status) > .reasoning-disclosure { display: none; }
+@media (prefers-reduced-motion: reduce) {
+  #webSearchBtn { transition: none; }
+}

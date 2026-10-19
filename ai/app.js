@@ -388,6 +388,13 @@ document.addEventListener("DOMContentLoaded", () => {
 const fileInput = document.getElementById("fileInput");
 const uploadBtn = document.getElementById("uploadBtn");
 const deepBtn = document.getElementById("deepBtn");
+const webSearchBtn = document.getElementById("webSearchBtn");
+let webSearchEnabled = false;
+webSearchBtn.addEventListener("click", () => {
+  if (webSearchBtn.disabled) return;
+  webSearchEnabled = !webSearchEnabled;
+  updateWebSearchButton();
+});
 const previewBox = document.getElementById("uploadPreview");
 let pendingFiles = [];
 let providerCapabilityState = {
@@ -402,6 +409,7 @@ function clearPendingAttachments() {
   pendingFiles = [];
   fileInput.value = "";
   previewBox.innerHTML = "";
+  updateWebSearchButton();
 }
 
 uploadBtn.onclick = async () => {
@@ -698,6 +706,7 @@ function handleFile(file) {
   }
 
   pendingFiles.push(file);
+  updateWebSearchButton();
 
   const item = document.createElement("div");
   item.style.position = "relative";
@@ -748,6 +757,7 @@ item.style.borderRadius = "12px";
   del.addEventListener("click", (e) => {
   e.stopPropagation();
     pendingFiles = pendingFiles.filter(f => f !== file);
+    updateWebSearchButton();
     const image = item.querySelector('img[src^="blob:"]');
     if (image) {
       try { URL.revokeObjectURL(image.src); } catch {}
@@ -1428,6 +1438,19 @@ function getAvatarUrl(user) {
   );
 }
 
+function updateWebSearchButton() {
+  const disabled = !providerCapabilityState.fileUpload || pendingFiles.length > 0;
+  const label = disabled ? "当前模式暂不支持联网搜索" : "联网搜索";
+  webSearchBtn.disabled = disabled;
+  webSearchBtn.setAttribute("aria-disabled", String(disabled));
+  webSearchBtn.setAttribute("aria-pressed", String(!disabled && webSearchEnabled));
+  webSearchBtn.setAttribute("aria-label", uiText(label));
+  webSearchBtn.title = uiText(label);
+  webSearchBtn.dataset.tooltip = uiText(label);
+  webSearchBtn.classList.toggle("active", !disabled && webSearchEnabled);
+}
+window.addEventListener("site-language-change", updateWebSearchButton);
+
 function updateDeepButton() {
   const btn = document.getElementById("deepBtn");
   if (!btn) return;
@@ -1479,6 +1502,7 @@ function updateProviderCapabilityUI() {
   if (isSunland) clearPendingAttachments();
 
   updateDeepButton();
+  updateWebSearchButton();
 }
 function updateModelUI() {
   const el = document.getElementById("modelSelector");
@@ -3046,6 +3070,7 @@ function loadChat(id) {
       });
       const pendingMessage = chatInner.lastElementChild;
       activeRequest.bubble = pendingMessage?.querySelector(".bubble") ?? null;
+      updateWebSearchStatus(activeRequest, activeRequest.webSearchStatus);
     }
 
     const pendingError = requestErrorsByConversation.get(conversationIdKey(id));
@@ -3499,6 +3524,7 @@ function addRegenerateButton(requestContext, fullText) {
         userId:conversation.userId,providerId:"deepseek",model:conversation.model,
         deep:requestContext.deep,history:intent.original.history.slice(0,-1)});
       if (!context) throw new Error("无法开始重新生成；原回答已保留");
+      context.webSearch = webSearchEnabled;
       context.regenerationId = intent.requestId;
       context.userText = requestContext.userText;
       addMessage("", "ai", {thinking:true,deepThinking:context.deep});
@@ -3614,6 +3640,34 @@ function decorateVisibleCodeBlocks(requestContext) {
   });
 }
 
+// Search UI stays inside the existing pending bubble and never enters history.
+function updateWebSearchStatus(requestContext, status) {
+  if (!requestContext.webSearch) return;
+  if (status === "search_complete" || status === "search_failed") {
+    requestContext.webSearchConfirmed = true;
+  }
+  requestContext.webSearchStatus = status;
+  if (!isRequestVisible(requestContext)) return;
+  requestContext.bubble.querySelector(".web-search-status")?.remove();
+  if (status === "search_failed" || status === "unconfirmed") {
+    if (!requestContext.webSearchNoticeShown) {
+      showToast(uiText(status === "search_failed"
+        ? "联网搜索失败，已使用普通模式回答"
+        : "未确认联网搜索，当前回答可能未使用网络资料"));
+      requestContext.webSearchNoticeShown = true;
+    }
+    return;
+  }
+  if (status !== "searching" && status !== "search_complete") return;
+  const label = document.createElement("span");
+  label.className = "web-search-status";
+  label.setAttribute("role", "status");
+  label.setAttribute("aria-live", "polite");
+  label.textContent = uiText(status === "search_complete"
+    ? "正在整理搜索结果…" : "正在搜索网络…");
+  requestContext.bubble.appendChild(label);
+}
+
 async function runDeepSeekRequest(requestContext) {
   let fullText = "";
   let reasoning = "";
@@ -3628,9 +3682,11 @@ async function runDeepSeekRequest(requestContext) {
     requestContext.reasoningContent = "";
     let softTimeoutShown = false;
     let eventBuffer = "", completed = false;
+    updateWebSearchStatus(requestContext, "searching");
     const timeoutId = setTimeout(() => {
-      if (!softTimeoutShown && isRequestVisible(requestContext) && !fullText) {
-        if (!requestContext.deep) {
+      if (!softTimeoutShown && !fullText) {
+        updateWebSearchStatus(requestContext, "answering");
+        if (isRequestVisible(requestContext) && !requestContext.deep) {
           requestContext.bubble.textContent = uiText("响应较慢，请稍等…");
         }
         softTimeoutShown = true;
@@ -3662,6 +3718,7 @@ async function runDeepSeekRequest(requestContext) {
         messages: requestMessages,
         deep: requestContext.deep,
         request_id: quotaRequestId,
+        web_search: Boolean(requestContext.webSearch),
       }, false, requestContext.controller.signal, requestContext.traceContext);
       if (!res) return;
       requestContext.traceId = observeTraceResponse("api-worker", res, requestContext.traceId);
@@ -3693,7 +3750,17 @@ async function runDeepSeekRequest(requestContext) {
         return;
       }
 
-      const reader = res.body.getReader();
+      // Moderation/legacy gateways may return a non-streamed chat completion.
+      // Feed its text through the same rendering/history path, without a new request.
+      let responseBody = res.body;
+      if (res.headers.get("content-type")?.includes("application/json")) {
+        const payload = await res.json();
+        if (abortMissingTarget(requestContext)) return;
+        const content = payload.choices?.[0]?.message?.content;
+        if (typeof content !== "string" || !content.trim()) throw new Error("Invalid chat response");
+        responseBody = new Response(`data: ${JSON.stringify({ choices: [{ delta: { content }, finish_reason: "stop" }] })}\n\ndata: [DONE]\n\n`).body;
+      }
+      const reader = responseBody.getReader();
       const decoder = new TextDecoder();
       if (isRequestVisible(requestContext)) {
         if (requestContext.deep) {
@@ -3704,6 +3771,7 @@ async function runDeepSeekRequest(requestContext) {
         }
       }
 
+      updateWebSearchStatus(requestContext, requestContext.webSearchStatus);
       while (true) {
         if (abortMissingTarget(requestContext)) {
           await reader.cancel().catch(() => {});
@@ -3728,9 +3796,20 @@ async function runDeepSeekRequest(requestContext) {
             continue;
           }
           if (!requestCoordinator.canWrite(requestContext)) continue;
+          if (parsed.type === "web_search_status") {
+            if (["search_complete", "search_failed"].includes(parsed.status) &&
+                !fullText && !reasoning) updateWebSearchStatus(requestContext, parsed.status);
+            continue;
+          }
           if (parsed.choices?.[0]?.finish_reason) completed = true;
           const delta = parsed.choices?.[0]?.delta || {};
 
+          if (delta.content || delta.reasoning_content) {
+            if (requestContext.webSearch && !requestContext.webSearchConfirmed) {
+              updateWebSearchStatus(requestContext, "unconfirmed");
+            }
+            updateWebSearchStatus(requestContext, "answering");
+          }
           if (requestContext.deep && delta.reasoning_content) {
             reasoning += delta.reasoning_content;
             requestContext.reasoningContent = reasoning;
@@ -3816,6 +3895,7 @@ async function runDeepSeekRequest(requestContext) {
     } finally {
       clearTimeout(timeoutId);
       clearTimeout(hardTimeoutId);
+      updateWebSearchStatus(requestContext, "answering");
     }
   }
 }
@@ -3983,6 +4063,7 @@ async function send() {
   requestContext.traceId = requestContext.traceContext?.traceId ?? null;
   requestContext.canRecordDiagnostics = () =>
     requestCoordinator.canWrite(requestContext);
+  requestContext.webSearch = webSearchEnabled && !isSunlandConversation && !visionImages.length;
   requestContext.userText = visionPrompt;
   requestContext.visionImages = visionImages;
   requestContext.visionPrompt = visionPrompt;

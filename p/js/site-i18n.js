@@ -28,6 +28,13 @@
   });
 
   const rows = [
+    // Manual DeepSeek web search (page-memory preference).
+    ["联网搜索", "Web Search", "ウェブ検索", {"zh-Hant": "聯網搜尋", "ko": "웹 검색", "es": "Búsqueda web"}],
+    ["正在搜索网络…", "Searching the web…", "ウェブを検索中…", {"zh-Hant": "正在搜尋網路…", "ko": "웹 검색 중…", "es": "Buscando en la web…"}],
+    ["正在整理搜索结果…", "Processing search results…", "検索結果を整理中…", {"zh-Hant": "正在整理搜尋結果…", "ko": "검색 결과 정리 중…", "es": "Procesando resultados de búsqueda…"}],
+    ["联网搜索失败，已使用普通模式回答", "Web search failed. Answering without web access.", "ウェブ検索に失敗しました。通常モードで回答します。", {"zh-Hant": "聯網搜尋失敗，已使用一般模式回答", "ko": "웹 검색에 실패했습니다. 웹 검색 없이 답변합니다.", "es": "La búsqueda web falló. Se responderá sin acceso a la web."}],
+    ["未确认联网搜索，当前回答可能未使用网络资料", "Web search was not confirmed. This answer may not use web sources.", "ウェブ検索を確認できませんでした。回答にウェブ情報が使われていない可能性があります。", {"zh-Hant": "未確認聯網搜尋，目前回答可能未使用網路資料", "ko": "웹 검색을 확인하지 못했습니다. 답변에 웹 자료가 사용되지 않았을 수 있습니다.", "es": "No se confirmó la búsqueda web. Esta respuesta puede no usar fuentes web."}],
+    ["当前模式暂不支持联网搜索", "Web search is unavailable in this mode", "このモードではウェブ検索を利用できません", {"zh-Hant": "目前模式暫不支援聯網搜尋", "ko": "이 모드에서는 웹 검색을 사용할 수 없습니다", "es": "La búsqueda web no está disponible en este modo"}],
     // Common shell and navigation.
     ["页面加载中", "Page loading", "ページを読み込み中"],
     ["语言切换", "Language selector", "言語切り替え"],
