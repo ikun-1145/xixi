@@ -28,12 +28,12 @@ function requestHarness({ enabled = true, response, visible = true, cancel = fal
   const requests = [], messages = [], statuses = [], notices = [], errors = [], usage = [], labels = [], timers = [];
   const context = {
     webSearch: enabled, model: 'deepseek-v4-flash', deep,
-    userId: 'user-a', conversationId: 7, history: [{ role: 'user', content: '原始问题' }],
+    sessionGeneration: 0, userId: 'user-a', conversationId: 7, history: [{ role: 'user', content: '原始问题' }],
     controller: new AbortController(), bubble: dom.window.document.querySelector('#bubble'),
   };
   const noop = () => {};
   const deps = {
-    window: { _isMobile: false }, document: dom.window.document,
+    sessionGeneration: 0, window: { _isMobile: false }, document: dom.window.document,
     uiText: x => x, isRequestVisible: () => visible, showToast: x => notices.push(x),
     newHistoryOperationId: () => 'request-7', setTimeout: (callback, delay) => { timers.push({ callback, delay }); return timers.length; }, clearTimeout: noop,
     stopRequest: noop, localStorage: { getItem: () => 'mock-token' },

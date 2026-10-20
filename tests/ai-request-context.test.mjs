@@ -58,6 +58,8 @@ function extractScheduleTitle({ conversations, generateTitleFromAI }) {
     'renderChatList',
     'generateTitleFromAI',
     'conversations',
+    'sessionGeneration',
+    'getCurrentUserId',
     `${source}; return scheduleRequestTitle;`,
   )(
     requestCoordinator,
@@ -67,6 +69,8 @@ function extractScheduleTitle({ conversations, generateTitleFromAI }) {
     () => {},
     generateTitleFromAI,
     conversations,
+    0,
+    () => 'user-a',
   );
 }
 
@@ -452,9 +456,13 @@ test('auxiliary API ID and payload survive actual authenticated 401 retry', asyn
   const sent=[];let token='old-token',generated=0;
   const api=new Function('localStorage','session','getCurrentUserId','getCurrentVerifiedIdentity',
     'getVerifiedToken','resolveIdentityResult','window','fetch','traceparentFor','newHistoryOperationId',
-    `${aiApp.slice(start,end)};return apiFetch;`)(
+    `const getVerifiedUserId = () => getCurrentUserId();
+     let sessionGeneration = 0, sessionToken = localStorage.getItem('token');
+     ${aiApp.slice(aiApp.indexOf('function captureSessionState()'), aiApp.indexOf('function getCurrentVerifiedIdentity()'))}
+     const resolve = resolveIdentityResult; resolveIdentityResult = async options => { const result = await resolve(options); sessionToken = localStorage.getItem('token'); return result; };
+     ${aiApp.slice(start,end)};return apiFetch;`)(
       {getItem:()=>token},{userId:'user-a'},()=> 'user-a',()=>({token}),identity=>identity.token,
-      async()=>{token='new-token';return {identity:{token}};},{},
+      async({state})=>{token='new-token';state.token=token;return {identity:{token}};},{},
       async(_,init)=>{sent.push(init);return new Response('{}',{status:sent.length===1?401:200});},
       ()=>null,()=>{generated++;return 'auxiliary-401-id';});
   const response=await api({messages:[{role:'user',content:'title'}]});

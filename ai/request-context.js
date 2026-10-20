@@ -29,12 +29,14 @@ export class RequestCoordinator {
   constructor({
     getConversation,
     getCurrentUserId,
+    getSessionGeneration = () => 0,
     onConversationChanged = () => {},
     createAbortController = () => new AbortController(),
     now = () => Date.now(),
   }) {
     this.getConversation = getConversation;
     this.getCurrentUserId = getCurrentUserId;
+    this.getSessionGeneration = getSessionGeneration;
     this.onConversationChanged = onConversationChanged;
     this.createAbortController = createAbortController;
     this.now = now;
@@ -75,6 +77,7 @@ export class RequestCoordinator {
       providerId,
       userId,
       identity,
+      sessionGeneration: this.getSessionGeneration(),
       model,
       deep: Boolean(deep),
       history: cloneHistory(history),
@@ -107,6 +110,7 @@ export class RequestCoordinator {
     if (context.controller.signal.aborted) return false;
     if (this.requests.get(context.requestId) !== context) return false;
     if (this.getCurrentUserId() !== context.userId) return false;
+    if (this.getSessionGeneration() !== context.sessionGeneration) return false;
 
     const conversation = this.getConversation(context.conversationId);
     if (!conversation) return false;

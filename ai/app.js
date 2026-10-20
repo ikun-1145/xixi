@@ -241,6 +241,9 @@ window.showLoginPrompt = goToLogin;
 
 // ===== ⭐ 全局API封装（使用本地token）=====
 async function authenticatedFetch(url, init = {}, _retried = false, requestIdentity = null) {
+  const state = captureSessionState();
+  const isCurrentRequest = () => isSessionStateCurrent(state, getCurrentVerifiedIdentity());
+  let staleRefresh = false;
   let token = requestIdentity?.token || localStorage.getItem("token");
   if (!token) return null;
 
@@ -252,13 +255,20 @@ async function authenticatedFetch(url, init = {}, _retried = false, requestIdent
   }
 
   async function refreshToken() {
+    if (!isCurrentRequest()) return null;
     const old = localStorage.getItem("token");
+    state.token = old;
     if (!old) return null;
     const result = await resolveIdentityResult({
       token: old,
       expectedUserId: requestIdentity?.userId ?? session?.userId ?? null,
       force: true,
+      state,
     });
+    if (result.reason === "stale-resolution" || !isCurrentRequest()) {
+      staleRefresh = true;
+      return null;
+    }
     if (result.reason === "verification-unavailable") {
       window.SunlandProPayment?.markUnavailable();
       throw new Error("verification-unavailable");
@@ -277,17 +287,28 @@ async function authenticatedFetch(url, init = {}, _retried = false, requestIdent
   const membershipRequest = window.SunlandProPayment?.captureRequest(false);
   const headers = new Headers(init.headers);
   if (token) headers.set("Authorization", "Bearer " + token);
-  const res = await fetch(url, {
-    ...init,
-    method: init.method || "POST",
-    headers: {
-      ...Object.fromEntries(headers.entries()),
-    },
-  });
+  let res;
+  try {
+    res = await fetch(url, {
+      ...init,
+      method: init.method || "POST",
+      headers: {
+        ...Object.fromEntries(headers.entries()),
+      },
+    });
+  } catch (error) {
+    if (!isCurrentRequest()) return null;
+    throw error;
+  }
 
-  if (membershipRequest && !window.SunlandProPayment.isCurrent(membershipRequest, false)) return null;
+  if (!isCurrentRequest()) return null;
+  // A verified same-session renewal may invalidate the credential snapshot.
+  // Membership changes with the same credential still keep their existing guard.
+  if (membershipRequest && !window.SunlandProPayment.isCurrent(membershipRequest, false) &&
+      token === localStorage.getItem("token")) return null;
   if (res.status === 403) {
     const denial = await res.clone().json().catch(() => null);
+    if (!isCurrentRequest()) return null;
     const code = denial?.code || denial?.error?.code || denial?.error;
     if (code === "PRO_REQUIRED" && window.SunlandProPayment?.isCurrent(membershipRequest, false)) {
       window.SunlandProPayment.requireProFree();
@@ -300,8 +321,16 @@ async function authenticatedFetch(url, init = {}, _retried = false, requestIdent
     if (requestIdentity?.userId && requestIdentity.userId !== getCurrentUserId()) {
       return null;
     }
+    // A parallel request may already have renewed this same verified session.
+    const renewedToken = getVerifiedToken(getCurrentVerifiedIdentity());
+    if (renewedToken && renewedToken !== token) {
+      return authenticatedFetch(url, init, true, requestIdentity
+        ? { ...requestIdentity, token: renewedToken }
+        : null);
+    }
     // 只重试一次，防止死循环
     const newToken = await refreshToken();
+    if (staleRefresh || !isCurrentRequest()) return null;
 
     if (newToken) {
       return authenticatedFetch(url, init, true, requestIdentity
@@ -318,6 +347,7 @@ async function authenticatedFetch(url, init = {}, _retried = false, requestIdent
 
   // ⭐ fallback 401 guard after retry
   if (res.status === 401 && _retried) {
+    if (token !== localStorage.getItem("token")) return null;
     if (requestIdentity?.userId && requestIdentity.userId !== getCurrentUserId()) {
       return null;
     }
@@ -906,6 +936,8 @@ const supabaseReady = import('../p/js/supabaseClient.js')
 
 let session = null;
 let historySessionGeneration = 0;
+let sessionGeneration = 0;
+let sessionToken = localStorage.getItem("token");
 let stopProActivationPolling = null;
 const PROFILE_META_ID = "__xixi_user_profile__";
 const PROFILE_CACHE_PREFIX = "xixi_profile_";
@@ -1008,6 +1040,7 @@ function stopAccountBanRealtime() {
   const channel = accountBanRealtimeChannel;
   accountBanRealtimeChannel = null;
   accountBanRealtimeUserId = null;
+  accountBanRealtimeStart = null;
   if (!channel) return;
   if (typeof supabase?.removeChannel === "function") {
     void supabase.removeChannel(channel);
@@ -1017,6 +1050,7 @@ function stopAccountBanRealtime() {
 }
 
 async function startAccountBanRealtime(userId) {
+  const generation = sessionGeneration;
   if (
     accountBanned ||
     !userId ||
@@ -1029,7 +1063,7 @@ async function startAccountBanRealtime(userId) {
   const start = { userId, promise: null };
   start.promise = (async () => {
     const databaseToken = await window.SunlandDatabaseToken?.get?.();
-    if (!databaseToken || getCurrentUserId() !== userId || accountBanned) return;
+    if (!databaseToken || generation !== sessionGeneration || getCurrentUserId() !== userId || accountBanned) return;
 
     if (typeof supabase.realtime?.setAuth === "function") {
       supabase.realtime.setAuth(databaseToken);
@@ -1046,7 +1080,7 @@ async function startAccountBanRealtime(userId) {
           filter: `user_id=eq.${userId}`,
         },
         payload => {
-          if (getCurrentUserId() !== userId || accountBanned) return;
+          if (generation !== sessionGeneration || getCurrentUserId() !== userId || accountBanned) return;
           const profile = payload?.new || payload?.record;
           if (profile?.is_banned === true) {
             showBannedAccountOverlay(profile.ban_reason);
@@ -1054,7 +1088,7 @@ async function startAccountBanRealtime(userId) {
         },
       );
 
-    if (getCurrentUserId() !== userId || accountBanned) {
+    if (generation !== sessionGeneration || getCurrentUserId() !== userId || accountBanned) {
       void channel.unsubscribe?.();
       return;
     }
@@ -1070,6 +1104,7 @@ async function startAccountBanRealtime(userId) {
       stopAccountBanRealtime();
     });
   })().catch(error => {
+    if (generation !== sessionGeneration) return;
     console.warn("账号封禁状态实时检测初始化失败，将使用资料同步兜底:", error?.message || error);
   }).finally(() => {
     if (accountBanRealtimeStart === start) accountBanRealtimeStart = null;
@@ -1078,7 +1113,24 @@ async function startAccountBanRealtime(userId) {
   return start.promise;
 }
 
+function captureSessionState() {
+  const token = localStorage.getItem("token");
+  if (token !== sessionToken) clearVerifiedSession();
+  return { token, generation: sessionGeneration, userId: session?.userId ?? null };
+}
+
+function isSessionStateCurrent(state, identity = null) {
+  if (!state || state.generation !== sessionGeneration) return false;
+  const token = localStorage.getItem("token");
+  if (token !== sessionToken) return false;
+  return token === state.token || Boolean(
+    identity && session?.identity === identity && getVerifiedToken(identity) === token &&
+    (!state.userId || getVerifiedUserId(identity) === state.userId)
+  );
+}
+
 function getCurrentVerifiedIdentity() {
+  if (localStorage.getItem("token") !== sessionToken) return null;
   const identity = identityAuthority.current();
   return identity && session?.identity === identity ? identity : null;
 }
@@ -1096,11 +1148,14 @@ function readCachedDisplayUser() {
   }
 }
 
-function persistVerifiedIdentity(identity) {
+function persistVerifiedIdentity(identity, state) {
+  if (!isSessionStateCurrent(state, identity)) return false;
   const userId = getVerifiedUserId(identity);
   const token = getVerifiedToken(identity);
   if (!userId || !token) return false;
   localStorage.setItem("token", token);
+  sessionToken = token;
+  state.token = token;
   localStorage.setItem("user", JSON.stringify({
     ...identity.user,
     // Compatibility cache only. Authentication never reads this field.
@@ -1109,17 +1164,25 @@ function persistVerifiedIdentity(identity) {
   return true;
 }
 
-async function resolveIdentityResult({ token, expectedUserId = null, force = false } = {}) {
+async function resolveIdentityResult({ token, expectedUserId = null, force = false, retainToken = false, state = captureSessionState() } = {}) {
+  if (token !== state.token || !isSessionStateCurrent(state)) return { ok: false, reason: "stale-resolution" };
   const result = await identityAuthority.resolve({
     token,
     cachedUser: readCachedDisplayUser(),
     expectedUserId,
     force,
+    retainToken,
+    isCurrent: () => isSessionStateCurrent(state, session?.identity),
   });
-  if (!result.ok || !isVerifiedIdentity(result.identity)) return result;
-  persistVerifiedIdentity(result.identity);
+  if (!isSessionStateCurrent(state, result.identity)) return { ok: false, reason: "stale-resolution" };
+  if (!result.ok) return result;
+  if (!isVerifiedIdentity(result.identity)) return { ok: false, reason: "stale-resolution" };
+  if (!persistVerifiedIdentity(result.identity, state)) return { ok: false, reason: "stale-resolution" };
   if (session?.identity !== result.identity) setSession(result.identity);
   await sunlandDiagnosticsRuntime.initialize();
+  if (!isSessionStateCurrent(state) || session?.identity !== result.identity || !isVerifiedIdentity(result.identity)) {
+    return { ok: false, reason: "stale-resolution" };
+  }
   return result;
 }
 
@@ -1156,6 +1219,12 @@ function setSession(identity) {
 }
 
 function clearVerifiedSession() {
+  ++sessionGeneration;
+  ++historySessionGeneration;
+  sessionToken = localStorage.getItem("token");
+  bumpRestoreVersion();
+  checkLoginPromise = null;
+  restoreLoginPromise = null;
   identityAuthority.clear();
   setSession(null);
   void sunlandDiagnosticsRuntime.initialize();
@@ -1164,8 +1233,26 @@ function clearVerifiedSession() {
   conversations = [];
   currentId = null;
   history = history.length ? [history[0]] : [];
+  currentProfile = null;
+  clearTimeout(syncTimer);
+  ++chatRenderVersion;
+  ++usageVersion;
+  for (const request of requestCoordinator.requests.values()) {
+    requestCoordinator.abort(request, "session-changed");
+    requestCoordinator.finish(request, "aborted");
+  }
+  clearPendingAttachments();
+  input.value = "";
+  chatInner.replaceChildren();
+  chatInner.style.opacity = "1";
+  isLoadingHistory = false;
   deepMode = false;
   updateDeepButton();
+  updateRequestUiState();
+  hideGlobalLoading();
+  sessionReady = true;
+  renderChatList();
+  scheduleRenderUser();
 }
 window.clearVerifiedSession = clearVerifiedSession;
 let isActivated = false;
@@ -1383,6 +1470,7 @@ function buildCloudData(
 }
 
 async function loadUserProfileFromCloud() {
+  const generation = sessionGeneration;
   const userId = getCurrentUserId();
   if (!userId || accountBanned) return;
 
@@ -1400,7 +1488,7 @@ async function loadUserProfileFromCloud() {
       .eq("user_id", userId)
       .maybeSingle();
 
-    if (getCurrentUserId() !== userId) return;
+    if (generation !== sessionGeneration || getCurrentUserId() !== userId) return;
 
     if (error) throw error;
 
@@ -1419,10 +1507,11 @@ async function loadUserProfileFromCloud() {
     window.SunlandProPayment?.applyMembership(data?.pro, membershipRequest);
 
   } catch (e) {
+    if (generation !== sessionGeneration || getCurrentUserId() !== userId) return;
     window.SunlandProPayment?.markUnavailable(membershipRequest);
     console.warn("头像资料同步失败:", e);
   } finally {
-    if (getCurrentUserId() === userId && !accountBanned) {
+    if (generation === sessionGeneration && getCurrentUserId() === userId && !accountBanned) {
       void startAccountBanRealtime(userId);
     }
   }
@@ -2065,15 +2154,20 @@ async function checkLogin(options = {}) {
     skipCloudSync = false,
     skipChatReload = false,
     waitForUserState = false,
+    retainToken = false,
     restoreVersion: expectedVersion = null,
   } = options;
+
+  const state = captureSessionState();
+  if (expectedVersion != null && isRestoreStale(expectedVersion)) return;
 
   if (checkLoginPromise) {
     if (expectedVersion == null) return checkLoginPromise;
     await checkLoginPromise;
+    if (!isSessionStateCurrent(state)) return;
   }
 
-  checkLoginPromise = (async () => {
+  const loginRequest = (async () => {
     const previousUserId = getCurrentUserId();
 
     try {
@@ -2086,12 +2180,11 @@ async function checkLogin(options = {}) {
         identityAuthority.clear();
         setSession(null);
         await sunlandDiagnosticsRuntime.initialize();
+        if (!isSessionStateCurrent(state)) return;
         currentProfile = null;
       } else {
-        const resolution = await identityAuthority.resolve({
-          token,
-          cachedUser: readCachedDisplayUser(),
-        });
+        const resolution = await resolveIdentityResult({ token, state, retainToken });
+        if (!isSessionStateCurrent(state)) return;
         if (expectedVersion != null && isRestoreStale(expectedVersion)) return;
 
         if (!resolution.ok || !isVerifiedIdentity(resolution.identity)) {
@@ -2116,9 +2209,11 @@ async function checkLogin(options = {}) {
             localStorage.removeItem("token");
             localStorage.removeItem("user");
           }
-          identityAuthority.clear();
-          setSession(null);
+          clearVerifiedSession();
+          state.generation = sessionGeneration;
+          state.token = null;
           await sunlandDiagnosticsRuntime.initialize();
+          if (!isSessionStateCurrent(state)) return;
           currentProfile = null;
           conversations = [];
           currentId = null;
@@ -2134,12 +2229,10 @@ async function checkLogin(options = {}) {
         }
 
         lastIdentityErrorReason = "";
-        persistVerifiedIdentity(resolution.identity);
-        if (session?.identity !== resolution.identity) setSession(resolution.identity);
         preserveSunlandLegacyState({ identity: resolution.identity, storage: localStorage });
-        await sunlandDiagnosticsRuntime.initialize();
       }
 
+      if (!isSessionStateCurrent(state)) return;
       if (expectedVersion != null && isRestoreStale(expectedVersion)) return;
 
       sessionReady = true;
@@ -2174,6 +2267,7 @@ async function checkLogin(options = {}) {
 
         if (!skipCloudSync) {
           await syncFromCloud();
+          if (!isSessionStateCurrent(state)) return;
           if (expectedVersion != null && isRestoreStale(expectedVersion)) return;
         }
         renderChatList();
@@ -2186,6 +2280,7 @@ async function checkLogin(options = {}) {
       const activationRequest = checkActivation();
       if (waitForUserState) {
         await Promise.allSettled([profileRequest, activationRequest]);
+        if (!isSessionStateCurrent(state)) return;
       } else {
         activationRequest.catch(() => {});
       }
@@ -2207,6 +2302,7 @@ async function checkLogin(options = {}) {
       }
       updateProviderCapabilityUI();
     } catch (e) {
+      if (!isSessionStateCurrent(state)) return;
       if (e?.name === "ReferenceError") throw e;
 
       console.error("登录检测异常:", e);
@@ -2214,12 +2310,13 @@ async function checkLogin(options = {}) {
       if (expectedVersion == null || !isRestoreStale(expectedVersion)) {
         scheduleRenderUser();
       }
-    } finally {
-      checkLoginPromise = null;
     }
-  })();
+  })().finally(() => {
+    if (checkLoginPromise === loginRequest) checkLoginPromise = null;
+  });
 
-  return checkLoginPromise;
+  checkLoginPromise = loginRequest;
+  return loginRequest;
 }
 
 function renderUserCore() {
@@ -2556,6 +2653,7 @@ let suppressNextSendClick = false;
 const requestCoordinator = new RequestCoordinator({
   getConversation: conversationId => conversations.find(c => c.id === conversationId),
   getCurrentUserId,
+  getSessionGeneration: () => sessionGeneration,
   onConversationChanged: (requestContext, conversation) => {
     if (currentId === requestContext.conversationId) {
       history = cloneRequestHistory(conversation.history);
@@ -2646,6 +2744,12 @@ let cloudSyncRequest = null;
 const historySyncs = new Map();
 const historyVaults = new Map();
 window.addEventListener("storage", event => {
+  if (event.storageArea && event.storageArea !== localStorage) return;
+  if (event.key === "token" || event.key === null) {
+    clearVerifiedSession();
+    void restoreLoginState({ retainToken: true });
+    return;
+  }
   const owner=getCurrentUserId();
   if (owner && event.key?.startsWith("sunland_history_v1_"+encodeURIComponent(owner)+"_")) {
     let branch;
@@ -3454,6 +3558,7 @@ function appendRequestMessage(requestContext, message) {
 }
 
 function scheduleRequestTitle(requestContext, aiText) {
+  const generation = sessionGeneration;
   const conversation = requestCoordinator.target(requestContext);
   const conversationalHistory = requestContext.history.filter(
     message => !isFurryEventCardMessage(message),
@@ -3479,6 +3584,7 @@ function scheduleRequestTitle(requestContext, aiText) {
   renderChatList();
 
   generateTitleFromAI(userMsg, firstAssistantMsg, { model: requestContext.model }).then(title => {
+    if (generation !== sessionGeneration || getCurrentUserId() !== userId) return;
     const fallback = userMsg.slice(0, 12).replace(/\n/g, " ");
     const applied = applyRequestTitle({
       conversations,
@@ -3723,7 +3829,7 @@ async function runDeepSeekRequest(requestContext) {
       if (!res) return;
       requestContext.traceId = observeTraceResponse("api-worker", res, requestContext.traceId);
       // Quota belongs to the account, even if its conversation was switched/deleted.
-      if (getCurrentUserId() === requestContext.userId) {
+      if (requestContext.sessionGeneration === sessionGeneration && getCurrentUserId() === requestContext.userId) {
         const remain = parseRemaining(res.headers.get("x-remain"));
         if (remain !== null && res.headers.get("x-usage-date") === usageDate()) {
           ++usageVersion; // An older snapshot must not overwrite this response.
@@ -3940,6 +4046,7 @@ async function send() {
     return;
   }
 
+  const generation = sessionGeneration;
   const currentIdentity = getCurrentVerifiedIdentity();
   const verifiedUserId = getVerifiedUserId(currentIdentity);
   if (!currentIdentity || !verifiedUserId || !isSupportedProviderId(sendingConversation.provider)) {
@@ -4026,7 +4133,9 @@ async function send() {
   let visionImages = [];
   try {
     visionImages = await Promise.all(files.map(file => prepareChatImage(file)));
+    if (generation !== sessionGeneration || getCurrentUserId() !== verifiedUserId) return;
   } catch (error) {
+    if (generation !== sessionGeneration || getCurrentUserId() !== verifiedUserId) return;
     const message = error?.code === "IMAGE_TOO_LARGE"
       ? "图片太大，请选择 8MB 内的图片"
       : error?.code === "IMAGE_SIGNATURE_INVALID"
@@ -4175,6 +4284,7 @@ async function send() {
       renderRequestError(requestContext, message);
     }
   } finally {
+    if (generation !== sessionGeneration || getCurrentUserId() !== verifiedUserId) return;
     const shouldReload = (
       currentId === requestContext.conversationId &&
       (!requestContext.bubble?.isConnected || requestContext.status === "aborted")
@@ -4385,7 +4495,8 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 /* ===== 登录状态补丁（跨页面返回恢复·增强版） ===== */
 
-async function restoreLoginState() {
+async function restoreLoginState({ retainToken = false } = {}) {
+  captureSessionState();
   if (restoreLoginPromise) return restoreLoginPromise;
 
   const version = bumpRestoreVersion();
@@ -4398,6 +4509,7 @@ async function restoreLoginState() {
       await checkLogin({
         skipCloudSync: true,
         skipChatReload: true,
+        retainToken,
         restoreVersion: version,
       });
       if (isRestoreStale(version)) return;

@@ -132,6 +132,8 @@ export class IdentityAuthority {
 
   clear() {
     this._generation += 1;
+    this._pending = null;
+    this._pendingToken = null;
     this._deactivateCurrent();
   }
 
@@ -141,7 +143,8 @@ export class IdentityAuthority {
     this._current = null;
   }
 
-  async resolve({ token, cachedUser = null, expectedUserId = null, force = false, signal } = {}) {
+  async resolve({ token, cachedUser = null, expectedUserId = null, force = false, signal, retainToken = false, isCurrent = () => true } = {}) {
+    if (!isCurrent()) return { ok: false, reason: "stale-resolution" };
     const candidateToken = typeof token === "string" ? token.trim() : "";
     const expected = expectedUserId == null ? null : normalizeUserId(expectedUserId);
     if (!candidateToken || (expectedUserId != null && !expected)) {
@@ -156,7 +159,9 @@ export class IdentityAuthority {
     if (current && current.token !== candidateToken) this._deactivateCurrent();
 
     if (this._pending && this._pendingToken === candidateToken) {
+      const pendingGeneration = this._generation;
       const pendingResult = await this._pending;
+      if (pendingGeneration !== this._generation || !isCurrent()) return { ok: false, reason: "stale-resolution" };
       if (
         pendingResult.ok &&
         expected &&
@@ -170,22 +175,25 @@ export class IdentityAuthority {
 
     const generation = ++this._generation;
     this._pendingToken = candidateToken;
-    this._pending = this._resolveFromServer({
+    const pending = this._resolveFromServer({
       token: candidateToken,
       cachedUser,
       expectedUserId: expected,
       signal,
       generation,
+      isCurrent,
+      retainToken,
     }).finally(() => {
-      if (this._pendingToken === candidateToken) {
+      if (this._pending === pending) {
         this._pending = null;
         this._pendingToken = null;
       }
     });
-    return this._pending;
+    this._pending = pending;
+    return pending;
   }
 
-  async _resolveFromServer({ token, cachedUser, expectedUserId, signal, generation }) {
+  async _resolveFromServer({ token, cachedUser, expectedUserId, signal, generation, isCurrent, retainToken }) {
     let response;
     try {
       response = await this.fetchImpl(this.refreshEndpoint, {
@@ -198,12 +206,12 @@ export class IdentityAuthority {
         signal,
       });
     } catch {
-      if (generation !== this._generation) return { ok: false, reason: "stale-resolution" };
+      if (generation !== this._generation || !isCurrent()) return { ok: false, reason: "stale-resolution" };
       return { ok: false, reason: "verification-unavailable" };
     }
 
     if (!response?.ok) {
-      if (generation !== this._generation) return { ok: false, reason: "stale-resolution" };
+      if (generation !== this._generation || !isCurrent()) return { ok: false, reason: "stale-resolution" };
       if (
         generation === this._generation &&
         (response?.status === 401 || response?.status === 403)
@@ -220,18 +228,18 @@ export class IdentityAuthority {
     }
 
     const data = await response.json().catch(() => null);
-    if (generation !== this._generation) {
+    if (generation !== this._generation || !isCurrent()) {
       return { ok: false, reason: "stale-resolution" };
     }
     if (!data || typeof data !== "object") {
       return { ok: false, reason: "invalid-verification-response" };
     }
 
-    const verifiedToken = typeof data.token === "string" && data.token.trim()
+    let verifiedToken = typeof data.token === "string" && data.token.trim()
       ? data.token.trim()
       : token;
     const tokenParts = verifiedToken.split(".");
-    const tokenPayload = tokenParts.length === 3 ? decodeJwtPayload(verifiedToken) : null;
+    let tokenPayload = tokenParts.length === 3 ? decodeJwtPayload(verifiedToken) : null;
     if (tokenParts.length === 3 && !tokenPayload) {
       return { ok: false, reason: "invalid-verified-token" };
     }
@@ -250,13 +258,23 @@ export class IdentityAuthority {
       return { ok: false, reason: expectedUserId ? "identity-mismatch" : "missing-identity" };
     }
 
-    const expiresAt = typeof tokenPayload?.exp === "number"
+    let expiresAt = typeof tokenPayload?.exp === "number"
       ? tokenPayload.exp * 1000
       : null;
     const verifiedAt = this.now();
     if (expiresAt != null && expiresAt <= verifiedAt + 5000) {
       this._deactivateCurrent();
       return { ok: false, reason: "expired-verified-token" };
+    }
+
+    // A storage event already delivered a credential. Verify it without
+    // broadcasting another renewal to every tab (which would trigger a loop).
+    const retainedPayload = retainToken ? decodeJwtPayload(token) : null;
+    if (extractIdentityValue(retainedPayload) === userId &&
+        typeof retainedPayload?.exp === "number" && retainedPayload.exp * 1000 > this.now() + 5000) {
+      verifiedToken = token;
+      tokenPayload = retainedPayload;
+      expiresAt = retainedPayload.exp * 1000;
     }
 
     const user = buildDisplayUser({

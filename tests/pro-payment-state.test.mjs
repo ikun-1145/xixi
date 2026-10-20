@@ -71,6 +71,16 @@ test('confirmed reconcile and usage observations share one state while late repl
 });
 
 const appSource = readFileSync(new URL('../ai/app.js', import.meta.url), 'utf8');
+function installSessionGuards(context) {
+  context.session ??= null;
+  context.getVerifiedUserId ??= () => context.getCurrentUserId();
+  context.sessionGeneration = 0;
+  context.sessionToken = context.localStorage.getItem('token');
+  vm.runInContext(appSource.slice(appSource.indexOf('function captureSessionState()'),
+    appSource.indexOf('function getCurrentVerifiedIdentity()')), context);
+  context.resolveIdentityResult ??= options => context.identityAuthority.resolve(options);
+}
+
 test('an authenticated request whose refresh temporarily fails never removes credentials or redirects', async () => {
   const { api, window } = load(); api.setIdentity('A', 'credential-A'); api.applyMembership(true, api.captureRequest());
   let removed = 0, redirected = 0;
@@ -80,6 +90,7 @@ test('an authenticated request whose refresh temporarily fails never removes cre
     getVerifiedToken: value => value?.token, session: { userId: 'A' },
     resolveIdentityResult: async () => ({ ok: false, reason: 'verification-unavailable' }),
     alert() {}, goToLogin: () => { redirected++; }, checkActivation() {} });
+  installSessionGuards(context);
   vm.runInContext(appSource.slice(appSource.indexOf('async function authenticatedFetch('), appSource.indexOf('async function apiFetch(')), context);
   await assert.rejects(vm.runInContext("authenticatedFetch('https://api.sunland.dev')", context), /verification-unavailable/);
   assert.equal(removed, 0); assert.equal(redirected, 0); assert.equal(api.getState().state, 'PRO'); assert.equal(api.getState().stale, true);
@@ -91,6 +102,7 @@ test('only an explicit current Pro denial changes membership, unrelated forbidde
     localStorage: { getItem: () => 'credential-A' }, getCurrentUserId: () => 'A',
     getCurrentVerifiedIdentity: () => ({ token: 'credential-A' }), getVerifiedToken: value => value?.token,
     checkActivation: () => { refreshes++; } });
+  installSessionGuards(context);
   vm.runInContext(appSource.slice(appSource.indexOf('async function authenticatedFetch('), appSource.indexOf('async function apiFetch(')), context);
   await vm.runInContext("authenticatedFetch('https://api.sunland.dev')", context);
   assert.equal(api.getState().state, 'PRO'); assert.equal(refreshes, 0);
@@ -106,6 +118,7 @@ test('login restoration preserves a verified session during temporary identity v
     identityAuthority: { resolve: async () => ({ ok: false, reason: 'verification-unavailable' }), clear: () => { clears++; } },
     readCachedDisplayUser: () => ({ id: 'A' }), isVerifiedIdentity: () => false,
     scheduleRenderUser() {}, sessionReady: false });
+  installSessionGuards(context);
   vm.runInContext(appSource.slice(appSource.indexOf('async function checkLogin('), appSource.indexOf('function renderUserCore(')), context);
   await vm.runInContext('checkLogin()', context);
   assert.equal(clears, 0); assert.equal(removed, 0); assert.equal(context.sessionReady, true);
@@ -118,6 +131,7 @@ test('changed credentials become Unknown before an unavailable new identity chec
   const context = vm.createContext({ window, getCurrentUserId: () => 'A', checkLoginPromise: null,
     localStorage: window.localStorage, identityAuthority: { resolve: async () => ({ ok: false, reason: 'verification-unavailable' }) },
     readCachedDisplayUser: () => ({ id: 'A' }), isVerifiedIdentity: () => false, scheduleRenderUser() {}, sessionReady: false });
+  installSessionGuards(context);
   vm.runInContext(appSource.slice(appSource.indexOf('async function checkLogin('), appSource.indexOf('function renderUserCore(')), context);
   await vm.runInContext('checkLogin()', context);
   assert.equal(api.getState().state, 'UNKNOWN'); assert.equal(api.applyMembership(true, old), false);

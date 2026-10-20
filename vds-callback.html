@@ -59,7 +59,6 @@ window.addEventListener("DOMContentLoaded", async () => {
 
   try {
     const code = new URLSearchParams(location.search).get("code");
-    console.log("🔑 code:", code);
 
     if (!code) {
       setStatus("error", "没有 code");
@@ -79,7 +78,6 @@ window.addEventListener("DOMContentLoaded", async () => {
 
     const text = await res.text();
     console.log("📡 response status:", res.status);
-    console.log("📦 raw:", text);
 
     let data;
     try {
@@ -104,7 +102,7 @@ window.addEventListener("DOMContentLoaded", async () => {
     }, 800);
 
   } catch (err) {
-    console.error(err);
+    console.error("VDS callback failed");
     setStatus("error", "错误：" + err.message);
   }
 });
