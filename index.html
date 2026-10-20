@@ -731,10 +731,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const aiBtn = document.getElementById('aiEntry');
   if (!aiBtn) return;
 
+  let navigationTimer = null;
+  window.addEventListener('pageshow', (event) => {
+    if (!event.persisted) return;
+    // BFCache preserves the leaving animation and its full-screen scrim.
+    clearTimeout(navigationTimer);
+    navigationTimer = null;
+    document.body.classList.remove('ai-leaving');
+  });
+
   aiBtn.addEventListener('click', () => {
+    if (navigationTimer !== null) return;
     document.body.classList.add('ai-leaving');
 
-    setTimeout(() => {
+    navigationTimer = setTimeout(() => {
       location.href = 'ai.html';
     }, 450);
   });
