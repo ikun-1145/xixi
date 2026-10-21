@@ -1,0 +1,16 @@
+{
+  "feature": "mainland-phone-auth",
+  "date": "2026-10-21",
+  "currentStage": "architecture-audit",
+  "status": "blocked",
+  "approvals": {
+    "requirementsApproved": false,
+    "implementationApproved": false
+  },
+  "evidence": ["PHASE-0-AUDIT.md"],
+  "blockers": [
+    "Current authentication Worker source and authoritative identity mapping are unavailable in this repository.",
+    "No verified session bridge between Alibaba-managed OTP and existing Sunland identity or Supabase Auth.",
+    "Existing account deletion requires email verification and cannot support phone-only users."
+  ]
+}
