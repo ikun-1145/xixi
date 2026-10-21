@@ -587,8 +587,16 @@ test("settings mode, latest snapshot and clear synchronize with an open chat run
   await runtime.initialize();
   assert.equal(runtime.getObservationMode(), "off");
 
+  async function waitForRuntimeMode(expected) {
+    const deadline = Date.now() + 2000;
+    while (runtime.getObservationMode() !== expected) {
+      assert.ok(Date.now() < deadline, `runtime did not reach ${expected}`);
+      await waitForAsyncEvent();
+    }
+  }
+
   assert.equal((await page.controller.setParticipation(true)).ok, true);
-  await waitForAsyncEvent();
+  await waitForRuntimeMode("summary");
   assert.equal(runtime.getObservationMode(), "summary");
 
   const controller = new AbortController();
@@ -644,7 +652,7 @@ test("settings mode, latest snapshot and clear synchronize with an open chat run
   );
 
   await page.controller.setParticipation(false);
-  await waitForAsyncEvent();
+  await waitForRuntimeMode("off");
   assert.equal(runtime.getObservationMode(), "off");
 });
 
