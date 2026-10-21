@@ -1,5 +1,11 @@
 # 中国大陆手机号认证：Phase 0 审计与阻断说明
 
+> 2026-10-21 续开发需求更新：用户已明确保留现有应用 JWT、数据库令牌及 `user_profiles.user_id`，禁止迁移到 Supabase Auth。下文关于“是否要求原生 Supabase Auth session”的待确认事项已解除，以本更新和 `00-stage.json` 为准。数据库访问缺失只阻断依赖当前结构的身份映射和迁移，不应阻断独立短信封装；但本轮另遇下述必需工作流阻断，尚未开始实现。
+>
+> 当前可调用工具仍没有 Supabase 元数据查询能力；现有 `.codex/config.toml` 已配置限定项目 `klyrasrqgxijwrxuoevj` 的只读连接，无须提供 service-role 密钥或开放写权限。只需恢复该连接，查询表、约束、索引、触发器、RLS、RPC 和相关迁移状态，不读取真实用户行。
+>
+> A Team 当前强制要求实施与审查专家通过名单校验，但项目缺少 `INIT.md`、`.agent-sync/TEAM.md`、`.agent-sync/ROUTING.md` 和 `scripts/roster.py`；实际执行 `python3 scripts/roster.py verify` 因脚本不存在退出，不能派发必需专家。需先由用户批准初始化该工作流；本轮未创建团队配置、执行代码、数据库迁移或生产变更。独立 Phase 1 在此工作流恢复后可先实施，真实短信发送保持关闭。
+
 日期：2026-10-21。基线：`main`，`f73dbe1c2b098b5494a07fd2fa6c28c561615f1a`。
 
 更新：用户重启后，Cloudflare MCP 已恢复；已读取实际认证 Worker。原“无法审计后端”阻断已解除，剩余方案差异与数据库证据见第 7 节。此前审计提交为 `00687f2`。

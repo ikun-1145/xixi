@@ -4,16 +4,17 @@
   "currentStage": "architecture-audit",
   "status": "blocked",
   "approvals": {
-    "requirementsApproved": false,
+    "requirementsApproved": true,
     "implementationApproved": false
   },
   "evidence": ["PHASE-0-AUDIT.md", "cloudflare-auth-evidence.json"],
   "resolvedBlockers": [
-    "Read-only Cloudflare MCP access restored; deployed ai Worker authentication code inspected."
+    "Read-only Cloudflare MCP access restored; deployed ai Worker authentication code inspected.",
+    "User continuation requirements explicitly retain current application JWT and database token architecture; native Supabase Auth sessions are out of scope."
   ],
   "blockers": [
-    "Clarify whether existing Sunland application sessions satisfy the requirement, or a native Supabase Auth session is mandatory.",
     "Current Supabase schema, constraints, triggers, RLS and RPC definitions are not yet verified.",
-    "Existing account deletion requires email verification and cannot support phone-only users."
+    "Existing account deletion requires email verification and cannot support phone-only users.",
+    "Mandatory A Team specialist eligibility cannot be verified: project roster files and scripts/roster.py are absent. Approved workflow initialization is required before specialist dispatch."
   ]
 }
