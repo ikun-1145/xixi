@@ -7,10 +7,13 @@
     "requirementsApproved": false,
     "implementationApproved": false
   },
-  "evidence": ["PHASE-0-AUDIT.md"],
+  "evidence": ["PHASE-0-AUDIT.md", "cloudflare-auth-evidence.json"],
+  "resolvedBlockers": [
+    "Read-only Cloudflare MCP access restored; deployed ai Worker authentication code inspected."
+  ],
   "blockers": [
-    "Current authentication Worker source and authoritative identity mapping are unavailable in this repository.",
-    "No verified session bridge between Alibaba-managed OTP and existing Sunland identity or Supabase Auth.",
+    "Clarify whether existing Sunland application sessions satisfy the requirement, or a native Supabase Auth session is mandatory.",
+    "Current Supabase schema, constraints, triggers, RLS and RPC definitions are not yet verified.",
     "Existing account deletion requires email verification and cannot support phone-only users."
   ]
 }

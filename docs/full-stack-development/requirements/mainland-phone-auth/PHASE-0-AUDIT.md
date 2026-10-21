@@ -2,6 +2,8 @@
 
 日期：2026-10-21。基线：`main`，`f73dbe1c2b098b5494a07fd2fa6c28c561615f1a`。
 
+更新：用户重启后，Cloudflare MCP 已恢复；已读取实际认证 Worker。原“无法审计后端”阻断已解除，剩余方案差异与数据库证据见第 7 节。此前审计提交为 `00687f2`。
+
 结论：**暂停进入 Phase 1–4，尚未交付手机号认证功能，不具备上线条件。**
 
 附件明确要求：不能安全兼容原身份、不能建立兼容真实会话时先暂停报告。本次仅保存审计和阶段状态，不更改认证、页面、Worker、迁移或云端配置。没有发送短信、使用真实 AccessKey、查询用户行数据、执行生产迁移或修改 Flutter。
@@ -10,20 +12,20 @@
 
 | 审计项 | 当前代码证据 | 对手机号接入的影响 |
 | --- | --- | --- |
-| 邮箱注册/登录 | `login.html` 向 `api.sunland.dev/send-code` 提交 `{email,token}`，向 `/verify-code` 提交 `{email,code}`，接收 `{token,user}` | 登录签发属于仓库外后端；前端无法证明首次注册规则、身份生成算法及邮箱映射方式 |
+| 邮箱注册/登录 | `login.html` 调用 `/send-code`、`/verify-code`；Cloudflare `ai` Worker 的 `getOrCreateLoginUser` 按邮箱查询 active profile，新建时生成 UUID | 已从实际 Worker 核实，原账号键取 `user_profiles.user_id`；详见第 7 节 |
 | 人机验证 | `login.html` 的 `runCaptcha()` 使用 GeeTest v4 | 不是 Turnstile；不能假定可复用为短信风控 |
 | 登录持久化 | `login.html` 保存 `localStorage.token/user`；`ai/verified-identity.js` 通过远端 `/refresh` 确认身份 | 本地 user 缓存不是可信身份，不能用手机号或客户端 user_id 替代 |
 | 刷新与竞态 | `ai/verified-identity.js` 的 `_resolveFromServer` 校验服务端结果与 token 身份一致；`ai/app.js` 使用会话 generation 和请求上下文隔离 | 新流程必须复用这些保护，支持账号切换、登出和同用户续期 |
 | Supabase Auth | `p/js/supabaseClient.js` 的 `supabase` 管理 OAuth session；`donate.html` 使用 `supabase.auth.getSession()` | OAuth 体系不能直接当作 AI 邮箱登录体系 |
 | AI 数据凭证 | 同文件另建 `supabaseData`，通过 `SunlandDatabaseToken.get()` 获取凭证；`ai/database-token-client.js` POST `/v1/database-token` | 当前已不是文档所述的单纯 anon 数据访问；不能沿用旧文档推断生产 RLS |
 | 数据 token 声明 | `ai/database-token-client.js` 要求 `role/aud=authenticated`、`id` 等于应用 user ID、有效 `exp` | 普通 Supabase Auth session 是否可通过现有校验，没有证据 |
-| 用户 ID | `ai/user-identity.js` 接受受限字符串；支付和注销迁移采用 `text` 用户键 | 不得假设 AI user ID 就是 `auth.users.id`，真实生成及映射仍待认证后端证据 |
+| 用户 ID | `ai/user-identity.js` 接受受限字符串；实际 Worker 使用 profile 现有 user_id，首次创建使用 `crypto.randomUUID()` | 登录路径不创建 Supabase Auth 用户；UUID 外形不代表与 `auth.users.id` 建立关联 |
 | 用户资料 | `ai_settings.html` 按 `user_id` 访问 `user_profiles`；`ai/app.js` 按用户隔离 profile 缓存 | 必须保持原键、头像、昵称和用户状态 |
 | 聊天/历史 | `ai/history-sync.js` 的 `HistorySync` 按 `this.userId` 过滤记录并通过 RPC 同步；`ai/app.js` 按已验证用户创建同步上下文 | 创建另一身份会形成另一数据命名空间；不能通过复制记录补救 |
 | Pro/激活码 | `supabase/migrations/20260905014430_pro_payment_activation_reliability.sql` 用 `auth.jwt()->>'id'` 关联用户；`workers/afdianpay/worker.js` 信任远端 `/v1/account/identity` | 必须由同一身份权威返回原 user ID，不能修改权益归属 |
 | 注销 | `supabase/functions/sunland-account-delete/index.ts` 的 `handleAuthorize` 强制邮箱格式并调用 `/verify-code`，比较验证码身份与当前身份；另依赖 `/v1/account-delete/*` | 无邮箱手机号用户目前无法完成注销，须同步支持手机二次验证和删除绑定 |
 | 登出 | `ai/account-menu.js` 清理本地 token/user、调用 `clearVerifiedSession()`；OAuth 使用独立退出流程 | 不能声称本地退出已吊销所有设备；服务端多设备语义须审计 |
-| Worker 中间件/JWT 签发 | 仓库中有支付 Worker 与 Pages Functions，但没有认证 `/send-code`、`/verify-code`、`/refresh`、`/v1/database-token` 的实现 | 无法审计签名算法、密钥边界、刷新/吊销、反封禁绕过、用户创建事务及稳定 ID 分配 |
+| Worker 中间件/JWT 签发 | 本地仓库没有源码，但已通过 Cloudflare MCP 读取 `ai` 部署包，核实邮箱登录、HS256、刷新、身份查询与数据库 token 交换 | 源码访问阻断已解除；当前应用 JWT 与 Supabase Auth session 的区别见第 7 节 |
 | 迁移机制 | 存在按时间戳命名的 `supabase/migrations/*.sql`，使用事务、服务端 RPC、RLS 和权限限制 | 可编写增量迁移，但必须先明确身份主表和注销的当前定义；本次未生成可执行迁移 |
 | 限流/预算 | `functions/api/verify.js` 有其他业务的可选 `VERIFY_RATE_LIMITER`；未找到短信强一致预算和 OTP challenge 实现 | 可选且缺失时放行的业务限流不能用于付费短信；普通 KV 也不能承担原子预算 |
 | 多语言/移动端 | `p/js/site-i18n.js` 支持 `zh/zh-Hant/en/ja/ko/es`；登录/设置页加载该运行时；登录页复用现有字段和 modal CSS | 至少满足附件中英日要求，不能损坏原有六语言；设置页部分区域有 `data-site-i18n-ignore`，新增文案须显式覆盖 |
@@ -77,7 +79,7 @@
 
 来源：[Send SMS Hook](https://supabase.com/docs/guides/auth/auth-hooks/send-sms-hook)、[Phone sign-in](https://supabase.com/docs/guides/auth/phone-login)、[Admin createUser](https://supabase.com/docs/reference/javascript/auth-admin-createuser)。官方维护的开源实现/文档入口：[supabase/supabase](https://github.com/supabase/supabase/blob/master/apps/docs/content/guides/auth/auth-hooks/send-sms-hook.mdx)。本次尚未进入实现选型，不把其他项目方案直接移植。
 
-**这是当前组合和证据不足的阻断，不是“Supabase 永远无法集成阿里云”的结论。** 保留现有身份权威的服务端映射方案可能可行，但必须先审计认证 Worker，证明它能签发同一身份的既有会话并保持数据库 token、撤销和注销一致。不能新建第二套 JWT、伪造邮箱 OTP 或自动合并账号。
+**这是当前组合和证据不足的阻断，不是“Supabase 永远无法集成阿里云”的结论。** 后续 MCP 审计已核实现有签发链路，详见第 7 节；保留现有身份权威的服务端映射方案有可行方向，但它不会自动产生 Supabase Auth session。不能新建第二套 JWT、伪造邮箱 OTP 或自动合并账号。
 
 ## 4. 解阻后的最小设计方向（待认证证据确认，未实现）
 
@@ -105,13 +107,13 @@ node --test tests/ai-login-flow.test.mjs tests/ai-session-race.test.mjs tests/ai
 | 附件要求的交付 | 本轮状态 |
 | --- | --- |
 | 注册/登录/绑定/更换/解绑/持久化 | 未实现，身份兼容门禁阻断 |
-| 修改文件 | 仅本目录 `00-stage.json`、`PHASE-0-AUDIT.md` |
+| 修改文件 | 仅本目录 `00-stage.json`、`PHASE-0-AUDIT.md`、`cloudflare-auth-evidence.json` |
 | 新后端接口 | 无 |
 | 数据库迁移 | 无可执行 SQL；仅上述设计约束，不允许直接生产执行 |
-| 身份兼容方案 | 原身份权威扩展为候选，待 Worker 源码/映射审计 |
+| 身份兼容方案 | Worker 原身份签发链路已审计，扩展手机号因子为候选；仍待数据库核验和会话要求澄清 |
 | 防刷/预算 | 仅设计方向，未部署、未实现，不能视为防护已生效 |
 | 测试报告 | 上述 82 项现有基线；附件手机号验收清单全部仍待实现与 Mock 测试 |
-| 已知问题 | 后端签发/刷新不可审计；Auth 映射/生产 RLS 未核实；供应商成功后重用语义未证实；注销仅邮箱 |
+| 已知问题 | 已能审计后端签发/刷新；尚须明确会话要求、核实生产结构/RLS；供应商成功后重用语义未证实；注销仅邮箱 |
 | Secrets | 本次未新增。未来候选仅名称：受限服务端阿里云凭证、Turnstile secret、手机号加密/HMAC 密钥、服务端数据库凭证；最终绑定名与既有认证密钥复用规则待后端审计，禁止索取或使用真实值 |
 | 上线步骤 | 先解阻、合同审查、离线 Mock 与本地事务并发测试、测试环境兼容验收；正式上线仍须独立授权迁移和部署，并明确授权单次真实短信测试及费用 |
 | 回滚 | 本次仅文档，无运行时回滚或数据恢复。未来先关闭手机入口/发送开关并回滚 Worker，保留已绑定数据和兼容读取；不得删除手机唯一登录因子而锁死用户，SQL 回滚方案须随最终迁移提供 |
@@ -120,6 +122,28 @@ node --test tests/ai-login-flow.test.mjs tests/ai-session-race.test.mjs tests/ai
 
 ## 6. 继续所需的最小输入
 
-提供 `api.sunland.dev` 认证 Worker 的本地源码目录或仓库，包括验证码、用户创建/映射、JWT/刷新、`/v1/database-token`、`/v1/account/identity` 和注销接口，以及不含密钥的部署绑定定义。补充 Supabase 只读结构证据（字段、约束、RLS、触发器和相关 RPC，不需用户行数据）。
+认证 Worker 已通过用户授权的 Cloudflare MCP 读取，不再要求用户提供源码。仍须补充 Supabase 只读结构证据（字段、约束、RLS、触发器和相关 RPC，不需用户行数据），并明确“真实会话”是否指 Supabase Auth 原生 session。
 
 取得以上证据后，先决定“保留现有应用身份权威并扩展因子”能否满足附件对真实会话的要求，再决定是否需要单独讨论迁移到 Supabase Auth；不会擅自切换认证服务。
+
+## 7. Cloudflare MCP 恢复后的实际后端核验
+
+2026-10-21 只读确认 `api.sunland.dev/*` 指向 Worker `ai`；最新部署记录为 `b06e00b1-78f2-4939-9160-bab2428d71de`，版本 `f405a850-780d-483f-8942-83e1798711fe` 占 100%。该部署记录创建于 `2026-10-11T11:33:51.891286Z`。读取 settings 时仅输出 binding 名称/类型和项目 URL，没有输出或使用密钥值。
+
+保存证据：[cloudflare-auth-evidence.json](cloudflare-auth-evidence.json)。行号对应此次下载的 multipart 部署包，不能当作原始开发源码行号。
+
+- **8056–8082 行：** `getOrCreateLoginUser` 按规范化邮箱和 `identity_status=active` 查 `user_profiles`，存在则返回原 `user_id`；否则 `crypto.randomUUID()` 后插入 profile，遇 409 再查胜出记录。该登录路径没有调用 Supabase Auth 创建用户或登录会话。`limit=1` 本身也不能证明邮箱唯一约束存在，须核实数据库。
+- **8415–8431 行：** 邮箱验证码通过后，调用该函数取得 profile ID，使用现有 `signJWT({email,id}, signingSecret)` 返回应用 token。
+- **8432–8447 行：** `/refresh` 先验证应用 JWT 和用户状态，再签发同 ID 的新 token；没有兑换 Supabase Auth refresh_token。
+- **8461–8482 行：** `/v1/database-token` 用独立 Supabase JWT secret 签发 15 分钟的 PostgREST 凭证，声明含 `sub/id/role/aud/iss`。这可供数据 API 鉴权，但不等于创建 `auth.sessions` 或原生 Supabase Auth session。
+- **9198–9207、9624–9696 行：** 应用使用 HS256，默认签发有效期七天；验签支持配置的多个现有密钥，检查算法、HMAC 签名、整数 exp 及受限 id。通用验签不要求 email 必填，因此无邮箱应用身份在此函数层面可表达，仍需全链路测试才能证明兼容。
+- **8278–8414 行（已读未保存完整模板）：** 现有邮箱 OTP、60 秒冷却、5 次失败限制和 IP 校验间隔使用 `CODE_STORE` KV 的读写/删除。不能复制为短信的强一致预算、并发消费或重放保护。
+- settings 有名为 `TURNSTILE_SECRET` 的绑定，但所审计邮箱发送链路仍调用 GeeTest；绑定存在不能证明 Turnstile 校验已实现。当前绑定列表没有短信专用 Durable Object，短信风控基础仍须本地设计和验证。
+
+### 可行方向与必须明确的差异
+
+若目标是“手机与邮箱登录同一现有 AI 账号”，应在现有 Worker 增加受验证的手机号因子映射，绑定到原 profile ID，并复用既有应用签发与数据库 token 交换。此方案不引入第二套 JWT；它仍属于当前自建会话体系，安全性取决于原子映射、强一致 challenge、预算、二次认证和注销全链路实现，当前尚未实现。
+
+若附件中的“通过官方支持方式建立真实登录会话”严格指 **Supabase Auth session**，则不能把上述应用 token 或数据库 JWT 冒充为该 session。现有邮箱体系本身也没有走这一流程，需要另行审查身份迁移或官方桥接设计。直接创建 Auth 用户、修改 profile ID 或伪造邮箱 OTP 均不能解决。
+
+当前会话仍未暴露 Supabase 查询工具，无法核实 email 是否可空、唯一索引、identity_status 默认值、profile 创建触发器、auth.users 关联及注销 RPC 的现行定义。不会从 Cloudflare plaintext binding 抽取 service-role 值去绕过该访问边界，也不会直接执行生产 SQL。
