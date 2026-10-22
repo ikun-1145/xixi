@@ -259,7 +259,7 @@ test('six-language catalog translates all search UI labels and cache version is 
   }
   dom.window.SiteI18n.setLanguage('zh', { persist: false });
   for (const label of labels) assert.equal(dom.window.SiteI18n.translate(label), label);
-  assert.match(html, /site-i18n\.js\?v=20261019-web-search/);
+  assert.match(html, /site-i18n\.js\?v=20261022-stable-2\.0\.0/);
   assert.match(html, /id="webSearchBtn"[^>]*aria-pressed="false"/);
   dom.window.close();
 });

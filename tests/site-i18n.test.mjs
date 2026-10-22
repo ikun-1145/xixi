@@ -29,16 +29,16 @@ const publicPageTitles = new Map([
   ["donate.html", "Support - Frost"],
   ["egg.html", "Hidden Layer · Frost Protocol"],
   ["deep.html", "HiddenLayer Deep"],
-  ["login.html", "Sign in to Sunland AI · Beta"],
-  ["ai.html", "Sunland AI · Beta"],
-  ["ai_settings.html", "Settings - Sunland AI · Beta"],
-  ["announcements.html", "Announcements - Sunland AI · Beta"],
+  ["login.html", "Sign in to Sunland AI 2.0.0"],
+  ["ai.html", "Sunland AI 2.0.0"],
+  ["ai_settings.html", "Settings - Sunland AI 2.0.0"],
+  ["announcements.html", "Announcements - Sunland AI 2.0.0"],
   ["copilot.html", "HuFuBao · AI Reply Copilot for Furry Communities"],
   ["verify.html", "Information Verification · Sunland"],
-  ["download.html", "Sunland AI · Beta — Redefining Intelligent Interaction"],
+  ["download.html", "Sunland AI 2.0.0 — Redefining Intelligent Interaction"],
   ["oauth-callback.html", "Signing you in…"],
-  ["privacy.html", "Sunland AI · Beta Privacy Policy"],
-  ["xukexieyi.html", "Sunland AI · Beta Terms of Service"],
+  ["privacy.html", "Sunland AI 2.0.0 Privacy Policy"],
+  ["xukexieyi.html", "Sunland AI 2.0.0 Terms of Service"],
 ]);
 
 function createDom(html, language = "en") {

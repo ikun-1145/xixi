@@ -1561,8 +1561,8 @@ function updateProviderCapabilityUI() {
     fileUpload: !isSunland,
   };
 
-  const deepDisabledMessage = "Sunland AI · Beta 暂不支持深度思考";
-  const uploadDisabledMessage = "Sunland AI · Beta 暂不支持文件上传";
+  const deepDisabledMessage = "Sunland AI 2.0.0 暂不支持深度思考";
+  const uploadDisabledMessage = "Sunland AI 2.0.0 暂不支持文件上传";
 
   deepBtn.disabled = isSunland;
   deepBtn.setAttribute("aria-disabled", String(isSunland));
@@ -3669,7 +3669,7 @@ function renderRequestError(requestContext, message, { preserveResponse = false 
 }
 
 async function sendSunlandMessage(requestContext) {
-  const errorMessage = uiText("Sunland AI · Beta 暂时出了点问题，请稍后重试");
+  const errorMessage = uiText("Sunland AI 2.0.0 暂时出了点问题，请稍后重试");
   try {
     if (isRequestVisible(requestContext)) requestContext.bubble.innerHTML = "";
     const provider = providerRegistry.get("sunland");

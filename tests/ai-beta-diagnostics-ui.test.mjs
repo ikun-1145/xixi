@@ -309,7 +309,11 @@ test("off mode loads an existing snapshot only after the user expands the sectio
   const section = page.window.document.getElementById("betaDiagnosticsSection");
   section.open = true;
   section.dispatchEvent(new page.window.Event("toggle"));
-  await waitForAsyncEvent();
+  const deadline = Date.now() + 2000;
+  while (!page.controller.getState().snapshotLoaded) {
+    assert.ok(Date.now() < deadline, "expanded diagnostics did not finish loading the snapshot");
+    await waitForAsyncEvent();
+  }
 
   assert.equal(page.controller.getState().snapshotLoaded, true);
   assert.equal(page.controller.getState().hasData, true);

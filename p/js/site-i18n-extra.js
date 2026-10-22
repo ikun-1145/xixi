@@ -611,10 +611,10 @@
     "ko": "오늘 왼쪽 20 메시지",
     "es": "Quedan 20 mensajes hoy"
   },
-  "下载公测版": {
-    "zh-Hant": "下載公測版",
-    "ko": "다운로드 Beta",
-    "es": "Descargar Beta"
+  "下载正式版": {
+    "zh-Hant": "下載正式版",
+    "ko": "정식 버전 다운로드",
+    "es": "Descargar versión estable"
   },
   "升级 Pro": {
     "zh-Hant": "升級 Pro",
@@ -636,10 +636,10 @@
     "ko": "파일 업로드",
     "es": "Cargar archivo"
   },
-  "Sunland AI · Beta 暂不支持图片上传": {
-    "zh-Hant": "Sunland AI · Beta 暫不支援圖片上傳",
-    "ko": "Sunland AI · Beta는 아직 이미지 업로드를 지원하지 않습니다",
-    "es": "Sunland AI · Beta aún no admite la carga de imágenes"
+  "Sunland AI 2.0.0 暂不支持图片上传": {
+    "zh-Hant": "Sunland AI 2.0.0 暫不支援圖片上傳",
+    "ko": "Sunland AI 2.0.0는 아직 이미지 업로드를 지원하지 않습니다",
+    "es": "Sunland AI 2.0.0 aún no admite la carga de imágenes"
   },
   "每次只能上传 1 张图片": {
     "zh-Hant": "每次只能上傳 1 張圖片",
@@ -741,15 +741,15 @@
     "ko": "· 무제한",
     "es": "Pro · Unlimited"
   },
-  "Sunland AI · Beta 暂不支持深度思考": {
-    "zh-Hant": "Sunland AI · Beta 暫不支援深度思考",
-    "ko": "Sunland AI · Beta는 아직 깊은 생각을 지원하지 않습니다",
-    "es": "Sunland AI · Beta todavía no apoya el pensamiento profundo"
+  "Sunland AI 2.0.0 暂不支持深度思考": {
+    "zh-Hant": "Sunland AI 2.0.0 暫不支援深度思考",
+    "ko": "Sunland AI 2.0.0는 아직 깊은 생각을 지원하지 않습니다",
+    "es": "Sunland AI 2.0.0 todavía no apoya el pensamiento profundo"
   },
-  "Sunland AI · Beta 暂不支持文件上传": {
-    "zh-Hant": "Sunland AI · Beta 暫不支援檔案上傳",
-    "ko": "Sunland AI · Beta는 아직 파일을 지원하지 않습니다",
-    "es": "Sunland AI · Beta todavía no soporta cargas de archivos"
+  "Sunland AI 2.0.0 暂不支持文件上传": {
+    "zh-Hant": "Sunland AI 2.0.0 暫不支援檔案上傳",
+    "ko": "Sunland AI 2.0.0는 아직 파일을 지원하지 않습니다",
+    "es": "Sunland AI 2.0.0 todavía no soporta cargas de archivos"
   },
   "当前对话已绑定 Sunland AI。请新建对话以切换模型。": {
     "zh-Hant": "當前對話已繫結 Sunland AI。請新建對話以切換模型。",
@@ -919,10 +919,10 @@
     "ko": "이 메시지는 안전 검사를 통과하지 않았다. 다시 시도하십시오.",
     "es": "Este mensaje no pasó el control de seguridad. Por favor, revisen y vuelvan a intentarlo."
   },
-  "Sunland AI · Beta 暂时出了点问题，请稍后重试": {
-    "zh-Hant": "Sunland AI · Beta 暫時出了點問題，請稍後重試",
-    "ko": "Sunland AI · Beta는 임시 문제 발생. 나중에 다시 시도하십시오.",
-    "es": "Sunland AI · Beta encontró un problema temporal. Por favor, intente de nuevo más tarde."
+  "Sunland AI 2.0.0 暂时出了点问题，请稍后重试": {
+    "zh-Hant": "Sunland AI 2.0.0 暫時出了點問題，請稍後重試",
+    "ko": "Sunland AI 2.0.0는 임시 문제 발생. 나중에 다시 시도하십시오.",
+    "es": "Sunland AI 2.0.0 encontró un problema temporal. Por favor, intente de nuevo más tarde."
   },
   "响应较慢，请稍等…": {
     "zh-Hant": "響應較慢，請稍等…",
@@ -1004,10 +1004,10 @@
     "ko": "깊은 생각 장애인",
     "es": "Pensamiento profundo discapacitados"
   },
-  "登录 Sunland AI · Beta": {
-    "zh-Hant": "登入 Sunland AI · Beta",
-    "ko": "Sunland AI에 로그인 · Beta",
-    "es": "Iniciar sesión en Sunland AI · Beta"
+  "登录 Sunland AI 2.0.0": {
+    "zh-Hant": "登入 Sunland AI 2.0.0",
+    "ko": "Sunland AI 2.0.0에 로그인",
+    "es": "Iniciar sesión en Sunland AI 2.0.0"
   },
   "输入邮箱获取验证码，无需注册": {
     "zh-Hant": "輸入郵箱獲取驗證碼，無需註冊",
@@ -1224,10 +1224,10 @@
     "ko": "로그인 오류",
     "es": "Error de registro"
   },
-  "设置 - Sunland AI · Beta": {
-    "zh-Hant": "設定 - Sunland AI · Beta",
-    "ko": "설정 - Sunland AI · 베타",
-    "es": "Ajustes - Sunland AI · Beta"
+  "设置 - Sunland AI 2.0.0": {
+    "zh-Hant": "設定 - Sunland AI 2.0.0",
+    "ko": "설정 - Sunland AI 2.0.0",
+    "es": "Ajustes - Sunland AI 2.0.0"
   },
   "普通用户": {
     "zh-Hant": "普通使用者",
@@ -1319,10 +1319,10 @@
     "ko": "Sunland AI 클라이언트 다운로드",
     "es": "Descargar el cliente de Sunland AI"
   },
-  "Sunland AI · Beta 数据管理": {
-    "zh-Hant": "Sunland AI · Beta 資料管理",
-    "ko": "Sunland AI · 베타 데이터 관리",
-    "es": "Sunland AI · Administración de datos de Beta"
+  "Sunland AI 2.0.0 数据管理": {
+    "zh-Hant": "Sunland AI 2.0.0 資料管理",
+    "ko": "Sunland AI 2.0.0 데이터 관리",
+    "es": "Sunland AI 2.0.0 · Administración de datos"
   },
   "姓名记忆": {
     "zh-Hant": "姓名記憶",
@@ -1379,10 +1379,10 @@
     "ko": "공지",
     "es": "Anuncios"
   },
-  "公告 - Sunland AI · Beta": {
-    "zh-Hant": "公告 - Sunland AI · Beta",
-    "ko": "공지 - Sunland AI · Beta",
-    "es": "Anuncios - Sunland AI · Beta"
+  "公告 - Sunland AI 2.0.0": {
+    "zh-Hant": "公告 - Sunland AI 2.0.0",
+    "ko": "공지 - Sunland AI 2.0.0",
+    "es": "Anuncios - Sunland AI 2.0.0"
   },
   "返回设置": {
     "zh-Hant": "返回設定",
@@ -1599,10 +1599,10 @@
     "ko": "이름 *",
     "es": "Otros"
   },
-  "Sunland AI · Beta · v1.1 · 数据安全存储于云端": {
-    "zh-Hant": "Sunland AI · Beta · v1.1 · 資料安全儲存於雲端",
-    "ko": "Sunland AI · 베타 · v1.1 · 클라우드에서 안전하게 저장된 데이터",
-    "es": "Sunland AI · Beta · v1.1 · Datos almacenados de forma segura en la nube"
+  "Sunland AI 2.0.0 · 正式版 · 数据安全存储于云端": {
+    "zh-Hant": "Sunland AI 2.0.0 · 正式版 · 資料安全儲存於雲端",
+    "ko": "Sunland AI 2.0.0 · 정식 버전 · 클라우드에서 안전하게 저장된 데이터",
+    "es": "Sunland AI 2.0.0 · Versión estable · Datos almacenados de forma segura en la nube"
   },
   "用户协议": {
     "zh-Hant": "使用者協議",
@@ -2449,10 +2449,10 @@
     "ko": "Redefining 지능형 상호 작용",
     "es": "Redefinir la interacción inteligente"
   },
-  "Sunland AI · Beta — 重新定义智能交互": {
-    "zh-Hant": "Sunland AI · Beta — 重新定義智慧互動",
-    "ko": "Sunland AI · 베타 - Redefining 지능형 상호 작용",
-    "es": "Sunland AI · Beta — Redefinir la interacción inteligente"
+  "Sunland AI 2.0.0 — 重新定义智能交互": {
+    "zh-Hant": "Sunland AI 2.0.0 — 重新定義智慧互動",
+    "ko": "Sunland AI 2.0.0 - Redefining 지능형 상호 작용",
+    "es": "Sunland AI 2.0.0 — Redefinir la interacción inteligente"
   },
   "深度集成先进大语言模型，为每位用户带来流畅、智能、有温度的对话体验": {
     "zh-Hant": "深度整合先進大語言模型，為每位使用者帶來流暢、智慧、有溫度的對話體驗",
@@ -2579,10 +2579,10 @@
     "ko": "다운로드",
     "es": "Descargar"
   },
-  "获取 Sunland AI · Beta": {
-    "zh-Hant": "獲取 Sunland AI · Beta",
-    "ko": "Sunland AI · 베타 받기",
-    "es": "Obtener Sunland AI · Beta"
+  "获取 Sunland AI 2.0.0": {
+    "zh-Hant": "獲取 Sunland AI 2.0.0",
+    "ko": "Sunland AI 2.0.0 받기",
+    "es": "Obtener Sunland AI 2.0.0"
   },
   "开启你的智能对话之旅": {
     "zh-Hant": "開啟你的智慧對話之旅",
@@ -2634,10 +2634,10 @@
     "ko": "안전 & 신뢰",
     "es": "Seguro"
   },
-  "公测免费": {
-    "zh-Hant": "公測免費",
-    "ko": "무료 베타",
-    "es": "Beta gratis"
+  "免费下载": {
+    "zh-Hant": "免費下載",
+    "ko": "무료 다운로드",
+    "es": "Descarga gratuita"
   },
   "持续更新": {
     "zh-Hant": "持續更新",
@@ -2649,10 +2649,10 @@
     "ko": "서비스 약관",
     "es": "Términos de servicio"
   },
-  "Sunland AI · Beta 隐私政策": {
-    "zh-Hant": "Sunland AI · Beta 隱私政策",
-    "ko": "Sunland AI · 베타 개인 정보 보호 정책",
-    "es": "Sunland AI · Política de privacidad de Beta"
+  "Sunland AI 2.0.0 隐私政策": {
+    "zh-Hant": "Sunland AI 2.0.0 隱私政策",
+    "ko": "Sunland AI 2.0.0 개인 정보 보호 정책",
+    "es": "Sunland AI 2.0.0 · Política de privacidad"
   },
   "最后更新：2026-07-25": {
     "zh-Hant": "最後更新：2026-07-25",
@@ -2749,8 +2749,8 @@
     "ko": "3. 국부적으로 베타 진단",
     "es": "3. Diagnósticos locales de beta"
   },
-  "Sunland AI · Beta 的本地诊断默认关闭。只有在您主动开启后，才会在当前设备保存匿名的理解结果与性能分桶等聚合数据。": {
-    "zh-Hant": "Sunland AI · Beta 的本地診斷預設關閉。只有在您主動開啟後，才會在當前裝置儲存匿名的理解結果與效能分桶等聚合資料。",
+  "Sunland AI 2.0.0 的本地诊断默认关闭。只有在您主动开启后，才会在当前设备保存匿名的理解结果与性能分桶等聚合数据。": {
+    "zh-Hant": "Sunland AI 2.0.0 的本地診斷預設關閉。只有在您主動開啟後，才會在當前裝置儲存匿名的理解結果與效能分桶等聚合資料。",
     "ko": "로컬 진단은 기본적으로 꺼집니다. 익명 집계 데이터, 이해 결과 및 성능 버킷과 같은, 당신이 그것을 활성화 한 후이 장치에 저장됩니다.",
     "es": "Los diagnósticos locales están apagados por defecto. Los datos agregados anónimos, como la comprensión de los resultados y los cubos de rendimiento, se almacenan en este dispositivo sólo después de habilitarlo."
   },
@@ -2914,15 +2914,15 @@
     "ko": "이 정책에 동의하지 않으면 서비스를 사용하지 마십시오.",
     "es": "Si no está de acuerdo con esta política, deje de usar el servicio."
   },
-  "Sunland AI · Beta 许可协议": {
-    "zh-Hant": "Sunland AI · Beta 許可協議",
-    "ko": "Sunland AI · Beta 서비스 약관",
-    "es": "Sunland AI · Beta Condiciones de servicio"
+  "Sunland AI 2.0.0 许可协议": {
+    "zh-Hant": "Sunland AI 2.0.0 許可協議",
+    "ko": "Sunland AI 2.0.0 서비스 약관",
+    "es": "Sunland AI 2.0.0 Condiciones de servicio"
   },
-  "Sunland AI · Beta 用户服务协议": {
-    "zh-Hant": "Sunland AI · Beta 使用者服務協議",
-    "ko": "Sunland AI · Beta 서비스 약관",
-    "es": "Sunland AI · Beta Condiciones de servicio"
+  "Sunland AI 2.0.0 用户服务协议": {
+    "zh-Hant": "Sunland AI 2.0.0 使用者服務協議",
+    "ko": "Sunland AI 2.0.0 서비스 약관",
+    "es": "Sunland AI 2.0.0 Condiciones de servicio"
   },
   "最后更新：2026-04-28": {
     "zh-Hant": "最後更新：2026-04-28",
@@ -2939,10 +2939,10 @@
     "ko": "1. 서비스 소개",
     "es": "1. Sobre el Servicio"
   },
-  "Sunland AI · Beta（以下简称“本服务”）为基于第三方人工智能模型（如 DeepSeek）提供的智能对话与辅助工具服务。本服务仅作为技术工具，不对生成内容的准确性、完整性或适用性作任何保证。": {
-    "zh-Hant": "Sunland AI · Beta（以下簡稱“本服務”）為基於第三方人工智慧模型（如 DeepSeek）提供的智慧對話與輔助工具服務。本服務僅作為技術工具，不對生成內容的準確性、完整性或適用性作任何保證。",
-    "ko": "Sunland AI · Beta (서비스\")는 DeepSeek와 같은 타사 AI 모델에 의해 구동되는 지능형 대화 및 지원 도구를 제공합니다. 이 서비스는 기술 도구이며 생성 된 콘텐츠의 정확성, 완전성, 또는 적합성을 보장하지 않습니다.",
-    "es": "Sunland AI · Beta (el “Servicio”) ofrece herramientas inteligentes de conversación y asistencia propulsadas por modelos de IA de terceros como DeepSeek. El Servicio es una herramienta técnica y no garantiza la exactitud, integridad o idoneidad del contenido generado."
+  "Sunland AI 2.0.0（以下简称“本服务”）为基于第三方人工智能模型（如 DeepSeek）提供的智能对话与辅助工具服务。本服务仅作为技术工具，不对生成内容的准确性、完整性或适用性作任何保证。": {
+    "zh-Hant": "Sunland AI 2.0.0（以下簡稱“本服務”）為基於第三方人工智慧模型（如 DeepSeek）提供的智慧對話與輔助工具服務。本服務僅作為技術工具，不對生成內容的準確性、完整性或適用性作任何保證。",
+    "ko": "Sunland AI 2.0.0 (서비스\")는 DeepSeek와 같은 타사 AI 모델에 의해 구동되는 지능형 대화 및 지원 도구를 제공합니다. 이 서비스는 기술 도구이며 생성 된 콘텐츠의 정확성, 완전성, 또는 적합성을 보장하지 않습니다.",
+    "es": "Sunland AI 2.0.0 (el “Servicio”) ofrece herramientas inteligentes de conversación y asistencia propulsadas por modelos de IA de terceros como DeepSeek. El Servicio es una herramienta técnica y no garantiza la exactitud, integridad o idoneidad del contenido generado."
   },
   "二、账户与使用": {
     "zh-Hant": "二、賬戶與使用",
@@ -3478,9 +3478,9 @@
     "es": "Buscar en el historial",
     "ko": "대화 기록 검색"
   },
-  "下载公测版": {
-    "es": "Descargar beta",
-    "ko": "베타 다운로드"
+  "下载正式版": {
+    "es": "Descargar versión estable",
+    "ko": "정식 버전 다운로드"
   },
   "升级 Pro": {
     "es": "Actualizar a Pro",
@@ -4119,9 +4119,9 @@
     "es": "Seguro y de confianza",
     "ko": "안전하고 신뢰할 수 있는"
   },
-  "公测免费": {
-    "es": "Beta gratuita",
-    "ko": "무료 베타"
+  "免费下载": {
+    "es": "Descarga gratuita",
+    "ko": "무료 다운로드"
   },
   "持续更新": {
     "es": "Actualizaciones continuas",
