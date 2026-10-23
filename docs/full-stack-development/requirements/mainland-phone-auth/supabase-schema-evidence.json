@@ -1,0 +1,514 @@
+{
+  "date": "2026-10-24",
+  "project_ref": "klyrasrqgxijwrxuoevj",
+  "scope": "Read-only catalog metadata only; no user rows or application secrets queried",
+  "rls": [
+    {
+      "table": "account_deletion_jobs",
+      "forced": false,
+      "enabled": true
+    },
+    {
+      "table": "user_profiles",
+      "forced": false,
+      "enabled": true
+    }
+  ],
+  "indexes": [
+    {
+      "name": "account_deletion_jobs_pkey",
+      "table": "account_deletion_jobs",
+      "definition": "CREATE UNIQUE INDEX account_deletion_jobs_pkey ON public.account_deletion_jobs USING btree (id)"
+    },
+    {
+      "name": "account_deletion_jobs_token_hash_key",
+      "table": "account_deletion_jobs",
+      "definition": "CREATE UNIQUE INDEX account_deletion_jobs_token_hash_key ON public.account_deletion_jobs USING btree (token_hash)"
+    },
+    {
+      "name": "account_deletion_jobs_user_id_idx",
+      "table": "account_deletion_jobs",
+      "definition": "CREATE INDEX account_deletion_jobs_user_id_idx ON public.account_deletion_jobs USING btree (user_id)"
+    },
+    {
+      "name": "account_deletion_jobs_status_expires_idx",
+      "table": "account_deletion_jobs",
+      "definition": "CREATE INDEX account_deletion_jobs_status_expires_idx ON public.account_deletion_jobs USING btree (status, expires_at)"
+    },
+    {
+      "name": "account_deletion_jobs_recovery_expires_idx",
+      "table": "account_deletion_jobs",
+      "definition": "CREATE INDEX account_deletion_jobs_recovery_expires_idx ON public.account_deletion_jobs USING btree (recovery_expires_at) WHERE (recovery_expires_at IS NOT NULL)"
+    },
+    {
+      "name": "user_profiles_email_unique_idx",
+      "table": "user_profiles",
+      "definition": "CREATE UNIQUE INDEX user_profiles_email_unique_idx ON public.user_profiles USING btree (lower(email)) WHERE ((email IS NOT NULL) AND (identity_status IS DISTINCT FROM 'retired'::text))"
+    },
+    {
+      "name": "user_profiles_pkey",
+      "table": "user_profiles",
+      "definition": "CREATE UNIQUE INDEX user_profiles_pkey ON public.user_profiles USING btree (user_id)"
+    }
+  ],
+  "policies": [
+    {
+      "cmd": "INSERT",
+      "name": "user_profiles_active_insert",
+      "qual": null,
+      "roles": [
+        "authenticated"
+      ],
+      "table": "user_profiles",
+      "with_check": "sunland_authenticated_identity_is_active(user_id)"
+    },
+    {
+      "cmd": "UPDATE",
+      "name": "user_profiles_active_update",
+      "qual": "sunland_authenticated_identity_is_active(user_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "user_profiles",
+      "with_check": "sunland_authenticated_identity_is_active(user_id)"
+    },
+    {
+      "cmd": "DELETE",
+      "name": "user_profiles_active_delete",
+      "qual": "sunland_authenticated_identity_is_active(user_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "user_profiles",
+      "with_check": null
+    },
+    {
+      "cmd": "SELECT",
+      "name": "user_profiles_select_own",
+      "qual": "(( SELECT (auth.jwt() ->> 'id'::text)) = user_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "user_profiles",
+      "with_check": null
+    },
+    {
+      "cmd": "UPDATE",
+      "name": "user_profiles_update_own",
+      "qual": "(( SELECT (auth.jwt() ->> 'id'::text)) = user_id)",
+      "roles": [
+        "authenticated"
+      ],
+      "table": "user_profiles",
+      "with_check": "(( SELECT (auth.jwt() ->> 'id'::text)) = user_id)"
+    }
+  ],
+  "triggers": [
+    {
+      "name": "ai_quota_cleanup_retired_account",
+      "table": "user_profiles",
+      "definition": "CREATE TRIGGER ai_quota_cleanup_retired_account AFTER UPDATE OF identity_status ON public.user_profiles FOR EACH ROW WHEN (((new.identity_status = 'retired'::text) AND (old.identity_status IS DISTINCT FROM 'retired'::text))) EXECUTE FUNCTION ai_quota_cleanup_retired_account()"
+    },
+    {
+      "name": "sunland_history_cleanup_retired_account",
+      "table": "user_profiles",
+      "definition": "CREATE TRIGGER sunland_history_cleanup_retired_account AFTER UPDATE OF identity_status ON public.user_profiles FOR EACH ROW WHEN (((new.identity_status = 'retired'::text) AND (old.identity_status IS DISTINCT FROM 'retired'::text))) EXECUTE FUNCTION sunland_history_cleanup_retired_account()"
+    },
+    {
+      "name": "trg_user_profiles_updated_at",
+      "table": "user_profiles",
+      "definition": "CREATE TRIGGER trg_user_profiles_updated_at BEFORE UPDATE ON public.user_profiles FOR EACH ROW EXECUTE FUNCTION set_updated_at()"
+    },
+    {
+      "name": "waffo_capture_profile_insert",
+      "table": "user_profiles",
+      "definition": "CREATE TRIGGER waffo_capture_profile_insert AFTER INSERT ON public.user_profiles FOR EACH ROW EXECUTE FUNCTION waffo_prod.capture_profile_source()"
+    },
+    {
+      "name": "waffo_capture_profile_update",
+      "table": "user_profiles",
+      "definition": "CREATE TRIGGER waffo_capture_profile_update AFTER UPDATE OF pro ON public.user_profiles FOR EACH ROW EXECUTE FUNCTION waffo_prod.capture_profile_source()"
+    }
+  ],
+  "functions": [
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "sunland_account_delete_begin",
+      "definition": "CREATE OR REPLACE FUNCTION public.sunland_account_delete_begin(p_user_id text, p_deletion_job_id uuid, p_attempt_id text, p_fencing_version bigint)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public', 'extensions'\nAS $function$\ndeclare\n  v_status text;\n  v_job uuid;\n  v_attempt text;\n  v_version bigint;\nbegin\n  if p_user_id is null\n    or p_user_id !~ '^[A-Za-z0-9][A-Za-z0-9@._+-]{0,127}$'\n    or p_deletion_job_id is null\n    or p_attempt_id is null\n    or p_attempt_id !~ '^[A-Za-z0-9_-]{16,128}$'\n    or p_fencing_version is null\n    or p_fencing_version < 1 then\n    return jsonb_build_object('code', 'invalid_request');\n  end if;\n\n  select identity_status, deletion_job_id, deletion_attempt_id, deletion_fencing_version\n    into v_status, v_job, v_attempt, v_version\n  from public.user_profiles\n  where user_id = p_user_id\n  for update;\n\n  if not found then\n    return jsonb_build_object(\n      'code', 'user_not_found',\n      'deletion_job_id', p_deletion_job_id::text,\n      'user_id', p_user_id\n    );\n  end if;\n\n  if v_status = 'retired' then\n    return jsonb_build_object(\n      'code', 'retired',\n      'deletion_job_id', p_deletion_job_id::text,\n      'user_id', p_user_id,\n      'attempt_id', v_attempt,\n      'fencing_version', v_version\n    );\n  end if;\n\n  if v_status = 'deleting' then\n    if v_job is distinct from p_deletion_job_id then\n      return jsonb_build_object(\n        'code', 'deletion_conflict',\n        'deletion_job_id', p_deletion_job_id::text,\n        'user_id', p_user_id,\n        'attempt_id', v_attempt,\n        'fencing_version', v_version\n      );\n    end if;\n\n    if p_fencing_version < v_version then\n      return jsonb_build_object(\n        'code', 'stale_attempt',\n        'deletion_job_id', p_deletion_job_id::text,\n        'user_id', p_user_id,\n        'attempt_id', v_attempt,\n        'fencing_version', v_version\n      );\n    end if;\n\n    if p_fencing_version = v_version then\n      if p_attempt_id is distinct from v_attempt then\n        return jsonb_build_object(\n          'code', 'fencing_conflict',\n          'deletion_job_id', p_deletion_job_id::text,\n          'user_id', p_user_id,\n          'attempt_id', v_attempt,\n          'fencing_version', v_version\n        );\n      end if;\n\n      return jsonb_build_object(\n        'code', 'already_revoked',\n        'deletion_job_id', p_deletion_job_id::text,\n        'user_id', p_user_id,\n        'attempt_id', v_attempt,\n        'fencing_version', v_version\n      );\n    end if;\n\n    update public.user_profiles\n       set deletion_attempt_id = p_attempt_id,\n           deletion_fencing_version = p_fencing_version,\n           deletion_started_at = now()\n     where user_id = p_user_id;\n\n    return jsonb_build_object(\n      'code', 'ownership_transferred',\n      'deletion_job_id', p_deletion_job_id::text,\n      'user_id', p_user_id,\n      'attempt_id', p_attempt_id,\n      'fencing_version', p_fencing_version\n    );\n  end if;\n\n  if v_status = 'active' then\n    update public.user_profiles\n       set identity_status = 'deleting',\n           deletion_job_id = p_deletion_job_id,\n           deletion_attempt_id = p_attempt_id,\n           deletion_fencing_version = p_fencing_version,\n           deletion_started_at = now()\n     where user_id = p_user_id;\n\n    return jsonb_build_object(\n      'code', 'revoked',\n      'deletion_job_id', p_deletion_job_id::text,\n      'user_id', p_user_id,\n      'attempt_id', p_attempt_id,\n      'fencing_version', p_fencing_version\n    );\n  end if;\n\n  return jsonb_build_object(\n    'code', 'invalid_state',\n    'deletion_job_id', p_deletion_job_id::text,\n    'user_id', p_user_id,\n    'attempt_id', v_attempt,\n    'fencing_version', v_version\n  );\nend;\n$function$\n"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "sunland_account_delete_finalize",
+      "definition": "CREATE OR REPLACE FUNCTION public.sunland_account_delete_finalize(p_user_id text, p_deletion_job_id uuid, p_attempt_id text, p_fencing_version bigint)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public', 'extensions'\nAS $function$\ndeclare\n  v_status text;\n  v_job uuid;\n  v_attempt text;\n  v_version bigint;\nbegin\n  if p_user_id is null\n    or p_user_id !~ '^[A-Za-z0-9][A-Za-z0-9@._+-]{0,127}$'\n    or p_deletion_job_id is null\n    or p_attempt_id is null\n    or p_attempt_id !~ '^[A-Za-z0-9_-]{16,128}$'\n    or p_fencing_version is null\n    or p_fencing_version < 1 then\n    return jsonb_build_object('code', 'invalid_request');\n  end if;\n\n  select identity_status, deletion_job_id, deletion_attempt_id, deletion_fencing_version\n    into v_status, v_job, v_attempt, v_version\n  from public.user_profiles\n  where user_id = p_user_id\n  for update;\n\n  if not found then\n    return jsonb_build_object(\n      'code', 'user_not_found',\n      'deletion_job_id', p_deletion_job_id::text,\n      'user_id', p_user_id,\n      'attempt_id', v_attempt,\n      'fencing_version', v_version\n    );\n  end if;\n\n  if v_status = 'retired' then\n    if v_job = p_deletion_job_id\n      and v_attempt = p_attempt_id\n      and v_version = p_fencing_version then\n      return jsonb_build_object(\n        'code', 'already_retired',\n        'deletion_job_id', p_deletion_job_id::text,\n        'user_id', p_user_id,\n        'attempt_id', v_attempt,\n        'fencing_version', v_version\n      );\n    end if;\n\n    return jsonb_build_object(\n      'code', 'stale_attempt',\n      'deletion_job_id', p_deletion_job_id::text,\n      'user_id', p_user_id,\n      'attempt_id', v_attempt,\n      'fencing_version', v_version\n    );\n  end if;\n\n  if v_status = 'active' then\n    return jsonb_build_object(\n      'code', 'not_deleting',\n      'deletion_job_id', p_deletion_job_id::text,\n      'user_id', p_user_id,\n      'attempt_id', v_attempt,\n      'fencing_version', v_version\n    );\n  end if;\n\n  if v_status = 'deleting' then\n    if v_job is distinct from p_deletion_job_id then\n      return jsonb_build_object(\n        'code', 'deletion_conflict',\n        'deletion_job_id', p_deletion_job_id::text,\n        'user_id', p_user_id,\n        'attempt_id', v_attempt,\n        'fencing_version', v_version\n      );\n    end if;\n\n    if p_fencing_version is distinct from v_version then\n      return jsonb_build_object(\n        'code', 'stale_attempt',\n        'deletion_job_id', p_deletion_job_id::text,\n        'user_id', p_user_id,\n        'attempt_id', v_attempt,\n        'fencing_version', v_version\n      );\n    end if;\n\n    if p_attempt_id is distinct from v_attempt then\n      return jsonb_build_object(\n        'code', 'fencing_conflict',\n        'deletion_job_id', p_deletion_job_id::text,\n        'user_id', p_user_id,\n        'attempt_id', v_attempt,\n        'fencing_version', v_version\n      );\n    end if;\n\n    update public.user_profiles\n       set identity_status = 'retired',\n           retired_at = now()\n     where user_id = p_user_id;\n\n    return jsonb_build_object(\n      'code', 'retired',\n      'deletion_job_id', p_deletion_job_id::text,\n      'user_id', p_user_id,\n      'attempt_id', v_attempt,\n      'fencing_version', v_version\n    );\n  end if;\n\n  return jsonb_build_object(\n    'code', 'invalid_state',\n    'deletion_job_id', p_deletion_job_id::text,\n    'user_id', p_user_id,\n    'attempt_id', v_attempt,\n    'fencing_version', v_version\n  );\nend;\n$function$\n"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "sunland_account_delete_sanitize_profile",
+      "definition": "CREATE OR REPLACE FUNCTION public.sunland_account_delete_sanitize_profile(p_user_id text, p_deletion_job_id uuid, p_attempt_id text, p_fencing_version bigint)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public', 'extensions'\nAS $function$\ndeclare\n  v_status text;\n  v_job uuid;\n  v_attempt text;\n  v_version bigint;\n  v_sanitized_at timestamptz;\nbegin\n  if p_user_id is null\n    or p_user_id !~ '^[A-Za-z0-9][A-Za-z0-9@._+-]{0,127}$'\n    or p_deletion_job_id is null\n    or p_attempt_id is null\n    or p_attempt_id !~ '^[A-Za-z0-9_-]{16,128}$'\n    or p_fencing_version is null\n    or p_fencing_version < 1 then\n    return jsonb_build_object('code', 'invalid_request');\n  end if;\n\n  select identity_status, deletion_job_id, deletion_attempt_id, deletion_fencing_version, profile_sanitized_at\n    into v_status, v_job, v_attempt, v_version, v_sanitized_at\n  from public.user_profiles\n  where user_id = p_user_id\n  for update;\n\n  if not found then\n    return jsonb_build_object(\n      'code', 'user_not_found',\n      'deletion_job_id', p_deletion_job_id::text,\n      'user_id', p_user_id,\n      'attempt_id', p_attempt_id,\n      'fencing_version', p_fencing_version\n    );\n  end if;\n\n  if v_status is distinct from 'retired' then\n    return jsonb_build_object(\n      'code', 'not_retired',\n      'deletion_job_id', p_deletion_job_id::text,\n      'user_id', p_user_id,\n      'attempt_id', v_attempt,\n      'fencing_version', v_version\n    );\n  end if;\n\n  if v_job is distinct from p_deletion_job_id\n    or v_version is distinct from p_fencing_version then\n    return jsonb_build_object(\n      'code', 'stale_attempt',\n      'deletion_job_id', p_deletion_job_id::text,\n      'user_id', p_user_id,\n      'attempt_id', v_attempt,\n      'fencing_version', v_version\n    );\n  end if;\n\n  if v_attempt is distinct from p_attempt_id then\n    return jsonb_build_object(\n      'code', 'fencing_conflict',\n      'deletion_job_id', p_deletion_job_id::text,\n      'user_id', p_user_id,\n      'attempt_id', v_attempt,\n      'fencing_version', v_version\n    );\n  end if;\n\n  if v_sanitized_at is not null then\n    return jsonb_build_object(\n      'code', 'already_sanitized',\n      'deletion_job_id', p_deletion_job_id::text,\n      'user_id', p_user_id,\n      'attempt_id', v_attempt,\n      'fencing_version', v_version\n    );\n  end if;\n\n  update public.user_profiles\n     set email = null,\n         avatar_url = null,\n         avatar_path = null,\n         name = null,\n         pro = false,\n         is_banned = false,\n         ban_reason = null,\n         updated_at = now(),\n         profile_sanitized_at = now()\n   where user_id = p_user_id;\n\n  return jsonb_build_object(\n    'code', 'sanitized',\n    'deletion_job_id', p_deletion_job_id::text,\n    'user_id', p_user_id,\n    'attempt_id', p_attempt_id,\n    'fencing_version', p_fencing_version\n  );\nend;\n$function$\n"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "authenticated=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "sunland_authenticated_identity_is_active",
+      "definition": "CREATE OR REPLACE FUNCTION public.sunland_authenticated_identity_is_active(p_user_id text)\n RETURNS boolean\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO ''\nAS $function$\ndeclare\n  v_claimed_user_id text;\n  v_identity_status text;\nbegin\n  if coalesce((select auth.jwt() ->> 'role'), '') <> 'authenticated' then\n    return false;\n  end if;\n  v_claimed_user_id := nullif((select auth.jwt() ->> 'id'), '');\n  if v_claimed_user_id is distinct from p_user_id then\n    return false;\n  end if;\n\n  select identity_status into v_identity_status\n    from public.user_profiles\n   where user_id = p_user_id\n   for no key update;\n  return found and v_identity_status = 'active';\nend;\n$function$\n"
+    },
+    {
+      "acl": [
+        "postgres=X/postgres",
+        "service_role=X/postgres"
+      ],
+      "name": "sunland_claim_account_deletion_job",
+      "definition": "CREATE OR REPLACE FUNCTION public.sunland_claim_account_deletion_job(p_job_id uuid, p_token_hash text, p_attempt_id text)\n RETURNS jsonb\n LANGUAGE plpgsql\n SECURITY DEFINER\n SET search_path TO 'pg_catalog', 'public', 'extensions'\nAS $function$\ndeclare\n  v_user_id text;\n  v_attempt_id text;\n  v_fencing_version bigint;\n  v_now timestamptz := now();\nbegin\n  if p_job_id is null or p_token_hash is null or p_attempt_id is null then\n    return null;\n  end if;\n\n  if p_attempt_id !~ '^[A-Za-z0-9_-]{16,128}$' then\n    return null;\n  end if;\n\n  update public.account_deletion_jobs\n     set status = 'in_progress',\n         claimed_at = v_now,\n         lease_expires_at = v_now + interval '90 seconds',\n         attempt_id = p_attempt_id,\n         fencing_version = fencing_version +\n           case\n             when status = 'pending' or attempt_id is distinct from p_attempt_id then 1\n             else 0\n           end,\n         recovery_expires_at = v_now + interval '7 days'\n   where id = p_job_id\n     and token_hash = p_token_hash\n     and (\n       (\n         status = 'pending'\n         and expires_at > v_now\n       )\n       or (\n         status = 'in_progress'\n         and (\n           attempt_id = p_attempt_id\n           or lease_expires_at is null\n           or lease_expires_at < v_now\n         )\n         and recovery_expires_at > v_now\n       )\n     )\n  returning user_id, attempt_id, fencing_version\n    into v_user_id, v_attempt_id, v_fencing_version;\n\n  if v_user_id is null then\n    return null;\n  end if;\n\n  return jsonb_build_object(\n    'user_id', v_user_id,\n    'attempt_id', v_attempt_id,\n    'fencing_version', v_fencing_version\n  );\nend;\n$function$\n"
+    }
+  ],
+  "profile_columns": [
+    {
+      "name": "user_id",
+      "type": "text",
+      "default": null,
+      "nullable": "NO"
+    },
+    {
+      "name": "avatar_url",
+      "type": "text",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "avatar_path",
+      "type": "text",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "updated_at",
+      "type": "timestamp with time zone",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "name": "name",
+      "type": "text",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "pro",
+      "type": "boolean",
+      "default": "false",
+      "nullable": "NO"
+    },
+    {
+      "name": "email",
+      "type": "text",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "created_at",
+      "type": "timestamp with time zone",
+      "default": "now()",
+      "nullable": "YES"
+    },
+    {
+      "name": "is_banned",
+      "type": "boolean",
+      "default": "false",
+      "nullable": "NO"
+    },
+    {
+      "name": "ban_reason",
+      "type": "text",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "identity_status",
+      "type": "text",
+      "default": "'active'::text",
+      "nullable": "NO"
+    },
+    {
+      "name": "deletion_job_id",
+      "type": "uuid",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "deletion_attempt_id",
+      "type": "text",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "deletion_fencing_version",
+      "type": "bigint",
+      "default": "0",
+      "nullable": "NO"
+    },
+    {
+      "name": "deletion_started_at",
+      "type": "timestamp with time zone",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "retired_at",
+      "type": "timestamp with time zone",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "profile_sanitized_at",
+      "type": "timestamp with time zone",
+      "default": null,
+      "nullable": "YES"
+    },
+    {
+      "name": "onboarding_version",
+      "type": "smallint",
+      "default": "0",
+      "nullable": "NO"
+    },
+    {
+      "name": "onboarding_step",
+      "type": "smallint",
+      "default": "1",
+      "nullable": "NO"
+    }
+  ],
+  "column_privileges": [
+    {
+      "column_name": "user_id",
+      "authenticated_select": true,
+      "authenticated_update": false,
+      "anon_update": false
+    },
+    {
+      "column_name": "avatar_url",
+      "authenticated_select": true,
+      "authenticated_update": true,
+      "anon_update": false
+    },
+    {
+      "column_name": "avatar_path",
+      "authenticated_select": true,
+      "authenticated_update": true,
+      "anon_update": false
+    },
+    {
+      "column_name": "updated_at",
+      "authenticated_select": true,
+      "authenticated_update": true,
+      "anon_update": false
+    },
+    {
+      "column_name": "name",
+      "authenticated_select": true,
+      "authenticated_update": true,
+      "anon_update": false
+    },
+    {
+      "column_name": "pro",
+      "authenticated_select": true,
+      "authenticated_update": false,
+      "anon_update": false
+    },
+    {
+      "column_name": "email",
+      "authenticated_select": true,
+      "authenticated_update": false,
+      "anon_update": false
+    },
+    {
+      "column_name": "created_at",
+      "authenticated_select": true,
+      "authenticated_update": false,
+      "anon_update": false
+    },
+    {
+      "column_name": "is_banned",
+      "authenticated_select": true,
+      "authenticated_update": false,
+      "anon_update": false
+    },
+    {
+      "column_name": "ban_reason",
+      "authenticated_select": true,
+      "authenticated_update": false,
+      "anon_update": false
+    },
+    {
+      "column_name": "identity_status",
+      "authenticated_select": true,
+      "authenticated_update": false,
+      "anon_update": false
+    },
+    {
+      "column_name": "deletion_job_id",
+      "authenticated_select": true,
+      "authenticated_update": false,
+      "anon_update": false
+    },
+    {
+      "column_name": "deletion_attempt_id",
+      "authenticated_select": true,
+      "authenticated_update": false,
+      "anon_update": false
+    },
+    {
+      "column_name": "deletion_fencing_version",
+      "authenticated_select": true,
+      "authenticated_update": false,
+      "anon_update": false
+    },
+    {
+      "column_name": "deletion_started_at",
+      "authenticated_select": true,
+      "authenticated_update": false,
+      "anon_update": false
+    },
+    {
+      "column_name": "retired_at",
+      "authenticated_select": true,
+      "authenticated_update": false,
+      "anon_update": false
+    },
+    {
+      "column_name": "profile_sanitized_at",
+      "authenticated_select": true,
+      "authenticated_update": false,
+      "anon_update": false
+    },
+    {
+      "column_name": "onboarding_version",
+      "authenticated_select": true,
+      "authenticated_update": false,
+      "anon_update": false
+    },
+    {
+      "column_name": "onboarding_step",
+      "authenticated_select": true,
+      "authenticated_update": false,
+      "anon_update": false
+    }
+  ],
+  "relevant_migrations": [
+    {
+      "version": "20260428013442",
+      "name": "create_user_profiles_table"
+    },
+    {
+      "version": "20260509230127",
+      "name": "extend_user_profiles_schema"
+    },
+    {
+      "version": "20260606095441",
+      "name": "add_deleted_conversations_tombstone"
+    },
+    {
+      "version": "20260606100051",
+      "name": "add_rls_deleted_conversations"
+    },
+    {
+      "version": "20260613094652",
+      "name": "fix_handle_new_user_write_user_profiles"
+    },
+    {
+      "version": "20260711073514",
+      "name": "add_email_to_user_profiles"
+    },
+    {
+      "version": "20260808111301",
+      "name": "prepare_legacy_security"
+    },
+    {
+      "version": "20260808115914",
+      "name": "remove_profile_insert_grant"
+    },
+    {
+      "version": "20260808120033",
+      "name": "lock_authenticated_legacy_grants"
+    },
+    {
+      "version": "20260811030415",
+      "name": "harden_legacy_table_rls"
+    },
+    {
+      "version": "20260906101000",
+      "name": "admin_profile_resets_and_system_check"
+    },
+    {
+      "version": "20260919114230",
+      "name": "chat_mode_v1_account_delete_hook"
+    },
+    {
+      "version": "20260926002710",
+      "name": "account_deletion_identity_guardrails"
+    },
+    {
+      "version": "20261004120853",
+      "name": "oc_multiple_profiles"
+    },
+    {
+      "version": "20261005104026",
+      "name": "first_login_onboarding"
+    }
+  ],
+  "constraints": [
+    {
+      "table_name": "account_deletion_jobs",
+      "conname": "account_deletion_jobs_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (id)"
+    },
+    {
+      "table_name": "account_deletion_jobs",
+      "conname": "account_deletion_jobs_status_check",
+      "contype": "c",
+      "definition": "CHECK ((status = ANY (ARRAY['pending'::text, 'in_progress'::text, 'completed'::text])))"
+    },
+    {
+      "table_name": "account_deletion_jobs",
+      "conname": "account_deletion_jobs_token_hash_key",
+      "contype": "u",
+      "definition": "UNIQUE (token_hash)"
+    },
+    {
+      "table_name": "account_deletion_jobs",
+      "conname": "account_deletion_jobs_user_id_check",
+      "contype": "c",
+      "definition": "CHECK ((user_id ~ '^[A-Za-z0-9][A-Za-z0-9@._+-]{0,127}$'::text))"
+    },
+    {
+      "table_name": "user_profiles",
+      "conname": "user_profiles_identity_status_check",
+      "contype": "c",
+      "definition": "CHECK ((identity_status = ANY (ARRAY['active'::text, 'deleting'::text, 'retired'::text])))"
+    },
+    {
+      "table_name": "user_profiles",
+      "conname": "user_profiles_onboarding_state_check",
+      "contype": "c",
+      "definition": "CHECK ((((onboarding_version = 0) AND ((onboarding_step >= 1) AND (onboarding_step <= 3))) OR ((onboarding_version = 1) AND (onboarding_step = 3))))"
+    },
+    {
+      "table_name": "user_profiles",
+      "conname": "user_profiles_pkey",
+      "contype": "p",
+      "definition": "PRIMARY KEY (user_id)"
+    }
+  ]
+}

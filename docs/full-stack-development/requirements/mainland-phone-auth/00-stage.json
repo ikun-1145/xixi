@@ -1,20 +1,66 @@
 {
   "feature": "mainland-phone-auth",
-  "date": "2026-10-21",
-  "currentStage": "architecture-audit",
-  "status": "blocked",
+  "date": "2026-10-24",
+  "currentStage": "phase-1-complete",
+  "status": "complete_with_integration_limits",
   "approvals": {
     "requirementsApproved": true,
-    "implementationApproved": false
+    "implementationApproved": true
   },
-  "evidence": ["PHASE-0-AUDIT.md", "cloudflare-auth-evidence.json"],
+  "evidence": [
+    "PHASE-0-AUDIT.md",
+    "cloudflare-auth-evidence.json",
+    "PHASE-1-PLAN.md",
+    "PHASE-1-DELIVERY.md",
+    "phase-1-contract.schema.json",
+    "supabase-schema-evidence.json"
+  ],
   "resolvedBlockers": [
     "Read-only Cloudflare MCP access restored; deployed ai Worker authentication code inspected.",
-    "User continuation requirements explicitly retain current application JWT and database token architecture; native Supabase Auth sessions are out of scope."
+    "User continuation requirements explicitly retain current application JWT and database token architecture; native Supabase Auth sessions are out of scope.",
+    "A Team bootstrap validated and committed be0422e; Supabase read-only metadata tools connected.",
+    "Scoped Supabase catalog, constraints, indexes, RLS, column grants, deletion RPC/lease and migration metadata verified 2026-10-24."
   ],
-  "blockers": [
-    "Current Supabase schema, constraints, triggers, RLS and RPC definitions are not yet verified.",
-    "Existing account deletion requires email verification and cannot support phone-only users.",
-    "Mandatory A Team specialist eligibility cannot be verified: project roster files and scripts/roster.py are absent. Approved workflow initialization is required before specialist dispatch."
-  ]
+  "blockers": [],
+  "implementationScope": "Phase 1 only; no identity mapping, user creation, binding or unbinding",
+  "flowProfile": "strict-fullstack",
+  "phaseStatus": {
+    "phase0": "Targeted Supabase metadata verified; no user rows read",
+    "phase1": "Local modules and Mock verification complete; not wired or deployed",
+    "phase2": "Not implemented; outside current authorization",
+    "phase3": "Not implemented; outside current authorization"
+  },
+  "integrationPrerequisites": [
+    "Original authentication Worker source-project integration with trusted JWT/status/ban/recent-auth middleware",
+    "Isolated real DO binding/transaction/restart validation and reviewed durable budget initialization/recovery",
+    "Supplier and Turnstile behavior/cost upper-bound verification under separate authorization",
+    "Phase 2 reviewed identity mapping, release policy, deletion and alternative-login-factor contract"
+  ],
+  "verification": {
+    "mockTests": {
+      "passed": 32,
+      "failed": 0,
+      "skipped": 0
+    },
+    "npmTest": {
+      "total": 867,
+      "passed": 866,
+      "failed": 0,
+      "skipped": 1,
+      "skipReason": "Existing optional AFDIAN_PGLITE_PATH SQL test"
+    },
+    "coverage": {
+      "lines": 99.65,
+      "branches": 93.76,
+      "functions": 88.52
+    },
+    "independentReviews": [
+      "architect/planner",
+      "qa/code-reviewer",
+      "security/compliance-reviewer"
+    ],
+    "realSmsSent": false,
+    "deployed": false,
+    "migrationsExecuted": false
+  }
 }

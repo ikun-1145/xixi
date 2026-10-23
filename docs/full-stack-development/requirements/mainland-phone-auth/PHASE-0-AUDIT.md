@@ -1,5 +1,7 @@
 # 中国大陆手机号认证：Phase 0 审计与阻断说明
 
+> 2026-10-24 更新：A Team 已非破坏性初始化并提交 `be0422e`，Supabase 只读元数据查询已恢复；下文此前的工作流/连接阻断属于历史记录。当前实况证据见 `supabase-schema-evidence.json`，Phase 1 实施与验证见 `PHASE-1-DELIVERY.md`。旧会话方案疑问已由用户明确解决，不迁移 Supabase Auth。Phase 2 继续不在本轮实施范围。
+
 > 2026-10-21 续开发需求更新：用户已明确保留现有应用 JWT、数据库令牌及 `user_profiles.user_id`，禁止迁移到 Supabase Auth。下文关于“是否要求原生 Supabase Auth session”的待确认事项已解除，以本更新和 `00-stage.json` 为准。数据库访问缺失只阻断依赖当前结构的身份映射和迁移，不应阻断独立短信封装；但本轮另遇下述必需工作流阻断，尚未开始实现。
 >
 > 当前可调用工具仍没有 Supabase 元数据查询能力；现有 `.codex/config.toml` 已配置限定项目 `klyrasrqgxijwrxuoevj` 的只读连接，无须提供 service-role 密钥或开放写权限。只需恢复该连接，查询表、约束、索引、触发器、RLS、RPC 和相关迁移状态，不读取真实用户行。
