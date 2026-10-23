@@ -1,0 +1,14 @@
+{
+  "aTeamVersion": "1.4.1",
+  "agents": {
+    "orchestrator": "builtin:root",
+    "architect": ".codex/agents/system-architect.toml",
+    "planner": ".codex/agents/system-architect.toml",
+    "code-reviewer": ".codex/agents/qa-reviewer.toml",
+    "python-reviewer": ".codex/agents/qa-reviewer.toml",
+    "debugger": ".codex/agents/qa-reviewer.toml",
+    "security-reviewer": ".codex/agents/security-reviewer.toml",
+    "compliance-reviewer": ".codex/agents/security-reviewer.toml",
+    "backend-guardian": ".codex/agents/backend-guardian.toml"
+  }
+}
