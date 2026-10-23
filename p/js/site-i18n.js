@@ -28,7 +28,6 @@
   });
 
   const rows = [
-    ["正式版", "Stable Release", "正式版", {"zh-Hant": "正式版", "ko": "정식 버전", "es": "Versión estable"}],
     // Manual DeepSeek web search (page-memory preference).
     ["联网搜索", "Web Search", "ウェブ検索", {"zh-Hant": "聯網搜尋", "ko": "웹 검색", "es": "Búsqueda web"}],
     ["正在搜索网络…", "Searching the web…", "ウェブを検索中…", {"zh-Hant": "正在搜尋網路…", "ko": "웹 검색 중…", "es": "Buscando en la web…"}],
@@ -161,7 +160,7 @@
     ["新对话", "New Chat", "新しいチャット"],
     ["搜索历史对话", "Search chat history", "チャット履歴を検索"],
     ["今日剩余 20 次", "20 messages left today", "本日あと20回"],
-    ["下载正式版", "Download Stable Release", "正式版をダウンロード"],
+    ["下载公测版", "Download Beta", "ベータ版をダウンロード"],
     ["升级 Pro", "Upgrade to Pro", "Pro にアップグレード"],
     ["想聊点什么？", "What would you like to talk about?", "何を話しましょうか？"],
     ["有问题，尽管问", "Ask me anything", "何でも聞いてください"],
@@ -182,9 +181,9 @@
     ["没找到相关对话", "No matching chats found", "該当するチャットが見つかりません"],
     ["删除对话", "Delete chat", "チャットを削除"],
     ["Pro · 无限使用", "Pro · Unlimited", "Pro · 無制限"],
-    ["Sunland AI 2.0.0 暂不支持深度思考", "Sunland AI 2.0.0 does not support deep thinking yet", "Sunland AI 2.0.0 は深い思考にまだ対応していません"],
-    ["Sunland AI 2.0.0 暂不支持文件上传", "Sunland AI 2.0.0 does not support file uploads yet", "Sunland AI 2.0.0 はファイルアップロードにまだ対応していません"],
-    ["Sunland AI 2.0.0 暂不支持图片上传", "Sunland AI 2.0.0 does not support image uploads yet", "Sunland AI 2.0.0 は画像アップロードにまだ対応していません"],
+    ["Sunland AI · Beta 暂不支持深度思考", "Sunland AI · Beta does not support deep thinking yet", "Sunland AI · Beta は深い思考にまだ対応していません"],
+    ["Sunland AI · Beta 暂不支持文件上传", "Sunland AI · Beta does not support file uploads yet", "Sunland AI · Beta はファイルアップロードにまだ対応していません"],
+    ["Sunland AI · Beta 暂不支持图片上传", "Sunland AI · Beta does not support image uploads yet", "Sunland AI · Beta は画像アップロードにまだ対応していません"],
     ["当前对话已绑定 Sunland AI。请新建对话以切换模型。", "This chat is locked to Sunland AI. Start a new chat to switch models.", "このチャットは Sunland AI に固定されています。モデルを切り替えるには新しいチャットを作成してください。"],
     ["当前对话已绑定 DeepSeek。请新建对话以切换模型。", "This chat is locked to DeepSeek. Start a new chat to switch models.", "このチャットは DeepSeek に固定されています。モデルを切り替えるには新しいチャットを作成してください。"],
     ["深度思考是 Pro 功能", "Deep thinking is a Pro feature", "深い思考は Pro 機能です"],
@@ -226,7 +225,7 @@
     ["用户上传的图片", "User-uploaded image", "ユーザーがアップロードした画像"],
     ["抱歉，这条内容包含敏感或不文明用语，我无法继续回答。请修改后再发送。", "Sorry, this message contains sensitive or abusive language. Please revise it and try again.", "申し訳ありません。このメッセージには不適切またはセンシティブな表現が含まれています。修正して再送してください。"],
     ["内容未通过审核，请修改后再发送", "This message did not pass the safety check. Please revise it and try again.", "このメッセージは安全確認を通過しませんでした。修正して再送してください。"],
-    ["Sunland AI 2.0.0 暂时出了点问题，请稍后重试", "Sunland AI 2.0.0 encountered a temporary problem. Please try again later.", "Sunland AI 2.0.0 で一時的な問題が発生しました。後でもう一度お試しください。"],
+    ["Sunland AI · Beta 暂时出了点问题，请稍后重试", "Sunland AI · Beta encountered a temporary problem. Please try again later.", "Sunland AI · Beta で一時的な問題が発生しました。後でもう一度お試しください。"],
     ["响应较慢，请稍等…", "The response is taking longer than usual…", "応答に時間がかかっています…"],
     ["正在思考", "Thinking", "思考中"],
     ["思考过程", "Reasoning", "思考過程"],
@@ -248,7 +247,7 @@
     ["深度思考已关闭", "Deep thinking disabled", "深い思考を無効にしました"],
 
     // Login page.
-    ["登录 Sunland AI 2.0.0", "Sign in to Sunland AI 2.0.0", "Sunland AI 2.0.0 にログイン"],
+    ["登录 Sunland AI · Beta", "Sign in to Sunland AI · Beta", "Sunland AI · Beta にログイン"],
     ["输入邮箱获取验证码，无需注册", "Enter your email to receive a verification code—no registration required", "メールアドレスを入力して認証コードを受け取れます。登録は不要です"],
     ["邮箱", "Email", "メールアドレス"],
     ["输入邮箱", "Enter email", "メールアドレスを入力"],
@@ -294,7 +293,7 @@
     ["登录异常", "Sign-in error", "ログインエラー"],
 
     // AI settings.
-    ["设置 - Sunland AI 2.0.0", "Settings - Sunland AI 2.0.0", "設定 - Sunland AI 2.0.0"],
+    ["设置 - Sunland AI · Beta", "Settings - Sunland AI · Beta", "設定 - Sunland AI · Beta"],
     ["普通用户", "Standard user", "一般ユーザー"],
     ["点击头像上传新头像", "Select the avatar to upload a new image", "アバターを選択して新しい画像をアップロード"],
     ["昵称", "Display name", "表示名"],
@@ -313,7 +312,7 @@
     ["永久有效", "Permanent", "永久有効"],
     ["立即升级 · ¥15 永久", "Upgrade now · ¥15 permanent", "今すぐアップグレード · ¥15 永久"],
     ["下载霜蓝AI客户端", "Download the Sunland AI client", "Sunland AI クライアントをダウンロード"],
-    ["Sunland AI 2.0.0 数据管理", "Sunland AI 2.0.0 Data Management", "Sunland AI 2.0.0 データ管理"],
+    ["Sunland AI · Beta 数据管理", "Sunland AI · Beta Data Management", "Sunland AI · Beta データ管理"],
     ["姓名记忆", "Name memory", "名前の記憶"],
     ["只让 Sunland AI 忘记你的名字", "Only make Sunland AI forget your name", "Sunland AI にあなたの名前だけを忘れさせます"],
     ["清除姓名", "Clear name", "名前を消去"],
@@ -361,7 +360,7 @@
     ["开启后，仅从后续完成的 Sunland AI 请求开始统计。", "Once enabled, only subsequently completed Sunland AI requests are counted.", "有効化後に完了した Sunland AI リクエストのみ集計されます。"],
     ["其他", "Other", "その他"],
     ["公告", "Announcements", "お知らせ"],
-    ["公告 - Sunland AI 2.0.0", "Announcements - Sunland AI 2.0.0", "お知らせ - Sunland AI 2.0.0"],
+    ["公告 - Sunland AI · Beta", "Announcements - Sunland AI · Beta", "お知らせ - Sunland AI · Beta"],
     ["返回设置", "Back to settings", "設定に戻る"],
     ["这里仅展示当前有效的服务公告。", "Only currently active service announcements are shown here.", "現在有効なサービスのお知らせのみを表示します。"],
     ["正在加载公告…", "Loading announcements…", "お知らせを読み込んでいます…"],
@@ -369,7 +368,7 @@
     ["公告暂时无法加载，请稍后重试。", "Announcements are temporarily unavailable. Please try again later.", "お知らせを読み込めません。しばらくしてからもう一度お試しください。"],
     ["重试", "Retry", "再試行"],
     ["发布时间：", "Published: ", "公開日時："],
-    ["Sunland AI 2.0.0 · 正式版 · 数据安全存储于云端", "Sunland AI 2.0.0 · Stable Release · Data stored securely in the cloud", "Sunland AI 2.0.0 · 正式版 · データはクラウドに安全に保存されます"],
+    ["Sunland AI · Beta · v1.1 · 数据安全存储于云端", "Sunland AI · Beta · v1.1 · Data stored securely in the cloud", "Sunland AI · Beta · v1.1 · データはクラウドに安全に保存されます"],
     ["用户协议", "Terms of Service", "利用規約"],
     ["隐私政策", "Privacy Policy", "プライバシーポリシー"],
     ["匿名诊断导出预览", "Anonymous diagnostics export preview", "匿名診断エクスポートのプレビュー"],
@@ -545,7 +544,7 @@
 
     // Download page supplements (its existing key-based translations remain intact).
     ["重新定义智能交互", "Redefining Intelligent Interaction", "インテリジェントな対話を再定義する"],
-    ["Sunland AI 2.0.0 — 重新定义智能交互", "Sunland AI 2.0.0 — Redefining Intelligent Interaction", "Sunland AI 2.0.0 — インテリジェントな対話を再定義する"],
+    ["Sunland AI · Beta — 重新定义智能交互", "Sunland AI · Beta — Redefining Intelligent Interaction", "Sunland AI · Beta — インテリジェントな対話を再定義する"],
     ["深度集成先进大语言模型，为每位用户带来流畅、智能、有温度的对话体验", "Deeply integrated with advanced LLMs to deliver fluid, intelligent, and warm conversations for everyone", "最先端の大規模言語モデルを深く統合し、滑らかで知的、温かみのある対話体験を提供します"],
     ["立即下载", "Download now", "今すぐダウンロード"],
     ["探索更多", "Explore more", "もっと見る"],
@@ -571,7 +570,7 @@
     ["你好，霜蓝！你能帮我写一段关于科技未来的文案吗？", "Hi, Frost! Can you help me write something about the future of technology?", "こんにちは、フロスト！テクノロジーの未来について文章を書いてもらえますか？"],
     ["输入消息...", "Type a message...", "メッセージを入力..."],
     ["下载", "Download", "ダウンロード"],
-    ["获取 Sunland AI 2.0.0", "Get Sunland AI 2.0.0", "Sunland AI 2.0.0 を入手"],
+    ["获取 Sunland AI · Beta", "Get Sunland AI · Beta", "Sunland AI · Beta を入手"],
     ["开启你的智能对话之旅", "Start your intelligent conversation journey", "インテリジェントな対話の旅を始めよう"],
     ["Android 与 iOS 下载", "Android & iOS downloads", "Android・iOS版ダウンロード"],
     ["Android 7.0+；iOS 提供未签名 IPA，需自行签名。数据保留取决于签名与安装方式，备份前不要卸载旧版。", "Android 7.0+; iOS provides an unsigned IPA that requires your own signing. Data retention depends on signing and installation. Do not uninstall the old version before backing up.", "Android 7.0以降。iOSは未署名IPAのため、ご自身で署名する必要があります。データの保持は署名とインストール方法によって異なります。バックアップ前に旧版をアンインストールしないでください。"],
@@ -582,7 +581,7 @@
     ["观看 IPA 安装教程", "Watch the IPA installation guide", "IPAインストールガイドを見る"],
     ["直链下载", "Direct link", "直接ダウンロード"],
     ["安全可信", "Safe & trusted", "安全・信頼"],
-    ["免费下载", "Free Download", "無料ダウンロード"],
+    ["公测免费", "Free Beta", "ベータ無料"],
     ["持续更新", "Continuous updates", "継続的アップデート"],
     ["许可协议", "Terms of Service", "利用規約"],
 
@@ -607,7 +606,7 @@
     ["用户协议", "Terms of Service", "利用規約", {"zh-Hant": "用戶協議", "ko": "이용약관", "es": "Condiciones del servicio"}],
     ["与", "and", "と", {"zh-Hant": "與", "ko": "및", "es": "y"}],
 
-    ["Sunland AI 2.0.0 定价", "Sunland AI 2.0.0 Pricing", "Sunland AI 2.0.0 料金"],
+    ["Sunland AI · Beta 定价", "Sunland AI · Beta Pricing", "Sunland AI · Beta 料金"],
     ["Sunland AI 是一款智能对话助手。以下是免费版与霜蓝 AI Pro 的权益与价格说明。", "Sunland AI is an intelligent conversation assistant. Below are the features and prices of the Free plan and Sunland AI Pro.", "Sunland AI はスマートな対話アシスタントです。以下は無料版と霜蓝 AI Pro の特典と料金の説明です。"],
     ["免费版", "Free", "無料版"],
     ["无需付费，注册即可使用", "No payment required — sign up and start using it", "支払い不要、登録してすぐ利用可能"],
@@ -630,7 +629,7 @@
     ["如有任何疑问，请联系客服：", "For any questions, contact support:", "ご不明な点があれば、サポートまでお問い合わせください："],
 
     // Privacy policy.
-    ["Sunland AI 2.0.0 隐私政策", "Sunland AI 2.0.0 Privacy Policy", "Sunland AI 2.0.0 プライバシーポリシー"],
+    ["Sunland AI · Beta 隐私政策", "Sunland AI · Beta Privacy Policy", "Sunland AI · Beta プライバシーポリシー"],
     ["最后更新：2026-07-25", "Last updated: July 25, 2026", "最終更新日：2026年7月25日"],
     ["我们非常重视您的隐私与数据安全，请在使用前仔细阅读本政策。", "We take your privacy and data security seriously. Please read this policy carefully before using the service.", "当サービスはプライバシーとデータの安全を重視しています。ご利用前に本ポリシーをよくお読みください。"],
     ["一、我们如何收集信息", "1. Information We Collect", "1. 収集する情報"],
@@ -650,7 +649,7 @@
     ["说明：", "Note:", "注記："],
     ["部分数据可能用于分析或优化服务表现。", "Some data may be used to analyze or optimize service performance.", "一部のデータは、サービス性能の分析または改善に利用される場合があります。"],
     ["三、本地 Beta 诊断", "3. Local Beta Diagnostics", "3. ローカルベータ診断"],
-    ["Sunland AI 2.0.0 的本地诊断默认关闭。只有在您主动开启后，才会在当前设备保存匿名的理解结果与性能分桶等聚合数据。", "Local diagnostics are off by default. Anonymous aggregate data, such as understanding outcomes and performance buckets, is stored on this device only after you enable it.", "ローカル診断は初期設定ではオフです。お客様が有効にした場合に限り、匿名の理解結果や性能区分などの集計データがこの端末に保存されます。"],
+    ["Sunland AI · Beta 的本地诊断默认关闭。只有在您主动开启后，才会在当前设备保存匿名的理解结果与性能分桶等聚合数据。", "Local diagnostics are off by default. Anonymous aggregate data, such as understanding outcomes and performance buckets, is stored on this device only after you enable it.", "ローカル診断は初期設定ではオフです。お客様が有効にした場合に限り、匿名の理解結果や性能区分などの集計データがこの端末に保存されます。"],
     ["本地 Beta 诊断不会自动上传，不包含聊天内容、姓名、用户教学知识或账号标识。您可以在设置页查看、导出或清除这些数据，也可以随时关闭诊断。", "Local Beta diagnostics are never uploaded automatically and contain no chat content, names, user-taught knowledge, or account identifiers. You can view, export, clear, or disable them in Settings.", "ローカルベータ診断は自動送信されず、会話内容、名前、ユーザーが教えた知識、アカウント識別子を含みません。設定画面で表示、エクスポート、消去、無効化できます。"],
     ["关闭诊断不会自动删除此前保存的本地聚合数据；如需删除，请在设置页另行使用“清除本地诊断数据”。本地数据仍可能被同源脚本或能够访问该设备存储的人读取。", "Disabling diagnostics does not automatically delete previously stored aggregate data. To remove it, use “Clear local diagnostic data” in Settings. Local data may still be accessible to same-origin scripts or people with access to the device's storage.", "診断を無効にしても、以前に保存された集計データは自動削除されません。削除するには設定画面の「ローカル診断データを消去」を使用してください。ローカルデータは、同一オリジンのスクリプトや端末ストレージへアクセスできる人に読み取られる可能性があります。"],
     ["四、数据存储与安全", "4. Data Storage and Security", "4. データの保存と安全性"],
@@ -685,12 +684,12 @@
     ["若您不同意本政策，请停止使用本服务。", "If you do not agree with this policy, stop using the service.", "本ポリシーに同意しない場合は、サービスの利用を中止してください。"],
 
     // Terms of Service.
-    ["Sunland AI 2.0.0 许可协议", "Sunland AI 2.0.0 Terms of Service", "Sunland AI 2.0.0 利用規約"],
-    ["Sunland AI 2.0.0 用户服务协议", "Sunland AI 2.0.0 Terms of Service", "Sunland AI 2.0.0 利用規約"],
+    ["Sunland AI · Beta 许可协议", "Sunland AI · Beta Terms of Service", "Sunland AI · Beta 利用規約"],
+    ["Sunland AI · Beta 用户服务协议", "Sunland AI · Beta Terms of Service", "Sunland AI · Beta 利用規約"],
     ["最后更新：2026-04-28", "Last updated: April 28, 2026", "最終更新日：2026年4月28日"],
     ["使用本服务即代表您已阅读并同意本协议全部内容。", "By using the service, you confirm that you have read and agree to these Terms.", "本サービスを利用することで、本規約を読み、そのすべてに同意したものとみなされます。"],
     ["一、服务说明", "1. About the Service", "1. サービスについて"],
-    ["Sunland AI 2.0.0（以下简称“本服务”）为基于第三方人工智能模型（如 DeepSeek）提供的智能对话与辅助工具服务。本服务仅作为技术工具，不对生成内容的准确性、完整性或适用性作任何保证。", "Sunland AI 2.0.0 (the “Service”) provides intelligent conversation and assistance tools powered by third-party AI models such as DeepSeek. The Service is a technical tool and does not guarantee the accuracy, completeness, or suitability of generated content.", "Sunland AI 2.0.0（以下「本サービス」）は、DeepSeekなどの第三者AIモデルを利用した対話および支援ツールです。本サービスは技術的なツールとして提供され、生成内容の正確性、完全性、適合性を保証しません。"],
+    ["Sunland AI · Beta（以下简称“本服务”）为基于第三方人工智能模型（如 DeepSeek）提供的智能对话与辅助工具服务。本服务仅作为技术工具，不对生成内容的准确性、完整性或适用性作任何保证。", "Sunland AI · Beta (the “Service”) provides intelligent conversation and assistance tools powered by third-party AI models such as DeepSeek. The Service is a technical tool and does not guarantee the accuracy, completeness, or suitability of generated content.", "Sunland AI · Beta（以下「本サービス」）は、DeepSeekなどの第三者AIモデルを利用した対話および支援ツールです。本サービスは技術的なツールとして提供され、生成内容の正確性、完全性、適合性を保証しません。"],
     ["二、账户与使用", "2. Accounts and Use", "2. アカウントと利用"],
     ["1. 用户需通过邮箱验证方式登录本服务。", "1. Users must sign in through email verification.", "1. ユーザーはメール認証でログインする必要があります。"],
     ["2. 用户应妥善保管账号信息，对其账户行为负责。", "2. Users must protect account information and are responsible for account activity.", "2. ユーザーはアカウント情報を適切に管理し、アカウント上の行為に責任を負います。"],

@@ -27,7 +27,7 @@ const projectRequire = createRequire(new URL("../package.json", import.meta.url)
 const { JSDOM } = projectRequire("jsdom");
 
 test("first launch provides a usable login path and creates an empty chat", () => {
-  assert.match(loginHtml, /登录 Sunland AI 2.0.0/u);
+  assert.match(loginHtml, /登录 Sunland AI · Beta/u);
   assert.match(loginHtml, /输入邮箱获取验证码，无需注册/u);
   assert.match(loginHtml, /for="emailInput">邮箱/u);
   assert.match(loginHtml, /for="codeInput">验证码/u);
@@ -45,8 +45,8 @@ test("first launch provides a usable login path and creates an empty chat", () =
 test("Sunland is discoverable before a conversation starts and its limits are explicit", () => {
   assert.match(appSource, /loadModelCatalog\(publicSupabase\)/u);
   assert.match(appSource, /model\.provider === "sunland"/u);
-  assert.match(appSource, /Sunland AI 2.0.0 暂不支持深度思考/u);
-  assert.match(appSource, /Sunland AI 2.0.0 暂不支持文件上传/u);
+  assert.match(appSource, /Sunland AI · Beta 暂不支持深度思考/u);
+  assert.match(appSource, /Sunland AI · Beta 暂不支持文件上传/u);
   assert.match(
     appSource,
     /当前对话已绑定 Sunland AI。请新建对话以切换模型。/u,
@@ -61,7 +61,7 @@ test("login, identity and request failures give a recoverable next action", () =
   assert.match(identitySource, /请重新登录后再试一下/u);
   assert.match(
     appSource,
-    /Sunland AI 2.0.0 暂时出了点问题，请稍后重试/u,
+    /Sunland AI · Beta 暂时出了点问题，请稍后重试/u,
   );
   assert.match(appSource, /请求失败（\$\{res\.status\}），请稍后重试/u);
   assert.match(appSource, /消息处理失败，请稍后重试/u);
