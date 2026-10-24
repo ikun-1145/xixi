@@ -1,8 +1,8 @@
 {
   "feature": "mainland-phone-auth",
   "date": "2026-10-24",
-  "currentStage": "phase-1-complete",
-  "status": "complete_with_integration_limits",
+  "currentStage": "phase-2-local-delivery",
+  "status": "local_complete_not_deployed",
   "approvals": {
     "requirementsApproved": true,
     "implementationApproved": true
@@ -13,7 +13,12 @@
     "PHASE-1-PLAN.md",
     "PHASE-1-DELIVERY.md",
     "phase-1-contract.schema.json",
-    "supabase-schema-evidence.json"
+    "supabase-schema-evidence.json",
+    "PHASE-2-PLAN.md",
+    "changes/phase-2-request.md",
+    "phase-2-openapi.json",
+    "PHASE-2-REVIEW.md",
+    "PHASE-2-DELIVERY.md"
   ],
   "resolvedBlockers": [
     "Read-only Cloudflare MCP access restored; deployed ai Worker authentication code inspected.",
@@ -22,12 +27,12 @@
     "Scoped Supabase catalog, constraints, indexes, RLS, column grants, deletion RPC/lease and migration metadata verified 2026-10-24."
   ],
   "blockers": [],
-  "implementationScope": "Phase 1 only; no identity mapping, user creation, binding or unbinding",
+  "implementationScope": "Phase 2 local identity mapping, Worker integration and tests; no UI, Docker or production writes",
   "flowProfile": "strict-fullstack",
   "phaseStatus": {
     "phase0": "Targeted Supabase metadata verified; no user rows read",
-    "phase1": "Local modules and Mock verification complete; not wired or deployed",
-    "phase2": "Not implemented; outside current authorization",
+    "phase1": "Reused by Phase2 local Worker; not deployed",
+    "phase2": "Local code, SQL, actual-source Worker integration and independent reviews complete; production validation pending",
     "phase3": "Not implemented; outside current authorization"
   },
   "integrationPrerequisites": [
@@ -61,6 +66,37 @@
     ],
     "realSmsSent": false,
     "deployed": false,
-    "migrationsExecuted": false
+    "migrationsExecuted": false,
+    "scope": "Retained Phase1 baseline; Phase2 fresh results are in phase2Verification"
+  },
+  "phase2Verification": {
+    "npmTest": {
+      "total": 960,
+      "passed": 960,
+      "failed": 0,
+      "skipped": 0
+    },
+    "embeddedPostgresTests": 20,
+    "actualWorkerBuildIntegrationTests": 10,
+    "originalWorkerRegressionTests": 66,
+    "moduleCoverage": {
+      "lines": 98.22,
+      "branches": 89.27,
+      "functions": 90.99
+    },
+    "independentReviews": [
+      "architecture",
+      "code-reviewer/QA",
+      "security-reviewer"
+    ],
+    "realSmsSent": false,
+    "deployed": false,
+    "productionMigrationsExecuted": false,
+    "dockerUsed": false,
+    "limitations": [
+      "PGlite single backend; no independent multi-connection PostgreSQL lock validation",
+      "Mock DO storage; no real workerd/Cloudflare runtime acceptance",
+      "No live provider/Turnstile or production end-to-end acceptance"
+    ]
   }
 }

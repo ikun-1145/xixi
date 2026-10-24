@@ -18,6 +18,20 @@ const MESSAGES = Object.freeze({
   UPSTREAM_TIMEOUT: '短信服务请求超时',
   UPSTREAM_UNAVAILABLE: '短信服务连接不可用',
   UPSTREAM_PROTOCOL: '短信服务响应异常',
+  IDENTITY_DISABLED: '手机号认证暂未启用',
+  IDENTITY_CONFIG: '手机号身份服务配置不可用',
+  IDENTITY_UNAVAILABLE: '手机号身份服务暂不可用',
+  UNAUTHORIZED: '请先登录后再操作',
+  ACCOUNT_NOT_ACTIVE: '当前账号无法执行此操作',
+  ACCOUNT_BANNED: '当前账号不可用',
+  PHONE_KEY_MISMATCH: '手机号身份密钥配置不一致',
+  PHONE_CONFLICT: '该手机号已绑定其他账号',
+  PHONE_ALREADY_BOUND: '账号已绑定手机号',
+  PHONE_NOT_BOUND: '账号尚未绑定手机号',
+  REAUTH_INVALID: '近期身份验证已失效，请重新验证',
+  ALTERNATIVE_LOGIN_REQUIRED: '请先验证其他可用登录方式',
+  OPERATION_CONFLICT: '操作请求冲突，请重新验证',
+  DELETION_CONFLICT: '账号注销状态冲突',
 });
 
 export class PhoneAuthError extends Error {

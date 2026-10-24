@@ -320,3 +320,13 @@ test('private service validates and whitelists coordinator results rather than f
   assert.deepEqual(await h.checkCode({ challenge_id: crypto.randomUUID() }), { success: true, verified: true });
   await rejects(h.sendCode(), 'SERVICE_UNAVAILABLE');
 });
+
+test('server authenticated reauth can establish its own proof without a circular recent-proof requirement', async () => {
+  const h = harness(); h.captcha.action = 'phone_reauth';
+  const context = { ...sensitive, reauthenticatedAt: undefined, reauthentication: true };
+  const sent = await h.sendCode(input(phone, 'reauth'), context);
+  assert.deepEqual(await h.checkCode(sent, {purpose:'reauth'}, context), {success:true,verified:true});
+  const bad = harness(); bad.captcha.action = 'phone_bind';
+  await rejects(bad.sendCode(input(phone,'bind'),context),'REAUTH_REQUIRED');
+  await rejects(bad.sendCode(input(phone,'reauth'),{...context,identityStatus:'deleting'}),'REAUTH_REQUIRED');
+});

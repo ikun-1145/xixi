@@ -50,8 +50,12 @@ function validate(input, context, operation, now) {
   if (input.purpose !== 'login') {
     if (typeof context.userId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9@._+-]{0,127}$/.test(context.userId) ||
         typeof context.sessionId !== 'string' || !/^[A-Za-z0-9_-]{16,128}$/.test(context.sessionId) ||
-        context.identityStatus !== 'active' || !nonnegative(context.reauthenticatedAt) ||
-        context.reauthenticatedAt > now || now - context.reauthenticatedAt > TTL) fail('REAUTH_REQUIRED', 403);
+        context.identityStatus !== 'active') fail('REAUTH_REQUIRED', 403);
+    // Only the authenticated ingress can start reauthentication. It must check
+    // current factor ownership again in the identity transaction after SMS PASS.
+    if (!(input.purpose === 'reauth' && context.reauthentication === true) &&
+        (!nonnegative(context.reauthenticatedAt) || context.reauthenticatedAt > now ||
+         now - context.reauthenticatedAt > TTL)) fail('REAUTH_REQUIRED', 403);
     principal = JSON.stringify([context.userId, context.sessionId]);
   }
   return { phone, ip, principal };
