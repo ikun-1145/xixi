@@ -1,11 +1,12 @@
 {
   "feature": "mainland-phone-auth",
   "date": "2026-10-24",
-  "currentStage": "phase-2-local-delivery",
+  "currentStage": "phase-3a-local-delivery",
   "status": "local_complete_not_deployed",
   "approvals": {
     "requirementsApproved": true,
-    "implementationApproved": true
+    "implementationApproved": true,
+    "phase3aApproved": true
   },
   "evidence": [
     "PHASE-0-AUDIT.md",
@@ -18,7 +19,12 @@
     "changes/phase-2-request.md",
     "phase-2-openapi.json",
     "PHASE-2-REVIEW.md",
-    "PHASE-2-DELIVERY.md"
+    "PHASE-2-DELIVERY.md",
+    "PHASE-3A-PLAN.md",
+    "PHASE-3A-POSTGRES.md",
+    "PHASE-3A-REVIEW.md",
+    "PHASE-3A-DELIVERY.md",
+    "phase-3a-evidence/browser-results.json"
   ],
   "resolvedBlockers": [
     "Read-only Cloudflare MCP access restored; deployed ai Worker authentication code inspected.",
@@ -27,19 +33,20 @@
     "Scoped Supabase catalog, constraints, indexes, RLS, column grants, deletion RPC/lease and migration metadata verified 2026-10-24."
   ],
   "blockers": [],
-  "implementationScope": "Phase 2 local identity mapping, Worker integration and tests; no UI, Docker or production writes",
+  "implementationScope": "Phase3A website integration and Docker-isolated PostgreSQL; no production writes, SMS, deployment or Flutter",
   "flowProfile": "strict-fullstack",
   "phaseStatus": {
     "phase0": "Targeted Supabase metadata verified; no user rows read",
     "phase1": "Reused by Phase2 local Worker; not deployed",
     "phase2": "Local code, SQL, actual-source Worker integration and independent reviews complete; production validation pending",
-    "phase3": "Not implemented; outside current authorization"
+    "phase3": "Phase3A website/Docker local acceptance complete; Phase3B Flutter development ready; production blocked"
   },
   "integrationPrerequisites": [
-    "Original authentication Worker source-project integration with trusted JWT/status/ban/recent-auth middleware",
-    "Isolated real DO binding/transaction/restart validation and reviewed durable budget initialization/recovery",
-    "Supplier and Turnstile behavior/cost upper-bound verification under separate authorization",
-    "Phase 2 reviewed identity mapping, release policy, deletion and alternative-login-factor contract"
+    "Full production schema/policy/trigger isolation rehearsal",
+    "Real DO budget ledger/recovery and PostgREST JWT gateway validation",
+    "Approved key/canary/sitekey/provider configuration and live SMS acceptance",
+    "Phone-only website account deletion confirmation UI before public registration",
+    "Separate release/migration authorization"
   ],
   "verification": {
     "mockTests": {
@@ -98,5 +105,34 @@
       "Mock DO storage; no real workerd/Cloudflare runtime acceptance",
       "No live provider/Turnstile or production end-to-end acceptance"
     ]
-  }
+  },
+  "phase3aVerification": {
+    "npmTest": {
+      "passed": 998,
+      "failed": 0,
+      "skipped": 0
+    },
+    "dockerPostgres": {
+      "passed": 15,
+      "version": "17.6",
+      "independentBackendContention": true,
+      "productionSchemaComplete": false
+    },
+    "edgeBrowserMockIntegration": {
+      "passed": 20,
+      "version": "151.0.4129.78"
+    },
+    "websiteFocused": 37,
+    "originalWorkerRegression": 66,
+    "realSmsSent": false,
+    "productionMigrationsExecuted": false,
+    "deployed": false
+  },
+  "productionBlockers": [
+    "Full production schema/policy/trigger isolation rehearsal",
+    "Real DO budget ledger/recovery and PostgREST JWT gateway validation",
+    "Approved key/canary/sitekey/provider configuration and live SMS acceptance",
+    "Phone-only website account deletion confirmation UI before public registration",
+    "Separate release/migration authorization"
+  ]
 }

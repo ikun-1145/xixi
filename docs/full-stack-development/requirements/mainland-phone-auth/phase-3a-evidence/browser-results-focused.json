@@ -1,0 +1,21 @@
+{
+  "date": "2026-10-24T10:57:44.126Z",
+  "browser": "151.0.4129.78",
+  "checks": 3,
+  "passed": 3,
+  "externalRequests": "Mocked or blocked; no real SMS",
+  "results": [
+    {
+      "name": "settings zh real page, binding, change and unlink",
+      "passed": true
+    },
+    {
+      "name": "settings en real page, binding, change and unlink",
+      "passed": true
+    },
+    {
+      "name": "settings ja real page, binding, change and unlink",
+      "passed": true
+    }
+  ]
+}

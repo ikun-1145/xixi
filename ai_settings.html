@@ -3,6 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="sunland-turnstile-sitekey" content="">
   <script>
     try {
       if (!localStorage.getItem("token")) location.replace("login.html?return=ai.html");
@@ -10,10 +11,11 @@
       location.replace("login.html?return=ai.html");
     }
   </script>
-  <script defer src="p/js/site-i18n-extra.js?v=20261010-phase6a"></script>
+  <script defer src="p/js/site-i18n-extra.js?v=20261024-phone-1"></script>
   <script defer src="p/js/site-i18n.js?v=20261001-review-1"></script>
   <title>设置 - Sunland AI · Beta</title>
   <link rel="stylesheet" href="p/css/icons.css?v=20260829-1">
+  <link rel="stylesheet" href="p/css/phone-auth.css?v=20261024-1">
   <style>
     :root {
       --accent: #22d3ee;
@@ -1176,6 +1178,8 @@ body.dark .usage-hint {
       </div>
     </div>
 
+    <section id="phoneSettings" class="card phone-auth phone-settings-card" aria-label="手机号管理"></section>
+
     <!-- 账号与安全 -->
     <div class="section-label" data-site-i18n-ignore>账号与安全</div>
     <div class="card" data-site-i18n-ignore>
@@ -1455,7 +1459,7 @@ body.dark .usage-hint {
       "sb_publishable_4ZIHfHr8wI0QFusEf_m7wA_pthBhxsI",
       { accessToken: () => window.SunlandDatabaseToken.get() }
     );
-    var supabase = window._supabaseClient;
+    const settingsSupabase = window._supabaseClient;
     let stopSettingsProPaymentMonitoring = null;
     const PROFILE_META_ID = "__xixi_user_profile__";
     const PROFILE_CACHE_PREFIX = "xixi_profile_";
@@ -1556,7 +1560,7 @@ body.dark .usage-hint {
 
     async function loadCloudProfile(userId) {
   if (!userId) return null;
-  const { data, error } = await supabase
+  const { data, error } = await settingsSupabase
     .from("user_profiles")
     .select("avatar_url, avatar_path, name, pro")
     .eq("user_id", userId)
@@ -1567,7 +1571,7 @@ body.dark .usage-hint {
 }
 
     async function saveProfileToCloud(user, profile) {
-  const { error } = await supabase
+  const { error } = await settingsSupabase
     .from("user_profiles")
     .update({
       avatar_url: profile.avatar_url || "",
@@ -1592,7 +1596,7 @@ async function editNickname() {
   }
 
   try {
-    const { error } = await supabase.from("user_profiles").update({
+    const { error } = await settingsSupabase.from("user_profiles").update({
       name,
       updated_at: new Date().toISOString()
     }).eq("user_id", user.id);
@@ -1668,7 +1672,7 @@ async function editNickname() {
   const path = `${ownerKey}/avatar-${Date.now()}.jpg`;
 
       try {
-        const { error } = await supabase.storage
+        const { error } = await settingsSupabase.storage
           .from(AVATAR_BUCKET)
           .upload(path, avatarBlob, {
             contentType: "image/jpeg",
@@ -1677,7 +1681,7 @@ async function editNickname() {
 
         if (error) throw error;
 
-        const { data } = supabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
+        const { data } = settingsSupabase.storage.from(AVATAR_BUCKET).getPublicUrl(path);
         if (data?.publicUrl) {
           return {
             avatar_url: `${data.publicUrl}?t=${Date.now()}`,
@@ -1876,7 +1880,7 @@ async function editNickname() {
       }
 
       if (window.SunlandProPayment.getState().identityVersion !== profileEpoch || getUserFromToken()?.id !== user.id) return;
-      await window.SunlandProPayment.refreshMembership(supabase);
+      await window.SunlandProPayment.refreshMembership(settingsSupabase);
       await refreshSettingsUsage();
     }
 
@@ -1925,7 +1929,7 @@ async function editNickname() {
       if (!payment || !userId) return;
       stopSettingsProPaymentMonitoring?.();
       stopSettingsProPaymentMonitoring = payment.startActivationMonitoring({
-        supabase,
+        supabase: settingsSupabase,
         getExpectedUserId: () => getUserFromToken()?.id,
         onActivated: () => { if (getUserFromToken()?.id === userId) alert(payment.text("activated")); },
       });
@@ -2014,6 +2018,8 @@ document.querySelectorAll("a").forEach(a => {   a.addEventListener("click", () =
 <script type="module" src="ai/sunland-beta-diagnostics.js"></script>
 <script type="module" src="ai/account-delete.js"></script>
 <script type="module" src="ai/history-controls.js"></script>
+<script src="p/js/phone-auth.js?v=20261024-1"></script>
+<script src="ai/phone-settings.js?v=20261024-1"></script>
 
 <div id="loadingBar" aria-hidden="true"><span class="bar"></span></div>
 <dialog

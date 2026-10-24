@@ -275,6 +275,12 @@ xixi/
 
 ---
 
+### 手机号认证本地扩展（2026-10-24）
+
+Phase3A新增`p/js/phone-auth.js`、`ai/phone-settings.js`和`p/css/phone-auth.css`，在原`login.html`与`ai_settings.html`接入手机号登录/注册、绑定/换绑/解绑及近期验证。共用原应用JWT、登录成功与数据库token通路，临时号码/验证码/proof不持久化；两个页面的Turnstile公开sitekey目前为空，服务端短信仍默认关闭。原认证Worker通过`workers/phone-auth/entry.js`和固定源码hash工具本地构建接入，不代表云端已部署。
+
+真实Docker PostgreSQL隔离验收15项和Edge+Mock验收20项通过；隔离基线不是完整生产schema，真实短信/DO/生产JWT网关尚未验收。详见`docs/full-stack-development/requirements/mainland-phone-auth/PHASE-3A-DELIVERY.md`。未改Flutter或生产资源。
+
 ## 九、权限设计
 
 - **未登录游客**：可浏览所有静态内容页、可用 `ai.html`（会被登录墙拦截，见上）、不能捐赠/留言/点赞。

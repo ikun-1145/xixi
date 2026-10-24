@@ -4,6 +4,7 @@ import test, {mock} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFile} from 'node:fs/promises';
 import {PGlite} from '@electric-sql/pglite';
+import {JSDOM} from 'jsdom';
 import {buildPhoneAuthWorker} from '../scripts/build-phone-auth-worker.mjs';
 const built=await buildPhoneAuthWorker();
 const bundle=await import('data:text/javascript;base64,'+Buffer.from(built.code).toString('base64'));
@@ -103,6 +104,9 @@ test('real Worker fetch integrates identity, original JWT/email/database-token a
    const refresh=await request('/refresh',{},token);assert.equal(refresh.status,200);assert.equal(decode(refresh.body.token).id,user);
    const r=await request('/v1/database-token',{},token);assert.equal(r.status,200);const claims=decode(r.body.token);
    assert.equal(claims.sub,user);assert.equal(claims.role,'authenticated');assert.equal(claims.exp-claims.iat,900);
+   const [header,payload,signature]=r.body.token.split('.');
+   const signingKey=await crypto.subtle.importKey('raw',new TextEncoder().encode(env.SUPABASE_JWT_SECRET),{name:'HMAC',hash:'SHA-256'},false,['verify']);
+   assert.equal(await crypto.subtle.verify('HMAC',signingKey,Buffer.from(signature,'base64url'),new TextEncoder().encode(header+'.'+payload)),true);
    assert.equal((await db.query('select pro from user_profiles where user_id=$1',[user])).rows[0].pro,true);
   });
   await t.test('email reauth uses current factor, unbind and email login preserve original account',async()=>{
@@ -146,6 +150,21 @@ test('real Worker fetch integrates identity, original JWT/email/database-token a
    const r=await bundle.default.fetch(new Request('https://api.sunland.dev/v1/phone/bind',{method:'OPTIONS'}),env,{});assert.equal(r.status,200);
    assert.equal(r.headers.get('Access-Control-Allow-Origin'),'https://sunland.dev');
    assert.ok(smsCalls>=4);
+  });
+  await t.test('website API client executes unchanged Phase2 Worker routes and SQL identity transactions',async()=>{
+   const dom=new JSDOM('',{url:'https://sunland.dev',runScripts:'outside-only'});dom.window.AbortController=AbortController;dom.window.crypto.randomUUID=crypto.randomUUID.bind(crypto);
+   dom.window.eval(await readFile(new URL('../p/js/phone-auth.js',import.meta.url),'utf8'));
+   const client=dom.window.SunlandPhoneAuth.createClient({captcha:async action=>{captchaAction=action;return 'mock-turnstile';},fetchImpl:(url,init)=>bundle.default.fetch(new Request(url,{...init,headers:{...init.headers,'CF-Connecting-IP':'192.0.2.1'}}),env,{})});
+   try {
+    const sent=await client.send('13400001234','login');const registered=await client.login('13400001234',sent.challenge_id,'123456');assert.equal(registered.is_new_user,true);
+    dom.window.localStorage.setItem('token',registered.token);dom.window.localStorage.setItem('user',JSON.stringify(registered.user));
+    const identity=await client.refreshSession();assert.equal(identity.id,registered.user.id);assert.equal((await client.status()).phone,'+86 *******1234');
+    await db.query('update user_profiles set email=$1 where user_id=$2',['web-owner@example.test',identity.id]);
+    const grant=await client.emailProof('123456','change');const target=await client.send('13300005678','change',grant.reauth_token);
+    await client.mutate('change',{phone:'13300005678',challenge_id:target.challenge_id,code:'123456',reauth_token:grant.reauth_token});assert.equal((await client.status()).phone,'+86 *******5678');
+    const unbind=await client.emailProof('123456','unbind');await client.mutate('unbind',{reauth_token:unbind.reauth_token});assert.equal((await client.status()).bound,false);
+    assert.ok(!dom.window.localStorage.getItem('user').includes('13400001234'));
+   }finally{client.cancel();dom.window.close();}
   });
  }finally{fetchMock.mock.restore();await db.close();}
 });

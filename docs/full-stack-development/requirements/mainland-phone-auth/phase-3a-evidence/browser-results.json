@@ -1,0 +1,89 @@
+{
+  "date": "2026-10-24T11:02:55.959Z",
+  "browser": "151.0.4129.78",
+  "checks": 20,
+  "passed": 20,
+  "externalRequests": "Mocked or blocked; no real SMS",
+  "results": [
+    {
+      "name": "login zh 390 light",
+      "passed": true
+    },
+    {
+      "name": "login zh 390 dark",
+      "passed": true
+    },
+    {
+      "name": "login zh 1280 light",
+      "passed": true
+    },
+    {
+      "name": "login zh 1280 dark",
+      "passed": true
+    },
+    {
+      "name": "login en 390 light",
+      "passed": true
+    },
+    {
+      "name": "login en 390 dark",
+      "passed": true
+    },
+    {
+      "name": "login en 1280 light",
+      "passed": true
+    },
+    {
+      "name": "login en 1280 dark",
+      "passed": true
+    },
+    {
+      "name": "login ja 390 light",
+      "passed": true
+    },
+    {
+      "name": "login ja 390 dark",
+      "passed": true
+    },
+    {
+      "name": "login ja 1280 light",
+      "passed": true
+    },
+    {
+      "name": "login ja 1280 dark",
+      "passed": true
+    },
+    {
+      "name": "settings zh real page, binding, change and unlink",
+      "passed": true
+    },
+    {
+      "name": "settings en real page, binding, change and unlink",
+      "passed": true
+    },
+    {
+      "name": "settings ja real page, binding, change and unlink",
+      "passed": true
+    },
+    {
+      "name": "phone validation, duplicate send, server cooldown, code error/expiry, network retry, retired account",
+      "passed": true
+    },
+    {
+      "name": "rate/budget failures, live language switch and missing/failed Turnstile stay closed",
+      "passed": true
+    },
+    {
+      "name": "phone login shares storage and loads existing Pro/profile via safe return",
+      "passed": true
+    },
+    {
+      "name": "email login shares storage and loads existing Pro/profile via safe return",
+      "passed": true
+    },
+    {
+      "name": "phone-only account cannot unlink its only login method",
+      "passed": true
+    }
+  ]
+}

@@ -4268,8 +4268,423 @@
     "es": "Examen interno de la universidad"
   }
 };
+  const phoneAuthCatalog = {
+  "邮箱登录": {
+    "zh-Hant": "郵箱登入",
+    "en": "Email",
+    "ja": "メール",
+    "ko": "이메일",
+    "es": "Correo"
+  },
+  "手机号登录": {
+    "zh-Hant": "手機號碼登入",
+    "en": "Phone",
+    "ja": "電話番号",
+    "ko": "전화번호",
+    "es": "Teléfono"
+  },
+  "登录方式": {
+    "zh-Hant": "登入方式",
+    "en": "Sign-in method",
+    "ja": "ログイン方法",
+    "ko": "로그인 방법",
+    "es": "Método de acceso"
+  },
+  "中国大陆手机号": {
+    "zh-Hant": "中國大陸手機號碼",
+    "en": "Mainland China mobile number",
+    "ja": "中国本土の携帯電話番号",
+    "ko": "중국 본토 휴대전화 번호",
+    "es": "Móvil de China continental"
+  },
+  "短信验证码": {
+    "zh-Hant": "簡訊驗證碼",
+    "en": "SMS code",
+    "ja": "SMS認証コード",
+    "ko": "SMS 인증번호",
+    "es": "Código SMS"
+  },
+  "邮箱验证码": {
+    "zh-Hant": "郵箱驗證碼",
+    "en": "Email code",
+    "ja": "メール認証コード",
+    "ko": "이메일 인증번호",
+    "es": "Código por correo"
+  },
+  "登录或注册": {
+    "zh-Hant": "登入或註冊",
+    "en": "Sign in or register",
+    "ja": "ログイン・新規登録",
+    "ko": "로그인 또는 가입",
+    "es": "Acceder o registrarse"
+  },
+  "首次验证手机号将自动注册，不会合并邮箱账号": {
+    "zh-Hant": "首次驗證手機號碼將自動註冊，不會合併郵箱帳號",
+    "en": "First verification creates an account. Email accounts are not merged.",
+    "ja": "初回認証で登録されます。メールアカウントとは統合されません。",
+    "ko": "첫 인증 시 가입됩니다. 이메일 계정과 병합되지 않습니다.",
+    "es": "La primera verificación crea una cuenta sin fusionar cuentas de correo."
+  },
+  "秒后重新发送": {
+    "zh-Hant": "秒後重新傳送",
+    "en": "s until resend",
+    "ja": "秒後に再送信",
+    "ko": "초 후 재전송",
+    "es": "s para reenviar"
+  },
+  "手机号管理": {
+    "zh-Hant": "手機號碼管理",
+    "en": "Manage phone",
+    "ja": "電話番号の管理",
+    "ko": "전화번호 관리",
+    "es": "Gestionar teléfono"
+  },
+  "未绑定手机号": {
+    "zh-Hant": "未綁定手機號碼",
+    "en": "No phone linked",
+    "ja": "電話番号は未連携です",
+    "ko": "연결된 번호 없음",
+    "es": "Sin teléfono vinculado"
+  },
+  "绑定手机号": {
+    "zh-Hant": "綁定手機號碼",
+    "en": "Link phone",
+    "ja": "電話番号を連携",
+    "ko": "전화번호 연결",
+    "es": "Vincular teléfono"
+  },
+  "更换手机号": {
+    "zh-Hant": "更換手機號碼",
+    "en": "Change phone",
+    "ja": "電話番号を変更",
+    "ko": "전화번호 변경",
+    "es": "Cambiar teléfono"
+  },
+  "解绑手机号": {
+    "zh-Hant": "解除綁定手機號碼",
+    "en": "Unlink phone",
+    "ja": "電話番号の連携解除",
+    "ko": "전화번호 연결 해제",
+    "es": "Desvincular teléfono"
+  },
+  "绑定后可使用短信验证码登录": {
+    "zh-Hant": "綁定後可使用簡訊驗證碼登入",
+    "en": "Use SMS codes to sign in after linking.",
+    "ja": "連携後はSMS認証でログインできます。",
+    "ko": "연결 후 SMS 인증번호로 로그인할 수 있습니다.",
+    "es": "Tras vincular, inicia sesión con códigos SMS."
+  },
+  "安全验证": {
+    "zh-Hant": "安全驗證",
+    "en": "Security verification",
+    "ja": "本人確認",
+    "ko": "본인 확인",
+    "es": "Verificación de seguridad"
+  },
+  "为保护账号，请先验证现有登录方式": {
+    "zh-Hant": "為保護帳號，請先驗證現有登入方式",
+    "en": "Verify a current sign-in method to protect your account.",
+    "ja": "安全のため、現在のログイン方法で本人確認してください。",
+    "ko": "계정 보호를 위해 현재 로그인 수단을 인증하세요.",
+    "es": "Verifica un método de acceso actual para proteger tu cuenta."
+  },
+  "使用邮箱验证": {
+    "zh-Hant": "使用郵箱驗證",
+    "en": "Verify with email",
+    "ja": "メールで認証",
+    "ko": "이메일로 인증",
+    "es": "Verificar por correo"
+  },
+  "使用当前手机号验证": {
+    "zh-Hant": "使用目前手機號碼驗證",
+    "en": "Verify current phone",
+    "ja": "現在の電話番号で認証",
+    "ko": "현재 번호로 인증",
+    "es": "Verificar teléfono actual"
+  },
+  "输入当前绑定的手机号": {
+    "zh-Hant": "輸入目前綁定的手機號碼",
+    "en": "Enter the currently linked phone",
+    "ja": "現在連携中の電話番号を入力",
+    "ko": "현재 연결된 전화번호 입력",
+    "es": "Introduce el teléfono vinculado actual"
+  },
+  "验证并继续": {
+    "zh-Hant": "驗證並繼續",
+    "en": "Verify and continue",
+    "ja": "認証して次へ",
+    "ko": "인증 후 계속",
+    "es": "Verificar y continuar"
+  },
+  "请输入新的手机号": {
+    "zh-Hant": "請輸入新的手機號碼",
+    "en": "Enter the new phone number",
+    "ja": "新しい電話番号を入力",
+    "ko": "새 전화번호를 입력하세요",
+    "es": "Introduce el nuevo número"
+  },
+  "请输入要绑定的手机号": {
+    "zh-Hant": "請輸入要綁定的手機號碼",
+    "en": "Enter a phone number to link",
+    "ja": "連携する電話番号を入力",
+    "ko": "연결할 전화번호를 입력하세요",
+    "es": "Introduce el número que deseas vincular"
+  },
+  "确认绑定": {
+    "zh-Hant": "確認綁定",
+    "en": "Confirm link",
+    "ja": "連携を確定",
+    "ko": "연결 확인",
+    "es": "Confirmar vínculo"
+  },
+  "确认更换": {
+    "zh-Hant": "確認更換",
+    "en": "Confirm change",
+    "ja": "変更を確定",
+    "ko": "변경 확인",
+    "es": "Confirmar cambio"
+  },
+  "确认解绑": {
+    "zh-Hant": "確認解除綁定",
+    "en": "Confirm unlink",
+    "ja": "連携解除を確定",
+    "ko": "연결 해제 확인",
+    "es": "Confirmar desvinculación"
+  },
+  "我确认解绑此手机号": {
+    "zh-Hant": "我確認解除綁定此手機號碼",
+    "en": "I confirm unlinking this phone",
+    "ja": "この電話番号の連携解除を確認します",
+    "ko": "이 번호의 연결 해제를 확인합니다",
+    "es": "Confirmo que deseo desvincular este teléfono"
+  },
+  "解绑后请使用邮箱登录": {
+    "zh-Hant": "解除綁定後請使用郵箱登入",
+    "en": "Use email to sign in after unlinking.",
+    "ja": "解除後はメールでログインしてください。",
+    "ko": "연결 해제 후 이메일로 로그인하세요.",
+    "es": "Tras desvincular, accede mediante correo."
+  },
+  "当前账号没有其他登录方式，暂时无法解绑手机号": {
+    "zh-Hant": "目前帳號沒有其他登入方式，暫時無法解除綁定手機號碼",
+    "en": "This phone is your only sign-in method and cannot be unlinked.",
+    "ja": "他のログイン方法がないため、電話番号を解除できません。",
+    "ko": "다른 로그인 수단이 없어 번호를 해제할 수 없습니다.",
+    "es": "Este teléfono es tu único método de acceso y no puede desvincularse."
+  },
+  "手机号绑定成功": {
+    "zh-Hant": "手機號碼綁定成功",
+    "en": "Phone linked",
+    "ja": "電話番号を連携しました",
+    "ko": "전화번호 연결 완료",
+    "es": "Teléfono vinculado"
+  },
+  "手机号更换成功": {
+    "zh-Hant": "手機號碼更換成功",
+    "en": "Phone changed",
+    "ja": "電話番号を変更しました",
+    "ko": "전화번호 변경 완료",
+    "es": "Teléfono cambiado"
+  },
+  "手机号解绑成功": {
+    "zh-Hant": "手機號碼解除綁定成功",
+    "en": "Phone unlinked",
+    "ja": "電話番号の連携を解除しました",
+    "ko": "전화번호 연결 해제 완료",
+    "es": "Teléfono desvinculado"
+  },
+  "手机号状态暂时无法读取": {
+    "zh-Hant": "暫時無法讀取手機號碼狀態",
+    "en": "Phone status is unavailable.",
+    "ja": "電話番号の状態を取得できません。",
+    "ko": "전화번호 상태를 확인할 수 없습니다.",
+    "es": "No se puede consultar el estado del teléfono."
+  },
+  "操作结果尚未确认，已重新读取手机号状态，请核对后重试": {
+    "zh-Hant": "操作結果尚未確認，已重新讀取手機號碼狀態，請核對後重試",
+    "en": "The result is uncertain. Phone status was reloaded; check it before retrying.",
+    "ja": "結果を確認できません。電話番号の状態を再取得したので、確認してから再試行してください。",
+    "ko": "결과가 불확실합니다. 새로 조회된 번호 상태를 확인 후 다시 시도하세요.",
+    "es": "El resultado es incierto. Se ha recargado el estado; revísalo antes de reintentar."
+  },
+  "重新进行安全验证": {
+    "zh-Hant": "重新進行安全驗證",
+    "en": "Verify your identity again",
+    "ja": "もう一度本人確認してください",
+    "ko": "본인 확인을 다시 진행하세요",
+    "es": "Verifica tu identidad de nuevo"
+  },
+  "正在处理…": {
+    "zh-Hant": "正在處理…",
+    "en": "Working…",
+    "ja": "処理中…",
+    "ko": "처리 중…",
+    "es": "Procesando…"
+  },
+  "正在读取…": {
+    "zh-Hant": "正在讀取…",
+    "en": "Loading…",
+    "ja": "読み込み中…",
+    "ko": "불러오는 중…",
+    "es": "Cargando…"
+  },
+  "请输入6位验证码": {
+    "zh-Hant": "請輸入6位驗證碼",
+    "en": "Enter the 6-digit code",
+    "ja": "6桁の認証コードを入力してください",
+    "ko": "6자리 인증번호를 입력하세요",
+    "es": "Introduce el código de 6 dígitos"
+  },
+  "刷新状态": {
+    "zh-Hant": "重新整理狀態",
+    "en": "Refresh status",
+    "ja": "状態を更新",
+    "ko": "상태 새로고침",
+    "es": "Actualizar estado"
+  },
+  "请检查手机号和6位验证码": {
+    "zh-Hant": "請檢查手機號碼和6位驗證碼",
+    "en": "Check the phone number and 6-digit code.",
+    "ja": "電話番号と6桁のコードを確認してください。",
+    "ko": "전화번호와 6자리 인증번호를 확인하세요.",
+    "es": "Revisa el teléfono y el código de 6 dígitos."
+  },
+  "登录状态已变化，请重新进行安全验证": {
+    "zh-Hant": "登入狀態已變更，請重新進行安全驗證",
+    "en": "Your session changed. Verify your identity again.",
+    "ja": "ログイン状態が変わりました。もう一度本人確認してください。",
+    "ko": "로그인 상태가 변경되었습니다. 다시 인증하세요.",
+    "es": "La sesión ha cambiado. Verifica tu identidad de nuevo."
+  },
+  "登录已失效，请重新登录": {
+    "zh-Hant": "登入已失效，請重新登入",
+    "en": "Your session expired. Sign in again.",
+    "ja": "ログインの有効期限が切れました。再ログインしてください。",
+    "ko": "로그인이 만료되었습니다. 다시 로그인하세요.",
+    "es": "Tu sesión ha caducado. Accede de nuevo."
+  },
+  "账号正在注销或已注销，无法登录": {
+    "zh-Hant": "帳號正在註銷或已註銷，無法登入",
+    "en": "This account is being deleted or has been retired.",
+    "ja": "削除処理中または削除済みのアカウントです。",
+    "ko": "탈퇴 중이거나 탈퇴한 계정입니다.",
+    "es": "La cuenta está en proceso de eliminación o ya está retirada."
+  },
+  "当前账号无法登录": {
+    "zh-Hant": "目前帳號無法登入",
+    "en": "This account cannot sign in.",
+    "ja": "このアカウントはログインできません。",
+    "ko": "현재 계정으로 로그인할 수 없습니다.",
+    "es": "Esta cuenta no puede acceder."
+  },
+  "手机号认证暂未启用": {
+    "zh-Hant": "手機號碼認證暫未啟用",
+    "en": "Phone authentication is not enabled yet.",
+    "ja": "電話番号認証はまだ有効になっていません。",
+    "ko": "전화번호 인증이 아직 활성화되지 않았습니다.",
+    "es": "La autenticación por teléfono aún no está habilitada."
+  },
+  "人机验证未完成，请重试": {
+    "zh-Hant": "人機驗證未完成，請重試",
+    "en": "Complete the security challenge and try again.",
+    "ja": "認証を完了してから再試行してください。",
+    "ko": "보안 인증을 완료하고 다시 시도하세요.",
+    "es": "Completa el desafío de seguridad y vuelve a intentarlo."
+  },
+  "安全验证已失效，请重新验证": {
+    "zh-Hant": "安全驗證已失效，請重新驗證",
+    "en": "Security verification expired. Verify again.",
+    "ja": "本人確認の有効期限が切れました。再認証してください。",
+    "ko": "본인 확인이 만료되었습니다. 다시 인증하세요.",
+    "es": "La verificación ha caducado. Verifica de nuevo."
+  },
+  "请先完成安全验证": {
+    "zh-Hant": "請先完成安全驗證",
+    "en": "Complete security verification first.",
+    "ja": "先に本人確認を完了してください。",
+    "ko": "먼저 본인 확인을 완료하세요.",
+    "es": "Completa primero la verificación de seguridad."
+  },
+  "该手机号暂时无法绑定，请使用其他号码": {
+    "zh-Hant": "此手機號碼暫時無法綁定，請使用其他號碼",
+    "en": "This phone cannot be linked. Try another number.",
+    "ja": "この番号は連携できません。別の番号を使用してください。",
+    "ko": "이 번호를 연결할 수 없습니다. 다른 번호를 사용하세요.",
+    "es": "No se puede vincular este número. Utiliza otro."
+  },
+  "请刷新手机号状态后重试": {
+    "zh-Hant": "請重新整理手機號碼狀態後重試",
+    "en": "Refresh phone status and try again.",
+    "ja": "電話番号の状態を更新して再試行してください。",
+    "ko": "번호 상태를 새로고침한 후 다시 시도하세요.",
+    "es": "Actualiza el estado del teléfono e inténtalo de nuevo."
+  },
+  "请先验证其他可用登录方式": {
+    "zh-Hant": "請先驗證其他可用登入方式",
+    "en": "Verify another available sign-in method first.",
+    "ja": "先に他のログイン方法で認証してください。",
+    "ko": "먼저 다른 로그인 수단을 인증하세요.",
+    "es": "Verifica primero otro método de acceso disponible."
+  },
+  "操作状态已变化，请刷新后重新验证": {
+    "zh-Hant": "操作狀態已變更，請重新整理後重新驗證",
+    "en": "The operation state changed. Refresh and verify again.",
+    "ja": "操作状態が変わりました。更新して再認証してください。",
+    "ko": "작업 상태가 변경되었습니다. 새로고침 후 다시 인증하세요.",
+    "es": "El estado ha cambiado. Actualiza y verifica de nuevo."
+  },
+  "验证码错误或已过期，请重新获取": {
+    "zh-Hant": "驗證碼錯誤或已過期，請重新取得",
+    "en": "The code is incorrect or expired. Request a new one.",
+    "ja": "コードが違うか期限切れです。再取得してください。",
+    "ko": "인증번호가 잘못되었거나 만료되었습니다. 새로 요청하세요.",
+    "es": "El código es incorrecto o ha caducado. Solicita otro."
+  },
+  "验证码已过期，请重新获取": {
+    "zh-Hant": "驗證碼已過期，請重新取得",
+    "en": "The code expired. Request a new one.",
+    "ja": "コードの有効期限が切れました。再取得してください。",
+    "ko": "인증번호가 만료되었습니다. 새로 요청하세요.",
+    "es": "El código ha caducado. Solicita otro."
+  },
+  "验证码已使用，请重新获取": {
+    "zh-Hant": "驗證碼已使用，請重新取得",
+    "en": "The code was already used. Request a new one.",
+    "ja": "このコードは使用済みです。再取得してください。",
+    "ko": "이미 사용한 인증번호입니다. 새로 요청하세요.",
+    "es": "El código ya se ha utilizado. Solicita otro."
+  },
+  "短信服务暂时不可用，请稍后再试": {
+    "zh-Hant": "簡訊服務暫時無法使用，請稍後重試",
+    "en": "SMS is temporarily unavailable. Try again later.",
+    "ja": "SMSは一時的に利用できません。後ほどお試しください。",
+    "ko": "SMS 서비스를 일시적으로 사용할 수 없습니다. 나중에 시도하세요.",
+    "es": "Los SMS no están disponibles temporalmente. Inténtalo más tarde."
+  },
+  "请求超时，请重新获取验证码或刷新状态": {
+    "zh-Hant": "請求逾時，請重新取得驗證碼或重新整理狀態",
+    "en": "Request timed out. Request a new code or refresh status.",
+    "ja": "タイムアウトしました。コードの再取得か状態の更新を行ってください。",
+    "ko": "요청 시간이 초과되었습니다. 인증번호를 다시 받거나 상태를 새로고침하세요.",
+    "es": "La solicitud agotó el tiempo. Solicita otro código o actualiza el estado."
+  },
+  "网络连接失败，请检查网络后重试": {
+    "zh-Hant": "網路連線失敗，請檢查網路後重試",
+    "en": "Connection failed. Check your network and try again.",
+    "ja": "接続できません。ネットワークを確認して再試行してください。",
+    "ko": "연결하지 못했습니다. 네트워크를 확인한 후 다시 시도하세요.",
+    "es": "Error de conexión. Revisa la red e inténtalo de nuevo."
+  },
+  "认证服务暂时不可用，请稍后再试": {
+    "zh-Hant": "認證服務暫時無法使用，請稍後重試",
+    "en": "Authentication is temporarily unavailable. Try again later.",
+    "ja": "認証サービスを利用できません。後ほどお試しください。",
+    "ko": "인증 서비스를 일시적으로 사용할 수 없습니다. 나중에 시도하세요.",
+    "es": "La autenticación no está disponible temporalmente. Inténtalo más tarde."
+  }
+};
   global.SiteI18nAdditionalCatalog = Object.freeze(Object.fromEntries(
-    Object.entries(generatedCatalog).map(([sourceText, translations]) => [
+    Object.entries({ ...generatedCatalog, ...phoneAuthCatalog }).map(([sourceText, translations]) => [
       sourceText,
       Object.freeze({ ...translations, ...(reviewedLabelCatalog[sourceText] || {}) }),
     ]),
