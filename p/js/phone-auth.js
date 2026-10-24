@@ -3,6 +3,7 @@
   const API = 'https://api.sunland.dev';
   const cool = new Map();
   const messages = {
+    REGISTRATION_DISABLED:'暂未开放手机号新用户注册', CANARY_LIMITED:'本次短信验收额度已用完', CANARY_DENIED:'当前号码不在短信验收范围', RELEASE_CONFIG:'手机号发布配置暂不可用',
     INVALID_REQUEST:'请检查手机号和6位验证码', BUSY:'正在处理…', SESSION_CHANGED:'登录状态已变化，请重新进行安全验证',
     UNAUTHORIZED:'登录已失效，请重新登录', ACCOUNT_NOT_ACTIVE:'账号正在注销或已注销，无法登录', ACCOUNT_BANNED:'当前账号无法登录',
     SMS_DISABLED:'手机号认证暂未启用', IDENTITY_DISABLED:'手机号认证暂未启用', CAPTCHA_FAILED:'人机验证未完成，请重试',
@@ -121,6 +122,15 @@
         let old={};try{old=JSON.parse(global.localStorage.getItem('user')||'{}');}catch{}
         global.localStorage.setItem('user',JSON.stringify({...((old?.id===r.user.id)?old:{}),...r.user}));
         cancel();global.SunlandDatabaseToken?.clear?.();global.dispatchEvent(new global.CustomEvent('phone-auth-session-refresh'));return r.user;},
+      async deletionIdentity(){const r=await request('/v1/account-delete/identity',{});
+        const userId=decode(getToken())?.id || decode(getToken())?.sub;
+        if(typeof r.user_id!=='string'||r.user_id!==userId||r.identity_status!=='active'||typeof r.is_banned!=='boolean'||
+          !(r.email===null||r.email===undefined||typeof r.email==='string'))throw failure('UNAUTHORIZED');
+        return r;},
+      async authorizeDelete(reauth_token){if(typeof reauth_token!=='string'||!/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(reauth_token))throw failure('INVALID_REQUEST');const r=await request('/v1/phone/delete-authorize',{reauth_token,operation_id:global.crypto.randomUUID()});
+        if(r.ok!==true||typeof r.deletion_job_id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(r.deletion_job_id)||
+          typeof r.deletion_token!=='string'||!/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(r.deletion_token)||r.expires_in!==600)throw failure('SERVICE_UNAVAILABLE');
+        return r;},
       login:(phone,challenge_id,code)=>request('/v1/phone/verify-code',{phone:normalizePhone(phone),challenge_id,code,operation_id:global.crypto.randomUUID()},{auth:false}),
       async emailSend(email){if(typeof email!=='string'||!/^\S+@\S+\.\S+$/.test(email))throw failure('INVALID_REQUEST');
         const snapshot=capture(),controller=new global.AbortController();controllers.add(controller);

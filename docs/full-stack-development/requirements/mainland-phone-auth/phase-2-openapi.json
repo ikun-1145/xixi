@@ -1461,7 +1461,11 @@
               "REAUTH_INVALID",
               "ALTERNATIVE_LOGIN_REQUIRED",
               "OPERATION_CONFLICT",
-              "DELETION_CONFLICT"
+              "DELETION_CONFLICT",
+              "REGISTRATION_DISABLED",
+              "CANARY_LIMITED",
+              "CANARY_DENIED",
+              "RELEASE_CONFIG"
             ]
           },
           "error": {

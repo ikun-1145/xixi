@@ -1,12 +1,14 @@
 {
   "feature": "mainland-phone-auth",
   "date": "2026-10-24",
-  "currentStage": "phase-3a-local-delivery",
-  "status": "local_complete_not_deployed",
+  "currentStage": "phase-4-local-delivery",
+  "status": "local_complete_production_blocked",
   "approvals": {
     "requirementsApproved": true,
     "implementationApproved": true,
-    "phase3aApproved": true
+    "phase3aApproved": true,
+    "phase4ConditionalProductionAuthorized": true,
+    "phase4ProductionPausedByUser": true
   },
   "evidence": [
     "PHASE-0-AUDIT.md",
@@ -24,28 +26,33 @@
     "PHASE-3A-POSTGRES.md",
     "PHASE-3A-REVIEW.md",
     "PHASE-3A-DELIVERY.md",
-    "phase-3a-evidence/browser-results.json"
+    "phase-3a-evidence/browser-results.json",
+    "PHASE-4-PLAN.md",
+    "PHASE-4-DELIVERY.md"
   ],
   "resolvedBlockers": [
     "Read-only Cloudflare MCP access restored; deployed ai Worker authentication code inspected.",
     "User continuation requirements explicitly retain current application JWT and database token architecture; native Supabase Auth sessions are out of scope.",
     "A Team bootstrap validated and committed be0422e; Supabase read-only metadata tools connected.",
-    "Scoped Supabase catalog, constraints, indexes, RLS, column grants, deletion RPC/lease and migration metadata verified 2026-10-24."
+    "Scoped Supabase catalog, constraints, indexes, RLS, column grants, deletion RPC/lease and migration metadata verified 2026-10-24.",
+    "Phone-only account deletion, release guardrails, three-language/mobile browser regression, full automated tests, Docker PostgreSQL contention and synthetic encrypted backup/restore rehearsal completed locally."
   ],
   "blockers": [],
-  "implementationScope": "Phase3A website integration and Docker-isolated PostgreSQL; no production writes, SMS, deployment or Flutter",
+  "implementationScope": "Phase4 phone-only account deletion, release guardrails, backup/restore rehearsal and local release preparation; no production writes, SMS, deployment or Flutter",
   "flowProfile": "strict-fullstack",
   "phaseStatus": {
     "phase0": "Targeted Supabase metadata verified; no user rows read",
     "phase1": "Reused by Phase2 local Worker; not deployed",
     "phase2": "Local code, SQL, actual-source Worker integration and independent reviews complete; production validation pending",
-    "phase3": "Phase3A website/Docker local acceptance complete; Phase3B Flutter development ready; production blocked"
+    "phase3": "Phase3A website/Docker local acceptance complete; Phase3B Flutter development ready; production blocked",
+    "phase4": "Local acceptance complete; production release blocked by backup/restore, email OTP compatibility, Cloudflare configuration and live acceptance prerequisites"
   },
   "integrationPrerequisites": [
-    "Full production schema/policy/trigger isolation rehearsal",
+    "Encrypted production database and Storage backups with isolated restore evidence",
+    "Authorized atomic email OTP migration and Worker compatibility acceptance before Worker deployment",
+    "Cloudflare Alibaba SMS Secrets and fail-closed release configuration verification",
     "Real DO budget ledger/recovery and PostgREST JWT gateway validation",
-    "Approved key/canary/sitekey/provider configuration and live SMS acceptance",
-    "Phone-only website account deletion confirmation UI before public registration",
+    "Authorized canary, production CORS/Turnstile, live SMS and real mobile-device acceptance",
     "Separate release/migration authorization"
   ],
   "verification": {
@@ -128,11 +135,48 @@
     "productionMigrationsExecuted": false,
     "deployed": false
   },
+  "phase4Verification": {
+    "focusedTests": {
+      "passed": 59,
+      "failed": 0,
+      "skipped": 0
+    },
+    "npmTest": {
+      "total": 1024,
+      "passed": 1024,
+      "failed": 0,
+      "skipped": 0
+    },
+    "dockerPostgres": {
+      "passed": 15,
+      "version": "17.6",
+      "independentBackendContention": true
+    },
+    "edgeBrowserMockIntegration": {
+      "passed": 20,
+      "languages": ["zh-CN", "en", "ja"],
+      "viewports": [390, 1280],
+      "themes": ["light", "dark"]
+    },
+    "syntheticBackupRestore": {
+      "passed": true,
+      "encryption": "AES-256-GCM",
+      "tamperRejected": true,
+      "isolatedRestore": true,
+      "productionDataUsed": false
+    },
+    "securityReview": "No new reproducible local P1/P2 findings; this is not production security acceptance",
+    "realSmsSent": false,
+    "realDeviceTested": false,
+    "productionMigrationsExecuted": false,
+    "deployed": false
+  },
   "productionBlockers": [
-    "Full production schema/policy/trigger isolation rehearsal",
+    "Encrypted production database and Storage backups with isolated restore evidence",
+    "Authorized atomic email OTP migration and Worker compatibility acceptance before Worker deployment",
+    "Cloudflare Alibaba SMS Secrets and fail-closed release configuration verification",
     "Real DO budget ledger/recovery and PostgREST JWT gateway validation",
-    "Approved key/canary/sitekey/provider configuration and live SMS acceptance",
-    "Phone-only website account deletion confirmation UI before public registration",
+    "Authorized canary, production CORS/Turnstile, live SMS and real mobile-device acceptance",
     "Separate release/migration authorization"
   ]
 }

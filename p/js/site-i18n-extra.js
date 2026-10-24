@@ -4269,6 +4269,83 @@
   }
 };
   const phoneAuthCatalog = {
+  "暂未开放手机号新用户注册": {
+    "zh-Hant": "暫未開放手機號碼新用戶註冊",
+    "en": "New phone registrations are not available yet",
+    "ja": "電話番号による新規登録はまだ利用できません",
+    "ko": "전화번호 신규 가입은 아직 지원되지 않습니다",
+    "es": "El registro con teléfono aún no está disponible"
+  },
+  "本次短信验收额度已用完": {
+    "zh-Hant": "本次簡訊驗收額度已用完",
+    "en": "The SMS acceptance limit has been reached",
+    "ja": "SMS検証の上限に達しました",
+    "ko": "SMS 검증 한도에 도달했습니다",
+    "es": "Se alcanzó el límite de pruebas SMS"
+  },
+  "当前号码不在短信验收范围": {
+    "zh-Hant": "目前號碼不在簡訊驗收範圍",
+    "en": "This number is not authorized for SMS acceptance",
+    "ja": "この番号はSMS検証の対象外です",
+    "ko": "이 번호는 SMS 검증 대상이 아닙니다",
+    "es": "Este número no está autorizado para pruebas SMS"
+  },
+  "手机号发布配置暂不可用": {
+    "zh-Hant": "手機號碼發佈設定暫不可用",
+    "en": "Phone sign-in configuration is unavailable",
+    "ja": "電話番号認証の設定を利用できません",
+    "ko": "전화번호 인증 설정을 사용할 수 없습니다",
+    "es": "La configuración de acceso por teléfono no está disponible"
+  },
+  "删除账号属于高风险操作，请先验证当前登录方式。": {
+    "zh-Hant": "刪除帳號屬於高風險操作，請先驗證目前登入方式。",
+    "en": "Verify your current sign-in method before deleting your account.",
+    "ja": "アカウント削除の前に現在のログイン方法で本人確認を行ってください。",
+    "ko": "계정 삭제 전에 현재 로그인 수단으로 본인 인증을 해주세요.",
+    "es": "Verifica tu método de acceso antes de eliminar la cuenta."
+  },
+  "删除账号属于高风险操作，请先通过短信验证码重新验证身份。": {
+    "zh-Hant": "刪除帳號屬於高風險操作，請先透過簡訊驗證碼重新驗證身分。",
+    "en": "Verify your identity with an SMS code before deleting your account.",
+    "ja": "アカウント削除の前にSMSコードで本人確認を行ってください。",
+    "ko": "계정 삭제 전에 SMS 코드로 본인 인증을 해주세요.",
+    "es": "Verifica tu identidad con un código SMS antes de eliminar la cuenta."
+  },
+  "当前绑定的手机号": {
+    "zh-Hant": "目前綁定的手機號碼",
+    "en": "Currently linked phone number",
+    "ja": "現在連携している電話番号",
+    "ko": "현재 연결된 전화번호",
+    "es": "Teléfono vinculado actualmente"
+  },
+  "手机号删除授权已失效，请重新验证": {
+    "zh-Hant": "手機號碼刪除授權已失效，請重新驗證",
+    "en": "Deletion authorization expired. Verify again.",
+    "ja": "削除の認証が期限切れです。再認証してください。",
+    "ko": "삭제 인증이 만료되었습니다. 다시 인증해주세요.",
+    "es": "La autorización de eliminación caducó. Verifica de nuevo."
+  },
+  "当前身份校验失败，请重新登录": {
+    "zh-Hant": "目前身分驗證失敗，請重新登入",
+    "en": "Identity verification failed. Sign in again.",
+    "ja": "本人確認に失敗しました。再度ログインしてください。",
+    "ko": "본인 인증에 실패했습니다. 다시 로그인해주세요.",
+    "es": "Falló la verificación de identidad. Vuelve a iniciar sesión."
+  },
+  "登录状态已变化，请重新验证身份": {
+    "zh-Hant": "登入狀態已變更，請重新驗證身分",
+    "en": "Your session changed. Verify your identity again.",
+    "ja": "ログイン状態が変わりました。再認証してください。",
+    "ko": "로그인 상태가 변경되었습니다. 다시 인증해주세요.",
+    "es": "Tu sesión cambió. Verifica tu identidad de nuevo."
+  },
+  "正在确认账号状态…": {
+    "zh-Hant": "正在確認帳號狀態…",
+    "en": "Checking account status…",
+    "ja": "アカウント状態を確認中…",
+    "ko": "계정 상태 확인 중…",
+    "es": "Comprobando el estado de la cuenta…"
+  },
   "邮箱登录": {
     "zh-Hant": "郵箱登入",
     "en": "Email",

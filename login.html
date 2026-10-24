@@ -139,6 +139,7 @@ function normalizeLoginUser(data, fallbackEmail) {
 <link rel="stylesheet" href="p/css/base.css">
 <link rel="stylesheet" href="p/css/phone-auth.css">
 <meta name="sunland-turnstile-sitekey" content="">
+<meta name="sunland-phone-ui-enabled" content="false">
 <style>
 /* ===== 登录页（依赖 tokens.css / base.css，登录逻辑不变） ===== */
 html, body { height: 100%; margin: 0; }
@@ -538,6 +539,8 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
     const loginBtn = modal.querySelector("#loginBtn");
     const msg = modal.querySelector("#loginMsg");
     const agreeCheck = modal.querySelector("#agreeCheck");
+    const phoneUiEnabled = document.querySelector('meta[name="sunland-phone-ui-enabled"]')?.content === 'true';
+    modal.querySelector('#phoneLoginTab').closest('.phone-tabs').hidden = !phoneUiEnabled;
     const phoneAuth = window.SunlandPhoneAuth;
     const phoneClient = phoneAuth.createClient();
     const phoneInput = modal.querySelector('#phoneInput');
@@ -562,6 +565,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       if (loginMode === 'phone') loginBtn.textContent = tr('登录或注册');
     }
     function setLoginMode(mode) {
+      if (mode === "phone" && !phoneUiEnabled) return;
       loginGeneration++; phoneClient.cancel(); challenge = null; phonePending = false; loginPending = false;
       phoneInput.value = ''; phoneCodeInput.value = ''; codeInput.value = ''; phoneNotice = null; msg.textContent = ''; loginMode = mode;
       modal.querySelector('#phoneLoginFields').hidden = mode !== 'phone';

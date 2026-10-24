@@ -1,6 +1,7 @@
 import { DypnsapiClient } from './dypnsapi.js';
 import { PhoneAuthError, requireSmsEnabled } from './errors.js';
 import { requestJson } from './http.js';
+import { releasePolicy, allowCanaryRecipient, requireAdmin } from './release-policy.js';
 
 export const SINGLETON_NAME = 'sunland-phone-auth-v1';
 export const LEDGER_KEY = 'account';
@@ -15,6 +16,7 @@ const fail = (code, status = 400) => { throw new PhoneAuthError(code, status); }
 
 function settings(env) {
   requireSmsEnabled(env);
+  releasePolicy(env);
   let policy;
   try { policy = JSON.parse(env.PHONE_AUTH_POLICY); } catch { fail('SMS_CONFIG', 503); }
   const fields = ['perPhoneDaily', 'perIpDaily', 'dailyLimit', 'unitCostMicros', 'dailyBudgetMicros',
@@ -91,7 +93,8 @@ export class PhoneAuthCoordinator {
     const account = await tx.get(LEDGER_KEY);
     // No automatic initialization: an evicted/missing ledger cannot reset cost.
     if (!account || account.schema !== 1 || account.enabled !== true || account.keyId !== this.env.PHONE_AUTH_HMAC_KEY_ID ||
-        !['totalMicros', 'day', 'dayCount', 'dayMicros', 'minute', 'minuteCount', 'lastNow'].every(k => nonnegative(account[k])) ||
+        !['testReserved', 'totalMicros', 'day', 'dayCount', 'dayMicros', 'minute', 'minuteCount', 'lastNow'].every(k => nonnegative(account[k])) ||
+        account.testReserved > 3 ||
         !nonnegative(now) || now < account.lastNow) fail('SERVICE_UNAVAILABLE', 503);
     account.lastNow = now;
     if (account.day !== Math.floor(now / DAY)) {
@@ -112,6 +115,7 @@ export class PhoneAuthCoordinator {
       digest(this.env.PHONE_AUTH_HMAC_KEY, 'ip', normalized.ip),
       digest(this.env.PHONE_AUTH_HMAC_KEY, 'principal', normalized.principal),
     ]);
+    if (operation === 'send') allowCanaryRecipient(releasePolicy(this.env), phoneHash);
     await this.transaction(async tx => {
       const now = this.now();
       const account = await this.account(tx, now);
@@ -156,6 +160,9 @@ export class PhoneAuthCoordinator {
       const now = this.now();
       validate(input, context, 'send', now);
       const account = await this.account(tx, now);
+      const release = releasePolicy(this.env);
+      allowCanaryRecipient(release, phoneHash);
+      if (release.mode === 'canary' && account.testReserved >= 3) fail('CANARY_LIMITED', 429);
       const p = await tx.get(phoneKey);
       const i = await tx.get(ipKey);
       for (const value of [p, i]) {
@@ -170,6 +177,7 @@ export class PhoneAuthCoordinator {
       if (account.dayCount >= policy.dailyLimit || account.totalMicros > policy.totalBudgetMicros - policy.unitCostMicros ||
           account.dayMicros > policy.dailyBudgetMicros - policy.unitCostMicros) fail('BUDGET_EXCEEDED', 429);
       account.dayCount++; account.dayMicros += policy.unitCostMicros; account.totalMicros += policy.unitCostMicros;
+      if (release.mode === 'canary') account.testReserved++;
       await tx.put(LEDGER_KEY, account);
       await tx.put(phoneKey, { day: account.day, count: phoneCount + 1, lockUntil: now + LOCK,
         challengeId: id, quarantined: true });
@@ -266,6 +274,26 @@ export class PhoneAuthCoordinator {
   async fetch(request) {
     try {
       const path = new URL(request.url).pathname;
+      if (request.method === 'POST' && ['/initialize', '/status'].includes(path)) {
+        await requireAdmin(this.env, request);
+        const policy = releasePolicy(this.env);
+        const now = this.now();
+        if (!nonnegative(now) || !/^[a-zA-Z0-9_-]{1,32}$/.test(this.env.PHONE_AUTH_HMAC_KEY_ID || '') ||
+            typeof this.env.PHONE_AUTH_HMAC_KEY !== 'string' || this.env.PHONE_AUTH_HMAC_KEY.length < 32) fail('RELEASE_CONFIG', 503);
+        const output = await this.transaction(async tx => {
+          if (path === '/initialize') {
+            if ((await tx.list({ limit: 1 })).size) fail('OPERATION_CONFLICT', 409);
+            await tx.put(LEDGER_KEY, { schema: 1, enabled: true, keyId: this.env.PHONE_AUTH_HMAC_KEY_ID,
+              testReserved: 0, totalMicros: 0, day: Math.floor(now / DAY), dayCount: 0, dayMicros: 0,
+              minute: Math.floor(now / 60000), minuteCount: 0, lastNow: now });
+          }
+          const account = await this.account(tx, now);
+          return { success: true, schema: account.schema, enabled: account.enabled, mode: policy.mode,
+            test_reserved: account.testReserved, total_micros: account.totalMicros,
+            day_count: account.dayCount, day_micros: account.dayMicros };
+        });
+        return Response.json(output, { headers: { 'Cache-Control': 'no-store' } });
+      }
       if (request.method !== 'POST' || !['/send', '/check'].includes(path)) fail('INVALID_REQUEST');
       // Binding transport only; no public route is installed by this module.
       const reader = request.body?.getReader();

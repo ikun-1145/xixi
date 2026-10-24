@@ -41,7 +41,7 @@ function sql(db, text, application = 'phone-suite') {
 const data = extra => ({lookup_key_id:'lookup-v1',lookup_check:h(9),...extra});
 const rpc = (action, args) => `select public.sunland_phone_identity(${quote(action)},${quote(JSON.stringify(data(args)))}::jsonb)`;
 const call = async (db,action,args,role='service_role')=>JSON.parse(await sql(db,`set role ${role};${rpc(action,args)};`));
-const login = (n,more={})=>({phone_hash:h(n),encrypted_phone:`fixture-cipher-${n}`,last4:'1234',candidate_id:id(n),operation_id:id(1000+n),request_hash:h(1000+n),...more});
+const login = (n,more={})=>({allow_create:true,phone_hash:h(n),encrypted_phone:`fixture-cipher-${n}`,last4:'1234',candidate_id:id(n),operation_id:id(1000+n),request_hash:h(1000+n),...more});
 const grant = (n,purpose,more={})=>({user_id:id(n),session_hash:h(70),purpose,method:'email',subject:`person${n}@example.test`,proof_hash:h(2000+n),...more});
 const mutation = (n,more={})=>({user_id:id(n),session_hash:h(70),proof_hash:h(2000+n),phone_hash:h(4000+n),encrypted_phone:`fixture-cipher-${n}`,last4:'5678',operation_id:id(3000+n),request_hash:h(3000+n),...more});
 async function profile(db,n,pro=false) {await sql(db,`insert into user_profiles(user_id,email,pro) values(${quote(id(n))},'person${n}@example.test',${pro});`);}

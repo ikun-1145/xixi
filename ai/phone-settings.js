@@ -260,6 +260,6 @@
     mounted.set(root, result); translate(); void load(); return result;
   }
   global.SunlandPhoneSettings = { mount };
-  function autoMount() { mount(global.document?.getElementById('phoneSettings')); }
+  function autoMount() { const root=global.document?.getElementById('phoneSettings'); if(!root)return; const enabled=global.document.querySelector('meta[name="sunland-phone-ui-enabled"]')?.content==='true'; root.hidden=!enabled; if(enabled)mount(root); }
   if (global.document?.readyState === 'loading') global.document.addEventListener('DOMContentLoaded', autoMount, { once: true }); else autoMount();
 })(window);

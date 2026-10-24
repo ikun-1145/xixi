@@ -32,7 +32,7 @@ function proofHash(token) {
 }
 const ERROR_STATUS = { INVALID_REQUEST:400, PHONE_KEY_MISMATCH:503, ACCOUNT_NOT_ACTIVE:403, ACCOUNT_BANNED:403,
   PHONE_CONFLICT:409, PHONE_ALREADY_BOUND:409, PHONE_NOT_BOUND:409, REAUTH_INVALID:403,
-  ALTERNATIVE_LOGIN_REQUIRED:409, OPERATION_CONFLICT:409, DELETION_CONFLICT:409 };
+  ALTERNATIVE_LOGIN_REQUIRED:409, OPERATION_CONFLICT:409, DELETION_CONFLICT:409, REGISTRATION_DISABLED:403 };
 
 // Server only. No database credentials or raw phone numbers cross the public API.
 export function createPhoneIdentity(env, { rpc } = {}) {
@@ -122,7 +122,8 @@ export function createPhoneIdentity(env, { rpc } = {}) {
     },
     async login({phone,operationId}) {
       const candidate = crypto.randomUUID(); const data = await target(phone,candidate);
-      const r = await call('login',{...data,candidate_id:candidate,...await operation('login',operationId,[data.phone_hash])});
+      const r = await call('login',{...data,candidate_id:candidate,allow_create:env.PHONE_NEW_REGISTRATION_ENABLED === 'true',
+        ...await operation('login',operationId,[data.phone_hash])});
       if (!idPattern.test(r.user_id || '') || !(r.email === null || typeof r.email === 'string') ||
           typeof r.is_new_user !== 'boolean' || ![0,1].includes(r.onboarding?.version) || ![1,2,3].includes(r.onboarding?.step) ||
           (r.onboarding.version === 1 && r.onboarding.step !== 3)) fail('IDENTITY_UNAVAILABLE',503);

@@ -6,7 +6,7 @@
   color: var(--phone-text);
   min-width: 0;
 }
-.phone-auth [hidden] { display: none !important; }
+.phone-auth[hidden], .phone-auth [hidden] { display: none !important; }
 .phone-auth h2, .phone-auth h3 { margin: 0; font-size: 1.05rem; line-height: 1.5; }
 .phone-auth button, .phone-auth input { font: inherit; box-sizing: border-box; }
 .phone-auth button {

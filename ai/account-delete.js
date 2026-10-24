@@ -2,9 +2,7 @@ import { normalizeUserId } from "./user-identity.js";
 import { vaultPrefix } from './history-vault.js';
 
 const API_BASE = "https://klyrasrqgxijwrxuoevj.supabase.co/functions/v1/sunland-account-delete";
-const SEND_CODE_URL = "https://api.sunland.dev/send-code";
 const CONFIRMATION_TEXT = "删除我的账号";
-const GEE_TEST_CAPTCHA_ID = "ad3a8126afe716ccd4541f35d428071e";
 const COOLDOWN_SECONDS = 60;
 
 let dialog = null;
@@ -17,17 +15,40 @@ let deletionToken = "";
 let cleanupIdentity = null;
 let cooldownTimer = null;
 let busy = false;
-
-function decodeJwtPayload(token) {
+let generation = 0;
+let deletionSession = null;
+let phoneClient = null;
+let verificationMode = 'email';
+let phoneChallenge = null;
+let backdrop = null;
+let authorizationExpiresAt = 0;
+const controllers = new Set();
+const tr = source => window.SunlandPhoneAuth?.text?.(source) || source;
+const codedError = code => Object.assign(new Error(), { code });
+function captureFlow() { return { generation, token: getAppToken(), userId: deletionSession?.id }; }
+function currentFlow(attempt) { return generation === attempt.generation && getAppToken() === attempt.token; }
+function requireCurrent(attempt) { if (!currentFlow(attempt)) throw codedError('SESSION_CHANGED'); }
+function safeMessage(error) { return window.SunlandPhoneAuth?.errorText?.(error) || tr('当前身份校验失败，请重新登录'); }
+function invalidateFlow() {
+  generation++; phoneClient?.cancel();
+  for (const controller of controllers) controller.abort();
+  controllers.clear(); stopCooldown();
+  deletionSession = null; phoneChallenge = null; deletionJobId = ''; deletionToken = ''; cleanupIdentity = null; authorizationExpiresAt = 0;
+  bodyEl?.querySelectorAll('input').forEach(input => { input.value = ''; });
+  setBusy(false);
+}
+async function edgeRequest(payload, attempt) {
+  requireCurrent(attempt);
+  const controller = new AbortController(); controllers.add(controller); let timer;
   try {
-    const part = String(token || "").split(".")[1];
-    if (!part) return null;
-    const base64 = part.replace(/-/g, "+").replace(/_/g, "/");
-    const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
-    return JSON.parse(atob(padded));
-  } catch {
-    return null;
-  }
+    const result = await Promise.race([(async () => {
+      const response = await fetch(API_BASE, { method: 'POST', credentials: 'omit', redirect: 'error', headers: { 'Content-Type': 'application/json', 'x-sunland-token': attempt.token }, body: JSON.stringify(payload), signal: controller.signal });
+      const data = await response.json(); requireCurrent(attempt);
+      if (!response.ok && !(payload.action === 'execute' && data?.already_completed)) throw codedError(response.status === 401 ? 'UNAUTHORIZED' : 'SERVICE_UNAVAILABLE');
+      return data;
+    })(), new Promise((_, reject) => { timer = setTimeout(() => { controller.abort(); reject(codedError('TIMEOUT')); }, 30000); })]);
+    requireCurrent(attempt); return result;
+  } finally { clearTimeout(timer); controllers.delete(controller); }
 }
 
 function getAppToken() {
@@ -39,161 +60,49 @@ function getAppToken() {
 }
 
 function getCurrentUser() {
-  try {
-    const user = JSON.parse(localStorage.getItem("user") || "null");
-    if (user && (user.id || user.email)) {
-      return { id: String(user.id || user.email), email: String(user.email || user.id) };
-    }
-  } catch {}
-
-  try {
-    const token = getAppToken();
-    if (token) {
-      const payload = decodeJwtPayload(token);
-      const id = payload?.sub || payload?.id || payload?.user_id || payload?.email;
-      const email = payload?.email || payload?.user_email || payload?.mail || "";
-      if (id) return { id: String(id), email: String(email || id) };
-    }
-  } catch {}
-
-  return null;
+  return deletionSession && deletionSession.token === getAppToken() ? deletionSession : null;
 }
 
 function setStatus(el, message, type = "") {
   if (!el) return;
-  el.textContent = message;
+  el.dataset.deleteMessage = message;
+  el.textContent = tr(message);
   el.className = `account-delete-status${type ? ` ${type}` : ""}`;
 }
 
 function setBusy(value) {
   busy = value;
-  if (closeBtn) closeBtn.disabled = value;
+  if (closeBtn) closeBtn.disabled = value && currentStep === 4;
 }
 
-function loadGeetestScript() {
-  if (typeof window.initGeetest4 === "function") return Promise.resolve();
-  if (window.__accountDeleteGeetestLoading) return window.__accountDeleteGeetestLoading;
-  window.__accountDeleteGeetestLoading = new Promise((resolve, reject) => {
-    const script = document.createElement("script");
-    script.src = "https://static.geetest.com/v4/gt4.js";
-    script.async = true;
-    script.onload = () => {
-      if (typeof window.initGeetest4 === "function") resolve();
-      else reject(new Error("验证脚本加载异常，请刷新重试"));
-    };
-    script.onerror = () => {
-      window.__accountDeleteGeetestLoading = null;
-      reject(new Error("验证脚本加载失败，请检查网络或稍后重试"));
-    };
-    document.head.appendChild(script);
-  });
-  return window.__accountDeleteGeetestLoading;
-}
-
-function newCaptchaPromise() {
-  return loadGeetestScript().then(() => new Promise((resolve, reject) => {
-    window.initGeetest4({ captchaId: GEE_TEST_CAPTCHA_ID, product: "bind" }, (obj) => {
-      obj.onReady(() => resolve(obj));
-      obj.onError((err) => reject(new Error(err?.msg || err?.desc || "人机验证加载失败")));
-    });
-  }));
-}
-
-let captchaPromise = null;
-
-function ensureCaptchaPromise() {
-  if (typeof window === "undefined") {
-    return Promise.reject(new Error("browser required"));
-  }
-  if (!captchaPromise) {
-    captchaPromise = newCaptchaPromise();
-    captchaPromise.catch(() => {});
-  }
-  return captchaPromise;
-}
-
-async function runCaptcha() {
-  const captcha = await ensureCaptchaPromise();
-  if (captcha && typeof captcha.appendTo === "function") {
-    captcha.appendTo(dialog || document.body);
-  }
-  return new Promise((resolve, reject) => {
-    captcha.onSuccess(() => {
-      const result = captcha.getValidate();
-      captchaPromise = newCaptchaPromise();
-      captchaPromise.catch(() => {});
-      resolve(JSON.stringify(result));
-    });
-    captcha.onError((err) => {
-      captchaPromise = newCaptchaPromise();
-      captchaPromise.catch(() => {});
-      reject(new Error(err?.msg || err?.desc || "人机验证失败"));
-    });
-    captcha.showCaptcha();
-  });
-}
-
-async function sendEmailCode(email, sendBtn, statusEl) {
-  if (busy) return;
-  if (sendBtn.disabled) return;
-
-  setStatus(statusEl, "");
-  if (!/^\S+@\S+\.\S+$/.test(email)) {
-    setStatus(statusEl, "邮箱格式错误", "error");
-    return;
-  }
-
-  setBusy(true);
-  sendBtn.disabled = true;
-  let captchaToken;
+async function sendVerificationCode(sendBtn, statusEl) {
+  if (busy || sendBtn.disabled || !getCurrentUser()) return;
+  const attempt = captureFlow(); setStatus(statusEl, ''); setBusy(true); sendBtn.disabled = true;
   try {
-    captchaToken = await runCaptcha();
-  } catch (error) {
-    setStatus(statusEl, error.message || "人机验证失败", "error");
-    sendBtn.disabled = false;
-    setBusy(false);
-    return;
-  }
-
-  try {
-    sendBtn.textContent = "发送中...";
-    const res = await fetch(SEND_CODE_URL, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, token: captchaToken }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || data.error) {
-      throw new Error(data.error || `发送失败（${res.status}）`);
+    if (verificationMode === 'email') {
+      await phoneClient.emailSend(deletionSession.email); requireCurrent(attempt); startCooldown(sendBtn);
+    } else {
+      const value = bodyEl.querySelector('#accountDeletePhoneInput').value;
+      const phone = window.SunlandPhoneAuth.normalizePhone(value);
+      const result = await phoneClient.send(phone, 'reauth'); requireCurrent(attempt);
+      phoneChallenge = { phone, id: result.challenge_id, expiresAt: Date.now() + result.expires_in * 1000 };
+      startCooldown(sendBtn, Date.now() + result.retry_after * 1000);
     }
-
-    setStatus(statusEl, "验证码已发送（有效期约5分钟）", "success");
-    startCooldown(sendBtn);
+    setStatus(statusEl, '验证码已发送（有效期约5分钟）', 'success');
   } catch (error) {
-    const message = error.message === "Failed to fetch" ? "网络连接失败" : error.message;
-    setStatus(statusEl, message, "error");
-    sendBtn.disabled = false;
-    sendBtn.textContent = "发送验证码";
-  } finally {
-    setBusy(false);
-  }
+    if (currentFlow(attempt)) { setStatus(statusEl, safeMessage(error), 'error'); sendBtn.disabled = false; sendBtn.textContent = tr('发送验证码'); }
+  } finally { if (currentFlow(attempt)) setBusy(false); }
 }
 
-function startCooldown(sendBtn) {
-  if (cooldownTimer) clearInterval(cooldownTimer);
-  let remaining = COOLDOWN_SECONDS;
-  sendBtn.disabled = true;
-  sendBtn.textContent = `${remaining}s`;
-  cooldownTimer = setInterval(() => {
-    remaining -= 1;
-    sendBtn.textContent = `${remaining}s`;
-    if (remaining <= 0) {
-      clearInterval(cooldownTimer);
-      cooldownTimer = null;
-      sendBtn.textContent = "发送验证码";
-      sendBtn.disabled = false;
-    }
-  }, 1000);
+function startCooldown(sendBtn, until = Date.now() + COOLDOWN_SECONDS * 1000) {
+  stopCooldown(); sendBtn.disabled = true;
+  function tick() {
+    const remaining = Math.max(0, Math.ceil((until - Date.now()) / 1000));
+    sendBtn.textContent = remaining ? `${remaining}s` : tr('发送验证码');
+    sendBtn.disabled = remaining > 0;
+    if (!remaining) stopCooldown();
+  }
+  tick(); if (until > Date.now()) cooldownTimer = setInterval(tick, 1000);
 }
 
 function stopCooldown() {
@@ -204,17 +113,19 @@ function stopCooldown() {
 }
 
 async function prepareCleanupIdentity() {
-  if (cleanupIdentity) return cleanupIdentity;
+  if (cleanupIdentity && getCurrentUser()) return cleanupIdentity;
+  const attempt = captureFlow();
   try {
     const { IdentityAuthority, isVerifiedIdentity } = await import("./verified-identity.js");
     const token = getAppToken();
     if (!token) return null;
-    const cached = JSON.parse(localStorage.getItem("user") || "null");
+    const cached = getCurrentUser();
     const authority = new IdentityAuthority();
     const result = await authority.resolve({ token, cachedUser: cached });
-    cleanupIdentity = result.ok && isVerifiedIdentity(result.identity) ? result.identity : null;
+    if (!currentFlow(attempt)) return null;
+    cleanupIdentity = result.ok && isVerifiedIdentity(result.identity) && result.identity.userId === attempt.userId ? result.identity : null;
   } catch {
-    cleanupIdentity = null;
+    if (currentFlow(attempt)) cleanupIdentity = null;
   }
   return cleanupIdentity;
 }
@@ -238,7 +149,9 @@ export function collectAccountLocalStorageKeys(userId) {
   ];
 }
 
-export async function clearAccountLocalStorage(userId, { clearDiagnostics = async () => {} } = {}) {
+export async function clearAccountLocalStorage(userId, { clearDiagnostics = async () => {}, expectedToken = localStorage.getItem("token") } = {}) {
+  const unchanged = () => { if (localStorage.getItem("token") !== expectedToken) throw codedError("SESSION_CHANGED"); };
+  unchanged();
   const keys = collectAccountLocalStorageKeys(userId);
   const owner=normalizeUserId(userId),prefix=vaultPrefix(owner);
   for (let i=0;i<localStorage.length;i++) {
@@ -254,6 +167,7 @@ export async function clearAccountLocalStorage(userId, { clearDiagnostics = asyn
     await clearDiagnostics();
   } catch {}
 
+  unchanged();
   try {
     window.SunlandDatabaseToken?.clear?.();
   } catch {}
@@ -296,84 +210,96 @@ function renderStep1() {
     </div>
   `;
   bodyEl.querySelector("#accountDeleteContinueBtn").onclick = () => {
-    void prepareCleanupIdentity();
-    renderStep2();
+    void beginVerification();
   };
 }
 
+async function beginVerification() {
+  if (busy) return;
+  const attempt = captureFlow(); setBusy(true);
+  const loading = document.createElement('p'); bodyEl.replaceChildren(loading); setStatus(loading, '正在确认账号状态…');
+  try {
+    if (!phoneClient || !attempt.token) throw codedError('UNAUTHORIZED');
+    const verified = await phoneClient.deletionIdentity(); requireCurrent(attempt);
+    if (!normalizeUserId(verified.user_id) || verified.identity_status !== 'active') throw codedError('ACCOUNT_NOT_ACTIVE');
+    let status = null;
+    try { status = await phoneClient.status(); }
+    catch (error) { if (['ACCOUNT_NOT_ACTIVE', 'UNAUTHORIZED', 'SESSION_CHANGED'].includes(error.code)) throw error; }
+    requireCurrent(attempt);
+    deletionSession = { id: verified.user_id, email: typeof verified.email === 'string' && /^\S+@\S+\.\S+$/.test(verified.email) ? verified.email : '', token: attempt.token,
+      allowPhone: status?.bound === true || !verified.email || verified.is_banned === true };
+    verificationMode = deletionSession.email ? 'email' : 'phone'; renderStep2();
+  } catch (error) { if (currentFlow(attempt)) { bodyEl.replaceChildren(loading); setStatus(loading, safeMessage(error), 'error'); } }
+  finally { if (currentFlow(attempt)) setBusy(false); }
+}
 function renderStep2() {
   currentStep = 2;
-  const user = getCurrentUser();
-  const email = user?.email || "";
+  const user = getCurrentUser(); if (!user) return;
+  phoneChallenge = null;
   bodyEl.innerHTML = `
     <div class="account-delete-step active">
-      <p class="account-delete-copy">删除账号属于高风险操作，请先通过邮箱验证码重新验证身份。</p>
-      <div class="account-delete-field">
-        <label for="accountDeleteEmailInput">当前邮箱</label>
-        <div class="account-delete-email-row">
-          <input id="accountDeleteEmailInput" class="account-delete-input" type="email" readonly>
-          <button id="accountDeleteSendBtn" class="account-delete-send" type="button">发送验证码</button>
-        </div>
+      <p class="account-delete-copy" id="accountDeleteMethodCopy"></p>
+      <div class="phone-tabs" role="group" aria-label="安全验证" data-site-i18n-ignore>
+        <button id="accountDeleteEmailMode" type="button"></button><button id="accountDeletePhoneMode" type="button"></button>
+      </div>
+      <div class="account-delete-field" id="accountDeleteEmailField">
+        <label for="accountDeleteEmailInput">当前邮箱</label><input id="accountDeleteEmailInput" class="account-delete-input" type="email" readonly>
+      </div>
+      <div class="account-delete-field" id="accountDeletePhoneField">
+        <label for="accountDeletePhoneInput">当前绑定的手机号</label><div class="phone-input-row"><span>+86</span><input id="accountDeletePhoneInput" class="account-delete-input" type="tel" inputmode="tel" autocomplete="off" maxlength="14"></div>
       </div>
       <div class="account-delete-field">
-        <label for="accountDeleteCodeInput">验证码</label>
-        <input id="accountDeleteCodeInput" class="account-delete-input" type="text" inputmode="numeric" placeholder="输入 6 位验证码">
+        <label for="accountDeleteCodeInput">验证码</label><div class="account-delete-email-row"><input id="accountDeleteCodeInput" class="account-delete-input" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" placeholder="输入 6 位验证码"><button id="accountDeleteSendBtn" class="account-delete-send" type="button">发送验证码</button></div>
       </div>
       <div id="accountDeleteOtpStatus" class="account-delete-status" role="status" aria-live="polite"></div>
       <button id="accountDeleteVerifyBtn" class="account-delete-btn primary" type="button">验证并继续</button>
-    </div>
-  `;
-
-  const emailInput = bodyEl.querySelector("#accountDeleteEmailInput");
-  const codeInput = bodyEl.querySelector("#accountDeleteCodeInput");
-  const sendBtn = bodyEl.querySelector("#accountDeleteSendBtn");
-  const verifyBtn = bodyEl.querySelector("#accountDeleteVerifyBtn");
-  const statusEl = bodyEl.querySelector("#accountDeleteOtpStatus");
-
-  emailInput.value = email;
-  sendBtn.onclick = () => void sendEmailCode(emailInput.value.trim(), sendBtn, statusEl);
+    </div>`;
+  const emailInput = bodyEl.querySelector('#accountDeleteEmailInput'), codeInput = bodyEl.querySelector('#accountDeleteCodeInput');
+  const phoneInput = bodyEl.querySelector('#accountDeletePhoneInput'), sendBtn = bodyEl.querySelector('#accountDeleteSendBtn');
+  const verifyBtn = bodyEl.querySelector('#accountDeleteVerifyBtn'), statusEl = bodyEl.querySelector('#accountDeleteOtpStatus');
+  emailInput.value = user.email;
+  const emailMode = bodyEl.querySelector('#accountDeleteEmailMode'), phoneMode = bodyEl.querySelector('#accountDeletePhoneMode');
+  function select(mode, initial = false) {
+    if (busy && !initial) return;
+    if (!initial) { generation++; phoneClient.cancel(); }
+    stopCooldown(); phoneChallenge = null; codeInput.value = ''; phoneInput.value = ''; verificationMode = mode;
+    bodyEl.querySelector('#accountDeleteEmailField').hidden = mode !== 'email'; bodyEl.querySelector('#accountDeletePhoneField').hidden = mode !== 'phone';
+    emailMode.setAttribute('aria-pressed', String(mode === 'email')); phoneMode.setAttribute('aria-pressed', String(mode === 'phone'));
+    bodyEl.querySelector('#accountDeleteMethodCopy').textContent = tr(mode === 'phone' ? '删除账号属于高风险操作，请先通过短信验证码重新验证身份。' : '删除账号属于高风险操作，请先通过邮箱验证码重新验证身份。');
+    sendBtn.disabled = false; sendBtn.textContent = tr('发送验证码'); setStatus(statusEl, '');
+  }
+  emailMode.hidden = !user.email; phoneMode.hidden = !user.allowPhone;
+  emailMode.textContent = tr('使用邮箱验证'); phoneMode.textContent = tr('使用当前手机号验证');
+  select(verificationMode, true);
+  emailMode.onclick = () => select('email'); phoneMode.onclick = () => select('phone');
+  phoneInput.oninput = () => { phoneChallenge = null; codeInput.value = ''; };
+  sendBtn.onclick = () => void sendVerificationCode(sendBtn, statusEl);
   verifyBtn.onclick = () => void authorizeDeletion(codeInput.value.trim(), emailInput.value.trim(), verifyBtn, statusEl);
 }
-
 async function authorizeDeletion(code, email, verifyBtn, statusEl) {
-  if (busy) return;
-  const appToken = getAppToken();
-  if (!appToken) {
-    setStatus(statusEl, "登录状态已失效，请重新登录", "error");
-    return;
-  }
-  if (!/^\d{6}$/.test(code)) {
-    setStatus(statusEl, "验证码格式错误", "error");
-    return;
-  }
-
-  setBusy(true);
-  verifyBtn.disabled = true;
-  setStatus(statusEl, "正在验证...");
+  if (busy || !getCurrentUser()) return;
+  if (!/^\d{6}$/.test(code)) { setStatus(statusEl, '验证码格式错误', 'error'); return; }
+  const attempt = captureFlow(); setBusy(true); verifyBtn.disabled = true; setStatus(statusEl, '正在验证...');
   try {
-    const res = await fetch(API_BASE, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-sunland-token": appToken,
-      },
-      body: JSON.stringify({ action: "authorize", email, code }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok || !data.deletion_job_id || !data.deletion_token) {
-      throw new Error(data.error || "验证失败，请稍后重试");
+    let data;
+    if (verificationMode === 'phone') {
+      const phone = window.SunlandPhoneAuth.normalizePhone(bodyEl.querySelector('#accountDeletePhoneInput').value);
+      if (!phoneChallenge || phoneChallenge.phone !== phone || phoneChallenge.expiresAt <= Date.now()) throw codedError('CHALLENGE_EXPIRED');
+      const proof = await phoneClient.phoneProof(phone, phoneChallenge.id, code, 'delete'); requireCurrent(attempt);
+      // A proof is never returned to the UI or persisted; the existing job is authoritative.
+      data = await phoneClient.authorizeDelete(proof.reauth_token); requireCurrent(attempt); phoneChallenge = null;
+    } else {
+      if (email !== deletionSession.email) throw codedError('UNAUTHORIZED');
+      data = await edgeRequest({ action: 'authorize', email, code }, attempt);
     }
-    deletionJobId = data.deletion_job_id;
-    deletionToken = data.deletion_token;
-    stopCooldown();
-    cleanupIdentity = await prepareCleanupIdentity();
-    renderStep3();
-  } catch (error) {
-    setStatus(statusEl, error.message || "验证失败，请稍后重试", "error");
-  } finally {
-    verifyBtn.disabled = false;
-    setBusy(false);
-  }
+    requireCurrent(attempt);
+    if (!data?.deletion_job_id || !data?.deletion_token) throw codedError('SERVICE_UNAVAILABLE');
+    deletionJobId = data.deletion_job_id; deletionToken = data.deletion_token;
+    authorizationExpiresAt = Date.now() + Math.min(600, Number(data.expires_in) || 600) * 1000;
+    bodyEl.querySelectorAll('input').forEach(input => { input.value = ''; }); stopCooldown();
+    cleanupIdentity = await prepareCleanupIdentity(); requireCurrent(attempt); renderStep3();
+  } catch (error) { if (currentFlow(attempt)) { phoneChallenge = null; bodyEl.querySelector('#accountDeleteCodeInput').value = ''; setStatus(statusEl, safeMessage(error), 'error'); } }
+  finally { if (currentFlow(attempt)) { verifyBtn.disabled = false; setBusy(false); } }
 }
 
 function renderStep3() {
@@ -433,72 +359,40 @@ function renderStep5(success, message) {
 }
 
 async function executeDeletion() {
-  if (busy || !deletionJobId || !deletionToken) return;
-  renderStep4();
-  setBusy(true);
-
-  try {
-    const identity = cleanupIdentity || await prepareCleanupIdentity();
-    const appToken = getAppToken();
-    const res = await fetch(API_BASE, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "x-sunland-token": appToken,
-      },
-      body: JSON.stringify({
-        action: "execute",
-        deletion_job_id: deletionJobId,
-        deletion_token: deletionToken,
-        confirmation: CONFIRMATION_TEXT,
-      }),
-    });
-    const data = await res.json().catch(() => ({}));
-    if (!res.ok && !data.already_completed) {
-      throw new Error(data.error || "账号删除失败，请稍后重试");
-    }
-
-    const userId = typeof data.user_id === "string" ? data.user_id : getCurrentUser()?.id || "";
-    await clearAccountLocalStorage(userId, {
-      clearDiagnostics: () => clearDiagnosticsForIdentity(identity),
-    });
-    deletionJobId = "";
-    deletionToken = "";
-
-    renderStep5(true, "账号已删除，正在返回登录页...");
-    setTimeout(() => {
-      window.location.replace("login.html");
-    }, 1600);
-  } catch (error) {
-    renderStep5(false, error.message || "账号删除失败，请稍后重试");
-  } finally {
-    setBusy(false);
+  if (busy || !deletionJobId || !deletionToken || !getCurrentUser()) return;
+  if (currentStep === 3 && Date.now() >= authorizationExpiresAt) {
+    deletionJobId = ''; deletionToken = ''; authorizationExpiresAt = 0;
+    renderStep2(); setStatus(bodyEl.querySelector('#accountDeleteOtpStatus'), '安全验证已失效，请重新验证', 'error'); return;
   }
+  const attempt = captureFlow(), job = deletionJobId, token = deletionToken;
+  renderStep4(); setBusy(true);
+  try {
+    const identity = cleanupIdentity || await prepareCleanupIdentity(); requireCurrent(attempt);
+    const data = await edgeRequest({ action: 'execute', deletion_job_id: job, deletion_token: token, confirmation: CONFIRMATION_TEXT }, attempt);
+    requireCurrent(attempt);
+    const userId = normalizeUserId(data.user_id);
+    if (userId !== attempt.userId) throw codedError('UNAUTHORIZED');
+    await clearAccountLocalStorage(userId, { clearDiagnostics: () => clearDiagnosticsForIdentity(identity), expectedToken: attempt.token });
+    if (generation !== attempt.generation) return;
+    deletionJobId = ''; deletionToken = ''; cleanupIdentity = null; phoneChallenge = null; deletionSession = null;
+    renderStep5(true, '账号已删除，正在返回登录页...');
+    setTimeout(() => { if (generation === attempt.generation && !getAppToken()) window.location.replace('login.html'); }, 1600);
+  } catch (error) { if (currentFlow(attempt)) renderStep5(false, safeMessage(error)); }
+  finally { if (generation === attempt.generation) setBusy(false); }
 }
 
 function openDialog() {
   if (!dialog) return;
-  stopCooldown();
-  deletionJobId = "";
-  deletionToken = "";
-  cleanupIdentity = null;
-  setBusy(false);
-  renderStep1();
-  if (typeof dialog.showModal === "function") {
-    dialog.showModal();
-  } else {
-    dialog.setAttribute("open", "");
-  }
+  invalidateFlow(); renderStep1();
+  // Keep third-party captcha portals interactive rather than making body inert.
+  if (typeof dialog.show === 'function') dialog.show(); else dialog.setAttribute('open', '');
+  backdrop.hidden = false; bodyEl.querySelector('button')?.focus();
 }
-
-function closeDialog() {
-  if (!dialog || busy) return;
-  stopCooldown();
-  if (typeof dialog.close === "function") {
-    dialog.close();
-  } else {
-    dialog.removeAttribute("open");
-  }
+function closeDialog(force = false) {
+  if (!dialog || (busy && currentStep === 4 && !force)) return;
+  invalidateFlow();
+  if (typeof dialog.close === 'function' && dialog.open) dialog.close(); else dialog.removeAttribute('open');
+  if (backdrop) backdrop.hidden = true; openBtn?.focus();
 }
 
 export function initAccountDelete() {
@@ -508,10 +402,28 @@ export function initAccountDelete() {
   bodyEl = document.getElementById("accountDeleteBody");
   if (!dialog || !openBtn || !closeBtn || !bodyEl) return;
 
+  if (dialog.dataset.accountDeleteBound === '1') return;
+  dialog.dataset.accountDeleteBound = '1';
+  phoneClient = window.SunlandPhoneAuth?.createClient?.() || null;
+  dialog.classList.add('phone-auth', 'phone-dialog'); dialog.setAttribute('aria-modal', 'true');
+  backdrop = document.createElement('div'); backdrop.className = 'phone-settings-backdrop'; backdrop.hidden = true; backdrop.setAttribute('aria-hidden', 'true'); document.body.appendChild(backdrop);
   openBtn.onclick = openDialog;
-  closeBtn.onclick = closeDialog;
+  closeBtn.onclick = () => closeDialog();
+  backdrop.onclick = () => closeDialog();
+  window.addEventListener('storage', event => { if (event.key === 'token' || event.key === null) closeDialog(true); });
+  window.addEventListener('pagehide', () => closeDialog(true));
+  const tokenWatcher = setInterval(() => { if (dialog.open && deletionSession && deletionSession.token !== getAppToken()) closeDialog(true); }, 250);
+  window.addEventListener('pagehide', () => clearInterval(tokenWatcher), { once: true });
+  dialog.addEventListener('keydown', event => {
+    if (event.key === 'Escape') { event.preventDefault(); closeDialog(); return; }
+    if (event.key !== 'Tab') return;
+    const controls = Array.from(dialog.querySelectorAll('button,input')).filter(node => !node.disabled && !node.closest('[hidden]'));
+    const first = controls[0], last = controls[controls.length - 1];
+    if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+    else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+  });
   dialog.addEventListener("cancel", (event) => {
-    if (busy) event.preventDefault();
+    event.preventDefault(); closeDialog();
   });
 }
 

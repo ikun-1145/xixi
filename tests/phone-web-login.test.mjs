@@ -4,8 +4,8 @@ import {readFileSync} from 'node:fs';
 import {JSDOM} from 'jsdom';
 const html=readFileSync(new URL('../login.html',import.meta.url),'utf8');
 const client=readFileSync(new URL('../p/js/phone-auth.js',import.meta.url),'utf8');
-function harness(){
- const dom=new JSDOM(html,{url:'https://sunland.dev/login.html',runScripts:'outside-only'});const w=dom.window;const calls=[];
+function harness({phoneEnabled=true}={}){
+ const dom=new JSDOM(html,{url:'https://sunland.dev/login.html',runScripts:'outside-only'});const w=dom.window;const calls=[];w.document.querySelector('meta[name="sunland-phone-ui-enabled"]').content=String(phoneEnabled);
  w.AbortController=AbortController;w.crypto.randomUUID=crypto.randomUUID.bind(crypto);w.alert=()=>{};
  w.initGeetest4=(_opts,callback)=>callback({onReady(fn){fn();},onError(){},onSuccess(fn){w.__emailCaptchaSuccess=fn;},getValidate(){return {mock:true};},showCaptcha(){},appendTo(){}});
  w.fetch=async(url,init)=>{const body=JSON.parse(init.body);calls.push({url,body});return Response.json(url.endsWith('send-code')?{success:true,challenge_id:'b7893aa3-b9c1-4ed1-a0aa-2a56ad25ecb9',expires_in:300,retry_after:600}:{token:'mock-jwt',user:{id:'same-account',email:null},onboarding:{version:0,step:1},is_new_user:true});};
@@ -37,4 +37,9 @@ test('BFCache return clears pending SMS and restarts a usable login flow',async 
  h.w.fetch=()=>new Promise(r=>finish=r);d.querySelector('#phoneLoginTab').click();d.querySelector('#phoneInput').value='13800000000';d.querySelector('#sendPhoneCodeBtn').click();await flush();assert.equal(d.querySelector('#sendPhoneCodeBtn').disabled,true);
  h.w.dispatchEvent(new h.w.PageTransitionEvent('pagehide',{persisted:true}));h.w.dispatchEvent(new h.w.PageTransitionEvent('pageshow',{persisted:true}));
  assert.equal(d.querySelector('#sendPhoneCodeBtn').disabled,false);assert.equal(d.querySelector('#phoneCodeInput').value,'');finish(Response.json({success:true,challenge_id:'old',expires_in:300,retry_after:600}));await flush();assert.equal(d.querySelector('#loginMsg').textContent,'');
+});
+
+test('phone entry release flag defaults closed and cannot switch away from email',t=>{
+ const h=harness({phoneEnabled:false});t.after(()=>h.dom.window.close());const d=h.w.document;
+ assert.equal(d.querySelector('#phoneLoginTab').closest('.phone-tabs').hidden,true);d.querySelector('#phoneLoginTab').click();assert.equal(d.querySelector('#phoneLoginFields').hidden,true);assert.equal(d.querySelector('#emailLoginField').hidden,false);
 });

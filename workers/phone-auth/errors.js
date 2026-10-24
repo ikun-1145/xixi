@@ -1,6 +1,10 @@
 const MESSAGES = Object.freeze({
   SMS_DISABLED: '短信认证暂未启用',
   SMS_CONFIG: '短信认证配置不可用',
+  RELEASE_CONFIG: '短信发布配置不可用',
+  CANARY_DENIED: '短信认证暂未向此号码开放',
+  CANARY_LIMITED: '短信验收额度已用完',
+  REGISTRATION_DISABLED: '手机号注册暂未开放',
   INVALID_REQUEST: '请求参数无效',
   REAUTH_REQUIRED: '请先重新验证身份',
   CAPTCHA_FAILED: '人机验证未通过',

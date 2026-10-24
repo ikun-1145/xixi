@@ -33,7 +33,7 @@ const input = (n = phone, purpose = 'login') => ({ phone: n, purpose, turnstile_
 class MockStorage {
   constructor() {
     this.data = new Map([[LEDGER_KEY, { schema: 1, enabled: true, keyId: 'test-v1',
-      totalMicros: 0, day: Math.floor(START / 86400000), dayCount: 0, dayMicros: 0,
+      testReserved: 0, totalMicros: 0, day: Math.floor(START / 86400000), dayCount: 0, dayMicros: 0,
       minute: Math.floor(START / 60000), minuteCount: 0, lastNow: START }]]);
     this.tail = Promise.resolve();
   }
@@ -61,7 +61,7 @@ function harness(overrides = {}) {
   const storage = new MockStorage();
   let now = START;
   const calls = [];
-  const env = { PHONE_SMS_ENABLED: 'true', PHONE_AUTH_HMAC_KEY: 'mock-only-hmac-key-at-least-32-characters',
+  const env = { PHONE_SMS_ENABLED: 'true', PHONE_RELEASE_MODE: 'public', PHONE_AUTH_HMAC_KEY: 'mock-only-hmac-key-at-least-32-characters',
     PHONE_AUTH_HMAC_KEY_ID: 'test-v1', PHONE_AUTH_POLICY: JSON.stringify(POLICY),
     TURNSTILE_SECRET: 'mock-secret', PHONE_TURNSTILE_HOSTNAME: 'sunland.dev',
     PHONE_ALIYUN_ACCESS_KEY_ID: 'mock-id', PHONE_ALIYUN_ACCESS_KEY_SECRET: 'mock-secret',

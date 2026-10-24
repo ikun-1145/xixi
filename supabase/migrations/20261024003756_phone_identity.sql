@@ -164,6 +164,9 @@ begin
           return jsonb_build_object('code','PHONE_KEY_MISMATCH');
         end if;
       else
+        if p_data->'allow_create' is distinct from 'true'::jsonb then
+          return jsonb_build_object('code','REGISTRATION_DISABLED');
+        end if;
         v_user := p_data->>'candidate_id';
         if exists(select 1 from public.user_profiles where user_id=v_user) then
           return jsonb_build_object('code','OPERATION_CONFLICT');

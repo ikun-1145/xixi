@@ -46,7 +46,7 @@ async function fixture() {
   const query = async (text, args = []) => (await db.query(text, args)).rows;
   const call = async (action, data = {}) => (await query('select public.sunland_phone_identity($1,$2::jsonb) result', [action,
     JSON.stringify({lookup_key_id:'lookup-v1',lookup_check:h(9),...data})]))[0].result;
-  const login = (n, more = {}) => call('login', {phone_hash:h(n),encrypted_phone:`cipher-${n}`,last4:'1234',candidate_id:id(n),operation_id:id(1000+n),request_hash:h(1000+n),...more});
+  const login = (n, more = {}) => call('login', {phone_hash:h(n),encrypted_phone:`cipher-${n}`,last4:'1234',candidate_id:id(n),allow_create:true,operation_id:id(1000+n),request_hash:h(1000+n),...more});
   const profile = async (n, more = {}) => {
     await query('insert into public.user_profiles(user_id,email,pro) values($1,$2,$3)', [id(n), more.email ?? `person${n}@example.test`, more.pro ?? false]);
   };
@@ -77,6 +77,16 @@ test('phone RPC executes transactions, permissions and lifecycle in embedded Pos
       const again = await login(1);
       assert.equal(again.user_id,id(1)); assert.equal(again.is_new_user,true);
       assert.equal((await login(1,{request_hash:h(8)})).code,'OPERATION_CONFLICT');
+    });
+    await t.test('registration requires JSON boolean true atomically; mapped login stays available', async () => {
+      for (const allow_create of [undefined, null, false, 'true', 1, {}]) {
+        assert.equal((await login(901,{allow_create})).code,'REGISTRATION_DISABLED');
+      }
+      for (const table of ['user_profiles','sunland_phone_identities','sunland_phone_auth_state','sunland_phone_auth_operations']) {
+        assert.equal((await query(`select count(*)::integer n from ${table} where user_id=$1`,[id(901)]))[0].n,0);
+      }
+      const existing=await login(1,{allow_create:false,operation_id:id(19001),request_hash:h(19001)});
+      assert.equal(existing.code,'OK');assert.equal(existing.user_id,id(1));assert.equal(existing.is_new_user,false);
     });
     await t.test('queued simultaneous registrations create one account and preserve uniqueness', async () => {
       // PGlite serializes one backend: this tests queued atomic calls, not

@@ -50,13 +50,13 @@ test('real Worker fetch integrates identity, original JWT/email/database-token a
  const env={JWT_SECRET:secret,SUPABASE_JWT_SECRET:'mock-database-jwt-secret',SUPABASE_PROJECT_URL:'https://database.test.invalid',SUPABASE_SECRET_KEY:'sb_secret_mock_only',
  PHONE_IDENTITY_ENABLED:'true',PHONE_IDENTITY_LOOKUP_KEY:'mock-lookup-secret-more-than-32-chars',PHONE_IDENTITY_LOOKUP_KEY_ID:'v1',
  PHONE_IDENTITY_ENCRYPTION_KEYS:JSON.stringify({v1:Buffer.alloc(32,7).toString('base64url')}),PHONE_IDENTITY_ENCRYPTION_KEY_ID:'v1',
- PHONE_AUTH_HMAC_KEY:'mock-hmac-secret-more-than-32-chars',PHONE_AUTH_HMAC_KEY_ID:'v1',PHONE_SMS_ENABLED:'true',TURNSTILE_SECRET:'mock-captcha',PHONE_TURNSTILE_HOSTNAME:'sunland.dev',
+ PHONE_AUTH_HMAC_KEY:'mock-hmac-secret-more-than-32-chars',PHONE_AUTH_HMAC_KEY_ID:'v1',PHONE_SMS_ENABLED:'true',PHONE_RELEASE_MODE:'public',PHONE_NEW_REGISTRATION_ENABLED:'true',TURNSTILE_SECRET:'mock-captcha',PHONE_TURNSTILE_HOSTNAME:'sunland.dev',
  PHONE_ALIYUN_ACCESS_KEY_ID:'mock-id',PHONE_ALIYUN_ACCESS_KEY_SECRET:'mock-secret',PHONE_SMS_SIGN_NAME:'mock-sign',PHONE_SMS_TEMPLATE_CODE:'mock-template',
  PHONE_AUTH_POLICY:JSON.stringify({perPhoneDaily:20,perIpDaily:40,dailyLimit:50,unitCostMicros:1,dailyBudgetMicros:50,totalBudgetMicros:100,ipRequestsPerMinute:100,globalRequestsPerMinute:200})};
  const encoder=new TextEncoder();const lookupKey=await crypto.subtle.importKey('raw',encoder.encode(env.PHONE_IDENTITY_LOOKUP_KEY),{name:'HMAC',hash:'SHA-256'},false,['sign']);
  const canary=Buffer.from(await crypto.subtle.sign('HMAC',lookupKey,encoder.encode('sunland-phone-index-canary:v1\0'))).toString('hex');
  await db.query('update sunland_phone_auth_config set lookup_key_id=$1,lookup_check=$2',['v1',canary]);
- const store=new Storage(new Map([['account',{schema:1,enabled:true,keyId:'v1',totalMicros:0,day:Math.floor(now/86400000),dayCount:0,dayMicros:0,minute:Math.floor(now/60000),minuteCount:0,lastNow:now}]]));
+ const store=new Storage(new Map([['account',{schema:1,enabled:true,keyId:'v1',testReserved:0,totalMicros:0,day:Math.floor(now/86400000),dayCount:0,dayMicros:0,minute:Math.floor(now/60000),minuteCount:0,lastNow:now}]]));
  const fetchMock=mock.method(globalThis,'fetch',async(input,init={})=>{
   const url=new URL(typeof input==='string'?input:input.url);const body=init.body?JSON.parse(init.body):{};
   if(url.hostname==='challenges.cloudflare.com')return Response.json({success:true,hostname:'sunland.dev',action:captchaAction,challenge_ts:new Date().toISOString()});
@@ -92,6 +92,18 @@ test('real Worker fetch integrates identity, original JWT/email/database-token a
    assert.equal(r.status,200,JSON.stringify(r.body));user=r.body.user.id;token=r.body.token;
    assert.equal(r.body.user.email,null);assert.equal(r.body.is_new_user,true);assert.deepEqual(r.body.onboarding,{version:0,step:1});assert.equal(decode(token).id,user);
    assert.deepEqual(Object.keys(r.body).sort(),['is_new_user','onboarding','token','user']);
+  });
+  await t.test('actual Worker refuses client registration override and does not create a disabled account',async()=>{
+   env.PHONE_NEW_REGISTRATION_ENABLED='false';
+   try {
+    const phone='13200000000',challenge_id=await send(phone);
+    const body={phone,challenge_id,code:'123456',operation_id:crypto.randomUUID()};
+    assert.equal((await request('/v1/phone/verify-code',{...body,allow_create:true})).status,400);
+    const result=await request('/v1/phone/verify-code',body);
+    assert.equal(result.status,403);assert.equal(result.body.code,'REGISTRATION_DISABLED');assert.ok(!result.body.token);
+    assert.equal((await db.query('select count(*)::int n from user_profiles')).rows[0].n,1);
+    assert.equal((await db.query('select count(*)::int n from sunland_phone_identities')).rows[0].n,1);
+   } finally {env.PHONE_NEW_REGISTRATION_ENABLED='true';}
   });
   await t.test('invalid/expired JWT rejected by real verifier; active profile checked',async()=>{
    for(const invalid of ['invalid',await jwt({id:user,exp:1}),await jwt({id:user},'wrong-secret')]){

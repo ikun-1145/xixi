@@ -9,7 +9,7 @@ import {homedir} from 'node:os';
 const root=resolve(fileURLToPath(new URL('../',import.meta.url)));
 const require=createRequire(import.meta.url);
 const {chromium}=require(process.env.SUNLAND_PLAYWRIGHT_MODULE || resolve(homedir(),'.cache/codex-runtimes/codex-primary-runtime/dependencies/node/node_modules/playwright'));
-const evidence=resolve(root,'docs/full-stack-development/requirements/mainland-phone-auth/phase-3a-evidence');await mkdir(evidence,{recursive:true});
+const evidence=resolve(root,process.env.PHONE_BROWSER_EVIDENCE_DIR || 'docs/full-stack-development/requirements/mainland-phone-auth/phase-3a-evidence');await mkdir(evidence,{recursive:true});
 const types={'.html':'text/html','.js':'text/javascript','.css':'text/css','.json':'application/json','.png':'image/png','.svg':'image/svg+xml'};
 const server=createServer(async(req,res)=>{try{const pathname=decodeURIComponent(new URL(req.url,'http://local').pathname);const path=resolve(root,'.'+pathname);if(!path.startsWith(root+sep)&&path!==root)throw Error();const bytes=await readFile(path);res.writeHead(200,{'Content-Type':types[extname(path)]||'application/octet-stream','Cache-Control':'no-store'});res.end(bytes);}catch{res.writeHead(404);res.end();}});
 await new Promise(r=>server.listen(0,'127.0.0.1',r));const base=`http://127.0.0.1:${server.address().port}`;
@@ -29,7 +29,7 @@ async function fixture({language='zh',dark=false,width=390,settings=false,bound=
   window.turnstile={render(_target,options){queueMicrotask(()=>options.callback('mock-turnstile'));return 'mock-widget';},remove(){}};
  },{language,dark,settings,app,uid,email});
  await context.route('**/*',async route=>{
-  const req=route.request(),url=new URL(req.url());if(url.origin===base)return route.continue();
+  const req=route.request(),url=new URL(req.url());if(url.origin===base){if(['/login.html','/ai_settings.html'].includes(url.pathname)){const response=await route.fetch();const body=(await response.text()).replace('name="sunland-phone-ui-enabled" content="false"','name="sunland-phone-ui-enabled" content="true"');return route.fulfill({response,body});}return route.continue();}
   const headers={'Content-Type':'application/json','Access-Control-Allow-Origin':base,'Access-Control-Allow-Headers':'Content-Type,Authorization','Access-Control-Allow-Methods':'POST,GET,OPTIONS'};
   const reply=(data,status=200)=>route.fulfill({status,headers,body:JSON.stringify(data)});
   if(req.method()==='OPTIONS')return reply({});
