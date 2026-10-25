@@ -24,7 +24,7 @@
 
 ## 生产阻断与人工事项
 
-1. **生产备份与恢复**：Supabase Free 当前没有已验证的可用恢复点。需由用户准备独立加密存储，完成生产数据库、roles/ACL/extension/config inventory 和 Storage 对象备份，并在隔离环境验证恢复；不要把 WAL-G 开关或 schema SQL 当作完整备份。
+1. **生产备份核心门禁已解除（2026-10-25）**：新批次 `2026-10-25_10-58-30` 完成同快照加密数据库备份、Storage 增量和隔离恢复，状态 `CORE_BUSINESS_RESTORE_VERIFIED`。19 表行数、122 个 public 函数和两项 CHECK 均通过；完整 Supabase 灾难恢复限制独立保留，见 [核心恢复报告](PHASE-4-CORE-RESTORE.md)。这不授权后续生产迁移或发布。
 2. **邮箱 OTP 前置兼容**：当前 Worker 源码调用 `sunland_otp`，既有只读生产证据显示该 RPC 不存在。直接部署会破坏邮箱认证。需先单独授权并验收 `/Users/liuxize/sunland_ai_app/supabase/migrations/20261021010000_atomic_email_otp.sql`，再验证既有邮箱登录/刷新。
 3. **Cloudflare 配置**：需用户在 Cloudflare 控制台确认阿里云短信 Secrets、独立管理令牌及失败关闭的发布配置；不要在聊天中提供 Secret 值。本次网络错误未形成新的在线核实证据。
 4. **真实环境验收**：真实 DO 预算/恢复、PostgREST JWT、Turnstile、生产 CORS、短信/计费和真实移动设备仍未通过。真实短信与计费必须另行授权。
@@ -54,3 +54,5 @@
 见 [生产备份与恢复验收](PHASE-4-BACKUP-RESTORE.md)。最新生产归档通过加密/文件完整性及 Storage 实际提取校验，但两项业务 CHECK 无法恢复至原验证状态；扩展兼容及完整来源清单仍有缺口，新备份凭据重试也被拒绝。状态为 `BACKUP_RESTORE_BLOCKED`，本页生产备份门禁继续保留；未迁移、部署或发送真实短信。
 
 2026-10-25 后续已收敛为核心恢复与手机号发布准备，详见 [当前 A–D 分级及最短上线步骤](PHASE-4-CORE-RESTORE.md)。数据库凭据仍阻断新恢复点；邮箱 OTP 前置和线上 PHONE/DO 配置缺口已重新只读核实，未解除发布门禁。
+
+2026-10-25 11:05 更新：核心备份恢复已验证，之前的本地 SQL_ASCII 误判已纠正；当前仍须完成邮箱 OTP、手机号迁移、Cloudflare/DO 配置和真实链路验收，取得明确发布授权。

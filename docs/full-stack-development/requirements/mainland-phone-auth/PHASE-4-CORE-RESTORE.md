@@ -1,102 +1,124 @@
-# 手机号认证上线前置：核心恢复与连接阻断
+# Phase 4：核心业务备份恢复已验证
 
-2026-10-25 10:45（Asia/Shanghai）。结论：**CORE_BUSINESS_RESTORE_BLOCKED**。本轮收敛到凭据诊断、已有恢复证据和只读发布准备；没有重新开展完整 Supabase 灾难恢复，没有重新下载 Storage、重复恢复旧数据库或运行无关全量测试。
+2026-10-25，Asia/Shanghai。结论：**CORE_BUSINESS_RESTORE_VERIFIED**，解除此前 `CORE_BUSINESS_RESTORE_BLOCKED`。生产备份的核心数据恢复前置已满足；这不代表允许直接发布，也不代表完整 Supabase 灾难恢复通过。
 
-## 连接问题的实证
+## A–D 验收结果
 
-项目 API 当前返回 ref `klyrasrqgxijwrxuoevj`、区域 `ap-southeast-1`、状态 `ACTIVE_HEALTHY`、数据库 `17.4.1.054`。以下参数来自本地 `supabase/.temp/pooler-url`，与备份脚本一致：
-
-| 方式 | Host | 端口 | 用户 | 数据库 |
-| --- | --- | --- | --- | --- |
-| Session Pooler，本次实际测试 | aws-0-ap-southeast-1.pooler.supabase.com | 5432 | postgres.klyrasrqgxijwrxuoevj | postgres |
-| Direct，项目 API 确认 Host，未重复登录测试 | db.klyrasrqgxijwrxuoevj.supabase.co | 5432 | postgres | postgres |
-
-6543 是事务池方式，不用于本轮一致性快照采集。不能把 Direct 的 `postgres` 用户名直接套到共享 Pooler，也不能把 Pooler 用户名套到 Direct。参考 [Supabase 连接说明](https://supabase.com/docs/guides/database/connecting-to-postgres)。
-
-安全检查了服务 `dev.sunland.supabase.production.db-password` 对应当前 Mac 账户的记录：存在、非空、UTF-8 正常；没有首尾空白、嵌入换行、NUL 或外层引号，也不是明显的 PAT/JWT/连接 URL。脚本通过进程环境传递原值，不做 URL 拼接或 shell 二次解释；本轮限时测试仅去掉 `security -w` 输出的最后一个换行，没有裁剪密码空格。
-
-该记录修改时间为 UTC `2026-10-24 23:32:01`，即今日 **07:32:01**。本轮只做一次 Session Pooler 认证测试：`verify-full` 使用已保存的官方 CA，证书验证没有报错，服务器明确返回 `FATAL: password authentication failed for user "postgres"`。之后停止密码登录，不轮换端口/密码反复试探。
-
-已排除已发现的项目/用户名形式/数据库/端口混用及密码转义问题。**目前能够确认的是这份本地凭据未获认证，不能仅凭客户端错误进一步证明密码内容错误还是服务端池化认证状态异常。** 不声称已定位到不可证实的密码内部问题。
-
-Kimi 当时的脚本/Manifest 显示使用 `cli_login_*.<project_ref>`、临时角色密码、Pooler 和 `SET ROLE postgres`；旧脚本还曾设 `SUNLAND_LOGIN_READ_ONLY=false`。这与当前 `postgres.<project_ref>` + 固定钥匙串凭据是不同认证路径。此前导出成功不代表当前记录有效。没有重新调用临时角色接口，没有创建生产角色、改变权限或绕过认证。
-
-## A–D 验收级别
-
-| 级别 | 本次状态 | 证据及边界 |
+| 级别 | 结果 | 证据 |
 | --- | --- | --- |
-| A. 新数据库备份完整性 | **BLOCKED：未生成新备份** | 密码认证失败；没有新数据库目录、大小、Manifest 或 SHA-256 可报告。旧 09-33-27 批次的加密/文件完整性结果保留，不能冒充新恢复点 |
-| B. 核心业务数据恢复 | **CORE_BUSINESS_RESTORE_BLOCKED** | 未取得新 dump，不能验证新恢复中的两项 CHECK；旧批次仍各有一条违规，禁止据当前生产无违规就将旧恢复改为通过 |
-| C. Storage | **旧归档已验证；新增对象待增量** | 复用旧 83 对象归档，实际恢复证据见旧报告；本次只枚举元数据，0 个对象内容下载。当前新增 1 个对象，见下节 |
-| D. 完整 Supabase 灾难恢复 | **未通过，独立保留限制** | pg_net/pg_cron 版本、托管角色授权来源、Vault 密钥、平台配置及跨系统窗口仍未完全验证；不能改写成完整恢复通过 |
+| A. 新数据库备份完整性 | **通过** | 新全库 pg_dump、AES-256-GCM、密文/明文 SHA-256、GCM 认证、目录可读及实际恢复通过 |
+| B. 核心业务恢复 | **CORE_BUSINESS_RESTORE_VERIFIED** | 19 张业务表同快照精确行数匹配；结构、列、索引、约束、122 个 public 函数、触发器、owner/ACL、RLS/策略通过；两项 CHECK 实际 VALIDATE 通过 |
+| C. Storage | **当前批次恢复通过** | 复用旧 83 个对象，仅下载新增头像 1 个、94,427 字节；新归档 84 个对象全部实际提取/校验并与恢复库路径/大小匹配；跨系统原子性未证明 |
+| D. 完整 Supabase 灾难恢复 | **未通过，独立限制保留** | pg_net/pg_cron 版本、托管角色/Vault/平台配置、实际服务行为及跨系统窗口限制仍在；未签发 BACKUP_RESTORE_VERIFIED |
 
-仍保留历史 **BACKUP_RESTORE_BLOCKED**；没有签发 `CORE_BUSINESS_RESTORE_VERIFIED` 或 `BACKUP_RESTORE_VERIFIED`，没有修改历史归档、数据或约束。
+## 新批次、时间和加密
 
-同快照缺口已确认：现有 `backup-production.sh` 的 dump、inventory、counts 使用独立事务，不能称为同一快照。由于连接尚未修复，未进入新导出实施阶段，也没有把待改方案称为已经实现。下一次执行前应保持一个只读 REPEATABLE READ 事务打开并用 `pg_export_snapshot()` 导出；`pg_dump --snapshot`、inventory 和 counts 都导入该快照，直到采集完成后才关闭持有事务。角色/集群对象和 Storage 另记采集时间。参考 [PostgreSQL pg_dump](https://www.postgresql.org/docs/17/app-pgdump.html)。若现有账户无法导出/导入快照或覆盖必要 schema，停止并报告，不创建角色或提权。
+目录：`/Volumes/机械硬盘/SunlandBackups/2026-10-25_10-58-30/`。
 
-## 两项 CHECK 的当前证据
+- 批次窗口：10:58:30–11:00:34。
+- 数据库快照 ID：`00000017-000091F6-1`；只读 REPEATABLE READ 持有/导出窗口为 10:58:30.410082–10:59:18.485639。pg_dump、inventory、精确行数都显式导入同一 snapshot。10:58:34.339099 是验证连接的事务开始时间，不冒充快照创建瞬间；创建瞬间未单独记录。
+- 原生客户端为 PostgreSQL 18.6；源服务器 17.4。本机 pg_restore 18.6 将 SQL 流发送到无网络 Docker PostgreSQL 17.6，实际加载验证其兼容性，不假设跨版本天然兼容。
+- 数据库密文 4,614,324 字节，解密归档 4,614,288 字节；roles 密文 6,292 字节，明文 6,256 字节，不含角色密码。
+- AES-256-GCM、随机 96-bit IV、认证头和标签，附明文大小/SHA-256 sidecar。使用已由用户确认独立保管的现有密钥，未显示或提交密码/密钥。
+- 旧备份全部保留。新批次 `initial-restore/` 是发现编码问题时的失败证据；**最终验收为 `restore-run.GPe92O/restore-result.json`（11:04:59）**，没有覆盖失败记录。
 
-10:42:51 生产只读查询显示：
+| 密文文件 | 字节 | SHA-256 |
+| --- | ---: | --- |
+| database.dump.aesgcm | 4,614,324 | `8bd1684d8f11add193d944d966601ec95e57c53c319413df1de273f99e170481` |
+| roles.sql.aesgcm | 6,292 | `af65c044f57fe11f80b030f868f30877a474cd10e42edf8ec3332dd9f2039d4c` |
+| storage.tar.aesgcm | 22,640,676 | `6d09940e183c83c8d3746fcf565d00a1acd119008a22bb28570486c87faee754` |
 
-- `chat_messages_text_len`：原定义 `char_length(text) <= 8000`，已验证；当前违规 0。
-- `oc_profiles_description_check`：原定义 `char_length(description) <= 500`，已验证；当前违规 0。
+数据库明文 SHA-256：`ebf122a201077ea7be8e04a7999c49d99e772825f1652cf22723c6293cbc73c2`。Manifest 九项文件大小/哈希全部匹配，额外验收证据也记录大小/哈希；原始密文在修复本地恢复环境后没有改变。
 
-这些只是当前生产统计。本次没有新备份或新恢复，故**不能宣称新归档的两项 CHECK 已恢复正常**。旧归档恢复失败证据保留在 `2026-10-25_09-33-27/restore-run.QNdDpT/restore-result.json`。后续必须在新隔离恢复中实际 VALIDATE，不改值、不删约束、不永久保留 NOT VALID。
+## 连接与 TLS
 
-两份拟执行迁移 SQL 未直接引用 pg_net、pg_cron 或 Vault。这些托管扩展版本差异本身不应自动等同于核心表恢复失败；新数据、定义、权限、约束通过后，可将未复现的调度/网络/密钥能力列为 D 级限制。若发现其影响迁移回退所依赖的业务触发器或数据，则仍须阻断。
+用户更新现有钥匙串记录后，本轮已从服务 `dev.sunland.supabase.production.db-password` 读取并成功连接 Session Pooler（5432）。旧密码拒绝问题已解除；此前 Kimi 临时角色路径不再使用，没有创建角色、改权限或重置密码。
 
-## Storage 只读差异
+正式备份改用已验证的本机 PostgreSQL 18.6 客户端和官方 CA，固定 `PGSSLMODE=verify-full`。实测 TLSv1.3 / TLS_AES_256_GCM_SHA384；故意给错误主机名的负例在密码认证前被证书主机名校验拒绝。**没有用 require、关闭证书验证或仅加密不验证主机名作为最终门禁。**
 
-枚举窗口为 **10:43:55–10:44:30**。从旧加密 tar 读取内部清单，只请求 Bucket/list 元数据，不下载对象内容；临时 tar 已清理。不输出对象路径。
+此前 Docker 源连接路径仍出现意外断连，本轮没有继续轮换密码或降低 TLS，而是复用用户和主智能体均已验证的原生客户端；Docker 保留为隔离恢复工具。`tls-client-evidence.json` 留存安全元数据，没有密码。
 
-| 指标 | 旧归档 | 当前清单 |
-| --- | ---: | ---: |
-| Bucket | 2 | 2 |
-| 对象 | 83 | 84 |
-| 对象字节 | 22,423,254 | 22,517,681 |
-| avatars | 65 / 14,774,919 字节 | 66 / 14,869,346 字节 |
-| chat-images-v1 | 18 / 7,648,335 字节 | 18 / 7,648,335 字节 |
+`snapshot-evidence.json` 的 pg_stat_ssl 记录 Pooler 到数据库后端一段为 false，不能拿它冒充本机到 Pooler 的 TLS 状态；客户端一段由 conninfo 和错误主机名负例明确验证。未改变 Supabase SSL Enforcement，未声称平台内部每段传输已验收。
 
-按 Bucket/路径身份及 updated_at/size/ETag 比较：**新增头像对象 1 个、94,427 字节；删除 0，原对象更新差异 0**。这不是整个枚举窗口的原子证明，但足以避免盲目重下 83 个对象。新数据库备份前后再核对该增量，只把新增/变化对象下载到独立加密增量归档；不得覆盖旧 tar。本轮未执行增量下载，因为新数据库恢复点尚未建立。
+## 两项 CHECK 的真实根因与纠正
 
-## 手机号认证发布准备
+**此前“历史业务数据超限”的判断有误，现撤回该结论。** 恢复脚本使用 `initdb --no-locale` 且未指定编码；已用同一镜像实际复现其默认初始化为 SQL_ASCII。该环境对 UTF-8 中文按字节计 char_length，15,617 和 626 因而不能被当作生产 UTF-8 字符长度。
 
-10:42–10:43 的生产只读元数据和 Cloudflare GET 检查：
+本轮首次恢复仍重现问题，随后仅修正隔离初始化为 `--encoding=UTF8 --locale=en_US.UTF-8`，记录并断言实际编码；复用同一份新归档重试，未重新导出、未下载旧对象、未改任何业务值。最终恢复环境确认为 UTF8 / en_US.UTF-8，与源环境一致：
 
-| 项目 | 结论 |
-| --- | --- |
-| 邮箱 OTP | 生产 `public.sunland_otp` 不存在；本地 Worker 的 `createEmailOtp` 明确调用它，迁移仍为前置，直接部署有破坏邮箱认证风险 |
-| 邮箱迁移 | `/Users/liuxize/sunland_ai_app/supabase/migrations/20261021010000_atomic_email_otp.sql` 存在，SHA-256 `21ed65f1ba19e41a8940a2495fb479b874cb2bbbabd868c84654751d3f36e15c`，未执行 |
-| 手机号迁移 | `supabase/migrations/20261024003756_phone_identity.sql` 存在，SHA-256 `d384c02ad15ed28a36ef85dc52e10a58e6cef8b8563b650592a35df485cfcb03`；生产手机号表数 0，未执行 |
-| Worker 源依赖 | `source-provenance.json` 的所有预期文件哈希与相邻原 Worker 仓库匹配；本次不重复构建，不等于线上已部署 |
-| 阿里云/身份配置 | 线上 `ai` 绑定及 Secret 名称均没有 `PHONE_*`；阿里云访问凭据、短信签名/模板、身份加密/查询/HMAC 密钥、独立管理令牌、策略及发布变量均尚缺。未读取或展示任何值 |
-| Durable Object | `ai` 无 PHONE_AUTH_COORDINATOR 绑定；未列出 Phone 类 namespace。本地 coordinator 和初始化鉴权逻辑已存在，原 Worker 配置未见 Phone DO 绑定/迁移；线上账本未建立/验收，不能以代码存在代替完成 |
-| Turnstile | 线上存在 TURNSTILE_SECRET 绑定，但未验证值/有效性；网站 `sunland-turnstile-sitekey` 为空 |
-| 网站入口 | `sunland-phone-ui-enabled=false`；代码已准备，保持关闭，未发布 |
-| 发布护栏 | 线上没有 PHONE_SMS_ENABLED、PHONE_IDENTITY_ENABLED、PHONE_NEW_REGISTRATION_ENABLED、PHONE_RELEASE_MODE；不应视为可开放，尚需 canary、永久预算和失败关闭配置 |
+| 约束 | 恢复最大字符长度 | 违规行 | VALIDATE |
+| --- | ---: | ---: | --- |
+| chat_messages_text_len（≤8000） | 5,493 | 0 | **通过，已验证状态** |
+| oc_profiles_description_check（≤500） | 243 | 0 | **通过，已验证状态** |
 
-只请求 Cloudflare settings/secrets 元数据名称及 DO namespace 列表，不请求 Secret 值，不调用 DO initialize/status，不变更任何云端资源。
+恢复为加载顺序暂存 CHECK 后，按原定义重建并实际验证；没有删除约束或永久保留 NOT VALID。旧批次未在正确编码下逐份重验，因此不追认其全部验收通过，但不能再依据旧 SQL_ASCII 报告指控生产数据不合法。
 
-## 用户所需的最小操作
+## 核心对象、权限和行数
 
-1. 打开 [该项目 Dashboard](https://supabase.com/dashboard/project/klyrasrqgxijwrxuoevj)，点击顶部 **Connect → Session pooler**，核对上表四项参数。Direct 方式另有主机和用户名，不能混用；不要点 Reset database password。
-2. 从密码管理器取出该项目**已有数据库密码**。Dashboard 连接示例中的密码占位符、Supabase 登录密码、API Key 和 PAT 均不能代替。若没有现有密码，先保持阻断，不在本任务重置。
-3. 在 Mac「钥匙串访问」中搜索服务 `dev.sunland.supabase.production.db-password`，核对账户为当前 Mac 用户后更新密码。也可在本机终端执行下面命令，`-w` 必须放最后，以安全提示输入；不要把密码写到命令参数或聊天：
+最终实际 pg_restore 加载成功。源/恢复对照为 19 张表、59 个索引、54 个约束、122 个 public 普通函数、14 个业务触发器、21 个策略。列类型、默认值摘要、可空/identity/generated、函数定义摘要及 owner/ACL/SECURITY DEFINER、RLS/force RLS、触发器状态均比较。以下同一快照行数逐项一致：
 
-   ```bash
-   security add-generic-password -U -a "$USER" -s dev.sunland.supabase.production.db-password -w
-   ```
+| 表 | 源 / 恢复 |
+| --- | ---: |
+| auth.identities | 88 / 88 |
+| auth.users | 86 / 86 |
+| public.account_deletion_jobs | 2 / 2 |
+| public.activation_codes | 2800 / 2800 |
+| public.chat_messages | 593 / 593 |
+| public.chat_threads | 8 / 8 |
+| public.conversations | 327 / 327 |
+| public.email_codes | 0 / 0 |
+| public.oc_profiles | 10 / 10 |
+| public.orders | 0 / 0 |
+| public.profiles | 0 / 0 |
+| public.request_logs | 0 / 0 |
+| public.thanks | 5 / 5 |
+| public.thanks_likes | 6 / 6 |
+| public.usage | 8 / 8 |
+| public.usage_logs | 6 / 6 |
+| public.user_profiles | 380 / 380 |
+| storage.buckets | 2 / 2 |
+| storage.objects | 84 / 84 |
 
-   本机 `security help add-generic-password` 已确认末尾 `-w` 的交互提示用法。
-4. 完成后回复“已核对参数并更新钥匙串”，再做一次限时只读认证；若仍失败停止登录，核对 Dashboard 实际连接参数和账户，不盲目重试。
+两个非语义差异已核实并严格规范化：
 
-## 最短后续执行顺序
+- ACL 数组项顺序：只对简单无引号角色条目排序，保留权限、授予者和 grant option；新增 rw 权限的负例仍失败。
+- 仅 `public.email_codes.id` 的 `uuid_generate_v4()` 与 `extensions.uuid_generate_v4()` 打印限定名不同。直接从本次原始归档 schema 核实默认值是 `"extensions"."uuid_generate_v4"()`，比较器只规范化这两个已知表达式摘要，其他默认值变化仍失败。
 
-1. 凭据修复后，先完善并本地验证快照持有/导入及 Storage 复用路径，再生成一次新加密数据库备份。
-2. 一次本地隔离恢复核对同快照行数、资料/会员/激活码/聊天/邮箱/注销对象、索引/触发器及两项 CHECK；通过才签发 `CORE_BUSINESS_RESTORE_VERIFIED`。D 级限制独立保留。
-3. 补必要的 Storage 增量并记录时间窗口；判断核心迁移回退依赖是否覆盖，确认维护窗口。
-4. **另行明确授权**后先执行邮箱 OTP 迁移并验收既有邮箱登录/刷新，再执行手机号加法式迁移及权限检查。
-5. **另行授权** Cloudflare 配置/DO 迁移和受鉴权初始化、兼容 Worker 部署；默认关闭，先邮箱回归，再受限 canary。真实短信与计费验收单独授权。
-6. 完成 PostgREST JWT、Turnstile/CORS、预算/恢复及真实设备验收后，才授权网站正式发布和入口开放。
+最终比较仅剩两个已知扩展版本差异；因此完整 `passed:false`，而独立的 `core_business_passed:true`。未用忽略未知对象、约束或业务差异的方法取得通过。
 
-本轮没有源代码修改、生产迁移、部署或短信；仅新增本报告并更新阶段记录。当前提交可通过 `git log -1 --format='%H %s' -- docs/full-stack-development/requirements/mainland-phone-auth/PHASE-4-CORE-RESTORE.md` 获取。原有 Codex 配置修改及备份继续保留，未 push。文档链接、JSON 解析和 `git diff --check` 是本轮收尾检查；不把上一轮测试或旧数据库恢复称为本轮新验收。
+邮箱/手机号尚未执行的迁移对象不在生产中出现，属于已知发布前置，不是恢复丢失。本次验证了既有邮箱数据、资料、Pro/激活码、聊天、注销函数等恢复范围；没有用生产用户执行登录、发权益或注销。
+
+## Storage 增量与一致性
+
+- 复用批次：`2026-10-25_09-33-27`。旧 83 个对象由本地加密 tar 解密后复用，仅下载新增头像 1 个；没有重下 83 个对象。
+- 本次枚举/下载窗口：10:59:22.937509–11:00:33.922306；初次枚举结束 10:59:56.617487，结束前再次枚举版本集合相同。
+- 新 tar 明文 22,640,640 字节，密文 22,640,676 字节；实际对象 22,517,681 字节。avatars 66 个 / 14,869,346 字节，chat-images-v1 18 个 / 7,648,335 字节。
+- 84 个对象全部通过实际提取、SHA-256、源 metadata size、84 个 ETag/MD5、Bucket 汇总和恢复库 Bucket/路径/大小摘要比较。失败 0，未上传到任何测试云项目。
+
+**仍非数据库与 Storage 原子快照。** 稳定枚举、ETag 和路径/大小关联不能排除跨窗口同路径同大小替换。灾后恢复仍须隔离写入并核对缺失、孤立及覆盖对象；本次没有发现需额外补偿的对象，不能由此推断将来永无窗口风险。
+
+## D 级限制及不改变的边界
+
+- pg_net 源 0.14.0 → 本地 0.20.3；pg_cron 源 1.6 → 本地 1.6.4。仅这两组明确替代允许与核心状态分开，完整版本比较仍失败。两份待发布身份迁移不直接依赖它们；外部调度/HTTP 运行行为未验收。
+- 本地 postgres 保留 bootstrap 超级权限，角色密码不导出，成员授权去掉 GRANTED BY；托管角色授权来源未完整复刻。核心对象 owner/ACL 已重放并比较，但不等于真实 PostgREST/OAuth 权限链路通过。
+- Vault 使用临时根密钥，生产 Vault 密钥恢复未验证；托管 Auth/API/Storage 配置、Secrets、外部 Worker/KV/DO 不由 pg_dump 自动重建。
+- 本地 publication 的两个 wal_level 警告保留，未验收 Realtime/逻辑复制；不把无网络容器启动等同于 Supabase 云服务恢复。
+- 新批次有 CORE_BUSINESS_RESTORE_VERIFIED 标记；完整验收未通过，按脚本约定保留 INCOMPLETE、不创建 COMPLETE。完整 BACKUP_RESTORE_VERIFIED 仍未签发。
+
+隔离容器无网络、无发布端口，独立 sunland_restore；最终 cleanup_complete:true，临时明文和本次容器已清理，不触碰其他项目或历史备份。
+
+## 验证、提交与手机号上线余项
+
+备份专用合成测试 9/9 通过；新快照 SQL、核心/完整分级及 ACL/default 规范化负例先失败后通过。Python AST、shell bash -n、git diff --check 通过；没有重复执行无关前端全量测试。单名只读审查员复核了安全、快照、Storage 复用、编码及比较门禁，未操作生产或 Docker。
+
+本次未生产写入、迁移、创建角色、重置密码、修改 Secrets、部署或发送短信。原有 Codex 配置修改及其备份保留，不提交。提交 ID 见本报告 Git 历史及最终回复，未 push。
+
+**核心备份恢复门禁已解除；手机号正式上线仍未授权执行。** 最短后续：
+
+1. 单独授权并验收原子邮箱 OTP 迁移，生产仍缺 sunland_otp；先确认既有邮箱登录/刷新兼容。
+2. 授权手机号加法式迁移，验证 RPC、RLS、触发器、权限和 canary 配置。
+3. 授权 Cloudflare PHONE Secrets/策略、DO 绑定/迁移和受鉴权账本初始化；默认关闭，部署兼容 Worker 后先做邮箱回归。
+4. 完成受限 canary、PostgREST JWT、Turnstile/CORS、预算/恢复与真实设备验收；真实短信及计费另行授权。
+5. 最后授权网站发布、设置有效 sitekey 并开放手机号入口，保留紧急关闭及 phone-only 用户兼容回滚边界。
+
+参考：[Supabase 连接](https://supabase.com/docs/guides/database/connecting-to-postgres)、[PostgreSQL pg_dump 快照](https://www.postgresql.org/docs/17/app-pgdump.html)。

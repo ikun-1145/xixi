@@ -82,9 +82,10 @@ def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('--project',default='klyrasrqgxijwrxuoevj');parser.add_argument('--env-file',required=True)
     parser.add_argument('--inventory-only',action='store_true');parser.add_argument('--inventory-output',required=True)
-    parser.add_argument('--output');parser.add_argument('--key');parser.add_argument('--aead');parser.add_argument('--work')
+    parser.add_argument('--reuse-tar');parser.add_argument('--output');parser.add_argument('--key');parser.add_argument('--aead');parser.add_argument('--work')
     args=parser.parse_args()
     client=Storage(args.project,secret_from_env_file(args.env_file,'SUPABASE_SERVICE_ROLE_KEY'))
+    started=datetime.datetime.now(datetime.timezone.utc).isoformat()
     buckets=client.buckets();objects=[];failures=[]
     try:
         for bucket in buckets: objects.extend(client.objects(bucket['name']))
@@ -96,6 +97,15 @@ def main():
     print(f"Storage inventory: {len(buckets)} buckets, {len(objects)} objects, {sum(int((o.get('metadata') or {}).get('size') or 0) for o in objects)} bytes")
     if args.inventory_only:return
     if not all([args.output,args.key,args.aead,args.work]):raise RuntimeError('backup output, key, AEAD helper and work directory are required')
+    enumerated=datetime.datetime.now(datetime.timezone.utc).isoformat()
+    reuse=tarfile.open(args.reuse_tar,'r:') if args.reuse_tar else None
+    previous={}
+    if reuse:
+        old=json.load(reuse.extractfile('SUNLAND-STORAGE-MANIFEST.json'))
+        if old['failures']:raise RuntimeError('Cannot reuse incomplete Storage archive')
+        previous={(x['bucket'],x['path']):x for x in old['objects']}
+        if len(previous)!=len(old['objects']):raise RuntimeError('Duplicate base Storage identities')
+    reused=0;downloaded=0
     process=subprocess.Popen(['node',args.aead,'encrypt',args.key,args.output],stdin=subprocess.PIPE)
     entries=[]
     try:
@@ -104,6 +114,13 @@ def main():
                 descriptor=None
                 try:
                     member=safe_member(obj['bucket'],obj['path'])
+                    old=previous.get((obj['bucket'],obj['path']))
+                    metadata=obj.get('metadata') or {}
+                    if old and old['updated_at']==obj.get('updated_at') and old['metadata'].get('eTag') and old['metadata'].get('eTag')==metadata.get('eTag') and old['bytes']==int(metadata.get('size',-1)):
+                        info=tarfile.TarInfo(member);info.size=old['bytes'];info.mode=0o600;info.mtime=int(time.time())
+                        with reuse.extractfile(member) as source:archive.addfile(info,source)
+                        entries.append(old);reused+=1
+                        continue
                     fd,descriptor=tempfile.mkstemp(prefix='object-',dir=args.work);os.close(fd)
                     for attempt in range(4):
                         try:
@@ -111,7 +128,7 @@ def main():
                         except Exception:
                             if attempt==3:raise
                             time.sleep(2**attempt)
-                    entries.append(entry)
+                    entries.append(entry);downloaded+=1
                     info=tarfile.TarInfo(member);info.size=entry['bytes'];info.mode=0o600;info.mtime=int(time.time())
                     with open(descriptor,'rb') as source:archive.addfile(info,source)
                 except Exception as error:
@@ -120,6 +137,12 @@ def main():
                     if descriptor:
                         try:os.unlink(descriptor)
                         except FileNotFoundError:pass
+            # Refuse an unstable enumeration/download window instead of claiming consistency.
+            after=[];after_buckets=client.buckets()
+            for bucket in after_buckets:after.extend(client.objects(bucket['name']))
+            version=lambda o:(o.get('updated_at'),(o.get('metadata') or {}).get('size'),(o.get('metadata') or {}).get('eTag'))
+            if {b['name'] for b in buckets}!={b['name'] for b in after_buckets} or {(o['bucket'],o['path']):version(o) for o in objects}!={(o['bucket'],o['path']):version(o) for o in after}:
+                raise RuntimeError('Storage changed during incremental backup; batch remains incomplete')
             manifest=json.dumps({'format':1,'objects':entries,'failures':failures},ensure_ascii=False,separators=(',',':')).encode()
             info=tarfile.TarInfo('SUNLAND-STORAGE-MANIFEST.json');info.size=len(manifest);info.mode=0o600;info.mtime=int(time.time())
             archive.addfile(info,io.BytesIO(manifest))
@@ -130,7 +153,9 @@ def main():
         try:process.stdin.close()
         except Exception:pass
         process.kill();process.wait();raise
-    pathlib.Path(args.inventory_output).write_text(json.dumps(aggregate(buckets,entries,failures),indent=2)+'\n');os.chmod(args.inventory_output,0o600)
-    print(f'Storage backup: {len(entries)} objects encrypted; {len(failures)} failures')
+    if reuse:reuse.close()
+    summary=aggregate(buckets,entries,failures);summary.update(started_at=started,enumerated_at=enumerated,completed_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),reused_objects=reused,downloaded_objects=downloaded,post_enumeration_stable=True)
+    pathlib.Path(args.inventory_output).write_text(json.dumps(summary,indent=2)+'\n');os.chmod(args.inventory_output,0o600)
+    print(f'Storage backup: {len(entries)} objects encrypted; {reused} reused, {downloaded} downloaded; {len(failures)} failures')
     if failures:sys.exit(3)
 if __name__=='__main__':main()

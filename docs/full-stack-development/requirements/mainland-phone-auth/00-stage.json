@@ -37,7 +37,8 @@
     "User continuation requirements explicitly retain current application JWT and database token architecture; native Supabase Auth sessions are out of scope.",
     "A Team bootstrap validated and committed be0422e; Supabase read-only metadata tools connected.",
     "Scoped Supabase catalog, constraints, indexes, RLS, column grants, deletion RPC/lease and migration metadata verified 2026-10-24.",
-    "Phone-only account deletion, release guardrails, three-language/mobile browser regression, full automated tests, Docker PostgreSQL contention and synthetic encrypted backup/restore rehearsal completed locally."
+    "Phone-only account deletion, release guardrails, three-language/mobile browser regression, full automated tests, Docker PostgreSQL contention and synthetic encrypted backup/restore rehearsal completed locally.",
+    "Core business backup/restore gate verified on production snapshot 2026-10-25_10-58-30; 19 table counts, 122 public functions, CHECKs and Storage 84 objects verified; full Supabase DR remains limited."
   ],
   "blockers": [],
   "implementationScope": "Phase4 phone-only account deletion, release guardrails, backup/restore rehearsal and local release preparation; no production writes, SMS, deployment or Flutter",
@@ -47,10 +48,9 @@
     "phase1": "Reused by Phase2 local Worker; not deployed",
     "phase2": "Local code, SQL, actual-source Worker integration and independent reviews complete; production validation pending",
     "phase3": "Phase3A website/Docker local acceptance complete; Phase3B Flutter development ready; production blocked",
-    "phase4": "Local acceptance complete; production release blocked by backup/restore, email OTP compatibility, Cloudflare configuration and live acceptance prerequisites"
+    "phase4": "Local acceptance and core business encrypted backup/restore verified; production blocked by email OTP compatibility, Cloudflare configuration, live acceptance and separate release authorization"
   },
   "integrationPrerequisites": [
-    "Encrypted production database and Storage backups with isolated restore evidence",
     "Authorized atomic email OTP migration and Worker compatibility acceptance before Worker deployment",
     "Cloudflare Alibaba SMS Secrets and fail-closed release configuration verification",
     "Real DO budget ledger/recovery and PostgREST JWT gateway validation",
@@ -174,7 +174,6 @@
     "deployed": false
   },
   "productionBlockers": [
-    "Encrypted production database and Storage backups with isolated restore evidence",
     "Authorized atomic email OTP migration and Worker compatibility acceptance before Worker deployment",
     "Cloudflare Alibaba SMS Secrets and fail-closed release configuration verification",
     "Real DO budget ledger/recovery and PostgREST JWT gateway validation",
@@ -210,11 +209,11 @@
   },
   "phase4CoreRestoreReadiness": {
     "date": "2026-10-25",
-    "status": "CORE_BUSINESS_RESTORE_BLOCKED",
-    "databaseConnection": "Session Pooler parameters match linked project; existing Keychain credential rejected in one bounded verify-full probe",
-    "newDatabaseBackupCreated": false,
-    "newCoreRestoreExecuted": false,
-    "sameSnapshotExportImplemented": false,
+    "status": "CORE_BUSINESS_RESTORE_VERIFIED",
+    "databaseConnection": "Existing Keychain credential now accepted; PostgreSQL 18.6 native verify-full TLSv1.3 with official CA and wrong-hostname rejection verified",
+    "newDatabaseBackupCreated": true,
+    "newCoreRestoreExecuted": true,
+    "sameSnapshotExportImplemented": true,
     "historicalFullBackupStatus": "BACKUP_RESTORE_BLOCKED",
     "storageHistoricalObjects": 83,
     "storageCurrentObjects": 84,
@@ -222,7 +221,7 @@
     "storageAddedBytes": 94427,
     "storageRemovedObjects": 0,
     "storageChangedObjects": 0,
-    "storagePayloadsDownloaded": 0,
+    "storagePayloadsDownloaded": 1,
     "productionEmailOtpRpcExists": false,
     "productionPhoneTables": 0,
     "onlinePhoneBindingsConfigured": false,
@@ -230,6 +229,20 @@
     "localWorkerSourceHashesMatch": true,
     "websitePhoneEntryEnabled": false,
     "productionChangesPerformed": false,
-    "report": "PHASE-4-CORE-RESTORE.md"
+    "report": "PHASE-4-CORE-RESTORE.md",
+    "backupBatch": "2026-10-25_10-58-30",
+    "restoreEvidence": "restore-run.GPe92O/restore-result.json",
+    "sourceSnapshotId": "00000017-000091F6-1",
+    "snapshotWindowStart": "2026-10-25T02:58:30.410082+00:00",
+    "snapshotWindowEnd": "2026-10-25T02:59:18.485639+00:00",
+    "sourceRowCountTablesMatched": 19,
+    "publicFunctionsMatched": 122,
+    "checkConstraintsValidated": true,
+    "storageReusedObjects": 83,
+    "storageObjectsRestored": 84,
+    "storageDatabaseMetadataMatched": true,
+    "coreBackupBlockerRemoved": true,
+    "fullSupabaseRestoreVerified": false,
+    "rootCause": "Local initdb --no-locale defaulted to SQL_ASCII; UTF8/en_US.UTF-8 restores now validate both CHECKs without data changes"
   }
 }

@@ -1,5 +1,7 @@
 # Phase 4 生产备份与隔离恢复接管验收
 
+> **2026-10-25 11:05 纠正与最新状态：** 新批次 `2026-10-25_10-58-30` 已达到 **CORE_BUSINESS_RESTORE_VERIFIED**，见 [当前核心恢复报告](PHASE-4-CORE-RESTORE.md)。此前把 15,617 / 626 判作历史数据字符超限有误：隔离 `initdb --no-locale` 默认为 SQL_ASCII，实际按 UTF-8 字节计数。改为生产一致的 UTF8 / en_US.UTF-8 后，同一新归档两项 CHECK 均验证通过，未修改业务值。下文保留早期调查记录，不再代表当前核心阻断；完整灾难恢复仍未通过，不签发 BACKUP_RESTORE_VERIFIED。
+
 2026-10-25，Asia/Shanghai。最终状态：**BACKUP_RESTORE_BLOCKED**。**未解除 Phase 4 的生产备份阻断，不可据此执行邮箱 OTP/手机号迁移或发布。**
 
 ## 接管与范围

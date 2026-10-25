@@ -48,7 +48,7 @@ path=pathlib.Path(sys.argv[1]);stage=sys.argv[2];code=int(sys.argv[3]);cleanup_f
 result=json.load(open(path)) if path.exists() else {'passed':False,'failed_stage':stage,'tested_at':datetime.datetime.now(datetime.timezone.utc).isoformat()}
 if code and stage!='complete':result.update(passed=False,failed_stage=stage)
 result['cleanup_complete']=not cleanup_failed
-if cleanup_failed:result.update(passed=False,cleanup_warning='Container or plaintext cleanup did not complete; inspect this run locally')
+if cleanup_failed:result.update(passed=False,core_business_passed=False,core_status='CORE_BUSINESS_RESTORE_BLOCKED',cleanup_warning='Container or plaintext cleanup did not complete; inspect this run locally')
 path.write_text(json.dumps(result,indent=2)+'\n')
 PY_CLEANUP
  if ((cleanup_failed));then echo 'Local recovery cleanup incomplete' >&2;exit 1;fi
@@ -59,10 +59,12 @@ STAGE='decrypt';node "$HERE/aead-file.mjs" decrypt "$KEY_FILE" "$DEST/database.d
 node "$HERE/aead-file.mjs" decrypt "$KEY_FILE" "$DEST/roles.sql.aesgcm" "$WORK/roles.sql"
 [[ $(dd if="$WORK/database.dump" bs=5 count=1 2>/dev/null) == PGDMP ]]||{ echo 'Decrypted database is not a custom pg_dump archive' >&2;exit 1;}
 STAGE='container';LOCAL_RESTORE_PASSWORD=$(openssl rand -hex 32);export PGPASSWORD="$LOCAL_RESTORE_PASSWORD"
-docker run --detach --name "$NAME" --label "$LABEL=$RUN" --network none --read-only --memory 2g --cpus 2 --pids-limit 192 --user 100:101 -e LOCAL_RESTORE_PASSWORD="$LOCAL_RESTORE_PASSWORD" --tmpfs /tmp:rw,nosuid,size=4g,mode=1777 --tmpfs /etc/postgresql-custom:rw,nosuid,size=1m,mode=777 --entrypoint bash "$IMAGE" -c "umask 077;printf '%s' \"\$LOCAL_RESTORE_PASSWORD\" >/tmp/pg.password;initdb -D /tmp/backup-pg -A scram-sha-256 --pwfile=/tmp/pg.password --no-locale >/dev/null;rm /tmp/pg.password;exec postgres -D /tmp/backup-pg -k /tmp -c listen_addresses='' -c shared_buffers=64MB -c shared_preload_libraries='pg_stat_statements,pgaudit,plpgsql,plpgsql_check,pg_cron,pg_net,pgsodium,auto_explain,pg_tle,plan_filter,supabase_vault' -c cron.database_name=sunland_restore -c pgsodium.getkey_script=/usr/lib/postgresql/bin/pgsodium_getkey.sh -c vault.getkey_script=/usr/lib/postgresql/bin/pgsodium_getkey.sh" >/dev/null
+docker run --detach --name "$NAME" --label "$LABEL=$RUN" --network none --read-only --memory 2g --cpus 2 --pids-limit 192 --user 100:101 -e LOCAL_RESTORE_PASSWORD="$LOCAL_RESTORE_PASSWORD" --tmpfs /tmp:rw,nosuid,size=4g,mode=1777 --tmpfs /etc/postgresql-custom:rw,nosuid,size=1m,mode=777 --entrypoint bash "$IMAGE" -c "umask 077;printf '%s' \"\$LOCAL_RESTORE_PASSWORD\" >/tmp/pg.password;initdb -D /tmp/backup-pg -A scram-sha-256 --pwfile=/tmp/pg.password --encoding=UTF8 --locale=en_US.UTF-8 >/dev/null;rm /tmp/pg.password;exec postgres -D /tmp/backup-pg -k /tmp -c listen_addresses='' -c shared_buffers=64MB -c shared_preload_libraries='pg_stat_statements,pgaudit,plpgsql,plpgsql_check,pg_cron,pg_net,pgsodium,auto_explain,pg_tle,plan_filter,supabase_vault' -c cron.database_name=sunland_restore -c pgsodium.getkey_script=/usr/lib/postgresql/bin/pgsodium_getkey.sh -c vault.getkey_script=/usr/lib/postgresql/bin/pgsodium_getkey.sh" >/dev/null
 local_psql(){ docker exec -i -e PGPASSWORD "$NAME" psql -X -qAt -v ON_ERROR_STOP=1 -U postgres -h /tmp "$@"; }
 for _ in {1..150};do if local_psql -d postgres -c 'select 1' >/dev/null 2>&1;then break;fi;sleep 0.2;done
 local_psql -d postgres -c 'select 1' >/dev/null
+STAGE='environment';local_psql -d postgres -c "SELECT json_build_object('server_encoding',current_setting('server_encoding'),'collate',datcollate,'ctype',datctype) FROM pg_database WHERE datname=current_database();" >"$DEST/database-environment.json"
+[[ $(local_psql -d postgres -c 'SHOW server_encoding') == UTF8 ]]||{ echo 'Restore database encoding must be UTF8' >&2;exit 1;}
 STAGE='roles';python3 - "$WORK/roles.sql" "$WORK/roles-local.sql" <<'PY'
 import re,sys
 source,target=sys.argv[1:]
@@ -76,12 +78,11 @@ with open(source) as src,open(target,'w') as dst:
 PY
 local_psql -d postgres <"$WORK/roles-local.sql"
 STAGE='database';local_psql -d postgres -c 'create database sunland_restore' >/dev/null
-STAGE='pg_restore';restore_archive(){ docker exec -i -e PGPASSWORD -e PGVERBOSITY=terse "$NAME" pg_restore --exit-on-error -U postgres -h /tmp -d sunland_restore "$@" <"$WORK/database.dump" 2>>"$DEST/pg_restore.log"; }
+STAGE='pg_restore';restore_archive(){ "$PG_BIN/pg_restore" --exit-on-error --file=- "$@" "$WORK/database.dump" 2>>"$DEST/pg_restore.log" | docker exec -i -e PGPASSWORD "$NAME" psql -X -q -v ON_ERROR_STOP=1 -v VERBOSITY=terse -U postgres -h /tmp -d sunland_restore >/dev/null 2>>"$DEST/pg_restore.log"; }
 : >"$DEST/pg_restore.log"
 restore_archive --section=pre-data
-# Validated production CHECKs may have historical rows that predate them.
-# Recreate every original definition after COPY, then validate exactly those
-# that were validated at source. Any real violation still fails the restore.
+# Replay each original CHECK after COPY and preserve source validation state.
+# Every source-validated CHECK must validate locally; a real violation fails.
 local_psql -d sunland_restore -c "SELECT format('ALTER TABLE %I.%I DROP CONSTRAINT %I;',n.nspname,c.relname,con.conname) FROM pg_constraint con JOIN pg_class c ON c.oid=con.conrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE con.contype='c' AND con.conislocal AND con.conparentid=0 ORDER BY n.nspname,c.relname,con.conname;" >"$WORK/drop-checks.sql"
 local_psql -d sunland_restore -c "CREATE TABLE public._sunland_restore_checks AS SELECT n.nspname AS schema_name,c.relname AS table_name,con.conname,pg_get_constraintdef(con.oid) AS definition,con.convalidated FROM pg_constraint con JOIN pg_class c ON c.oid=con.conrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE con.contype='c' AND con.conislocal;"
 local_psql -d sunland_restore -c "SELECT format('%s|%s|%s',schema_name,table_name,conname) FROM public._sunland_restore_checks WHERE convalidated ORDER BY schema_name,table_name,conname;" >"$WORK/validate-checks.txt"
@@ -124,7 +125,7 @@ STAGE='report';python3 - "$DEST" "$RUN" "$WORK/validation-failures.txt" <<'PY'
 import datetime,json,pathlib,sys
 root=pathlib.Path(sys.argv[1]);comparison=json.load(open(root/'restore-comparison.json'));storage=json.load(open(root/'storage-restore-result.json'));source=json.load(open(root/'database.dump.aesgcm.source.json'))
 failures=[{'schema':parts[0],'table':parts[1],'constraint':parts[2]} for line in open(sys.argv[3]) if len(parts:=line.rstrip('\n').split('|'))==3]
-result={'passed':comparison['passed'] and storage['passed'] and not failures,'tested_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'run_id':sys.argv[2],'network':'none','published_ports':False,'database':'sunland_restore','pg_restore':'exit-on-error completed','decrypted_database_bytes':source['bytes'],'decrypted_database_sha256':source['sha256'],'database_comparison':comparison,'storage_comparison':storage,'constraint_validation_failures':failures,'restored_data_quality':json.load(open(pathlib.Path(sys.argv[3]).parent/'data-quality.json')),'limitations':['Roles restored without passwords; local bootstrap postgres role and its local superuser privilege are retained. GRANTED BY is removed from local role membership replay.', 'Object owners and ACLs are replayed. Inventory equality covers the recorded business scope, not all Supabase platform services.','Local Vault uses a disposable test root key; production Vault secret recovery is not verified.','No Storage objects were uploaded to any cloud project.','Supabase hosted API/Auth/Storage service configuration is outside pg_dump and requires platform restoration.']}
+result={'passed':comparison['passed'] and storage['passed'] and not failures,'core_business_passed':comparison['core_business_passed'] and not failures,'core_status':'CORE_BUSINESS_RESTORE_VERIFIED' if comparison['core_business_passed'] and not failures else 'CORE_BUSINESS_RESTORE_BLOCKED','tested_at':datetime.datetime.now(datetime.timezone.utc).isoformat(),'run_id':sys.argv[2],'network':'none','published_ports':False,'database':'sunland_restore','pg_restore':'exit-on-error completed','database_environment':json.load(open(root/'database-environment.json')),'decrypted_database_bytes':source['bytes'],'decrypted_database_sha256':source['sha256'],'database_comparison':comparison,'storage_comparison':storage,'constraint_validation_failures':failures,'restored_data_quality':json.load(open(pathlib.Path(sys.argv[3]).parent/'data-quality.json')),'limitations':['Roles restored without passwords; local bootstrap postgres role and its local superuser privilege are retained. GRANTED BY is removed from local role membership replay.', 'Object owners and ACLs are replayed. Inventory equality covers the recorded business scope, not all Supabase platform services.','Local Vault uses a disposable test root key; production Vault secret recovery is not verified.','No Storage objects were uploaded to any cloud project.','Supabase hosted API/Auth/Storage service configuration is outside pg_dump and requires platform restoration.']}
 (root/'restore-result.json').write_text(json.dumps(result,indent=2)+'\n')
 manifest_path=root/'backup-manifest.json'
 if manifest_path.exists():
@@ -133,6 +134,7 @@ PY
 chmod 600 "$DEST"/*.json
 STAGE='complete';python3 - "$DEST/restore-result.json" <<'PY'
 import json,sys
-if not json.load(open(sys.argv[1]))['passed']:raise SystemExit('Recovery data comparison completed, but full acceptance failed; see restore-result.json')
+result=json.load(open(sys.argv[1]))
+if not result['core_business_passed'] or not result['storage_comparison']['passed']:raise SystemExit('Recovery data comparison completed, but full acceptance failed; see restore-result.json')
 PY
-echo "Isolated PostgreSQL and Storage recovery verification passed: $DEST"
+echo "Core business and Storage recovery verified; full managed-platform parity is separately reported: $DEST"
