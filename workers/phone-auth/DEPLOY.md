@@ -27,7 +27,7 @@
 
 ## 最短上线清单（尚未执行部分需后续授权）
 
-1. **配置新 Worker 的 Secrets**：APP_JWT_LEGACY_SECRET 必须安全复制 ai 已认可的兼容签名值，不能另造一把 JWT key；不轮换 ai 密钥。配置 SUPABASE_SECRET_KEY、TURNSTILE_SECRET、PHONE_ALIYUN_ACCESS_KEY_ID/SECRET（STS 时另配 SECURITY_TOKEN）、PHONE_AUTH_HMAC_KEY、PHONE_AUTH_ADMIN_TOKEN、PHONE_IDENTITY_LOOKUP_KEY、PHONE_IDENTITY_ENCRYPTION_KEYS。全部经平台 Secret store/密码管理器，不进源码、参数或日志。
+1. **配置新 Worker 的 Secrets**：APP_JWT_LEGACY_SECRET 必须安全复制 ai 已认可的兼容签名值，不能另造一把 JWT key；不轮换 ai 密钥。配置 SUPABASE_SECRET_KEY、TURNSTILE_SECRET、PHONE_ALIYUN_ACCESS_KEY_ID/SECRET（STS 时另配 PHONE_ALIYUN_SECURITY_TOKEN）、PHONE_AUTH_HMAC_KEY、PHONE_AUTH_ADMIN_TOKEN、PHONE_IDENTITY_LOOKUP_KEY、PHONE_IDENTITY_ENCRYPTION_KEYS。全部经平台 Secret store/密码管理器，不进源码、参数或日志。
 2. **配置 canary 参数**：PHONE_AUTH_HMAC_KEY_ID、PHONE_IDENTITY_LOOKUP_KEY_ID、PHONE_IDENTITY_ENCRYPTION_KEY_ID、PHONE_SMS_SIGN_NAME、PHONE_SMS_TEMPLATE_CODE；PHONE_AUTH_POLICY 的号码/IP/全局限流与每日/累计预算按真实资费填写；PHONE_SMS_CANARY_PHONE_HASHES 必须是 SMS HMAC key 对 `phone\0`+11位号码的摘要，不是 identity lookup 摘要。保持 canary，累计最多三次且失败不退。
 3. **部署已完成**：独立 Worker、SQLite DO 迁移及精确路由已登记。补齐配置后保持三个开关 false，先复核配置；不重新部署 ai，不重复迁移，首次 DO 不自动建账。
 4. **初始化**：单独授权对既有 sunland_phone_auth_config 的 lookup canary/key ID 初始化；这不是邮箱迁移。通过 POST `/v1/phone/_admin/initialize`，使用独立 PHONE_AUTH_ADMIN_TOKEN，初始化新 DO 账本；重复初始化 409，禁止清零已有状态。`/_admin/status` 仅返回成本汇总，仍须同一管理鉴权。
@@ -35,3 +35,43 @@
 6. **客户端入口**：网站已有 `p/js/phone-auth.js`，仍请求原 `https://api.sunland.dev/v1/phone/*`，无须换域名；验收后配置公开 Turnstile sitekey、仅开放登录页入口，绑定/解绑设置保持禁用。现有 Flutter lib 未发现手机号 API 调用，App 仍需接入手机号登录界面/请求；原 AI 和邮箱地址不变。本轮未修改或验收 App。
 
 关闭 phone-auth 功能只影响手机号入口，不接管 `/send-code`、`/verify-code`、`/refresh` 或 AI 请求。已有邮箱用户不需要迁移、重新注册或更换 token。手机号密钥配置错误、过宽路由或错误操作数据库会产生实际风险，因此只部署上述独立配置；新账号独立导致“不继承原邮箱权益”是明确行为，不是数据丢失。
+
+## 受限短信实测前准备（2026-10-25，只读复核）
+
+结论：**WAITING_FOR_USER_CONFIG**。生产版本、模块摘要、路由、SQLite DO 绑定与上文一致；三开关仍 false，DO 对象数 0。空 JSON 发码/验码请求均 503 / IDENTITY_DISABLED，OPTIONS 204，CORS 为 https://sunland.dev。本轮没有生产写入，没有创建用户、发送邮件/短信或初始化账本。未修改业务代码，不重复已通过的 1041 项测试或重建相同候选包。
+
+### 六项专用 Secret（仅查询名称，六项均缺失）
+
+| 准确名称 | 用途与格式要求 |
+|---|---|
+| PHONE_ALIYUN_ACCESS_KEY_ID | 阿里云号码认证服务 RAM AccessKey ID；仅授予所需发送/核验权限 |
+| PHONE_ALIYUN_ACCESS_KEY_SECRET | 对应 AK Secret；走 Cloudflare Secret store，禁止放入命令参数、源码、日志 |
+| PHONE_AUTH_HMAC_KEY | 短信号码/IP/会话/操作 HMAC，字符串至少 32 字符；与下面密钥分别生成 |
+| PHONE_AUTH_ADMIN_TOKEN | 独立账本管理 Bearer，UTF-8 32–512 字节，不得复用 HMAC/lookup/供应商/Turnstile 密钥 |
+| PHONE_IDENTITY_LOOKUP_KEY | 身份号码索引 HMAC，字符串至少 32 字符；建立映射后不能随意更换 |
+| PHONE_IDENTITY_ENCRYPTION_KEYS | JSON 对象，key 为加密 key ID，value 为 32 字节 AES key 的规范无填充 base64url；最多 16 项；保留独立可取回副本 |
+
+APP_JWT_LEGACY_SECRET、SUPABASE_SECRET_KEY、TURNSTILE_SECRET 已以 secret_text 存在，本轮未读取明文。STS 凭据另需 PHONE_ALIYUN_SECURITY_TOKEN；普通长期 AK 不设置该项。现有 JWT 配置复用证据见部署记录；本轮没有额外签发生产 token。
+
+### 尚缺配置及已核实的行为
+
+- 缺 PHONE_AUTH_HMAC_KEY_ID（1–32 位字母数字/下划线/短横线）、PHONE_IDENTITY_LOOKUP_KEY_ID、PHONE_IDENTITY_ENCRYPTION_KEY_ID（各 1–64 位；加密 ID 必须在 keyring 内）。这些 ID 不是阿里云 AccessKey ID。
+- 缺 PHONE_SMS_SIGN_NAME、PHONE_SMS_TEMPLATE_CODE。使用**号码认证服务 PNVS 的短信认证**，Endpoint dypnsapi.aliyuncs.com，版本 2017-05-25；不是 dysmsapi 的 SendSms。控制台需确认服务已开通、签名模板获准并可用于目标号码，RAM 允许 dypns:SendSmsVerifyCode、dypns:CheckSmsVerifyCode（Resource=*）。模板变量必须兼容 code/min，代码固定传 {"code":"##code##","min":"5"}；六位数字、300 秒、Interval=60、DuplicatePolicy=1、ReturnVerifyCode=false、AutoRetry=0。登录 SchemeName=sl-login-v1，发送和核验保持相同；核验仅 Model.VerifyResult=PASS 成功。没有凭据，未访问阿里云账户或核实套餐/签名审批/实际单价。
+- 缺 PHONE_SMS_CANARY_PHONE_HASHES：JSON 数组，首轮仅一个经用户确认的号码；HMAC-SHA256(PHONE_AUTH_HMAC_KEY, UTF8("phone" + NUL + 11位本地号码))，小写 hex。不得用 +86 号码或 lookup 摘要替代。实际号码、摘要均不写本报告。
+- 缺 PHONE_AUTH_POLICY：八个正安全整数 perPhoneDaily、perIpDaily、dailyLimit、unitCostMicros、dailyBudgetMicros、totalBudgetMicros、ipRequestsPerMinute、globalRequestsPerMinute。费用单位为微元；以用户确认的真实含费单价上界 U 配置。首轮建议发送类上限最多 3，日/累计费用最多 3U；这只是待批准方案，本轮没有设定/扩大预算。分钟请求上限需容纳发送及核验，但不会放大发送上限。
+- DO 全局账本持久累计最多三次 canary 预留，跨天/重启不重置；失败也不退配额与预算。号码服务端锁 600 秒，重复登录测试等至少 10 分钟；验证码 300 秒、最多五次核验、成功一次消费。供应商超时/结果未知保持隔离，停止实测，不自动重试、清账或换对象绕过。
+- Turnstile 已有公开 widget 0x4AAAAAAC_W2Wj2YdkrQiMf，域名含 sunland.dev，模式 non-interactive。生产配置 PHONE_TURNSTILE_HOSTNAME=sunland.dev；代码核对 hostname、phone_login action、challenge_ts（最长五分钟、未来最多 30 秒）。Secret 存在不证明与此 widget 配对，明天须实际完成验证；今晚未调用 siteverify。
+- 数据库只读确认：五张手机号业务表均 RLS 开启，无 anon/authenticated 表权限；service_role 对四张状态表 CRUD、配置表仅 SELECT。sunland_phone_identity(text,jsonb) 与 lifecycle 为 SECURITY INVOKER、固定 search_path，只有 service_role 可调用。两函数 prosrc MD5 分别 892b79b851ca1d06dcd4d7da064ef119 / 2673cddbf76b53348beedff9422730a3，与本地迁移函数体逐字节一致；号码唯一约束、user_id 主/外键有效，资料生命周期触发器启用。lookup_key_id、lookup_check 仍 NULL，runtime 无权自行初始化；没有执行 RPC 或读取用户内容。
+- 新账号 SQL 创建独立 user_id、email=NULL，生产资料默认 pro=false、identity_status=active、is_banned=false、onboarding=0/1；无邮箱合并。签名、状态查询、刷新、数据库 token 与用量通路复用原 ai 契约，已有本地证据；此次未创建生产账号，真实登录/资料/权益读取仍待实测。
+- 公开 sunland.dev/login.html 尚无手机号模块；公开 /p/js/phone-auth.js 当前返回首页 HTML（200 text/html），不能将 HTTP 200 当作脚本已发布。本地 login.html 与客户端已包含正确 api.sunland.dev/v1/phone/*，UI 开关 false、公开 sitekey 空。首轮用受控浏览器将 sunland.dev 的静态页面/依赖仅在本机映射至本仓库，并仅在该浏览器响应副本启用 UI/sitekey，保持真实 origin/hostname；不要从 file:// 或 localhost 直接请求冒充 sunland.dev，也不要先公开网站或绑定/解绑入口。公开网页实测需另行网站发布授权。
+
+### 明天最短执行顺序（本轮均未执行）
+
+1. 用户安全提供/配置阿里云 AK、确认已开通的签名模板与实际单价、确认唯一测试号码；新应用密钥在本地安全生成并独立保管，不经聊天传递。单独授权新 Worker 配置、数据库配置行初始化、DO 建账、canary 开关及短信费用/测试账号创建，ai 与邮箱继续不变。
+2. 保持三开关 false，安全配置六 Secrets 和上述 ID、签名模板、一个号码白名单、明确预算；验证 Turnstile widget 配对，准备受控浏览器中的本地登录页面。配置修改会产生新版本，重新记录版本与仍相同的模块 SHA-256。
+3. 仅在配置行仍为 NULL 且无已有手机号映射时，以绑定参数、单事务条件更新既有 singleton 行：lookup_key_id=选定 ID；lookup_check=HMAC-SHA256(lookup key, UTF8("sunland-phone-index-canary:v1" + NUL))。要求恰好更新一行并回读验证；已有不同值立即停止，禁止覆盖或改表/权限。
+4. 在 canary 模式以独立管理鉴权 POST /v1/phone/_admin/initialize，JSON {}；预期 200、schema=1、enabled=true、test_reserved/total_micros/day_count/day_micros=0。初始化不需要开启短信开关；409 表示已有状态，立即停下，不换对象、不清账。不得提前调用 status：它也会实例化 DO，不能当作零副作用的健康检查。
+5. 获准后仅开启 canary 的 identity/SMS/registration，先只做一次真实注册发送/核验，响应不写日志；确认 null-email 独立资料、原 ai 验签/刷新、数据库 token 与免费权益读取。间隔至少 10 分钟再做同号登录，验证同 ID、重放拒绝；最多三次预留，不自动补发。真正 AI 对话另需明确允许模型调用/用量写入，可先只读权益。
+6. 任何异常立即将新 Worker 的三个开关恢复 false，停止发码；不删除映射、轮换身份密钥、重置 DO 或更改 ai/邮箱。结束后同样恢复 false，网站公开入口保持关闭，保存不含号码/token/密钥的结果。
+
+依据：[阿里云发送接口](https://help.aliyun.com/en/pnvs/developer-reference/api-dypnsapi-2017-05-25-sendsmsverifycode)、[核验接口](https://help.aliyun.com/zh/pnvs/developer-reference/api-dypnsapi-2017-05-25-checksmsverifycode)。所有缺失值留待安全配置，没有填入占位生产值。

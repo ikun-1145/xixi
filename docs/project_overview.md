@@ -283,7 +283,7 @@ Phase3A新增`p/js/phone-auth.js`、`ai/phone-settings.js`和`p/css/phone-auth.c
 
 2026-10-25 更新：Phase 5 已完成生产邮箱 OTP 与手机号加法数据库迁移；Worker 尚未部署。Phase 6 新增 `workers/phone-auth/otp-gateway.js` 独立持久准入屏障及 `scripts/build-controlled-phone-release.mjs` 最小生产基线构建器，配对主包/RPC 回退包/旧 KV 预备包，共用 DO 类且手机号默认关闭。均仅本地实现验收；历史旧 OTP 请求仍缺终止证据，当前为 `BLOCKED`，详见 [受控部署 Runbook](full-stack-development/requirements/mainland-phone-auth/PHASE-6-CONTROLLED-DEPLOYMENT.md)。不能把本地计数归零当作生产排空，也不能把数据库迁移当作邮箱权威已切换。
 
-当前独立手机号方案：`phone-auth` 使用独立入口 `workers/phone-auth/standalone-entry.js` 和专属 `/v1/phone/*` 路由，自身承载短信 DO；生产 `ai` 与 KV 邮箱逻辑保持原样。候选本地验证已通过，不需要旧邮箱排空或 RPC 切换；尚未部署，见 [最短上线清单](../workers/phone-auth/DEPLOY.md)。上段 BLOCKED 仅针对已停止推进的邮箱迁移方案。
+当前独立手机号方案：`phone-auth` 使用独立入口 `workers/phone-auth/standalone-entry.js` 和专属 `/v1/phone/*` 路由，自身承载短信 DO；生产 `ai` 与 KV 邮箱逻辑保持原样。候选本地验证已通过，不需要旧邮箱排空或 RPC 切换；已于 2026-10-25 受控部署版本 `79957a68-b21d-44d1-a9d7-5af2ce47131b`，三开关仍关闭，DO 未初始化。六项手机号专用 Secrets、canary/预算及数据库 lookup 配置待授权配置；公开网站尚未发布手机号模块，受限实测准备状态为 `WAITING_FOR_USER_CONFIG`，见 [最短上线清单](../workers/phone-auth/DEPLOY.md)。上段 BLOCKED 仅针对已停止推进的邮箱迁移方案。
 
 ## 九、权限设计
 
