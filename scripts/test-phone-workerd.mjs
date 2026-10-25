@@ -5,6 +5,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { createRequire } from 'node:module';
 import { preparePhoneWorker } from './prepare-phone-worker.mjs';
+import { prepareStandalonePhoneWorker } from './build-phone-auth-worker.mjs';
 import { SINGLETON_NAME } from '../workers/phone-auth/coordinator.js';
 
 const require = createRequire(process.env.SUNLAND_AUTH_WORKER_ROOT
@@ -16,12 +17,13 @@ const secret = 'synthetic-workerd-hmac-secret-at-least-32';
 const admin = 'synthetic-workerd-admin-token-at-least-32';
 let runtime, supplierCalls = 0, captchaCalls = 0, unexpectedOutbound = 0;
 try {
-  const prepared = await preparePhoneWorker(join(root, 'prepared'));
-  await assert.rejects(preparePhoneWorker(join(root, 'prepared')), { code: 'EEXIST' });
+  const prepare = process.argv.includes('--standalone') ? prepareStandalonePhoneWorker : preparePhoneWorker;
+  const prepared = await prepare(join(root, 'prepared'));
+  await assert.rejects(prepare(join(root, 'prepared')), { code: 'EEXIST' });
   for (const key of ['PHONE_IDENTITY_ENABLED', 'PHONE_SMS_ENABLED', 'PHONE_NEW_REGISTRATION_ENABLED']) {
     assert.equal(prepared.config.vars[key], 'false');
   }
-  assert.deepEqual(prepared.config.routes, []);
+  assert.deepEqual(prepared.config.routes, process.argv.includes('--standalone') ? [{ pattern: 'api.sunland.dev/v1/phone/*', zone_name: 'sunland.dev' }] : []);
   assert.deepEqual(prepared.config.triggers.crons, []);
   assert.equal(prepared.config.workers_dev, false);
   assert.ok(!prepared.config.kv_namespaces && !prepared.config.services);

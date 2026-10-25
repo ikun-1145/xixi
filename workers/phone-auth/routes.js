@@ -34,6 +34,7 @@ function ingressIp(request) {
 export function createPhoneAuthWorker(existingWorker, hooks, {
   identityFactory = createPhoneIdentity,
   sms = { sendPhoneCode, checkPhoneCode },
+  loginOnly = false,
 } = {}) {
   return {
     ...existingWorker,
@@ -44,6 +45,7 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
       try {
         if (request.method !== 'POST') throw new PhoneAuthError('INVALID_REQUEST', 405);
         if (env?.PHONE_IDENTITY_ENABLED !== 'true') throw new PhoneAuthError('IDENTITY_DISABLED', 503);
+        if (loginOnly && ['reauth/email', 'bind', 'change', 'unbind'].includes(route)) throw new PhoneAuthError('IDENTITY_DISABLED', 503);
         if (!request.headers.get('Content-Type')?.toLowerCase().startsWith('application/json')) invalid();
         const parsed = await hooks.readJsonBodyWithLimit(request, 8192);
         if (parsed?.error) throw new PhoneAuthError('INVALID_REQUEST', parsed.error === 'too_large' ? 413 : 400);
@@ -79,6 +81,7 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
         if (route === 'send-code') {
           fields(input, ['phone', 'purpose', 'turnstile_token'], ['reauth_token']);
           phone(input.phone);
+          if (loginOnly && !['login', 'reauth'].includes(input.purpose)) throw new PhoneAuthError('IDENTITY_DISABLED', 503);
           if (!['login', 'bind', 'change', 'unbind', 'reauth'].includes(input.purpose) ||
               typeof input.turnstile_token !== 'string' || !input.turnstile_token.length || input.turnstile_token.length > 2048) invalid();
           let trusted = { ip: ingressIp(request) };
@@ -121,6 +124,7 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
           const email = route === 'reauth/email';
           fields(input, email ? ['code', 'action'] : ['phone', 'challenge_id', 'code', 'action']);
           code(input.code); action(input.action);
+          if (loginOnly && input.action !== 'delete') throw new PhoneAuthError('IDENTITY_DISABLED', 503);
           if (!email) challenge(input);
           const auth = await authenticated(input.action === 'delete' ? 'account_delete' : 'protected');
           let subject;

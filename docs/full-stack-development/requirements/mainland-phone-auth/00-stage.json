@@ -1,8 +1,8 @@
 {
   "feature": "mainland-phone-auth",
   "date": "2026-10-25",
-  "currentStage": "phase-6-controlled-deployment-preparation",
-  "status": "BLOCKED",
+  "currentStage": "standalone-phone-worker",
+  "status": "READY_FOR_CONTROLLED_DEPLOYMENT",
   "approvals": {
     "requirementsApproved": true,
     "implementationApproved": true,
@@ -53,7 +53,7 @@
     "Phase6 local independent admission gate, minimal production-equivalent baseline build, paired RPC rollback and legacy bridge, one-time claims, deployment configuration checks, five byte-identical dry-runs and 1034 tests complete; no production deployment performed."
   ],
   "blockers": [],
-  "implementationScope": "Phase6 local independent OTP barrier, minimal production baseline build, compatible rollback, preflight and runbook; production read-only, no deployment/configuration changes or live codes",
+  "implementationScope": "Local standalone phone-auth Worker and tests only; ai and email KV unchanged; no production operations",
   "flowProfile": "strict-fullstack",
   "phaseStatus": {
     "phase0": "Targeted Supabase metadata verified; no user rows read",
@@ -65,11 +65,10 @@
     "phase6": "Read-only production diff, pinned local build, workerd SQLite and focused regression verified; no deployment, Secrets updates or live email/SMS"
   },
   "integrationPrerequisites": [
-    "Compatible OTP Worker cutover with maintenance/drain and authorized real email login/refresh acceptance",
-    "Cloudflare Alibaba SMS Secrets and fail-closed release configuration verification",
-    "Separately authorized database lookup canary and DO initialization, budget recovery and PostgREST JWT verification",
-    "Authorized canary, production CORS/Turnstile, live SMS and real mobile-device acceptance",
-    "Separate Worker deployment and website release authorization"
+    "Authorize new phone-auth Secrets, including compatible existing application JWT signer",
+    "Deploy only phone-auth and its SQLite DO with scoped /v1/phone/* route",
+    "Authorize existing phone config lookup canary and authenticated fresh-ledger initialization",
+    "Authorize limited real SMS/JWT/API acceptance; expose only phone login after acceptance"
   ],
   "verification": {
     "mockTests": {
@@ -187,9 +186,7 @@
     "productionMigrationsExecuted": false,
     "deployed": false
   },
-  "productionBlockers": [
-    "Authoritative termination/completion evidence for pre-gateway legacy OTP executions is unavailable; do not switch KV to RPC based on a new zero counter"
-  ],
+  "productionBlockers": [],
   "phase4ProductionBackupRestore": {
     "status": "BACKUP_RESTORE_BLOCKED",
     "date": "2026-10-25",
@@ -332,5 +329,19 @@
     "solePreparationBlocker": "No authoritative termination/completion evidence for pre-gateway legacy f405 OTP requests",
     "productionMutationsPerformed": false,
     "report": "PHASE-6-CONTROLLED-DEPLOYMENT.md"
+  },
+  "standalonePhoneWorker": {
+    "worker": "phone-auth",
+    "status": "READY_FOR_CONTROLLED_DEPLOYMENT",
+    "entry": "workers/phone-auth/standalone-entry.js",
+    "config": "workers/phone-auth/wrangler.jsonc",
+    "guide": "workers/phone-auth/DEPLOY.md",
+    "aiWorkerChanged": false,
+    "emailOtpMigrationRequired": false,
+    "npmTestPassed": 1041,
+    "nativeSqliteDoPassed": true,
+    "dryRunPassed": true,
+    "sha256": "983c205dfdd7f47e69336fc8c5b9e8e493e157a05784ad180e1304c193f99a52",
+    "productionOperationsPerformed": false
   }
 }
