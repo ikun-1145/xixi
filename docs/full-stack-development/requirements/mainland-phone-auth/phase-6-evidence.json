@@ -1,0 +1,261 @@
+{
+  "checked_at": "2026-10-25T07:19:35.828Z",
+  "worker": "ai",
+  "active_deployment": {
+    "id": "b06e00b1-78f2-4939-9160-bab2428d71de",
+    "source": "wrangler",
+    "strategy": "percentage",
+    "annotations": {
+      "workers/triggered_by": "deployment"
+    },
+    "versions": [
+      {
+        "version_id": "f405a850-780d-483f-8942-83e1798711fe",
+        "percentage": 100
+      }
+    ],
+    "created_on": "2026-10-11T11:33:51.891286Z"
+  },
+  "script": {
+    "etag": "b269182f278b2c145e0ba7a3400134c4d0d68cd882abae19d30037ab231dbd9d",
+    "handlers": [
+      "scheduled",
+      "fetch"
+    ],
+    "last_deployed_from": "wrangler"
+  },
+  "runtime": {
+    "compatibility_date": "2026-03-21",
+    "usage_model": "standard"
+  },
+  "bindings": [
+    {
+      "name": "ADMIN_AUTH_USER_ID",
+      "type": "secret_text"
+    },
+    {
+      "name": "ADMIN_EMAIL",
+      "type": "plain_text"
+    },
+    {
+      "name": "ADMIN_TOKEN",
+      "type": "plain_text"
+    },
+    {
+      "name": "AI_MAINTENANCE",
+      "type": "plain_text"
+    },
+    {
+      "name": "AI_REQUIRE_REQUEST_ID",
+      "type": "plain_text"
+    },
+    {
+      "name": "ALLOWED_ORIGIN",
+      "type": "plain_text"
+    },
+    {
+      "name": "APP_JWT_LEGACY_SECRET",
+      "type": "secret_text"
+    },
+    {
+      "name": "APP_JWT_PRIMARY_SECRET",
+      "type": "secret_text"
+    },
+    {
+      "name": "B2_APPLICATION_KEY",
+      "type": "secret_text"
+    },
+    {
+      "name": "B2_BUCKET",
+      "type": "plain_text"
+    },
+    {
+      "name": "B2_ENDPOINT",
+      "type": "plain_text"
+    },
+    {
+      "name": "B2_KEY_ID",
+      "type": "secret_text"
+    },
+    {
+      "name": "CF_VERSION_METADATA",
+      "type": "version_metadata"
+    },
+    {
+      "name": "CODE_STORE",
+      "type": "kv_namespace"
+    },
+    {
+      "name": "DEEPSEEK_API_KEY",
+      "type": "secret_text"
+    },
+    {
+      "name": "DEEPSEEK_KEY",
+      "type": "plain_text"
+    },
+    {
+      "name": "GEETEST_ID",
+      "type": "plain_text"
+    },
+    {
+      "name": "GEETEST_KEY",
+      "type": "plain_text"
+    },
+    {
+      "name": "GEETEST_SERVER_KEY",
+      "type": "secret_text"
+    },
+    {
+      "name": "GITHUB_RELEASE_TOKEN",
+      "type": "secret_text"
+    },
+    {
+      "name": "JWT_SECRET",
+      "type": "plain_text"
+    },
+    {
+      "name": "OC_MEDIA_SECRET",
+      "type": "secret_text"
+    },
+    {
+      "name": "RESEND_API_KEY",
+      "type": "plain_text"
+    },
+    {
+      "name": "RESEND_API_TOKEN",
+      "type": "secret_text"
+    },
+    {
+      "name": "SUNLAND_ACCOUNT_DELETE_INTERNAL_TOKEN",
+      "type": "secret_text"
+    },
+    {
+      "name": "SUPABASE_ANON_KEY",
+      "type": "plain_text"
+    },
+    {
+      "name": "SUPABASE_JWT_SECRET",
+      "type": "plain_text"
+    },
+    {
+      "name": "SUPABASE_LEGACY_JWT_SECRET",
+      "type": "secret_text"
+    },
+    {
+      "name": "SUPABASE_PROJECT_URL",
+      "type": "plain_text"
+    },
+    {
+      "name": "SUPABASE_SECRET_KEY",
+      "type": "secret_text"
+    },
+    {
+      "name": "SUPABASE_SERVICE_ROLE_KEY",
+      "type": "plain_text"
+    },
+    {
+      "name": "SUPABASE_URL",
+      "type": "plain_text"
+    },
+    {
+      "name": "TURNSTILE_SECRET",
+      "type": "plain_text"
+    },
+    {
+      "name": "USAGE_KV",
+      "type": "kv_namespace"
+    },
+    {
+      "name": "VDS_CLIENT_ID",
+      "type": "plain_text"
+    },
+    {
+      "name": "VDS_CLIENT_SECRET",
+      "type": "plain_text"
+    },
+    {
+      "name": "VDS_REDIRECT_URI",
+      "type": "plain_text"
+    }
+  ],
+  "safe_checks": {
+    "allowed_origin_sunland": true,
+    "project_matches": true,
+    "phone_binding_count": 0
+  },
+  "source": {
+    "chars": 382069,
+    "markers": {
+      "sunland_otp": false,
+      "CODE_STORE": true,
+      "PhoneAuthCoordinator": false,
+      "PHONE_IDENTITY_ENABLED": false,
+      "getOrCreateLoginUser": true,
+      "OTP_MAINTENANCE": false,
+      "web_search": false
+    }
+  },
+  "routing": {
+    "pattern": "api.sunland.dev/*",
+    "script": "ai",
+    "independent_otp_gateway_present": false
+  },
+  "phone_namespace_present": false,
+  "turnstile": {
+    "widget_present": true,
+    "sunland_domain_allowed": true,
+    "mode": "non-interactive",
+    "secret_validity_verified": false
+  },
+  "catalog_functions_present": [
+    "sunland_otp",
+    "sunland_otp_cleanup",
+    "sunland_phone_identity",
+    "ai_quota_usage",
+    "ai_quota_reserve",
+    "ai_quota_finish",
+    "user_onboarding"
+  ],
+  "catalog_service_role_execute": true,
+  "tests": {
+    "npm": {
+      "passed": 1024,
+      "failed": 0,
+      "skipped": 0
+    },
+    "external_email_identity_onboarding_maintenance": {
+      "passed": 81,
+      "failed": 0
+    },
+    "workerd_sqlite": {
+      "passed": true,
+      "persistent_ledger": true,
+      "concurrent_initialization": true,
+      "canary_cap": true,
+      "concurrent_consume_replay_rejected": true,
+      "network": "all outbound intercepted; synthetic only"
+    },
+    "wrangler_dry_run": {
+      "passed": true,
+      "version": "4.120.1",
+      "uploaded": false,
+      "raw_kib": 441.7,
+      "gzip_kib": 109.61
+    }
+  },
+  "production_mutations_performed": false,
+  "candidate_bundle_sha256": "4d93848139a1a8b02be7f5b2559ba5157e479916cf62e0bdc0495a25ed80ea25",
+  "local_artifact_directory": "build/phone-auth-phase6-20261025T072358Z",
+  "local_tool_versions": {
+    "wrangler": "4.120.1",
+    "esbuild": "0.28.1",
+    "miniflare": "5.20260804.0-alpha"
+  },
+  "final_readonly_check": {
+    "checked_at": "2026-10-25T07:30:48.304Z",
+    "workers_dev_enabled": false,
+    "preview_urls_enabled": false,
+    "cron": "*/5 * * * *",
+    "version_unchanged": true
+  }
+}

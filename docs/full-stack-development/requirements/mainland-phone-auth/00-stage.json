@@ -1,8 +1,8 @@
 {
   "feature": "mainland-phone-auth",
   "date": "2026-10-25",
-  "currentStage": "phase-5-database-delivery",
-  "status": "database_complete_runtime_deployment_blocked",
+  "currentStage": "phase-6-worker-preparation",
+  "status": "local_preparation_verified_production_deployment_blocked",
   "approvals": {
     "requirementsApproved": true,
     "implementationApproved": true,
@@ -11,7 +11,9 @@
     "phase4ProductionPausedByUser": true,
     "phase5DatabaseMigrationsAuthorized": true,
     "phase5ServiceRoleRevokePatchAuthorized": true,
-    "phase5WorkerDeploymentAuthorized": false
+    "phase5WorkerDeploymentAuthorized": false,
+    "phase6LocalPreparationAuthorized": true,
+    "phase6ProductionDeploymentAuthorized": false
   },
   "evidence": [
     "PHASE-0-AUDIT.md",
@@ -34,7 +36,9 @@
     "PHASE-4-DELIVERY.md",
     "PHASE-4-BACKUP-RESTORE.md",
     "PHASE-4-CORE-RESTORE.md",
-    "PHASE-5-DELIVERY.md"
+    "PHASE-5-DELIVERY.md",
+    "PHASE-6-READINESS.md",
+    "phase-6-evidence.json"
   ],
   "resolvedBlockers": [
     "Read-only Cloudflare MCP access restored; deployed ai Worker authentication code inspected.",
@@ -54,7 +58,8 @@
     "phase2": "Local code, SQL, actual-source Worker integration and independent reviews complete; production validation pending",
     "phase3": "Phase3A website/Docker local acceptance complete; Phase3B Flutter development ready; production blocked",
     "phase4": "Local acceptance and core business encrypted backup/restore verified; production blocked by email OTP compatibility, Cloudflare configuration, live acceptance and separate release authorization",
-    "phase5": "Production database stage verified; Worker cutover, live acceptance and website release remain separately gated"
+    "phase5": "Production database stage verified; Worker cutover, live acceptance and website release remain separately gated",
+    "phase6": "Read-only production diff, pinned local build, workerd SQLite and focused regression verified; no deployment, Secrets updates or live email/SMS"
   },
   "integrationPrerequisites": [
     "Compatible OTP Worker cutover with maintenance/drain and authorized real email login/refresh acceptance",
@@ -284,6 +289,34 @@
       "Database-only acceptance; live email login/refresh and SMS not exercised",
       "Old Phase4 fields retained as historical snapshots",
       "Full Supabase disaster recovery limitations unchanged"
+    ]
+  },
+  "phase6Verification": {
+    "date": "2026-10-25",
+    "status": "PHASE6_LOCAL_PREPARATION_VERIFIED_PRODUCTION_BLOCKED",
+    "productionVersion": "f405a850-780d-483f-8942-83e1798711fe",
+    "productionPercent": 100,
+    "productionOtpAuthority": "KV",
+    "candidateOtpAuthority": "sunland_otp RPC",
+    "phoneBindingsInProduction": 0,
+    "phoneNamespaceInProduction": false,
+    "localDefaultFlagsDisabled": true,
+    "localWorkerdSqliteVerified": true,
+    "cloudDoVerified": false,
+    "localBuildSha256": "4d93848139a1a8b02be7f5b2559ba5157e479916cf62e0bdc0495a25ed80ea25",
+    "npmTestPassed": 1024,
+    "emailIdentityMaintenanceTestsPassed": 81,
+    "wranglerDryRunPassed": true,
+    "productionMutationsPerformed": false,
+    "realEmailSent": false,
+    "realSmsSent": false,
+    "report": "PHASE-6-READINESS.md",
+    "blockers": [
+      "Independent OTP barrier not deployed; legacy in-flight termination evidence unavailable",
+      "Review complete candidate scope and preserve existing production bindings/configuration",
+      "First DO lifecycle rollout requires separate compatible rollback bundle",
+      "PHONE configuration, lookup canary and private DO initialization require explicit production authorization",
+      "Live email/JWT/SMS/DO/Turnstile/device acceptance pending"
     ]
   }
 }
