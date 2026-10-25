@@ -1,14 +1,17 @@
 {
   "feature": "mainland-phone-auth",
-  "date": "2026-10-24",
-  "currentStage": "phase-4-local-delivery",
-  "status": "local_complete_production_blocked",
+  "date": "2026-10-25",
+  "currentStage": "phase-5-database-delivery",
+  "status": "database_complete_runtime_deployment_blocked",
   "approvals": {
     "requirementsApproved": true,
     "implementationApproved": true,
     "phase3aApproved": true,
     "phase4ConditionalProductionAuthorized": true,
-    "phase4ProductionPausedByUser": true
+    "phase4ProductionPausedByUser": true,
+    "phase5DatabaseMigrationsAuthorized": true,
+    "phase5ServiceRoleRevokePatchAuthorized": true,
+    "phase5WorkerDeploymentAuthorized": false
   },
   "evidence": [
     "PHASE-0-AUDIT.md",
@@ -30,7 +33,8 @@
     "PHASE-4-PLAN.md",
     "PHASE-4-DELIVERY.md",
     "PHASE-4-BACKUP-RESTORE.md",
-    "PHASE-4-CORE-RESTORE.md"
+    "PHASE-4-CORE-RESTORE.md",
+    "PHASE-5-DELIVERY.md"
   ],
   "resolvedBlockers": [
     "Read-only Cloudflare MCP access restored; deployed ai Worker authentication code inspected.",
@@ -38,24 +42,26 @@
     "A Team bootstrap validated and committed be0422e; Supabase read-only metadata tools connected.",
     "Scoped Supabase catalog, constraints, indexes, RLS, column grants, deletion RPC/lease and migration metadata verified 2026-10-24.",
     "Phone-only account deletion, release guardrails, three-language/mobile browser regression, full automated tests, Docker PostgreSQL contention and synthetic encrypted backup/restore rehearsal completed locally.",
-    "Core business backup/restore gate verified on production snapshot 2026-10-25_10-58-30; 19 table counts, 122 public functions, CHECKs and Storage 84 objects verified; full Supabase DR remains limited."
+    "Core business backup/restore gate verified on production snapshot 2026-10-25_10-58-30; 19 table counts, 122 public functions, CHECKs and Storage 84 objects verified; full Supabase DR remains limited.",
+    "Phase5 production email OTP and additive phone database migrations applied atomically with explicit approval; versions 20261021010000 and 20261024003756, effective ACLs and 19 existing business table fingerprints verified."
   ],
   "blockers": [],
-  "implementationScope": "Phase4 phone-only account deletion, release guardrails, backup/restore rehearsal and local release preparation; no production writes, SMS, deployment or Flutter",
+  "implementationScope": "Phase5 approved email OTP and phone database migrations only; no Worker/site deployment, Secrets changes or live email/SMS",
   "flowProfile": "strict-fullstack",
   "phaseStatus": {
     "phase0": "Targeted Supabase metadata verified; no user rows read",
     "phase1": "Reused by Phase2 local Worker; not deployed",
     "phase2": "Local code, SQL, actual-source Worker integration and independent reviews complete; production validation pending",
     "phase3": "Phase3A website/Docker local acceptance complete; Phase3B Flutter development ready; production blocked",
-    "phase4": "Local acceptance and core business encrypted backup/restore verified; production blocked by email OTP compatibility, Cloudflare configuration, live acceptance and separate release authorization"
+    "phase4": "Local acceptance and core business encrypted backup/restore verified; production blocked by email OTP compatibility, Cloudflare configuration, live acceptance and separate release authorization",
+    "phase5": "Production database stage verified; Worker cutover, live acceptance and website release remain separately gated"
   },
   "integrationPrerequisites": [
-    "Authorized atomic email OTP migration and Worker compatibility acceptance before Worker deployment",
+    "Compatible OTP Worker cutover with maintenance/drain and authorized real email login/refresh acceptance",
     "Cloudflare Alibaba SMS Secrets and fail-closed release configuration verification",
-    "Real DO budget ledger/recovery and PostgREST JWT gateway validation",
+    "Separately authorized database lookup canary and DO initialization, budget recovery and PostgREST JWT verification",
     "Authorized canary, production CORS/Turnstile, live SMS and real mobile-device acceptance",
-    "Separate release/migration authorization"
+    "Separate Worker deployment and website release authorization"
   ],
   "verification": {
     "mockTests": {
@@ -174,11 +180,11 @@
     "deployed": false
   },
   "productionBlockers": [
-    "Authorized atomic email OTP migration and Worker compatibility acceptance before Worker deployment",
+    "Compatible OTP Worker cutover with maintenance/drain and authorized real email login/refresh acceptance",
     "Cloudflare Alibaba SMS Secrets and fail-closed release configuration verification",
-    "Real DO budget ledger/recovery and PostgREST JWT gateway validation",
+    "Separately authorized database lookup canary and DO initialization, budget recovery and PostgREST JWT verification",
     "Authorized canary, production CORS/Turnstile, live SMS and real mobile-device acceptance",
-    "Separate release/migration authorization"
+    "Separate Worker deployment and website release authorization"
   ],
   "phase4ProductionBackupRestore": {
     "status": "BACKUP_RESTORE_BLOCKED",
@@ -244,5 +250,40 @@
     "coreBackupBlockerRemoved": true,
     "fullSupabaseRestoreVerified": false,
     "rootCause": "Local initdb --no-locale defaulted to SQL_ASCII; UTF8/en_US.UTF-8 restores now validate both CHECKs without data changes"
+  },
+  "phase5Verification": {
+    "status": "PHASE5_DATABASE_MIGRATIONS_VERIFIED",
+    "date": "2026-10-25",
+    "migrationVersions": [
+      "20261021010000",
+      "20261024003756"
+    ],
+    "migrationHistoryBefore": 70,
+    "migrationHistoryAfter": 72,
+    "rlsTablesVerified": 7,
+    "phoneConstraintsValidated": 27,
+    "phoneIndexesValid": 7,
+    "existingBusinessTablesFingerprintsMatched": 19,
+    "effectiveTablePrivilegeChecks": 168,
+    "functionExecuteChecks": 15,
+    "phoneBusinessRows": 0,
+    "lookupCanaryInitialized": false,
+    "productionMigrationsExecuted": true,
+    "deployed": false,
+    "realEmailSent": false,
+    "realSmsSent": false,
+    "report": "PHASE-5-DELIVERY.md",
+    "tests": {
+      "defaultAclPrivilegeMatrix": 105,
+      "phoneSqlAndRelease": 27,
+      "workerEmailIdentityOnboarding": 66,
+      "generatorSafety": 2,
+      "npmTest": 1024
+    },
+    "limitations": [
+      "Database-only acceptance; live email login/refresh and SMS not exercised",
+      "Old Phase4 fields retained as historical snapshots",
+      "Full Supabase disaster recovery limitations unchanged"
+    ]
   }
 }

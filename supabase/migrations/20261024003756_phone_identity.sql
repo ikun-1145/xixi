@@ -53,7 +53,7 @@ alter table public.sunland_phone_auth_operations enable row level security;
 alter table public.sunland_phone_auth_config enable row level security;
 revoke all on table public.sunland_phone_identities, public.sunland_phone_auth_state,
   public.sunland_phone_auth_grants, public.sunland_phone_auth_operations,
-  public.sunland_phone_auth_config from public, anon, authenticated;
+  public.sunland_phone_auth_config from public, anon, authenticated, service_role;
 grant select, insert, update, delete on table public.sunland_phone_identities,
   public.sunland_phone_auth_state, public.sunland_phone_auth_grants,
   public.sunland_phone_auth_operations to service_role;
