@@ -82,3 +82,9 @@ Thumbs.db
 .pytest_cache/
 __pycache__/
 .env.local
+
+# Production backup payloads and local restore artifacts.
+SunlandBackups/
+*.aesgcm
+*.aesgcm.source.json
+*.dump

@@ -28,7 +28,8 @@
     "PHASE-3A-DELIVERY.md",
     "phase-3a-evidence/browser-results.json",
     "PHASE-4-PLAN.md",
-    "PHASE-4-DELIVERY.md"
+    "PHASE-4-DELIVERY.md",
+    "PHASE-4-BACKUP-RESTORE.md"
   ],
   "resolvedBlockers": [
     "Read-only Cloudflare MCP access restored; deployed ai Worker authentication code inspected.",
@@ -178,5 +179,32 @@
     "Real DO budget ledger/recovery and PostgREST JWT gateway validation",
     "Authorized canary, production CORS/Turnstile, live SMS and real mobile-device acceptance",
     "Separate release/migration authorization"
-  ]
+  ],
+  "phase4ProductionBackupRestore": {
+    "status": "BACKUP_RESTORE_BLOCKED",
+    "date": "2026-10-25",
+    "batch": "2026-10-25_09-33-27",
+    "finalEvidenceRun": "restore-run.QNdDpT",
+    "encryptedManifestFilesMatched": 9,
+    "storageObjectsVerified": 83,
+    "storageBytesVerified": 22423254,
+    "storageDatabaseMetadataMatched": true,
+    "sourceRowCountTablesMatched": 6,
+    "postgresArchiveLoaded": true,
+    "objectOwnersAndAclReplayed": true,
+    "constraintValidationFailures": [
+      "chat_messages_text_len",
+      "oc_profiles_description_check"
+    ],
+    "extensionVersionDifferences": [
+      "pg_net",
+      "pg_cron"
+    ],
+    "sameSnapshotCompleteSourceInventoryAvailable": false,
+    "keyIndependentCustodyConfirmedByUser": true,
+    "freshBackupCredentialBlocked": true,
+    "cleanupComplete": true,
+    "productionBackupBlockerRemoved": false,
+    "report": "PHASE-4-BACKUP-RESTORE.md"
+  }
 }
