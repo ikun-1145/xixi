@@ -29,7 +29,8 @@
     "phase-3a-evidence/browser-results.json",
     "PHASE-4-PLAN.md",
     "PHASE-4-DELIVERY.md",
-    "PHASE-4-BACKUP-RESTORE.md"
+    "PHASE-4-BACKUP-RESTORE.md",
+    "PHASE-4-CORE-RESTORE.md"
   ],
   "resolvedBlockers": [
     "Read-only Cloudflare MCP access restored; deployed ai Worker authentication code inspected.",
@@ -206,5 +207,29 @@
     "cleanupComplete": true,
     "productionBackupBlockerRemoved": false,
     "report": "PHASE-4-BACKUP-RESTORE.md"
+  },
+  "phase4CoreRestoreReadiness": {
+    "date": "2026-10-25",
+    "status": "CORE_BUSINESS_RESTORE_BLOCKED",
+    "databaseConnection": "Session Pooler parameters match linked project; existing Keychain credential rejected in one bounded verify-full probe",
+    "newDatabaseBackupCreated": false,
+    "newCoreRestoreExecuted": false,
+    "sameSnapshotExportImplemented": false,
+    "historicalFullBackupStatus": "BACKUP_RESTORE_BLOCKED",
+    "storageHistoricalObjects": 83,
+    "storageCurrentObjects": 84,
+    "storageAddedObjects": 1,
+    "storageAddedBytes": 94427,
+    "storageRemovedObjects": 0,
+    "storageChangedObjects": 0,
+    "storagePayloadsDownloaded": 0,
+    "productionEmailOtpRpcExists": false,
+    "productionPhoneTables": 0,
+    "onlinePhoneBindingsConfigured": false,
+    "onlinePhoneDoConfigured": false,
+    "localWorkerSourceHashesMatch": true,
+    "websitePhoneEntryEnabled": false,
+    "productionChangesPerformed": false,
+    "report": "PHASE-4-CORE-RESTORE.md"
   }
 }

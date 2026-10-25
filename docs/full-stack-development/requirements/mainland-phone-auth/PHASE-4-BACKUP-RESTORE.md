@@ -136,3 +136,7 @@
 备份门禁关闭后仍需独立授权并验收：原子邮箱 OTP 迁移及既有邮箱/刷新兼容、手机号加法式迁移、Cloudflare Secrets/默认关闭护栏、真实 DO 预算/恢复、PostgREST JWT、Turnstile/CORS、受限 canary/真实短信计费与移动设备，最后才是 Worker/网站发布。
 
 参考：[Supabase 数据库备份与 Storage 边界](https://supabase.com/docs/guides/platform/backups)、[TLS 证书校验](https://supabase.com/docs/guides/platform/ssl-enforcement)、[PostgreSQL pg_restore](https://www.postgresql.org/docs/17/app-pgrestore.html)。
+
+## 2026-10-25 核心恢复范围收敛
+
+后续按 A（新数据库备份）、B（核心业务恢复）、C（Storage）和 D（完整灾难恢复）分别验收，见 [核心恢复与连接阻断](PHASE-4-CORE-RESTORE.md)。连接参数已匹配项目缓存，既有凭据仍被拒绝；未生成新 dump，B 级维持 `CORE_BUSINESS_RESTORE_BLOCKED`。Storage 只读清单较旧归档新增一个 94,427 字节头像对象，无须重下原 83 个。完整 `BACKUP_RESTORE_BLOCKED` 状态保留，未执行生产发布。
