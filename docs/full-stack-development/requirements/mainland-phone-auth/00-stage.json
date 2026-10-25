@@ -1,8 +1,8 @@
 {
   "feature": "mainland-phone-auth",
   "date": "2026-10-25",
-  "currentStage": "phase-6-worker-preparation",
-  "status": "local_preparation_verified_production_deployment_blocked",
+  "currentStage": "phase-6-controlled-deployment-preparation",
+  "status": "BLOCKED",
   "approvals": {
     "requirementsApproved": true,
     "implementationApproved": true,
@@ -38,7 +38,9 @@
     "PHASE-4-CORE-RESTORE.md",
     "PHASE-5-DELIVERY.md",
     "PHASE-6-READINESS.md",
-    "phase-6-evidence.json"
+    "phase-6-evidence.json",
+    "PHASE-6-CONTROLLED-DEPLOYMENT.md",
+    "phase-6-controlled-evidence.json"
   ],
   "resolvedBlockers": [
     "Read-only Cloudflare MCP access restored; deployed ai Worker authentication code inspected.",
@@ -47,10 +49,11 @@
     "Scoped Supabase catalog, constraints, indexes, RLS, column grants, deletion RPC/lease and migration metadata verified 2026-10-24.",
     "Phone-only account deletion, release guardrails, three-language/mobile browser regression, full automated tests, Docker PostgreSQL contention and synthetic encrypted backup/restore rehearsal completed locally.",
     "Core business backup/restore gate verified on production snapshot 2026-10-25_10-58-30; 19 table counts, 122 public functions, CHECKs and Storage 84 objects verified; full Supabase DR remains limited.",
-    "Phase5 production email OTP and additive phone database migrations applied atomically with explicit approval; versions 20261021010000 and 20261024003756, effective ACLs and 19 existing business table fingerprints verified."
+    "Phase5 production email OTP and additive phone database migrations applied atomically with explicit approval; versions 20261021010000 and 20261024003756, effective ACLs and 19 existing business table fingerprints verified.",
+    "Phase6 local independent admission gate, minimal production-equivalent baseline build, paired RPC rollback and legacy bridge, one-time claims, deployment configuration checks, five byte-identical dry-runs and 1034 tests complete; no production deployment performed."
   ],
   "blockers": [],
-  "implementationScope": "Phase5 approved email OTP and phone database migrations only; no Worker/site deployment, Secrets changes or live email/SMS",
+  "implementationScope": "Phase6 local independent OTP barrier, minimal production baseline build, compatible rollback, preflight and runbook; production read-only, no deployment/configuration changes or live codes",
   "flowProfile": "strict-fullstack",
   "phaseStatus": {
     "phase0": "Targeted Supabase metadata verified; no user rows read",
@@ -185,11 +188,7 @@
     "deployed": false
   },
   "productionBlockers": [
-    "Compatible OTP Worker cutover with maintenance/drain and authorized real email login/refresh acceptance",
-    "Cloudflare Alibaba SMS Secrets and fail-closed release configuration verification",
-    "Separately authorized database lookup canary and DO initialization, budget recovery and PostgREST JWT verification",
-    "Authorized canary, production CORS/Turnstile, live SMS and real mobile-device acceptance",
-    "Separate Worker deployment and website release authorization"
+    "Authoritative termination/completion evidence for pre-gateway legacy OTP executions is unavailable; do not switch KV to RPC based on a new zero counter"
   ],
   "phase4ProductionBackupRestore": {
     "status": "BACKUP_RESTORE_BLOCKED",
@@ -317,6 +316,21 @@
       "First DO lifecycle rollout requires separate compatible rollback bundle",
       "PHONE configuration, lookup canary and private DO initialization require explicit production authorization",
       "Live email/JWT/SMS/DO/Turnstile/device acceptance pending"
-    ]
+    ],
+    "supersededBy": "phase6ControlledDeployment"
+  },
+  "phase6ControlledDeployment": {
+    "status": "BLOCKED",
+    "localImplementationComplete": true,
+    "baselineCommit": "bc5489b6e2962f3e1306aa4de5b4292cecf7ca3d",
+    "baselineNormalizedSha256": "73217b53fa4f0424ee31634000ebbc74e046cb41408290fa8ce7897ab592d645",
+    "mainSha256": "4b275b177b7356a67da386a1fc9910bca11a7014e66953f954ff80c4c16962b5",
+    "rollbackSha256": "4b9aaa6186acb646126e26532fe6eba56430c4a76f9b60a34a1b9057587b9b94",
+    "npmTestPassed": 1034,
+    "dryRunPassed": 5,
+    "legacyBeforeGateway": "UNKNOWN",
+    "solePreparationBlocker": "No authoritative termination/completion evidence for pre-gateway legacy f405 OTP requests",
+    "productionMutationsPerformed": false,
+    "report": "PHASE-6-CONTROLLED-DEPLOYMENT.md"
   }
 }

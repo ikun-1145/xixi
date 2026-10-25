@@ -281,6 +281,8 @@ Phase3A新增`p/js/phone-auth.js`、`ai/phone-settings.js`和`p/css/phone-auth.c
 
 真实Docker PostgreSQL隔离验收15项和Edge+Mock验收20项通过；隔离基线不是完整生产schema，真实短信/DO/生产JWT网关尚未验收。详见`docs/full-stack-development/requirements/mainland-phone-auth/PHASE-3A-DELIVERY.md`。未改Flutter或生产资源。
 
+2026-10-25 更新：Phase 5 已完成生产邮箱 OTP 与手机号加法数据库迁移；Worker 尚未部署。Phase 6 新增 `workers/phone-auth/otp-gateway.js` 独立持久准入屏障及 `scripts/build-controlled-phone-release.mjs` 最小生产基线构建器，配对主包/RPC 回退包/旧 KV 预备包，共用 DO 类且手机号默认关闭。均仅本地实现验收；历史旧 OTP 请求仍缺终止证据，当前为 `BLOCKED`，详见 [受控部署 Runbook](full-stack-development/requirements/mainland-phone-auth/PHASE-6-CONTROLLED-DEPLOYMENT.md)。不能把本地计数归零当作生产排空，也不能把数据库迁移当作邮箱权威已切换。
+
 ## 九、权限设计
 
 - **未登录游客**：可浏览所有静态内容页、可用 `ai.html`（会被登录墙拦截，见上）、不能捐赠/留言/点赞。

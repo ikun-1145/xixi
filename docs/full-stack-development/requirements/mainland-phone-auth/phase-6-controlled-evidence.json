@@ -1,0 +1,238 @@
+{
+  "status": "BLOCKED",
+  "scope": "local preparation complete; not a production deployment",
+  "sole_unresolved_preparation_blocker": "No authoritative termination/completion evidence for pre-gateway legacy f405 OTP requests",
+  "legacy_before_gateway": "UNKNOWN",
+  "production_mutations_performed": false,
+  "sms_or_email_sent": false,
+  "production_inventory": {
+    "checked_at": "2026-10-25T11:12:56.758Z",
+    "worker": "ai",
+    "versions": [
+      {
+        "version_id": "f405a850-780d-483f-8942-83e1798711fe",
+        "percentage": 100
+      }
+    ],
+    "bindings": [
+      {
+        "name": "ADMIN_AUTH_USER_ID",
+        "type": "secret_text"
+      },
+      {
+        "name": "ADMIN_EMAIL",
+        "type": "plain_text"
+      },
+      {
+        "name": "ADMIN_TOKEN",
+        "type": "plain_text"
+      },
+      {
+        "name": "AI_MAINTENANCE",
+        "type": "plain_text"
+      },
+      {
+        "name": "AI_REQUIRE_REQUEST_ID",
+        "type": "plain_text"
+      },
+      {
+        "name": "ALLOWED_ORIGIN",
+        "type": "plain_text"
+      },
+      {
+        "name": "APP_JWT_LEGACY_SECRET",
+        "type": "secret_text"
+      },
+      {
+        "name": "APP_JWT_PRIMARY_SECRET",
+        "type": "secret_text"
+      },
+      {
+        "name": "B2_APPLICATION_KEY",
+        "type": "secret_text"
+      },
+      {
+        "name": "B2_BUCKET",
+        "type": "plain_text"
+      },
+      {
+        "name": "B2_ENDPOINT",
+        "type": "plain_text"
+      },
+      {
+        "name": "B2_KEY_ID",
+        "type": "secret_text"
+      },
+      {
+        "name": "CF_VERSION_METADATA",
+        "type": "version_metadata"
+      },
+      {
+        "name": "CODE_STORE",
+        "type": "kv_namespace",
+        "namespace_id": "29b10d1dd6a647b9bd0bccff5a48719f"
+      },
+      {
+        "name": "DEEPSEEK_API_KEY",
+        "type": "secret_text"
+      },
+      {
+        "name": "DEEPSEEK_KEY",
+        "type": "plain_text"
+      },
+      {
+        "name": "GEETEST_ID",
+        "type": "plain_text"
+      },
+      {
+        "name": "GEETEST_KEY",
+        "type": "plain_text"
+      },
+      {
+        "name": "GEETEST_SERVER_KEY",
+        "type": "secret_text"
+      },
+      {
+        "name": "GITHUB_RELEASE_TOKEN",
+        "type": "secret_text"
+      },
+      {
+        "name": "JWT_SECRET",
+        "type": "plain_text"
+      },
+      {
+        "name": "OC_MEDIA_SECRET",
+        "type": "secret_text"
+      },
+      {
+        "name": "RESEND_API_KEY",
+        "type": "plain_text"
+      },
+      {
+        "name": "RESEND_API_TOKEN",
+        "type": "secret_text"
+      },
+      {
+        "name": "SUNLAND_ACCOUNT_DELETE_INTERNAL_TOKEN",
+        "type": "secret_text"
+      },
+      {
+        "name": "SUPABASE_ANON_KEY",
+        "type": "plain_text"
+      },
+      {
+        "name": "SUPABASE_JWT_SECRET",
+        "type": "plain_text"
+      },
+      {
+        "name": "SUPABASE_LEGACY_JWT_SECRET",
+        "type": "secret_text"
+      },
+      {
+        "name": "SUPABASE_PROJECT_URL",
+        "type": "plain_text"
+      },
+      {
+        "name": "SUPABASE_SECRET_KEY",
+        "type": "secret_text"
+      },
+      {
+        "name": "SUPABASE_SERVICE_ROLE_KEY",
+        "type": "plain_text"
+      },
+      {
+        "name": "SUPABASE_URL",
+        "type": "plain_text"
+      },
+      {
+        "name": "TURNSTILE_SECRET",
+        "type": "plain_text"
+      },
+      {
+        "name": "USAGE_KV",
+        "type": "kv_namespace",
+        "namespace_id": "29b10d1dd6a647b9bd0bccff5a48719f"
+      },
+      {
+        "name": "VDS_CLIENT_ID",
+        "type": "plain_text"
+      },
+      {
+        "name": "VDS_CLIENT_SECRET",
+        "type": "plain_text"
+      },
+      {
+        "name": "VDS_REDIRECT_URI",
+        "type": "plain_text"
+      }
+    ]
+  },
+  "production_module_sha256": "5f301dc9548735615c6f84f0f918e4f9820da082544d002798c35bb1a9fd67a2",
+  "release_manifest": {
+    "baselineCommit": "bc5489b6e2962f3e1306aa4de5b4292cecf7ca3d",
+    "baselineNormalizedSha256": "73217b53fa4f0424ee31634000ebbc74e046cb41408290fa8ce7897ab592d645",
+    "esbuildVersion": "0.28.1",
+    "baselineFiles": {
+      "src/index.js": "03df1ff9582c3ee6783b461fcc4e8581f4e07dd01ac2eeb996a8f02121fd4b2b",
+      "src/chat.js": "48d5ac6015693940c598e7d32068da9484bbf7037b8981a20f1aa7bd76918f27",
+      "src/ai-quota.js": "6434e1600d3a55bb891ea5148a651265ad95095f914ddadf57e1cf25b81c30be",
+      "src/assistant-gallery.js": "36712e3aa8bea484dc5a33001820b8017afb6c041cd67d1d9abceb67c9a882c6",
+      "src/oc.js": "ac094d1ff791f108c4d3de5a34b21cffb0bfe73b8b30a3119f58f65c3b788864",
+      "src/onboarding.js": "8762629eb23926159df245854d15a9ec034fcad6eadb3244e7d3ef91380eec11",
+      "src/admin.js": "3b48339211c0ec32127ae3611fc31a44999fc50509e23efd2b35bb8055cfc2b8",
+      "src/oc-metadata.js": "fde1e9b9e8bec93269603f7347492bab72ce75fd19cb9e48988d0ea4e49a305c",
+      "src/oc-storage.js": "92a9c1505406779768a0f094e3fb61cfa82f8491bd50cd3f4426846ab38e5bae"
+    },
+    "otpSourceFiles": {
+      "src/index.js": "9d5f864416683bceec9a85745a469054c6d9bf759fcd99a5717d6b94138d7362",
+      "src/email-otp.js": "5c983b0f9d7eb934cce35e18c1c19812993d76df30bc7e9b43ba3bc3927f5e4e"
+    },
+    "excluded": [
+      "web-search import/module and all five integration hunks",
+      "standalone staging/old OTP maintenance modules"
+    ],
+    "configurationSha256": {
+      "main": "16b0c8a91c943a7dd923e28314178d91ae197de1673e03a3f6c6ca3b26728c31",
+      "rollback": "26bcfa0649ad084a0fb24ac29bac2afcf7aad9139814aa28cabfb237aa3658be",
+      "legacy-bridge": "bdde83ece67cf5563d344902e2e00d8c9b1030e25c417e4f85fadb5871a880ef",
+      "gateway": "9693a22b0d6480e3db6c12dc78c5deaf8e62078198043fd6c8d382f9f0d40668",
+      "gateway-stage": "f13dc02cc899d78ceb42024df07adbbfec24528156facc0924417ac6901b255a"
+    },
+    "sha256": {
+      "main": "4b275b177b7356a67da386a1fc9910bca11a7014e66953f954ff80c4c16962b5",
+      "rollback": "4b9aaa6186acb646126e26532fe6eba56430c4a76f9b60a34a1b9057587b9b94",
+      "legacy-bridge": "5be842277e5883fe5e7539240c218db95966251cd2b484e8ea1cfe3dd2ed0c8e",
+      "gateway": "1c37844830f2cf209cf0092c1a7c89baaf1e3eaebc1dee1c9d53e989cbee2246"
+    }
+  },
+  "artifact_directory": "/Users/liuxize/Developer/xixi/build/phone-controlled-deploy-20261025-verified",
+  "verification": {
+    "npm_tests": {
+      "passed": 1034,
+      "failed": 0,
+      "skipped": 0
+    },
+    "new_focused_tests": 10,
+    "workerd_sqlite_gate": true,
+    "unknown_persists": true,
+    "one_time_claim": true,
+    "authority_fence": true,
+    "private_phone_initialization": true,
+    "dry_run_profiles": [
+      "main",
+      "rollback",
+      "legacy-bridge",
+      "gateway",
+      "gateway-stage"
+    ],
+    "dry_run_byte_identical_to_frozen_bundles": true,
+    "checksum_manifest_all_10_files_match": true,
+    "production_secrets_values_verified": false
+  },
+  "final_readonly_check": {
+    "checked_at": "2026-10-25T11:34:27.483Z",
+    "version_unchanged": true,
+    "version": "f405a850-780d-483f-8942-83e1798711fe",
+    "percentage": 100
+  }
+}
