@@ -19,25 +19,24 @@ test('update manifest provides both release download URLs', () => {
   assert.ok(new URL(updateManifest.ipaUrl).protocol.startsWith('http'));
 });
 
-test('Android44 forced manifest pins the Worker asset and its signed APK checksum', () => {
-  assert.equal(updateManifest.version,'2.0.0');
-  assert.equal(updateManifest.build,44);
+test('Android45 optional manifest pins verified release assets', () => {
+  assert.equal(updateManifest.version,'2.0.1');
+  assert.equal(updateManifest.build,45);
   assert.equal(updateManifest.android_min_build,43);
-  assert.equal(updateManifest.force,true);
-  assert.equal(updateManifest.url,'https://api.sunland.dev/v1/download/apk?v=2.0.0%2B44');
+  assert.equal(updateManifest.force,false);
+  assert.equal(updateManifest.url,'https://api.sunland.dev/v1/download/apk?v=2.0.1%2B45');
   assert.equal(updateManifest.apk_url,updateManifest.url);
-  assert.equal(updateManifest.apk_sha256,'2507ecbe1756e3ba129efb28dcc93b9be31cffff609fdd8b948aabb7c2f225ba');
-  assert.equal(updateManifest.apk_size,192755449);
-  assert.equal(updateManifest.ipaUrl,'https://api.sunland.dev/v1/download/ipa?v=2.0.0%2B44');
-  assert.equal(updateManifest.ipa_unsigned,false);
-  assert.equal(updateManifest.ipa_signing,'ad-hoc');
-  assert.equal(updateManifest.ipa_registered_devices,1);
-  assert.equal(updateManifest.ipa_sha256,'f621b4ea6b3c76e76e52f003cc914db476397862caf69c774d259428c4a1ae60');
-  assert.equal(updateManifest.ipa_size,41753653);
+  assert.equal(updateManifest.apk_sha256,'7dc917678aa5614d7b59edc3b0c0db9b5ca525f6103cc9db9127025c070b45c9');
+  assert.equal(updateManifest.apk_size,193403317);
+  assert.equal(updateManifest.ipaUrl,'https://api.sunland.dev/v1/download/ipa?v=2.0.1%2B45');
+  assert.equal(updateManifest.ipa_unsigned,true);
+  assert.equal(updateManifest.ipa_signing,'unsigned');
+  assert.equal(updateManifest.ipa_sha256,'c597a97ad706c56ca19a14ebde49cf073946e63e51cb9b1319e2af9ab63a1d43');
+  assert.equal(updateManifest.ipa_size,41662520);
   assert.equal(updateManifest.ios_min_build,43);
 });
 
-test('download page uses Android44 and signed Ad Hoc iOS44 proxy links and labels', async () => {
+test('download page uses Android45 and unsigned iOS45 proxy links and labels', async () => {
   const dom=new JSDOM(`<a data-download-button="android" aria-disabled="true"><span data-release-version></span></a>
     <a data-download-button="ios" aria-disabled="true"><span data-release-version></span></a>
     <p data-release-description hidden></p>`,{url:'https://sunland.dev/download.html',runScripts:'outside-only'});
@@ -52,10 +51,10 @@ test('download page uses Android44 and signed Ad Hoc iOS44 proxy links and label
     const android=dom.window.document.querySelector('[data-download-button="android"]');
     const ios=dom.window.document.querySelector('[data-download-button="ios"]');
     assert.equal(android.href,updateManifest.url);
-    assert.equal(android.textContent,'APK · v2.0.0+44');
+    assert.equal(android.textContent,'APK · v2.0.1+45');
     assert.equal(android.hasAttribute('aria-disabled'),false);
     assert.equal(ios.href,updateManifest.ipaUrl);
-    assert.equal(ios.textContent,'IPA · v2.0.0+44');
+    assert.equal(ios.textContent,'IPA · v2.0.1+45');
   } finally {dom.window.close();}
 });
 
@@ -119,7 +118,7 @@ test('platform labels remain independent when the iOS release differs from Andro
     const start = downloadHtml.indexOf('  (async function() {', downloadHtml.indexOf('RELEASE MANIFEST'));
     const end = downloadHtml.indexOf('  /* ═', downloadHtml.indexOf('RELEASE MANIFEST')+30);
     await dom.window.eval(downloadHtml.slice(start,end));
-    assert.equal(dom.window.document.querySelector('[data-download-button="android"]').textContent,'APK · v2.0.0+44');
+    assert.equal(dom.window.document.querySelector('[data-download-button="android"]').textContent,'APK · v2.0.1+45');
     assert.equal(dom.window.document.querySelector('[data-download-button="ios"]').textContent,'IPA · v1.5.2+42');
   } finally {dom.window.close();}
 });
