@@ -126,6 +126,12 @@ function createEventCard(documentRef, event) {
     uiText("活动详情"),
     "furry-event-action detail",
   );
+  if (!detailLink) {
+    const unavailable = documentRef.createElement("span");
+    unavailable.className = "furry-event-detail-unavailable";
+    unavailable.textContent = uiText("暂无详情链接");
+    actions.appendChild(unavailable);
+  }
   const ctripLink = externalLink(
     documentRef,
     event.hotels?.ctripUrl,

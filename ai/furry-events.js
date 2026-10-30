@@ -69,6 +69,9 @@ export function safeHttpUrl(value) {
   if (!text) return null;
   try {
     const url = new URL(text);
+    const hostname = url.hostname.replace(/\.$/, "");
+    if (hostname === "furryfusion.net" || hostname.endsWith(".furryfusion.net")) return null;
+    if (hostname === "sunland-data-worker.liuxizekali.workers.dev") return null;
     return url.protocol === "http:" || url.protocol === "https:"
       ? url.toString()
       : null;
@@ -149,6 +152,8 @@ export function normalizeFurryEvent(raw) {
   const daysUntil = finiteNumber(raw.days_until ?? raw.daysUntil);
 
   return {
+    id: raw.id ?? null,
+    source_id: raw.source_id ?? null,
     name,
     start_at: startAt,
     end_at: endAt,
@@ -184,10 +189,13 @@ function eventInformationScore(event) {
 
 export function normalizeFurryEvents(value) {
   const byKey = new Map();
-  (Array.isArray(value) ? value : []).forEach(raw => {
+  (Array.isArray(value) ? value : []).forEach((raw, index) => {
     const event = normalizeFurryEvent(raw);
     if (!event) return;
-    const key = `${event.name.toLocaleLowerCase("zh-CN")}|${datePart(event.start_at)}|${event.city}`;
+    const key = typeof event.source_id === "string" && /^fcc:[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(event.source_id)
+      ? `source:${event.source_id.toLowerCase()}`
+      : event.id != null ? `id:${event.id}`
+      : `unidentified:${index}`;
     const existing = byKey.get(key);
     if (!existing || eventInformationScore(event) > eventInformationScore(existing)) {
       byKey.set(key, event);
