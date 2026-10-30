@@ -74,6 +74,7 @@ test("兽聚追问只在已有卡片上下文时触发", () => {
 test("Flutter 与网页字段会归一为同一张安全卡片", () => {
   const normalized = normalizeFurryEvents([
     {
+      id: "shared-event",
       name: "霜蓝兽聚",
       startAt: "2026-09-06T00:00:00.000Z",
       endAt: "2026-09-07T00:00:00.000Z",
@@ -81,7 +82,7 @@ test("Flutter 与网页字段会归一为同一张安全卡片", () => {
       venue: "",
       coverUrl: "javascript:alert(1)",
     },
-    eventA,
+    { ...eventA, id: "shared-event" },
   ]);
   assert.equal(normalized.length, 1);
   assert.equal(normalized[0].address, "测试酒店");
