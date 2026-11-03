@@ -1,0 +1,42 @@
+name: Payment Cron Heartbeat CI
+
+on:
+  pull_request:
+    paths:
+      - "workers/afdianpay/worker.js"
+      - "workers/waffopay/worker.js"
+      - "workers/waffopay/production.js"
+      - "tests/payment-cron-heartbeats.test.mjs"
+      - ".github/workflows/payment-cron-heartbeat-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout proposed code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install locked dependencies without postinstall hooks
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Syntax checks
+        run: |
+          node --check workers/afdianpay/worker.js
+          node --check workers/waffopay/worker.js
+          node --check workers/waffopay/production.js
+          node --check tests/payment-cron-heartbeats.test.mjs
+
+      - name: Complete repository tests (mock only)
+        run: npm test
