@@ -200,10 +200,13 @@ export function summarizePaymentBusinessSignals(rows) {
   for (const group of Object.values(groups)) {
     if (!group.observed) continue;
     for (const key of Object.values(PAYMENT_EVENTS[group.name])) {
-      // Heartbeats may not yet be deployed. Missing one is NOT OBSERVED,
-      // not confirmed zero completed cycles.
-      if (key === "cyclesCompleted") continue;
-      if (group[key] === null) group[key] = 0; // Zero observed, not business success.
+      if (group[key] === null) group[key] = 0;
+    }
+    const statusKeys = Object.values(group.name === "afdianpay"
+      ? AFDIAN_CYCLE_STATUSES : WAFFO_CYCLE_STATUSES);
+    // Only after observing a heartbeat can absent status buckets mean zero.
+    if (statusKeys.some(key => group[key] !== null)) {
+      for (const key of statusKeys) if (group[key] === null) group[key] = 0;
     }
   }
   return [groups.afdianpay, groups.waffopay];
