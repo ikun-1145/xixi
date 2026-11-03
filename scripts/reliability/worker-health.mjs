@@ -40,6 +40,7 @@ function requireAccountId(value) {
 }
 
 function nonnegativeNumber(value) {
+  if (value === null || value === undefined || value === "") return null;
   const number = typeof value === "number" ? value : Number(value);
   return Number.isFinite(number) && number >= 0 ? number : null;
 }
