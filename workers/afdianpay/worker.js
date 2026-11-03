@@ -47,6 +47,9 @@ export default {
     outcomes.push(await Promise.allSettled([retryKnownOrders(env)]).then(results => results[0]));
     const errors = outcomes.filter(result => result.status === 'rejected');
     if (errors.length) throw new Error('RECONCILIATION_INCOMPLETE');
+    // Business-level heartbeat: this invocation finished all participating
+    // lanes without unhandled failures. This is not a count of paid orders.
+    logEvent({ event: 'reconciliation_cycle_completed', lane_count: lanes.length });
   },
   async fetch(request, env) {
     const path = new URL(request.url).pathname;
