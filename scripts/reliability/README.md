@@ -12,7 +12,11 @@
 
 尚未完成的 `phone-auth` 被明确排除。
 
-工具查询 Cloudflare Analytics SQL API 的 `logs.workersLogs` 聚合数据，分别统计 **HTTP Fetch** 与 **Scheduled/Cron** 执行次数，同时返回 HTTP 4xx/5xx、平均 CPU、近似最高 CPU 及平均运行时间。HTTP 5xx 比例的分母只计算 HTTP Fetch，不会混入 Cron。SQL **不查询** `message`、`url`、聊天正文、JWT、邮件、手机号或其他用户数据。
+工具查询 Cloudflare Analytics SQL API 的 `logs.workersLogs` 聚合数据，分别统计 **HTTP Fetch** 与 **Scheduled/Cron** 执行次数，同时返回 HTTP 4xx/5xx、平均 CPU、近似最高 CPU 及平均运行时间。HTTP 5xx 比例的分母只计算 HTTP Fetch，不会混入 Cron。
+
+工具另执行一条纯聚合 `SELECT`，从 Cloudflare 结构化日志的 `attributes['event']` 统计已存在的支付业务事件。爱发电目前可统计 `reconciliation_started`、`payment_scan_processed` 与 `scan_failed`，Waffo 可统计 `waffo_production_failed`、`waffo_production_outbox_unavailable`。查询**不读取订单详情、请求正文或原始消息**。
+
+**重要：** `payment_scan_processed` 发生在完成游标 RPC 之前，不能算作整轮任务成功；Waffo 目前也没有可靠的成功心跳。没有业务事件或仅没有错误日志，都不能证明任务成功。Cloudflare 日志可能采样，计数只表示已观测事件。SQL **不查询** `message`、`url`、聊天正文、JWT、邮件、手机号或其他用户数据。
 
 ## 使用方法
 
@@ -40,6 +44,8 @@ node --test scripts/reliability/worker-health.test.mjs
 - 某段时间的 HTTP 5xx 为 0，并不证明 DeepSeek、Cron 或业务逻辑一定成功。
 - 平均 CPU 与近似最大 CPU 不是 Cloudflare CPU 超限判定结果。
 - 此工具**不会**自动通知故障，不能代替后续的 Cron 成功心跳或 Workers Issues 告警。
+- 支付业务指标查询若失败，会让整个命令失败并返回非零退出码，不输出“0 次业务故障”误导使用者。
+- 业务日志保存在 `attributes['event']`，不在普通 `message` 字段；聚合只使用代码中确认的固定事件名称。
 
 ## 数据安全与失败处理
 
