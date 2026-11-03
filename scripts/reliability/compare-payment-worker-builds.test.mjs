@@ -14,7 +14,7 @@ function fixtures() {
   for (const [index, worker] of WORKERS.entries()) {
     const baseline = Buffer.alloc(1800 + index, 0x61 + index);
     const marker = worker === "afdianpay"
-      ? "reconciliation_cycle_completed" : "waffo_production_outbox_cycle";
+      ? "reconciliation_cycle_outcome" : "waffo_production_outbox_cycle";
     const candidateA = Buffer.concat([Buffer.alloc(1900 + index, 0x72), Buffer.from(marker)]);
     const candidateB = Buffer.from(candidateA);
     expected.workers.push({
