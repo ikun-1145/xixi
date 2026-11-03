@@ -12,7 +12,7 @@
 
 尚未完成的 `phone-auth` 被明确排除。
 
-工具查询 Cloudflare Analytics SQL API 的 `logs.workersLogs` 聚合数据，仅返回已采集的执行数、HTTP 4xx/5xx、平均 CPU、近似最高 CPU 及平均运行时间。SQL **不查询** `message`、`url`、聊天正文、JWT、邮件、手机号或其他用户数据。
+工具查询 Cloudflare Analytics SQL API 的 `logs.workersLogs` 聚合数据，分别统计 **HTTP Fetch** 与 **Scheduled/Cron** 执行次数，同时返回 HTTP 4xx/5xx、平均 CPU、近似最高 CPU 及平均运行时间。HTTP 5xx 比例的分母只计算 HTTP Fetch，不会混入 Cron。SQL **不查询** `message`、`url`、聊天正文、JWT、邮件、手机号或其他用户数据。
 
 ## 使用方法
 
