@@ -19,6 +19,39 @@ MQIDAQAB
 -----END PUBLIC KEY-----`;
 
 
+/**
+ * Classify Cron outcomes without converting skipped leases or caught payment
+ * retries into a success signal. All fields are bounded counts, no order data.
+ *
+ * "no_observed_failure" is intentionally not called "successful": an empty
+ * retry result can also mean the retry lease was held by another invocation.
+ */
+export function summarizeReconciliationOutcomes(outcomes, laneCount = 2) {
+  if (!Array.isArray(outcomes) || !Number.isSafeInteger(laneCount)
+    || laneCount < 1 || outcomes.length !== laneCount + 1) {
+    throw new TypeError('Invalid reconciliation outcomes');
+  }
+  const rejectedTasks = outcomes.filter(result => result?.status === 'rejected').length;
+  const deferredLanes = outcomes.slice(0, laneCount)
+    .filter(result => result?.status === 'fulfilled' && result.value?.acquired !== true).length;
+  const retry = outcomes[laneCount];
+  const retryResults = retry?.status === 'fulfilled' && Array.isArray(retry.value)
+    ? retry.value : null;
+  const retryFailures = retryResults === null ? 0
+    : retryResults.filter(result => result?.status === 'unresolved'
+      && result?.reason_code === 'PROVIDER_QUERY_FAILED').length;
+  const unexpectedRetryResult = retry?.status === 'fulfilled' && !retryResults;
+  return {
+    status: rejectedTasks ? 'failed'
+      : retryFailures ? 'partial_failure'
+      : deferredLanes || unexpectedRetryResult ? 'deferred'
+      : 'no_observed_failure',
+    rejected_tasks: rejectedTasks,
+    deferred_lanes: deferredLanes,
+    retry_failures: retryFailures,
+  };
+}
+
 export default {
   async scheduled(controller, env) {
     logEvent({ event: 'reconciliation_started', cron: controller?.cron ?? null,
@@ -45,11 +78,11 @@ export default {
     }));
     // Process durable due hints after pages, so newly verified page orders are not queried again.
     outcomes.push(await Promise.allSettled([retryKnownOrders(env)]).then(results => results[0]));
-    const errors = outcomes.filter(result => result.status === 'rejected');
-    if (errors.length) throw new Error('RECONCILIATION_INCOMPLETE');
-    // Business-level heartbeat: this invocation finished all participating
-    // lanes without unhandled failures. This is not a count of paid orders.
-    logEvent({ event: 'reconciliation_cycle_completed', lane_count: lanes.length });
+    const cycle = summarizeReconciliationOutcomes(outcomes, lanes.length);
+    // Signal *before* rethrow so a rejected task is observable even when
+    // Cloudflare reports only a failed invocation.
+    logEvent({ event: 'reconciliation_cycle_outcome', ...cycle });
+    if (cycle.rejected_tasks) throw new Error('RECONCILIATION_INCOMPLETE');
   },
   async fetch(request, env) {
     const path = new URL(request.url).pathname;
