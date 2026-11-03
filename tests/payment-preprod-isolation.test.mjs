@@ -1,12 +1,14 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync, existsSync, readFileSync, rmSync } from 'node:fs';
+import { generateKeyPairSync } from 'node:crypto';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { paymentEgress } from '../workers/waffopay/preprod-transport.js';
 import preprodWorker, { preprodReady } from '../workers/waffopay/preprod-worker.js';
 import preprodMock from '../workers/waffopay/preprod-mock.js';
 import { productionRpc } from '../workers/waffopay/production-rpc.js';
+import { queryProductionOrder } from '../workers/waffopay/payment-proof.js';
 import { PREPROD,renderPreprodConfigs,validatePreprodInput,writePreprodConfigs }
   from '../scripts/reliability/render-payment-preprod.mjs';
 
@@ -141,3 +143,40 @@ test('mock Worker recognizes only fixed synthetic provider and entitlement RPC',
   const invalid=await preprodMock.fetch(new Request('https://api.waffo.ai/v1/graphql',{method:'POST',body:'{}'}));
   assert.equal(invalid.status,404);
 });
+
+
+test('preprod proof fetch signs with synthetic key and only invokes internal mock',async()=>{
+  const keys=generateKeyPairSync('rsa',{modulusLength:2048});
+  const signingKey=keys.privateKey.export({type:'pkcs8',format:'pem'});
+  const uuid='11111111-1111-4111-8111-111111111111';
+  const actualCalls=[];
+  const env={
+    WAFFO_PREPROD_ISOLATED:'true',
+    WAFFO_PREPROD_SIGNING_KEY:signingKey,
+    WAFFO_PREPROD_TEST_SIGNING_KEY:'not-the-same-key',
+    WAFFO_PROD_MERCHANT_ID:'MER_PREPROD1',
+    WAFFO_PROD_STORE_ID:'STO_PREPROD1',
+    WAFFO_PROD_PRODUCT_ID:'PROD_PREPROD1',
+    WAFFO_PREPROD_PROVIDER:{fetch:async(url,init)=>{
+      actualCalls.push({url,auth:init.headers['X-Signature']});
+      return preprodMock.fetch(new Request(url,init));
+    }},
+  };
+  const event={
+    mode:'prod',storeId:'STO_PREPROD1',
+    order:{orderId:'ORD_PREPROD1',reference:uuid,
+      productId:'PROD_PREPROD1',currency:'CNY',paymentId:'PAY_PREPROD1'}
+  };
+  const intent={
+    mode:'prod',user_id:'synthetic-user',currency:'CNY',amount_minor:1500,
+    store_id:'STO_PREPROD1',product_id:'PROD_PREPROD1',payment_reference:uuid
+  };
+  const result=await queryProductionOrder(env,event,intent);
+  assert.equal(result.onetimeOrder.id,'ORD_PREPROD1');
+  assert.equal(actualCalls.length,1);
+  assert.equal(actualCalls[0].url,'https://waffo-provider.preprod.invalid/v1/graphql');
+  assert.ok(typeof actualCalls[0].auth==='string'&&actualCalls[0].auth.length>50);
+  const unavailable={...env,WAFFO_PREPROD_PROVIDER:null};
+  await assert.rejects(queryProductionOrder(unavailable,event,intent),/proof_unavailable/);
+});
+
