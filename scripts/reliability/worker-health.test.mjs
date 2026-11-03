@@ -41,6 +41,7 @@ test("builds a scoped read-only aggregate query for supported Workers", () => {
   assert.match(req.query, /^SELECT /);
   assert.match(req.query, /FROM logs\.workersLogs/);
   assert.match(req.query, /APPROX_MAX\(cpuTimeMs\)/);
+  assert.match(req.query, /ORDER BY invocations DESC LIMIT 10$/);
   assert.doesNotMatch(req.query, /(^|[^a-z])(?:UPDATE|DELETE|INSERT|ALTER|DROP|CREATE)([^a-z]|$)/i);
   assert.doesNotMatch(req.query, /\b(?:message|url|requestId|userId|authorization)\b/i);
   for (const worker of WORKERS) assert.ok(req.query.includes("'" + worker + "'"));
