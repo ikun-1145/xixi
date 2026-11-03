@@ -43,7 +43,7 @@ const PAYMENT_EVENTS = Object.freeze({
     reconciliation_started: "started",
     payment_scan_processed: "pagesProcessed",
     scan_failed: "scanFailed",
-    reconciliation_cycle_completed: "cyclesCompleted",
+    reconciliation_cycle_outcome: "cyclesNoObservedFailure",
   }),
   waffopay: Object.freeze({
     waffo_production_failed: "productionFailed",
