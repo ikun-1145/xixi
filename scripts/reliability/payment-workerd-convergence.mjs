@@ -317,13 +317,30 @@ export async function main(argv = process.argv.slice(2)) {
     // remain auditable, but not permanently prevent the 11th valid event.
     await w.db.prepare("UPDATE production_outbox SET payload=? WHERE event_id < 'RF_AUDIT_010'")
       .bind(JSON.stringify({order:{reference:"not-a-bound-intent"}})).run();
-    await cron(w);
+    const fireCron = () => w.worker.scheduled({cron:"*/5 * * * *",scheduledTime:new Date(0)});
+    await fireCron();
     const initial = await w.db.prepare("SELECT state FROM production_outbox WHERE event_id='RF_AUDIT_010'").first();
     assert.equal(initial.state,"pending","the 11th row should be next in queue");
-    await cron(w);
+    const orphans = await w.db.prepare("SELECT COUNT(*) AS n FROM production_outbox WHERE last_error='intent_unbound' AND attempt_count=1").first();
+    assert.equal(orphans.n,10,"all ten oldest unbound rows must be deferred once");
+    await fireCron();
     const later = await w.db.prepare("SELECT state FROM production_outbox WHERE event_id='RF_AUDIT_010'").first();
     assert.equal(later.state,"delivered","an orphaned prefix must not starve a later valid event");
     assert.equal(w.state.grants,0,"synthetic audit-only events must not grant Pro");
+  });
+
+  await scenario("ten malformed pending payloads do not starve a valid queued event",path,run,async w => {
+    await seedSyntheticBacklog(w,11);
+    await w.db.prepare("UPDATE production_outbox SET payload=? WHERE event_id < 'RF_AUDIT_010'")
+      .bind("{SYNTHETIC_MALFORMED_JSON").run();
+    const fireCron = () => w.worker.scheduled({cron:"*/5 * * * *",scheduledTime:new Date(0)});
+    await fireCron();
+    const poisoned = await w.db.prepare("SELECT COUNT(*) AS n FROM production_outbox WHERE last_error='outbox_entry_failed' AND attempt_count=1").first();
+    assert.equal(poisoned.n,10,"malformed rows must be safely deferred");
+    await fireCron();
+    const last = await w.db.prepare("SELECT state FROM production_outbox WHERE event_id='RF_AUDIT_010'").first();
+    assert.equal(last.state,"delivered","malformed records cannot permanently block later valid payments");
+    assert.equal(w.state.grants,0);
   });
 
   await scenario("overlapping Cron retries after lost RPC ack never double-grant",path,run,async w => {
