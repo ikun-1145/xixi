@@ -9,6 +9,8 @@ on:
       - "scripts/reliability/render-payment-preprod.mjs"
       - "tests/payment-preprod-isolation.test.mjs"
       - "scripts/reliability/payment-preprod-workerd-e2e.mjs"
+      - "scripts/reliability/cloud-preprod-isolation-preflight.mjs"
+      - "tests/payment-cloud-preprod-preflight.test.mjs"
       - ".github/workflows/payment-preprod-isolation-ci.yml"
 
 permissions:
@@ -45,6 +47,8 @@ jobs:
           node --check workers/waffopay/preprod-transport.js
           node --check scripts/reliability/render-payment-preprod.mjs
           node --test tests/payment-preprod-isolation.test.mjs
+          node --check scripts/reliability/cloud-preprod-isolation-preflight.mjs
+          node --test tests/payment-cloud-preprod-preflight.test.mjs
 
       - name: Full repository regression tests (no real credentials)
         run: npm test
