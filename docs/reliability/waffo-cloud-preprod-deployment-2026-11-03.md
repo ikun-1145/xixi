@@ -64,3 +64,15 @@ D1 创建时选择亚太主区域提示，关闭读副本。按照仓库 `worker
 - 同日再次通过 Cloudflare 的只读接口核对两套部署版本均保持不变、两个 Worker 无 workers.dev / Preview URL / Cron，预发布入口只绑定隔离 D1 和两个 Mock Service Binding。现有 `ai`、`waffopay`、`afdianpay` 生产版本均未在本轮改变。
 
 **严禁将这 11 项测试写成已在 Cloudflare 云端成功执行的 Access→Gateway→Worker E2E**：Access 上下文是本地模拟；私有云端 Worker 尚未获得单独审批的第三个 Access 测试网关。生产上线仍为 NO-GO。
+
+## 部署版本与来源指纹锁定（2026-11-03）
+
+已将 `scripts/reliability/cloud-preprod-postdeploy-audit.mjs` 从“仅验证单版本 100%”收紧为同时验证 **实际已部署的 Worker Version ID** 及版本元数据 `workers/commit_sha`。使用 Cloudflare 的只读 `GET /versions/{version_id}` 拉取**正在部署的版本**，而不是只看最新上传版本；若出现版本切换、改密钥触发新的版本或来源提交不一致，将返回 **BLOCKED**，等待重新审查并更新审核基线。
+
+- 私有预发布入口：Version `26863803-021d-46bd-b3d5-49c15abbfe90`。
+- 内部支付模拟 Mock：Version `39fd33fd-173c-481d-ba99-03740c1a5574`。
+- 两者当时审核的源提交：`e670f7ba43c1089ac1268d72bf1364fd65c1b45b`。
+- **刚刚经 Cloudflare 只读核验**：2/2 版本 ID 和提交元数据匹配；workers.dev、Preview URL 全关闭，Cron 均为 0；正式 `ai`、`waffopay`、`afdianpay` 均未通过本任务部署。
+- CI **#41633191662 PASS**，完整仓库 **827 项，826 通过、0 失败、1 跳过**；本地真实双 Worker + Access 网关模拟 **11/11**；独立可重复构建 **#41633191638 PASS**。
+
+> 版本指纹锁定是**代码来源与部署变更审计**，不是证明 Cloudflare 云端已实际执行签名 Webhook。两个私有 Worker 目前仍无被授权的云端测试入口。第三个 Cloudflare Access 网关和访问策略需另行明确批准；生产上线仍为 NO-GO。
