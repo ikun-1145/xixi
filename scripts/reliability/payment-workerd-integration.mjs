@@ -44,15 +44,16 @@ async function importTestRuntime() {
   const require = createRequire(join(base, "integration-loader.cjs"));
   const entry = require.resolve("miniflare");
   const module = await import(pathToFileURL(entry).href);
-  if (typeof module.Miniflare !== "function") {
+  if (typeof module.Miniflare !== "function" ||
+      typeof module.convertV4MiniflareOptions !== "function") {
     throw new Error("Miniflare integration API unavailable");
   }
   return module;
 }
 
-function createIsolatedWorker(Miniflare, scriptPath, bindings = {}, includeD1 = false) {
+function createIsolatedWorker(Miniflare, convertV4MiniflareOptions, scriptPath, bindings = {}, includeD1 = false) {
   const outbound = { attempts: 0 };
-  const mf = new Miniflare({
+  const mf = new Miniflare(convertV4MiniflareOptions({
     modules: true,
     scriptPath,
     compatibilityDate: "2026-09-05",
@@ -65,12 +66,12 @@ function createIsolatedWorker(Miniflare, scriptPath, bindings = {}, includeD1 = 
       return new Response("NO_OUTBOUND_NETWORK", { status: 503 });
     },
     // No persistence, remote bindings, real secrets, or service bindings.
-  });
+  }));
   return { mf, outbound };
 }
 
-async function waffoCronCase({ Miniflare, waffoPath, enabled, payload, expectation }) {
-  const { mf, outbound } = createIsolatedWorker(Miniflare, waffoPath,
+async function waffoCronCase({ Miniflare, convertV4MiniflareOptions, waffoPath, enabled, payload, expectation }) {
+  const { mf, outbound } = createIsolatedWorker(Miniflare, convertV4MiniflareOptions, waffoPath,
     enabled ? MOCK_VALUES : {}, true);
   try {
     const db = await mf.getD1Database("WAFFO_PRODUCTION_LEDGER");
@@ -93,8 +94,8 @@ async function waffoCronCase({ Miniflare, waffoPath, enabled, payload, expectati
   }
 }
 
-async function afdianFailClosedCase({ Miniflare, afdianPath }) {
-  const { mf, outbound } = createIsolatedWorker(Miniflare, afdianPath, {
+async function afdianFailClosedCase({ Miniflare, convertV4MiniflareOptions, afdianPath }) {
+  const { mf, outbound } = createIsolatedWorker(Miniflare, convertV4MiniflareOptions, afdianPath, {
     AFDIAN_ROLLOUT_DIAGNOSTICS_ONLY: "false",
     SUPABASE_URL: "https://supabase.unit.invalid",
     SUPABASE_KEY: "fake-test-token-only",
