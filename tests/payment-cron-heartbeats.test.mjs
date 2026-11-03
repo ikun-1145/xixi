@@ -3,6 +3,7 @@ import test from "node:test";
 import assert from "node:assert/strict";
 
 import waffoWorker from "../workers/waffopay/worker.js";
+import { summarizeReconciliationOutcomes } from "../workers/afdianpay/worker.js";
 import { reconcileProductionOutbox } from "../workers/waffopay/production.js";
 
 function readonlyLedger(rows) {
@@ -121,11 +122,36 @@ test("Afdian heartbeat occurs only after all reconciliation lane errors are chec
   const source = fs.readFileSync(new URL("../workers/afdianpay/worker.js", import.meta.url), "utf8");
   const handler = source.split("async scheduled(controller, env) {")[1]?.split("async fetch(request, env) {")[0];
   assert.ok(handler);
-  const failGate = handler.indexOf("if (errors.length) throw new Error('RECONCILIATION_INCOMPLETE')");
-  const successEvent = handler.indexOf("event: 'reconciliation_cycle_completed'");
-  assert.ok(failGate >= 0 && successEvent > failGate);
+  const signal = handler.indexOf("event: 'reconciliation_cycle_outcome'");
+  const failGate = handler.indexOf("if (cycle.rejected_tasks) throw new Error('RECONCILIATION_INCOMPLETE')");
+  assert.ok(signal >= 0 && failGate > signal, "record failed outcomes before rethrow");
   assert.match(handler, /outcomes = await Promise\.allSettled/u);
   assert.match(handler, /retryKnownOrders\(env\)/u);
+});
+
+
+test("Afdian Cron outcome distinguishes failures, lease skips and swallowed retry errors", () => {
+  const laneOk = { status: "fulfilled", value: { acquired: true } };
+  const retryOk = { status: "fulfilled", value: [] };
+  assert.deepEqual(summarizeReconciliationOutcomes([laneOk, laneOk, retryOk]), {
+    status: "no_observed_failure", rejected_tasks: 0, deferred_lanes: 0, retry_failures: 0,
+  });
+  assert.deepEqual(summarizeReconciliationOutcomes([
+    laneOk, {status:"fulfilled",value:{acquired:false}}, retryOk,
+  ]), {
+    status: "deferred", rejected_tasks: 0, deferred_lanes: 1, retry_failures: 0,
+  });
+  assert.deepEqual(summarizeReconciliationOutcomes([
+    laneOk, laneOk, {status:"fulfilled",value:[{status:"unresolved",reason_code:"PROVIDER_QUERY_FAILED"}]},
+  ]), {
+    status: "partial_failure", rejected_tasks: 0, deferred_lanes: 0, retry_failures: 1,
+  });
+  assert.deepEqual(summarizeReconciliationOutcomes([
+    laneOk, {status:"rejected",reason:new Error("test error")}, retryOk,
+  ]), {
+    status: "failed", rejected_tasks: 1, deferred_lanes: 0, retry_failures: 0,
+  });
+  assert.throws(() => summarizeReconciliationOutcomes([laneOk]), /Invalid reconciliation outcomes/);
 });
 
 test("production code keeps existing payout, subscription and entitlement processing", () => {
