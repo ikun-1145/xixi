@@ -156,7 +156,10 @@ export function summarizePaymentBusinessSignals(rows) {
       started: null,
       pagesProcessed: null,
       scanFailed: null,
-      cyclesCompleted: null,
+      cyclesNoObservedFailure: null,
+      cyclesPartialFailure: null,
+      cyclesDeferred: null,
+      cyclesFailed: null,
     },
     waffopay: {
       name: "waffopay",
@@ -176,7 +179,10 @@ export function summarizePaymentBusinessSignals(rows) {
     const statusName = item?.statusName;
     if (!Object.hasOwn(PAYMENT_EVENTS, name)) continue;
     let category;
-    if (name === "waffopay" && eventName === "waffo_production_outbox_cycle") {
+    if (name === "afdianpay" && eventName === "reconciliation_cycle_outcome") {
+      if (!Object.hasOwn(AFDIAN_CYCLE_STATUSES, statusName)) continue;
+      category = AFDIAN_CYCLE_STATUSES[statusName];
+    } else if (name === "waffopay" && eventName === "waffo_production_outbox_cycle") {
       if (!Object.hasOwn(WAFFO_CYCLE_STATUSES, statusName)) continue;
       category = WAFFO_CYCLE_STATUSES[statusName];
     } else {
