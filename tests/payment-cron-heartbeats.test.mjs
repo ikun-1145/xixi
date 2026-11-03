@@ -165,7 +165,8 @@ test("Afdian Cron outcome distinguishes failures, lease skips and swallowed retr
 test("production code keeps existing payout, subscription and entitlement processing", () => {
   const source = fs.readFileSync(new URL("../workers/waffopay/production.js", import.meta.url), "utf8");
   assert.match(source, /await processProductionEvent\(env,event,intent\)/u);
-  assert.match(source, /if\(!intent\)\{unbound\+\+;continue;\}/u);
+  assert.match(source, /if\(!intent\)\{\s*unbound\+\+;[\s\S]*?deferUnprocessableOutboxRow\(db,row,'intent_unbound'\)/u);
+  assert.match(source, /await deferUnprocessableOutboxRow\(db,row,'outbox_entry_failed'\)/u);
   assert.match(source, /productionFailure\(error\)/u);
   assert.match(source, /entitlement_enabled=env\.WAFFO_PRODUCTION_ENTITLEMENT_ENABLED==='true'/u);
 });
