@@ -9,6 +9,7 @@ import { generateKeyPairSync, createSign } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { join, resolve } from "node:path";
 import { pathToFileURL, fileURLToPath } from "node:url";
+import preprodGateway from "../../workers/waffopay/preprod-gateway-proposal.js";
 
 const REF = "11111111-1111-4111-8111-111111111111";
 const D1_ID = "88888888-8888-4888-8888-888888888888";
@@ -91,6 +92,11 @@ export async function main(argv = process.argv.slice(2)) {
   const mock = readFileSync(join(root,"mock","preprod-mock.js"),"utf8");
   if (preprod.length < 1000 || mock.length < 400) throw new Error("Compiled preprod modules missing");
   const {Miniflare,convertV4MiniflareOptions} = await loadRuntime();
+  // The gateway's Cloudflare Access context is locally simulated in Node.
+  // The private Worker, Mock Worker, Service Bindings, and D1 run in workerd.
+  const gatewayAudit = "synthetic-test-Access-AUD-not-production-12345678";
+  const gatewayIdentity = {access:{aud:gatewayAudit,
+    async getIdentity(){return {email:"synthetic-operator@example.invalid"};}}};
   let unmockedOutbound = 0;
   const blocked = async () => {
     unmockedOutbound++;
@@ -138,6 +144,15 @@ export async function main(argv = process.argv.slice(2)) {
     const db = await mf.getD1Database("WAFFO_PRODUCTION_LEDGER");
     await seedLocalD1(db);
     const worker = await mf.getWorker("waffopay-preprod-isolated");
+    const gatewayEnv = {
+      WAFFO_PREPROD_GATEWAY_ENABLED:"true",
+      WAFFO_PREPROD_ISOLATED:"true",
+      WAFFO_PREPROD_ENTITLEMENTS_ENABLED:"false",
+      WAFFO_PREPROD_ACCESS_AUD:gatewayAudit,
+      WAFFO_PREPROD_GATE_TOKEN:TOKEN,
+      WAFFO_PREPROD_ALLOW_CRON:"false",
+      WAFFO_PREPROD_TARGET:{fetch:request=>worker.fetch(request)},
+    };
 
     await testStep("no token is rejected without D1 modifications",async()=>{
       const r=await worker.fetch(new Request("https://preprod.test.invalid/__preprod/health"));
@@ -160,11 +175,19 @@ export async function main(argv = process.argv.slice(2)) {
       assert.equal(r.status,401);
       assert.equal((await db.prepare("SELECT COUNT(*) AS n FROM event_ledger").first()).n,0);
     });
-    await testStep("valid synthetic payment traverses two actual service bindings and D1",async()=>{
-      const r=await worker.fetch(signedWebhook());
+    await testStep("Access-gated synthetic Webhook traverses Gateway to both real Worker bindings and D1",async()=>{
+      const original=signedWebhook();
+      // The external caller supplies only Waffo's RSA signature. The gateway
+      // adds its private token and must never forward client credentials.
+      const incoming=new Request(original.url,{method:"POST",
+        headers:{"content-type":"application/json",
+          "x-waffo-signature":original.headers.get("X-Waffo-Signature"),
+          "Authorization":"Bearer untrusted","Cookie":"session=untrusted"},
+        body:await original.text()});
+      const r=await preprodGateway.fetch(incoming,gatewayEnv,gatewayIdentity);
       const body=await r.json();
       assert.equal(r.status,200,JSON.stringify(body));
-      assert.equal(body.entitlementEnabled,false);
+      assert.deepEqual(body,{ok:true,syntheticOnly:true});
       const record=await db.prepare(
         "SELECT state,attempt_count FROM production_outbox WHERE event_id=?"
       ).bind(PAYMENT).first();
@@ -187,6 +210,49 @@ export async function main(argv = process.argv.slice(2)) {
       assert.equal(body.status,"completed");
       assert.equal(body.due,0);
       assert.equal(body.failed,0);
+    });
+    await testStep("gateway denies unsigned Access context without touching D1",async()=>{
+      const before=(await db.prepare("SELECT COUNT(*) AS n FROM event_ledger").first()).n;
+      for(const context of [null,{}, {access:{aud:"wrong",getIdentity:gatewayIdentity.access.getIdentity}}]){
+        const r=await preprodGateway.fetch(
+          new Request("https://gateway.test.invalid/__preprod/health"),gatewayEnv,context);
+        assert.equal(r.status,403);
+      }
+      assert.equal((await db.prepare("SELECT COUNT(*) AS n FROM event_ledger").first()).n,before);
+    });
+    await testStep("Access gateway returns only safe health information through private Worker",async()=>{
+      const r=await preprodGateway.fetch(
+        new Request("https://gateway.test.invalid/__preprod/health",{
+          headers:{"Authorization":"Bearer ignore","Cf-Access-Jwt-Assertion":"spoofed"},
+        }),gatewayEnv,gatewayIdentity);
+      assert.equal(r.status,200);
+      assert.deepEqual(await r.json(),
+        {ok:true,mode:"isolated",entitlements:false,automaticCron:false});
+    });
+    await testStep("Gateway blocks manual Cron without second opt-in, then reports safe counters",async()=>{
+      const request=()=>new Request("https://gateway.test.invalid/__preprod/cron",{method:"POST"});
+      const before=await preprodGateway.fetch(request(),gatewayEnv,gatewayIdentity);
+      assert.equal(before.status,403);
+      gatewayEnv.WAFFO_PREPROD_ALLOW_CRON="true";
+      const after=await preprodGateway.fetch(request(),gatewayEnv,gatewayIdentity);
+      assert.equal(after.status,200);
+      assert.deepEqual(await after.json(),
+        {status:"completed",due:0,processed:0,failed:0,unbound:0});
+      gatewayEnv.WAFFO_PREPROD_ALLOW_CRON="false";
+    });
+    await testStep("Gateway rejects non-test routes, URL queries and forged Access headers",async()=>{
+      for(const path of ["/checkout/waffo","/webhook/waffo",
+        "/__preprod/health?leak=1"]){
+        const r=await preprodGateway.fetch(new Request("https://gateway.test.invalid"+path,{
+          headers:{"X-User-Email":"attacker@invalid"},
+        }),gatewayEnv,gatewayIdentity);
+        assert.equal(r.status,404,path);
+      }
+      const fake=await preprodGateway.fetch(new Request(
+        "https://gateway.test.invalid/__preprod/health",{
+          headers:{"Cf-Access-Jwt-Assertion":"fake","X-User-Email":"admin@invalid"},
+        }),gatewayEnv,{});
+      assert.equal(fake.status,403);
     });
     await testStep("public checkout and status endpoints remain inaccessible",async()=>{
       for(const path of ["/checkout/waffo","/v1/account/identity","/webhook/waffo"]){
