@@ -17,6 +17,8 @@ function sampleRow(name = "ai") {
   return {
     scriptName: name,
     invocations: 400,
+    fetchInvocations: 240,
+    scheduledInvocations: 160,
     http5xx: 12,
     http4xx: 30,
     avgCpuMs: 3.5,
@@ -41,6 +43,8 @@ test("builds a scoped read-only aggregate query for supported Workers", () => {
   assert.match(req.query, /^SELECT /);
   assert.match(req.query, /FROM logs\.workersLogs/);
   assert.match(req.query, /APPROX_MAX\(cpuTimeMs\)/);
+  assert.match(req.query, /invocationType = 'fetch'/);
+  assert.match(req.query, /invocationType = 'scheduled'/);
   assert.match(req.query, /ORDER BY invocations DESC LIMIT 10$/);
   assert.doesNotMatch(req.query, /(^|[^a-z])(?:UPDATE|DELETE|INSERT|ALTER|DROP|CREATE)([^a-z]|$)/i);
   assert.doesNotMatch(req.query, /\b(?:message|url|requestId|userId|authorization)\b/i);
@@ -61,7 +65,9 @@ test("missing Workers are marked unobserved, never as zero incidents", () => {
   assert.equal(summary.length, 3);
   assert.equal(summary[0].name, "ai");
   assert.equal(summary[0].observed, true);
-  assert.equal(summary[0].errorRate5xx, 12 / 400);
+  assert.equal(summary[0].fetchInvocations, 240);
+  assert.equal(summary[0].scheduledInvocations, 160);
+  assert.equal(summary[0].errorRate5xx, 12 / 240);
   for (const worker of summary.slice(1)) {
     assert.equal(worker.observed, false);
     assert.equal(worker.invocations, null);
@@ -78,7 +84,7 @@ test("missing Workers are marked unobserved, never as zero incidents", () => {
 test("summaries omit raw logs, URLs and other unexpected columns", () => {
   const data = summarizeWorkerRows([sampleRow()]);
   assert.deepEqual(Object.keys(data[0]), [
-    "name", "observed", "invocations", "http5xx", "http4xx",
+    "name", "observed", "invocations", "fetchInvocations", "scheduledInvocations", "http5xx", "http4xx",
     "errorRate5xx", "avgCpuMs", "maxCpuMs", "avgWallMs",
   ]);
   assert.doesNotMatch(JSON.stringify(data), /private log message|example\.com/);
@@ -115,6 +121,8 @@ test("uses only the analytics SQL endpoint with a scoped bearer token", async ()
   assert.match(payload.query, /^SELECT /);
   assert.deepEqual(payload.scope, { accountTag: accountId });
   assert.equal(report.workers[0].http5xx, 12);
+  assert.equal(report.workers[0].fetchInvocations, 240);
+  assert.equal(report.workers[0].scheduledInvocations, 160);
   assert.doesNotMatch(JSON.stringify(report), /private log message|token=private|test-token-do-not-print/);
 });
 
