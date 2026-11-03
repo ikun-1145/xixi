@@ -16,7 +16,9 @@
 
 工具另执行一条纯聚合 `SELECT`，从 Cloudflare 结构化日志的 `attributes['event']` 统计已存在的支付业务事件。爱发电目前可统计 `reconciliation_started`、`payment_scan_processed` 与 `scan_failed`，Waffo 可统计 `waffo_production_failed`、`waffo_production_outbox_unavailable`。查询**不读取订单详情、请求正文或原始消息**。
 
-**重要：** `payment_scan_processed` 发生在完成游标 RPC 之前，不能算作整轮任务成功；Waffo 目前也没有可靠的成功心跳。没有业务事件或仅没有错误日志，都不能证明任务成功。Cloudflare 日志可能采样，计数只表示已观测事件。SQL **不查询** `message`、`url`、聊天正文、JWT、邮件、手机号或其他用户数据。
+**重要：** `payment_scan_processed` 发生在完成游标 RPC 之前，不能算作整轮任务成功；Waffo 当前生产版本也没有可靠的成功心跳。没有业务事件或仅没有错误日志，都不能证明任务成功。Cloudflare 日志可能采样，计数只表示已观测事件。SQL **不查询** `message`、`url`、聊天正文、JWT、邮件、手机号或其他用户数据。
+
+已预留对 [Draft PR #34](https://github.com/ikun-1145/xixi/pull/34) 的未来日志格式的支持：爱发电 `reconciliation_cycle_completed`，以及 Waffo 的 `waffo_production_outbox_cycle`（`status` 分为 `completed`、`incomplete`、`disabled`）。**这些心跳尚未部署到生产；当前缺失时报告 `NOT_OBSERVED`，绝不当作零次成功。** `completed` 只说明当前 Cron 执行/待处理批次没有已知失败，不是订单、退款或 Pro 会员权益成功的证明。
 
 ## 使用方法
 
