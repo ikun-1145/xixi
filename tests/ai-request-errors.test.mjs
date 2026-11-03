@@ -80,3 +80,37 @@ test("all user-facing classifications are present in the shared site i18n catalo
     assert.ok(source.includes(`[${JSON.stringify(message)},`), `missing translation: ${message}`);
   }
 });
+test("live Worker 147 returns distinct quota, KV, and upstream 429 responses", async () => {
+  const cases = [
+    { payload: { error: "LIMIT", remain: 0, isPro: false }, quotaExhausted: true },
+    { payload: { error: "Too Many Requests" }, quotaExhausted: false },
+    { payload: { error: "AI服务繁忙，请稍后重试" }, quotaExhausted: false },
+  ];
+  for (const { payload, quotaExhausted } of cases) {
+    const result = await classifyAiResponseError(response(429, payload));
+    assert.equal(result.showLimitModal, quotaExhausted, String(payload.error));
+    assert.doesNotMatch(result.message, /Too Many Requests|AI服务繁忙/u);
+  }
+});
+
+test("live Worker 147 conflict and unknown-outcome codes remain non-retrying hints", async () => {
+  for (const code of ["REQUEST_COMMITTED", "REQUEST_IN_FLIGHT", "REQUEST_CONFLICT"]) {
+    const result = await classifyAiResponseError(response(409, { error: code }));
+    assert.equal(result.showLimitModal, false);
+    assert.match(result.message, /避免重复发送/u, code);
+  }
+  for (const code of ["MODEL_OUTCOME_UNKNOWN", "QUOTA_COMMIT_UNKNOWN", "QUOTA_RELEASE_UNKNOWN"]) {
+    const result = await classifyAiResponseError(response(503, { error: code }));
+    assert.equal(result.showLimitModal, false);
+    assert.match(result.message, /避免重复发送/u, code);
+  }
+  for (const code of ["QUOTA_BUSY", "QUOTA_UNAVAILABLE", "AI_MAINTENANCE"]) {
+    const result = await classifyAiResponseError(response(503, { error: code }));
+    assert.equal(result.showLimitModal, false);
+    assert.match(result.message, /暂时不可用/u, code);
+  }
+  // The live Worker deliberately maps an upstream HTTP 402 to a generic 503.
+  // The frontend must not invent billing/credit explanations from this alone.
+  const mapped402 = await classifyAiResponseError(response(503, { error: "服务暂时不可用" }));
+  assert.doesNotMatch(mapped402.message, /上游.*额度/u);
+});
