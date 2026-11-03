@@ -58,8 +58,10 @@ async function loadRuntime() {
   if (!root?.startsWith("/")) throw new Error("No isolated Miniflare runtime");
   const require = createRequire(join(root,"entry.cjs"));
   const loaded = await import(pathToFileURL(require.resolve("miniflare")).href);
-  if (typeof loaded.Miniflare !== "function") throw new Error("Invalid Miniflare runtime");
-  return loaded.Miniflare;
+  if (typeof loaded.Miniflare !== "function" ||
+      typeof loaded.convertV4MiniflareOptions !== "function")
+    throw new Error("Invalid Miniflare runtime");
+  return {Miniflare:loaded.Miniflare,convertV4MiniflareOptions:loaded.convertV4MiniflareOptions};
 }
 
 async function seedLocalD1(db) {
@@ -88,15 +90,13 @@ export async function main(argv = process.argv.slice(2)) {
   const preprod = readFileSync(join(root,"worker","preprod-worker.js"),"utf8");
   const mock = readFileSync(join(root,"mock","preprod-mock.js"),"utf8");
   if (preprod.length < 1000 || mock.length < 400) throw new Error("Compiled preprod modules missing");
-  const Miniflare = await loadRuntime();
+  const {Miniflare,convertV4MiniflareOptions} = await loadRuntime();
   let unmockedOutbound = 0;
   const blocked = async () => {
     unmockedOutbound++;
     return new Response("NETWORK_DISABLED", {status:503});
   };
-  const mf = new Miniflare({
-    workers:[
-      {
+  const workerConfig = convertV4MiniflareOptions({
         name:"waffopay-preprod-isolated",
         compatibilityDate:"2026-09-05",
         modules:[{type:"ESModule",path:"preprod-worker.js",contents:preprod}],
@@ -120,14 +120,19 @@ export async function main(argv = process.argv.slice(2)) {
           WAFFO_PREPROD_RPC:"waffopay-preprod-mock",
         },
         outboundService:blocked,
-      },
-      {
+  });
+  const mockConfig = convertV4MiniflareOptions({
         name:"waffopay-preprod-mock",
         compatibilityDate:"2026-09-05",
         modules:[{type:"ESModule",path:"preprod-mock.js",contents:mock}],
         outboundService:blocked,
-      },
-    ],
+  });
+  // v5 takes the converted Cloudflare config representation, not raw v4
+  // WorkerOptions objects. Merging only converted worker entries keeps both
+  // service-bound Workers in the same isolated workerd instance.
+  const mf = new Miniflare({
+    ...workerConfig,
+    workers:[...workerConfig.workers,...mockConfig.workers],
   });
   try {
     const db = await mf.getD1Database("WAFFO_PRODUCTION_LEDGER");
