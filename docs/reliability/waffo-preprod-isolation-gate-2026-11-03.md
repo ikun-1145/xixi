@@ -17,6 +17,28 @@
 - `render-payment-preprod.mjs`：必须先获取**全新**的独立 D1 UUID（与生产 UUID 不同）才可生成 Wrangler 配置。生成物没有 route、workers.dev、Cron、真实密钥或生产 Service Binding；只写入 Git 忽略的 `.preprod-generated/`，不负责创建云端资源或部署。
 - CI 使用假 D1 UUID 验证以上约束，并只调用 `wrangler deploy --dry-run`，**不提供 Cloudflare Token**。
 
+## 只读云端资源核对（新增）
+
+在申请创建任何预发布资源之前，先运行新脚本 `scripts/reliability/cloud-preprod-isolation-preflight.mjs`。它**只调用 GET**：Worker 列表、D1 数据库列表、已有 `waffopay`/`afdianpay`/`ai` 的非敏感绑定元数据；不读取密钥值、脚本内容、订单或用户数据，也没有创建、写入或删除操作。
+
+在**受信任的本机终端**设置两项环境变量 `CLOUDFLARE_ACCOUNT_ID`、专用**只读** `CLOUDFLARE_API_TOKEN`，之后在仓库根目录运行：
+
+```bash
+node scripts/reliability/cloud-preprod-isolation-preflight.mjs before-create
+```
+
+当前只读现场记录：Cloudflare 存在 **12 个 Worker、1 个 D1**；未发现名为 `waffopay-preprod-isolated`、`waffopay-preprod-mock` 的 Worker 或 `waffopay-preprod-ledger-isolated` 的 D1；生产 Waffo D1 保持审核过的 **`9003f99a-bcef-4ba5-a961-33c399a01ab5`**，其身份 Service Binding 仍指向 `ai/production`。若名称冲突、资源清单不完整、生产 D1 UUID 或服务绑定发生漂移，必须返回阻断。
+
+**仅在另行批准创建新的独立 D1 之后**，将新数据库 UUID 安全地设置为 `WAFFO_PREPROD_D1_ID`，运行第二道门禁：
+
+```bash
+node scripts/reliability/cloud-preprod-isolation-preflight.mjs after-d1-create
+```
+
+这会校验新 D1 的**名字和 UUID 均匹配**，且不与任何生产 Worker 当前绑定的 D1 重合。只有第二道门禁通过，才允许生成 Wrangler 配置并进入另一项单独审批的云端部署。**不要把旧 D1 ID 或生产 API Token 放到仓库、CI、终端命令行参数或聊天中。**
+
+GitHub Actions 新增 `tests/payment-cloud-preprod-preflight.test.mjs`，使用模拟 Cloudflare API 响应覆盖只读 GET、分页、权限不足、重名、D1 复用、生产绑定精确 ID 漂移等情况。**该模拟测试不等于已经在本机使用独立 Token 端到端运行 CLI**。本轮通过 Cloudflare 连接器只读复核了现场元数据，但没有在云端创建任何资源。
+
 ## 环境边界
 
 | 类别 | 预发布允许 | 必须阻断 |
