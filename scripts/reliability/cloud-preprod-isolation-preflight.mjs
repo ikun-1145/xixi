@@ -10,6 +10,7 @@ export const STAGING = Object.freeze({
   entry: "waffopay-preprod-isolated",
   mock: "waffopay-preprod-mock",
   d1: "waffopay-preprod-ledger-isolated",
+  liveWaffoD1: "9003f99a-bcef-4ba5-a961-33c399a01ab5",
 });
 const WORKER_PRODUCTION = Object.freeze(["waffopay", "afdianpay", "ai"]);
 const ACCOUNT = /^[a-f0-9]{32}$/;
@@ -129,8 +130,9 @@ export function checkCloudPreprodIsolation(inventory, mode, candidateId) {
   }
   const liveWaffo = inventory.prodBindings.waffopay;
   if(!liveWaffo.some(x=>x.type==="d1"&&x.name==="WAFFO_PRODUCTION_LEDGER"&&
-       ids.has(String(x.id).toLowerCase()))) {
-    issues.push("Production Waffo D1 baseline cannot be verified");
+       String(x.id).toLowerCase()===STAGING.liveWaffoD1) ||
+     !ids.has(STAGING.liveWaffoD1)) {
+    issues.push("Production Waffo D1 reviewed ID has drifted or vanished");
   }
   if(!liveWaffo.some(x=>x.type==="service"&&x.name==="WAFFO_IDENTITY_SERVICE"&&
        x.service==="ai"&&x.environment==="production")) {
