@@ -46,8 +46,10 @@ test("gateway is disabled without all isolation flags and private binding",async
 
 test("Cloudflare Access context must be present, verified, and match exact audience",async()=>{
   const env=baseEnv();
+  const missingCtx=await gateway.fetch(req("/__preprod/health"),env,undefined);
+  assert.equal(missingCtx.status,403);
   for(const invalid of [
-    undefined,{}, {access:{aud:"other",getIdentity:async()=>({email:"admin@example.invalid"})}},
+    null,{}, {access:{aud:"other",getIdentity:async()=>({email:"admin@example.invalid"})}},
     {access:{aud:AUD}}, {access:{aud:AUD,getIdentity:async()=>null}},
     {access:{aud:AUD,getIdentity:async()=>({email:""})}},
     {access:{aud:AUD,getIdentity:async()=>{throw Error("denied")}}},
