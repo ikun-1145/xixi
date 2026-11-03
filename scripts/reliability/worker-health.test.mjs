@@ -130,7 +130,7 @@ test("uses only the analytics SQL endpoint with a scoped bearer token", async ()
   assert.deepEqual(businessPayload.scope, payload.scope);
   assert.deepEqual(businessPayload.time_range, payload.time_range);
   assert.match(businessPayload.query, /attributes\['event'\] AS eventName/);
-  assert.match(businessPayload.query, /GROUP BY scriptName,attributes\['event'\]/);
+  assert.match(businessPayload.query, /GROUP BY scriptName,attributes\['event'\],attributes\['status'\]/);
   assert.match(businessPayload.query, /LIMIT 100$/);
   assert.doesNotMatch(businessPayload.query, /\bmessage\b|\burl\b|\btrace_id\b|\border_id\b/i);
   assert.equal(report.workers[0].http5xx, 12);
@@ -138,6 +138,7 @@ test("uses only the analytics SQL endpoint with a scoped bearer token", async ()
   assert.equal(report.workers[0].scheduledInvocations, 160);
   assert.equal(report.paymentSignals[0].scanFailed, 2);
   assert.equal(report.paymentSignals[0].started, 730);
+  assert.equal(report.paymentSignals[0].cyclesCompleted, null);
   assert.equal(report.paymentSignals[0].successVerified, false);
   assert.equal(report.paymentSignals[1].observed, false);
   assert.equal(report.paymentSignals[1].productionFailed, null);
@@ -183,11 +184,12 @@ test("payment business counts use only allowlisted structured event codes", () =
   ]);
   assert.deepEqual(report[0], {
     name: "afdianpay", observed: true, successVerified: false,
-    started: 726, pagesProcessed: 1438, scanFailed: 2,
+    started: 726, pagesProcessed: 1438, scanFailed: 2, cyclesCompleted: null,
   });
   assert.deepEqual(report[1], {
     name: "waffopay", observed: false, successVerified: false,
     productionFailed: null, outboxUnavailable: null,
+    cyclesCompleted: null, cyclesIncomplete: null, cyclesDisabled: null,
   });
   assert.doesNotMatch(JSON.stringify(report), /unknown_event_with_private_details|payment_persisted/);
 });
@@ -207,7 +209,7 @@ test("absence of a Waffo success heartbeat is never reported as successful Cron"
     paymentSignals: report,
   });
   assert.match(output, /waffopay: production_failed=3 outbox_unavailable=1/);
-  assert.match(output, /no verified success heartbeat/);
+  assert.match(output, /cycles_completed=NOT_OBSERVED/);
 });
 
 test("business event schema failures fail closed instead of claiming zero incidents", () => {
@@ -234,4 +236,43 @@ test("a failed second analytics query does not give a misleading healthy report"
   }), error => error.message === "Cloudflare business metric query failed (HTTP 403)" &&
     !error.message.includes(secret));
   assert.equal(number, 2);
+});
+
+test("future payment Cron heartbeat statuses are classified without trusting arbitrary event fields", () => {
+  const signals = summarizePaymentBusinessSignals([
+    { scriptName: "afdianpay", eventName: "reconciliation_cycle_completed", statusName: null, events: 44 },
+    { scriptName: "waffopay", eventName: "waffo_production_outbox_cycle", statusName: "completed", events: 30 },
+    { scriptName: "waffopay", eventName: "waffo_production_outbox_cycle", statusName: "incomplete", events: 4 },
+    { scriptName: "waffopay", eventName: "waffo_production_outbox_cycle", statusName: "disabled", events: 2 },
+    { scriptName: "waffopay", eventName: "waffo_production_outbox_cycle", statusName: "__proto__", events: 100 },
+    { scriptName: "waffopay", eventName: "waffo_production_outbox_cycle", statusName: "constructor", events: 200 },
+  ]);
+  assert.equal(signals[0].cyclesCompleted, 44);
+  assert.equal(signals[1].cyclesCompleted, 30);
+  assert.equal(signals[1].cyclesIncomplete, 4);
+  assert.equal(signals[1].cyclesDisabled, 2);
+  assert.equal(signals[1].successVerified, false);
+  const rendered = formatWorkerHealth({
+    period: {start: "2026-11-02", end: "2026-11-03"},
+    workers: summarizeWorkerRows([]),
+    paymentSignals: signals,
+  });
+  assert.match(rendered, /cycles_completed=30 cycles_incomplete=4 cycles_disabled=2/);
+  assert.doesNotMatch(rendered, /constructor|__proto__/);
+});
+
+test("business heartbeat counts remain unknown before logging code is deployed", () => {
+  const signals = summarizePaymentBusinessSignals([
+    { scriptName: "afdianpay", eventName: "reconciliation_started", events: 8 },
+  ]);
+  assert.equal(signals[0].cyclesCompleted, null);
+  assert.equal(signals[1].cyclesCompleted, null);
+  assert.equal(signals[1].observed, false);
+  const rendered = formatWorkerHealth({
+    period: {start: "2026-11-02", end: "2026-11-03"},
+    workers: summarizeWorkerRows([]),
+    paymentSignals: signals,
+  });
+  assert.match(rendered, /afdianpay:.*cycles_completed=NOT_OBSERVED/u);
+  assert.match(rendered, /waffopay: NO OBSERVED STRUCTURED BUSINESS EVENTS/u);
 });
