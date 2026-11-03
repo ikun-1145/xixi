@@ -16,7 +16,7 @@ function readonlyLedger(rows) {
         bind(...args) {
           return {
             async all() {
-              assert.match(statement, /SELECT payload FROM production_outbox/u);
+              assert.match(statement, /SELECT store_id,event_type,event_id,payload FROM production_outbox/u);
               assert.equal(args.length, 1);
               return { results: rows };
             },
@@ -25,7 +25,13 @@ function readonlyLedger(rows) {
               return null;
             },
             async run() {
-              throw new Error("payment heartbeat test must not write D1");
+              // Exactly one safe retry-metadata UPDATE is allowed, never a
+              // payment, ledger, or membership mutation.
+              assert.match(statement, /UPDATE production_outbox SET last_error=\?,attempt_count=attempt_count\+1,updated_at=\?/u);
+              assert.ok(["intent_unbound", "outbox_entry_failed"].includes(args[0]));
+              assert.equal(args.length,5);
+              assert.equal(typeof args[1],"number");
+              return {success:true};
             },
           };
         },
@@ -65,17 +71,19 @@ test("configured empty Waffo outbox returns completed with zero due records", as
 
 test("an unbound pending Waffo event is not misclassified as completed", async () => {
   const ledger = readonlyLedger([
-    { payload: JSON.stringify({ order: { reference: "test-reference" } }) },
+    { store_id: "STO_test", event_type: "order.completed", event_id: "PAY_test",
+      payload: JSON.stringify({ order: { reference: "test-reference" } }) },
   ]);
   const result = await reconcileProductionOutbox(outboxEnv(ledger));
   assert.deepEqual(result, {
     status: "incomplete", due: 1, processed: 0, failed: 0, unbound: 1,
   });
-  assert.equal(ledger.calls.length, 2);
+  assert.equal(ledger.calls.length, 3);
 });
 
 test("bad pending Waffo payload is accounted as failed and does not leak its content", async () => {
-  const ledger = readonlyLedger([{ payload: "{SENSITIVE_FAKE_DATA" }]);
+  const ledger = readonlyLedger([{ store_id:"STO_test",event_type:"order.completed",event_id:"PAY_fake",
+    payload: "{SENSITIVE_FAKE_DATA" }]);
   const logs = [];
   const originalError = console.error;
   console.error = value => logs.push(String(value));
