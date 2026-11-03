@@ -54,7 +54,10 @@ test('late quota snapshots cannot overwrite a newer chat result or another accou
 });
 
 test('chat quota updates are account scoped and both pages stop querying obsolete usage tables', () => {
-  const flow = app.slice(app.indexOf('// Quota belongs'), app.indexOf('if (res.status === 429)', app.indexOf('// Quota belongs')));
+  const quotaStart = app.indexOf('// Quota belongs');
+  const errorHandlerStart = app.indexOf('if (!res.ok) {', quotaStart);
+  assert.ok(quotaStart >= 0 && errorHandlerStart > quotaStart);
+  const flow = app.slice(quotaStart, errorHandlerStart);
   assert.match(flow, /getCurrentUserId\(\) === requestContext.userId/);
   assert.doesNotMatch(flow, /currentId === requestContext.conversationId/);
   assert.ok(flow.indexOf('renderRemaining(remain)') < flow.indexOf('abortMissingTarget'));
