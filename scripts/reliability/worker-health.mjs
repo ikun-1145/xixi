@@ -43,12 +43,19 @@ const PAYMENT_EVENTS = Object.freeze({
     reconciliation_started: "started",
     payment_scan_processed: "pagesProcessed",
     scan_failed: "scanFailed",
-    reconciliation_cycle_outcome: "cyclesNoObservedFailure",
+
   }),
   waffopay: Object.freeze({
     waffo_production_failed: "productionFailed",
     waffo_production_outbox_unavailable: "outboxUnavailable",
   }),
+});
+
+const AFDIAN_CYCLE_STATUSES = Object.freeze({
+  no_observed_failure: "cyclesNoObservedFailure",
+  partial_failure: "cyclesPartialFailure",
+  deferred: "cyclesDeferred",
+  failed: "cyclesFailed",
 });
 
 const WAFFO_CYCLE_STATUSES = Object.freeze({
