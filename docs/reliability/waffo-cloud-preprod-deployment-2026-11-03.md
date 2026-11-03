@@ -51,3 +51,16 @@ D1 创建时选择亚太主区域提示，关闭读副本。按照仓库 `worker
 ## 下一步
 
 申请单独批准：第三个临时受 Cloudflare Access 保护的测试网关及其访问策略；先验证 Access 鉴权确实生效，再仅通过内网 Service Binding 对预发布 Worker 发起合成回调与 Cron 测试。测试结束后单独批准撤销网关/访问策略和轮换测试令牌。非生产 D1/Worker 不应在未经授权时自动删除。
+
+
+## 预发布调用链后续验收（2026-11-03）
+
+在不增加 Cloudflare 公网入口、不使用生产支付或会员凭据的前提下，候选分支进一步把临时 Access 网关逻辑接入**两个真实 workerd Worker、内部 Service Binding 与临时 D1**，从过去的 7 条扩展到 **11 条**本地组合端到端回归。
+
+- 使用模拟的 Cloudflare Access 认证上下文进入网关，经过私有 Waffo 入口 Worker、内部 Waffo Provider Mock、RPC Mock，最终写入隔离 D1；有效签名通过，不重复记录。
+- 缺少 Access 上下文、错误 audience 或伪造请求头时拒绝；健康检查只返回安全字段；手动 Cron 要求第二次显式开启；不允许任意路由和查询参数。
+- **本地真实 Worker 出站网络调用次数为 0**，所有内部 RPC 和付款证明仍是模拟数据。
+- GitHub Actions **Payment Preproduction Isolation Gate #41632063907：PASS**，本地组合 E2E **11/11**，全仓库 **826 项中 825 通过、0 失败、1 跳过**；独立可重复构建审计 **#41632063955：PASS**。
+- 同日再次通过 Cloudflare 的只读接口核对两套部署版本均保持不变、两个 Worker 无 workers.dev / Preview URL / Cron，预发布入口只绑定隔离 D1 和两个 Mock Service Binding。现有 `ai`、`waffopay`、`afdianpay` 生产版本均未在本轮改变。
+
+**严禁将这 11 项测试写成已在 Cloudflare 云端成功执行的 Access→Gateway→Worker E2E**：Access 上下文是本地模拟；私有云端 Worker 尚未获得单独审批的第三个 Access 测试网关。生产上线仍为 NO-GO。
