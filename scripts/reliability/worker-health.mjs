@@ -329,8 +329,11 @@ export function formatWorkerHealth(report) {
         lines.push("afdianpay: started=" + signal.started +
           " pages_processed=" + signal.pagesProcessed +
           " scan_failed=" + signal.scanFailed +
-          " cycles_completed=" + eventCount(signal.cyclesCompleted) +
-          " (page event does not prove completed reconciliation)");
+          " no_observed_failure=" + eventCount(signal.cyclesNoObservedFailure) +
+          " partial_failure=" + eventCount(signal.cyclesPartialFailure) +
+          " deferred=" + eventCount(signal.cyclesDeferred) +
+          " failed=" + eventCount(signal.cyclesFailed) +
+          " (no_observed_failure is not verified business success)");
       } else {
         lines.push("waffopay: production_failed=" + signal.productionFailed +
           " outbox_unavailable=" + signal.outboxUnavailable +
