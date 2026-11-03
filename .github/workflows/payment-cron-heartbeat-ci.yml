@@ -9,6 +9,8 @@ on:
       - "tests/payment-cron-heartbeats.test.mjs"
       - "scripts/reliability/payment-release-preflight.mjs"
       - "scripts/reliability/payment-release-preflight.test.mjs"
+      - "scripts/reliability/verify-payment-bundle-build.mjs"
+      - "scripts/reliability/verify-payment-bundle-build.test.mjs"
       - "docs/reliability/payment-worker-production-baseline-2026-11-03.json"
       - "docs/reliability/payment-release-preflight-2026-11-03.md"
       - ".github/workflows/payment-cron-heartbeat-ci.yml"
@@ -49,3 +51,60 @@ jobs:
 
       - name: Complete repository tests (mock only)
         run: npm test
+
+bundle-dry-run:
+    # No Cloudflare credentials, uploads, previews or deployments.
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    steps:
+      - name: Checkout candidate with baseline history
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify fingerprint guard unit tests (offline)
+        run: node --test scripts/reliability/verify-payment-bundle-build.test.mjs
+
+      - name: Dry-run compile reviewed main and candidate with pinned Wrangler
+        env:
+          CLOUDFLARE_API_TOKEN: ""
+        run: |
+          set -eu
+          mkdir -p "$RUNNER_TEMP/payment-base"
+          git archive origin/main | tar -x -C "$RUNNER_TEMP/payment-base"
+          for worker in afdianpay waffopay; do
+            for revision in main candidate; do
+              if [ "$revision" = main ]; then
+                root="$RUNNER_TEMP/payment-base"
+              else
+                root="$GITHUB_WORKSPACE"
+              fi
+              output="$RUNNER_TEMP/payment-bundles/$worker/$revision"
+              mkdir -p "$output"
+              echo "Compile dry-run: $worker / $revision"
+              (
+                cd "$root"
+                npx --yes wrangler@4.141.0 deploy \
+                  --dry-run \
+                  --config "workers/$worker/wrangler.toml" \
+                  --outdir "$output" \
+                  > "$RUNNER_TEMP/build-$worker-$revision.log" 2>&1
+              )
+              if [ ! -s "$output/worker.js" ]; then
+                echo "::error::Dry-run did not produce worker.js for $worker / $revision"
+                exit 2
+              fi
+              node --check "$output/worker.js"
+            done
+          done
+
+      - name: Compare bundle hashes against reviewed production
+        env:
+          PAYMENT_BUNDLE_ROOT: ${{ runner.temp }}/payment-bundles
+        run: node scripts/reliability/verify-payment-bundle-build.mjs "$PAYMENT_BUNDLE_ROOT"
