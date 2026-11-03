@@ -23,6 +23,7 @@ const STATEMENT = [
   "AND scriptName IN (" + WORKERS.map(name => "'" + name + "'").join(",") + ")",
   "GROUP BY scriptName",
   "ORDER BY invocations DESC",
+  "LIMIT 10",
 ].join(" ");
 
 function requireHours(value) {
