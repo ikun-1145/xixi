@@ -28,6 +28,28 @@ const STATEMENT = [
   "LIMIT 10",
 ].join(" ");
 
+const BUSINESS_SIGNAL_STATEMENT = [
+  "SELECT scriptName, attributes['event'] AS eventName, COUNT(*) AS events",
+  "FROM logs.workersLogs",
+  "WHERE logType = 'cf-worker'",
+  "AND scriptName IN ('afdianpay','waffopay')",
+  "GROUP BY scriptName,attributes['event']",
+  "ORDER BY events DESC",
+  "LIMIT 100",
+].join(" ");
+
+const PAYMENT_EVENTS = Object.freeze({
+  afdianpay: Object.freeze({
+    reconciliation_started: "started",
+    payment_scan_processed: "pagesProcessed",
+    scan_failed: "scanFailed",
+  }),
+  waffopay: Object.freeze({
+    waffo_production_failed: "productionFailed",
+    waffo_production_outbox_unavailable: "outboxUnavailable",
+  }),
+});
+
 function requireHours(value) {
   if (!Number.isSafeInteger(value) || value < 1 || value > MAX_HOURS) {
     throw new Error("hours must be an integer between 1 and " + MAX_HOURS);
@@ -104,6 +126,53 @@ export function summarizeWorkerRows(rows) {
   });
 }
 
+/**
+ * These are structured application event labels, not raw messages or user data.
+ * No current payment Worker emits a verified end-to-end Cron success heartbeat.
+ */
+export function summarizePaymentBusinessSignals(rows) {
+  if (!Array.isArray(rows) || rows.length >= 100) {
+    throw new Error("Incomplete Cloudflare business event metrics");
+  }
+  const groups = {
+    afdianpay: {
+      name: "afdianpay",
+      observed: false,
+      successVerified: false,
+      started: null,
+      pagesProcessed: null,
+      scanFailed: null,
+    },
+    waffopay: {
+      name: "waffopay",
+      observed: false,
+      successVerified: false,
+      productionFailed: null,
+      outboxUnavailable: null,
+    },
+  };
+  const seen = new Set();
+  for (const item of rows) {
+    const name = item?.scriptName;
+    const category = PAYMENT_EVENTS[name]?.[item?.eventName];
+    if (!category) continue; // No untrusted event names enter output.
+    const count = nonnegativeNumber(item.events);
+    if (count === null) throw new Error("Invalid business event count");
+    const key = name + ":" + category;
+    if (seen.has(key)) throw new Error("Duplicate business event count");
+    seen.add(key);
+    groups[name].observed = true;
+    groups[name][category] = count;
+  }
+  for (const group of Object.values(groups)) {
+    if (!group.observed) continue;
+    for (const key of Object.values(PAYMENT_EVENTS[group.name])) {
+      if (group[key] === null) group[key] = 0; // Zero *observed*, never confirmed success.
+    }
+  }
+  return [groups.afdianpay, groups.waffopay];
+}
+
 export async function fetchWorkerHealth({
   accountId,
   apiToken,
@@ -150,9 +219,45 @@ export async function fetchWorkerHealth({
   if (!result || !Array.isArray(result.data)) {
     throw new Error("Cloudflare analytics returned invalid data");
   }
+
+  // Separate SELECT: structured application events are in attributes['event'],
+  // not in message. Never query arbitrary attribute fields or log bodies.
+  let businessResponse;
+  try {
+    businessResponse = await fetchImpl(
+      "https://api.cloudflare.com/client/v4/accounts/" + accountId + "/analytics/sql",
+      {
+        method: "POST",
+        headers: {
+          authorization: "Bearer " + apiToken,
+          "content-type": "application/json",
+          accept: "application/json",
+        },
+        body: JSON.stringify({ ...request, query: BUSINESS_SIGNAL_STATEMENT }),
+        signal: AbortSignal.timeout(15_000),
+      },
+    );
+  } catch {
+    throw new Error("Cloudflare business metric query failed");
+  }
+  if (!businessResponse?.ok) {
+    throw new Error("Cloudflare business metric query failed (HTTP " +
+      (businessResponse?.status ?? "unknown") + ")");
+  }
+  let businessResult;
+  try {
+    businessResult = await businessResponse.json();
+  } catch {
+    throw new Error("Cloudflare business metrics returned invalid JSON");
+  }
+  if (!Array.isArray(businessResult?.data)) {
+    throw new Error("Cloudflare business metrics returned invalid data");
+  }
+
   return {
     period: request.time_range,
     workers: summarizeWorkerRows(result.data),
+    paymentSignals: summarizePaymentBusinessSignals(businessResult.data),
     note: "Workers Logs aggregates may be sampled. Missing rows mean no observed logs, not zero errors.",
   };
 }
@@ -175,6 +280,23 @@ export function formatWorkerHealth(report) {
       : worker.name.padEnd(11) + " NO OBSERVED LOG DATA (not proof of zero incidents)");
   }
   lines.push("* Aggregates may be sampled/weighted; scheduled invocations are separated from HTTP fetches.");
+  if (Array.isArray(report.paymentSignals)) {
+    lines.push("Payment business signals (sampled logs; no verified Cron success heartbeat):");
+    for (const signal of report.paymentSignals) {
+      if (!signal.observed) {
+        lines.push(signal.name + ": NO OBSERVED STRUCTURED BUSINESS EVENTS (outcome unknown)");
+      } else if (signal.name === "afdianpay") {
+        lines.push("afdianpay: started=" + signal.started +
+          " pages_processed=" + signal.pagesProcessed +
+          " scan_failed=" + signal.scanFailed +
+          " (page event does not prove completed reconciliation)");
+      } else {
+        lines.push("waffopay: production_failed=" + signal.productionFailed +
+          " outbox_unavailable=" + signal.outboxUnavailable +
+          " (no verified success heartbeat)");
+      }
+    }
+  }
   lines.push("No raw logs, request bodies, URLs, tokens, or conversation content were queried.");
   return lines.join("\n");
 }
