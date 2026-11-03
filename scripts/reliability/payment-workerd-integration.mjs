@@ -44,28 +44,33 @@ async function importTestRuntime() {
   const require = createRequire(join(base, "integration-loader.cjs"));
   const entry = require.resolve("miniflare");
   const module = await import(pathToFileURL(entry).href);
-  if (typeof module.Miniflare !== "function" || typeof module.createFetchMock !== "function") {
+  if (typeof module.Miniflare !== "function") {
     throw new Error("Miniflare integration API unavailable");
   }
   return module;
 }
 
-function createIsolatedWorker(Miniflare, createFetchMock, scriptPath, bindings = {}, includeD1 = false) {
-  const fetchMock = createFetchMock();
-  fetchMock.disableNetConnect(); // FAIL CLOSED: even test *.invalid cannot use the Internet.
-  return new Miniflare({
+function createIsolatedWorker(Miniflare, scriptPath, bindings = {}, includeD1 = false) {
+  const outbound = { attempts: 0 };
+  const mf = new Miniflare({
     modules: true,
     scriptPath,
     compatibilityDate: "2026-09-05",
     bindings,
     ...(includeD1 ? { d1Databases: { WAFFO_PRODUCTION_LEDGER: DB_ID } } : {}),
-    fetchMock,
-    // No persistence, no remote bindings, no secrets, no service bindings.
+    // Miniflare 5 removed fetchMock. This local mock service intercepts
+    // every global outbound request and NEVER forwards it to the network.
+    outboundService: async () => {
+      outbound.attempts++;
+      return new Response("NO_OUTBOUND_NETWORK", { status: 503 });
+    },
+    // No persistence, remote bindings, real secrets, or service bindings.
   });
+  return { mf, outbound };
 }
 
-async function waffoCronCase({ Miniflare, createFetchMock, waffoPath, enabled, payload, expectation }) {
-  const mf = createIsolatedWorker(Miniflare, createFetchMock, waffoPath,
+async function waffoCronCase({ Miniflare, waffoPath, enabled, payload, expectation }) {
+  const { mf, outbound } = createIsolatedWorker(Miniflare, waffoPath,
     enabled ? MOCK_VALUES : {}, true);
   try {
     const db = await mf.getD1Database("WAFFO_PRODUCTION_LEDGER");
@@ -82,13 +87,14 @@ async function waffoCronCase({ Miniflare, createFetchMock, waffoPath, enabled, p
     assertOutcome(result, expectation);
     const after = await db.prepare("SELECT COUNT(*) AS n FROM production_outbox").first();
     assert.equal(after.n, before.n, expectation + ": unexpected production outbox mutation");
+    assert.equal(outbound.attempts, 0, expectation + ": unexpectedly attempted external network");
   } finally {
     await mf.dispose();
   }
 }
 
-async function afdianFailClosedCase({ Miniflare, createFetchMock, afdianPath }) {
-  const mf = createIsolatedWorker(Miniflare, createFetchMock, afdianPath, {
+async function afdianFailClosedCase({ Miniflare, afdianPath }) {
+  const { mf, outbound } = createIsolatedWorker(Miniflare, afdianPath, {
     AFDIAN_ROLLOUT_DIAGNOSTICS_ONLY: "false",
     SUPABASE_URL: "https://supabase.unit.invalid",
     SUPABASE_KEY: "fake-test-token-only",
@@ -106,6 +112,7 @@ async function afdianFailClosedCase({ Miniflare, createFetchMock, afdianPath }) 
       observed = { outcome: "exception" };
     }
     assertOutcome(observed, "afdian: unreachable RPC rejects Cron", true);
+    assert.ok(outbound.attempts >= 1, "Afdian test must exercise the simulated upstream outage");
   } finally {
     await mf.dispose();
   }
