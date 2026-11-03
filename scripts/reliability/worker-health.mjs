@@ -13,8 +13,10 @@ export const MAX_HOURS = 168;
 const STATEMENT = [
   "SELECT scriptName,",
   "COUNT(*) AS invocations,",
-  "SUM(CASE WHEN httpStatus >= 500 THEN 1 ELSE 0 END) AS http5xx,",
-  "SUM(CASE WHEN httpStatus >= 400 AND httpStatus < 500 THEN 1 ELSE 0 END) AS http4xx,",
+  "SUM(CASE WHEN invocationType = 'fetch' THEN 1 ELSE 0 END) AS fetchInvocations,",
+  "SUM(CASE WHEN invocationType = 'scheduled' THEN 1 ELSE 0 END) AS scheduledInvocations,",
+  "SUM(CASE WHEN invocationType = 'fetch' AND httpStatus >= 500 THEN 1 ELSE 0 END) AS http5xx,",
+  "SUM(CASE WHEN invocationType = 'fetch' AND httpStatus >= 400 AND httpStatus < 500 THEN 1 ELSE 0 END) AS http4xx,",
   "AVG(cpuTimeMs) AS avgCpuMs,",
   "APPROX_MAX(cpuTimeMs) AS maxCpuMs,",
   "AVG(wallTimeMs) AS avgWallMs",
@@ -65,9 +67,11 @@ export function summarizeWorkerRows(rows) {
   for (const item of rows) {
     if (!item || !WORKERS.includes(item.scriptName)) continue;
     const invocations = nonnegativeNumber(item.invocations);
+    const fetchInvocations = nonnegativeNumber(item.fetchInvocations);
+    const scheduledInvocations = nonnegativeNumber(item.scheduledInvocations);
     const http5xx = nonnegativeNumber(item.http5xx);
     const http4xx = nonnegativeNumber(item.http4xx);
-    if (invocations === null || http5xx === null || http4xx === null) {
+    if ([invocations, fetchInvocations, scheduledInvocations, http5xx, http4xx].some(value => value === null)) {
       throw new Error("Invalid Cloudflare metric values");
     }
     if (byName.has(item.scriptName)) throw new Error("Duplicate Worker metric");
@@ -75,9 +79,11 @@ export function summarizeWorkerRows(rows) {
       name: item.scriptName,
       observed: true,
       invocations,
+      fetchInvocations,
+      scheduledInvocations,
       http5xx,
       http4xx,
-      errorRate5xx: invocations > 0 ? http5xx / invocations : null,
+      errorRate5xx: fetchInvocations > 0 ? http5xx / fetchInvocations : null,
       avgCpuMs: nonnegativeNumber(item.avgCpuMs),
       maxCpuMs: nonnegativeNumber(item.maxCpuMs),
       avgWallMs: nonnegativeNumber(item.avgWallMs),
@@ -87,6 +93,8 @@ export function summarizeWorkerRows(rows) {
     name,
     observed: false,
     invocations: null,
+    fetchInvocations: null,
+    scheduledInvocations: null,
     http5xx: null,
     http4xx: null,
     errorRate5xx: null,
@@ -153,18 +161,20 @@ export function formatWorkerHealth(report) {
   const fmt = value => value === null ? "N/A" : Number(value).toFixed(2);
   const lines = [
     "Cloudflare Workers health snapshot (" + report.period.start + " to " + report.period.end + ")",
-    "Worker      Invocations*   HTTP 5xx*   HTTP 4xx*   Avg CPU(ms)   Approx max CPU(ms)",
+    "Worker      Total*       HTTP Fetch*  Scheduled*  HTTP 5xx*  HTTP 4xx*  Avg CPU(ms)  Approx max CPU(ms)",
   ];
   for (const worker of report.workers) {
     lines.push(worker.observed
       ? worker.name.padEnd(11) + " " +
-        String(worker.invocations).padEnd(14) + " " +
-        String(worker.http5xx).padEnd(11) + " " +
-        String(worker.http4xx).padEnd(11) + " " +
-        fmt(worker.avgCpuMs).padEnd(13) + " " + fmt(worker.maxCpuMs)
+        String(worker.invocations).padEnd(12) + " " +
+        String(worker.fetchInvocations).padEnd(12) + " " +
+        String(worker.scheduledInvocations).padEnd(11) + " " +
+        String(worker.http5xx).padEnd(10) + " " +
+        String(worker.http4xx).padEnd(10) + " " +
+        fmt(worker.avgCpuMs).padEnd(12) + " " + fmt(worker.maxCpuMs)
       : worker.name.padEnd(11) + " NO OBSERVED LOG DATA (not proof of zero incidents)");
   }
-  lines.push("* Aggregates may be sampled/weighted and include Worker invocations, not only user HTTP requests.");
+  lines.push("* Aggregates may be sampled/weighted; scheduled invocations are separated from HTTP fetches.");
   lines.push("No raw logs, request bodies, URLs, tokens, or conversation content were queried.");
   return lines.join("\n");
 }
