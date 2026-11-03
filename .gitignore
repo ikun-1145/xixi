@@ -39,6 +39,7 @@ debug.log
 
 # Cloud / deployment local state.
 .wrangler/
+.preprod-generated/
 **/.wrangler/
 .vercel/
 .netlify/
