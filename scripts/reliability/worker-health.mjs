@@ -154,8 +154,10 @@ export function summarizePaymentBusinessSignals(rows) {
   const seen = new Set();
   for (const item of rows) {
     const name = item?.scriptName;
-    const category = PAYMENT_EVENTS[name]?.[item?.eventName];
-    if (!category) continue; // No untrusted event names enter output.
+    const eventName = item?.eventName;
+    if (!Object.hasOwn(PAYMENT_EVENTS, name) ||
+        !Object.hasOwn(PAYMENT_EVENTS[name], eventName)) continue;
+    const category = PAYMENT_EVENTS[name][eventName]; // Static allowlist only.
     const count = nonnegativeNumber(item.events);
     if (count === null) throw new Error("Invalid business event count");
     const key = name + ":" + category;
