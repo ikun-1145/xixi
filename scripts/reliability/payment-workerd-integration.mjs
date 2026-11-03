@@ -54,8 +54,12 @@ async function importTestRuntime() {
 function createIsolatedWorker(Miniflare, convertV4MiniflareOptions, scriptPath, bindings = {}, includeD1 = false) {
   const outbound = { attempts: 0 };
   const mf = new Miniflare(convertV4MiniflareOptions({
-    modules: true,
-    scriptPath,
+    name: "payment-isolated-worker",
+    modules: [{
+      type: "ESModule",
+      path: "worker.js",
+      contents: readFileSync(scriptPath, "utf8"),
+    }],
     compatibilityDate: "2026-09-05",
     bindings,
     ...(includeD1 ? { d1Databases: { WAFFO_PRODUCTION_LEDGER: DB_ID } } : {}),
