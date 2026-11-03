@@ -116,11 +116,11 @@ jobs:
           PAYMENT_BUNDLE_ROOT: ${{ runner.temp }}/payment-bundles
         run: node scripts/reliability/payment-bundle-smoke.mjs "$PAYMENT_BUNDLE_ROOT"
 
-      - name: Install pinned local workerd runner (no cloud credentials)
+      - name: Install isolated workerd runner for 2026-09 compatibility (no credentials)
         run: |
           npm install --prefix "$RUNNER_TEMP/payment-miniflare" \
             --no-save --no-package-lock --ignore-scripts --no-audit --no-fund \
-            miniflare@4.20260730.0
+            miniflare@5.20261101.0-beta
 
       - name: Exercise isolated workerd Cron and local D1 (no outbound)
         timeout-minutes: 8
