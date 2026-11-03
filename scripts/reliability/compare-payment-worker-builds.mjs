@@ -9,7 +9,7 @@ import { fileURLToPath } from "node:url";
 
 export const WORKERS = Object.freeze(["afdianpay", "waffopay"]);
 const MARKERS = Object.freeze({
-  afdianpay: "reconciliation_cycle_completed",
+  afdianpay: "reconciliation_cycle_outcome",
   waffopay: "waffo_production_outbox_cycle",
 });
 
