@@ -4,10 +4,12 @@ on:
   pull_request:
     paths:
       - "workers/waffopay/preprod-*.js"
+      - "workers/waffopay/preprod-gateway-proposal.js"
       - "workers/waffopay/payment-proof.js"
       - "workers/waffopay/production-rpc.js"
       - "scripts/reliability/render-payment-preprod.mjs"
       - "tests/payment-preprod-isolation.test.mjs"
+      - "tests/payment-preprod-gateway.test.mjs"
       - "scripts/reliability/payment-preprod-workerd-e2e.mjs"
       - "scripts/reliability/cloud-preprod-isolation-preflight.mjs"
       - "tests/payment-cloud-preprod-preflight.test.mjs"
@@ -49,6 +51,8 @@ jobs:
           node --check workers/waffopay/preprod-transport.js
           node --check scripts/reliability/render-payment-preprod.mjs
           node --test tests/payment-preprod-isolation.test.mjs
+          node --check workers/waffopay/preprod-gateway-proposal.js
+          node --test tests/payment-preprod-gateway.test.mjs
           node --check scripts/reliability/cloud-preprod-isolation-preflight.mjs
           node --test tests/payment-cloud-preprod-preflight.test.mjs
           node --check scripts/reliability/cloud-preprod-postdeploy-audit.mjs
