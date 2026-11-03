@@ -8,6 +8,7 @@ on:
       - "workers/waffopay/production-rpc.js"
       - "scripts/reliability/render-payment-preprod.mjs"
       - "tests/payment-preprod-isolation.test.mjs"
+      - "scripts/reliability/payment-preprod-workerd-e2e.mjs"
       - ".github/workflows/payment-preprod-isolation-ci.yml"
 
 permissions:
@@ -83,3 +84,19 @@ jobs:
             node --check "$output/$source_name"
           done
           echo "PASS: synthetic staging Worker and mock compile offline. Nothing deployed."
+
+      - name: Install pinned local workerd runner (no remote credentials)
+        run: |
+          npm install --prefix "$RUNNER_TEMP/payment-preprod-miniflare" \
+            --no-save --no-package-lock --ignore-scripts --no-audit --no-fund \
+            miniflare@5.20261101.0-beta
+
+      - name: End-to-end synthetic webhook across two compiled Workers and ephemeral D1
+        timeout-minutes: 8
+        env:
+          PAYMENT_MINIFLARE_ROOT: ${{ runner.temp }}/payment-preprod-miniflare
+          CLOUDFLARE_API_TOKEN: ""
+          CLOUDFLARE_ACCOUNT_ID: ""
+        run: |
+          node --check scripts/reliability/payment-preprod-workerd-e2e.mjs
+          node scripts/reliability/payment-preprod-workerd-e2e.mjs "$RUNNER_TEMP/preprod-compiled"
