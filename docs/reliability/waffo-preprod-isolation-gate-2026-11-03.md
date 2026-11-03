@@ -58,6 +58,38 @@ node scripts/reliability/cloud-preprod-postdeploy-audit.mjs
 
 参考 Cloudflare 官方文档：[Worker Version URLs](https://developers.cloudflare.com/workers/versions-and-deployments/version-urls/) 和 [Worker routes](https://developers.cloudflare.com/workers/configuration/routing/)。此文件只规划未来云端审计；**截至本轮，未创建、部署或修改任何云端资源**。
 
+## 临时 Cloudflare Access 测试网关草案（未启用、未部署）
+
+当前两个支付预发布 Worker 按设计完全私有，因此外部测试设备**无法直接访问**其健康检查、Webhook 或手动 Cron。为避免临时公开支付 Worker，已新增候选文件 `workers/waffopay/preprod-gateway-proposal.js`，但**尚未创建第三个 Worker、公开域名、Cloudflare Access 应用或访问策略**。
+
+建议未来仅在另行明确批准后，以如下路径联调：
+
+```text
+维护者（经过 Cloudflare Access 身份验证）
+    → 临时、受 Access 保护的测试网关（第三个 Worker）
+    → WAFFO_PREPROD_TARGET 私有 Service Binding
+    → waffopay-preprod-isolated（无公网入口、无自动 Cron）
+    → 独立 D1 与私有合成 Provider/RPC Mock
+```
+
+### 网关候选的双重门禁
+
+- **默认关闭**：必须显式设置 `WAFFO_PREPROD_GATEWAY_ENABLED=true`、`WAFFO_PREPROD_ISOLATED=true`、`WAFFO_PREPROD_ENTITLEMENTS_ENABLED=false`。
+- **Cloudflare Access 身份**：要求 Cloudflare 直接调用网关时注入经过平台验证的 `ctx.access`，且其 `aud` 严格匹配独立预发布 Access 应用的 `WAFFO_PREPROD_ACCESS_AUD`。同时必须获得可读取的认证用户身份。不能凭客户端自行上传的 JWT/Header 代替 `ctx.access`。Cloudflare 官方参考：[Access Worker integration](https://developers.cloudflare.com/workers/configuration/cloudflare-access/)。
+- **受限固定路由**：只开放 `GET /__preprod/health`、`POST /__preprod/webhook`、`POST /__preprod/cron`。其中 Cron 额外需要 `WAFFO_PREPROD_ALLOW_CRON=true`，默认不能执行。任何额外路径、Query String 或非允许方法均拒绝。
+- **严格请求过滤**：Webhook 只接受 JSON，要求签名头格式，最大 16 KiB，只有完整原始签名数据和请求体可转给私有 Worker；签名真实性仍由**私有 Waffo 预发布 Worker** 验证。绝不转发客户端 Cookie、Authorization、Access JWT、用户自定义内网地址。
+- **单一内部目标**：只能通过 `WAFFO_PREPROD_TARGET` Service Binding 向固定的 `.invalid` 域名和固定路径发起内部请求，既没有任意 URL 转发，也没有对生产支付 API 或 Supabase 的全局 `fetch`。返回内容限定为安全的 health、Cron 计数或简单的 synthetic webhook 成功标记。
+- **无生产凭据**：缺失 Access、目标 Service Binding、测试令牌，或者意外出现生产 D1、生产私钥、生产 service_role 或身份服务绑定时拒绝运行。
+- **部署不自动化**：没有为网关创建任何生产可用的 Wrangler 配置、Cloudflare Access Policy、公开域名或 CI 发布作业。PR 的单元测试仅使用受控的模拟 `ctx.access`，不能代表生产 Access 策略已正确建立。
+
+### 第三 Worker 需要的独立批准
+
+这是一项**新资源范围**，不是原来批准创建两个私有 Worker 的一部分（事实上那两项资源也尚未获批创建）。未来至少需要单独授权：临时网关 Worker、专用访问域名、只允许指定维护者的 Cloudflare Access 应用与策略、运行时间窗口、密钥生命周期及撤销动作。必须先核实 Access 处于强制状态，再开放网关；不要把仅依赖令牌的公开入口当成已完成的 Access 保护。
+
+测试结束后需按审核流程关闭网关暴露面、撤销 Access 策略和测试令牌，并通过**只读资源审计**证明已撤销。删除 D1 或任何其它云资源亦须单独批准，禁止顺带删除生产数据。
+
+**本轮结论：只有候选代码与单元测试，不存在任何真实云端测试入口。**
+
 ## 环境边界
 
 | 类别 | 预发布允许 | 必须阻断 |
