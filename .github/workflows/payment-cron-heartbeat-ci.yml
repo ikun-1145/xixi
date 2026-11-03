@@ -15,6 +15,7 @@ on:
       - "scripts/reliability/payment-workerd-integration.mjs"
       - "docs/reliability/payment-worker-production-baseline-2026-11-03.json"
       - "docs/reliability/payment-release-preflight-2026-11-03.md"
+      - "docs/reliability/payment-workerd-isolated-acceptance-2026-11-03.md"
       - ".github/workflows/payment-cron-heartbeat-ci.yml"
 
 permissions:
