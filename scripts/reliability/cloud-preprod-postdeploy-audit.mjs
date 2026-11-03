@@ -13,6 +13,14 @@ const ACCOUNT=/^[a-f0-9]{32}$/;
 const ENTRY="waffopay-preprod-isolated";
 const MOCK="waffopay-preprod-mock";
 const D1_NAME="waffopay-preprod-ledger-isolated";
+// Explicitly reviewed cloud deployment identity. Any later version upload,
+// secret rotation or rollout requires a new review of this checkpoint.
+const APPROVED=Object.freeze({
+  [ENTRY]:Object.freeze({version:"26863803-021d-46bd-b3d5-49c15abbfe90",
+    sourceCommit:"e670f7ba43c1089ac1268d72bf1364fd65c1b45b"}),
+  [MOCK]:Object.freeze({version:"39fd33fd-173c-481d-ba99-03740c1a5574",
+    sourceCommit:"e670f7ba43c1089ac1268d72bf1364fd65c1b45b"}),
+});
 const PROD_D1="9003f99a-bcef-4ba5-a961-33c399a01ab5";
 const EXPECTED_VARS=Object.freeze({
   WAFFO_PREPROD_ISOLATED:"true",
@@ -129,6 +137,12 @@ export function validateDeployedCloudPreprod(snapshot,d1Id) {
     if(!Array.isArray(versions) || versions.length!==1 ||
        versions[0].percentage!==100 || !versions[0].version_id)
       issues.push(name+": deployed version is not a single verified 100% version");
+    const reviewed=APPROVED[name];
+    if(versions?.[0]?.version_id!==reviewed.version)
+      issues.push(name+": deployed version ID differs from reviewed release");
+    if(w.version?.id!==reviewed.version ||
+       w.version?.sourceCommit!==reviewed.sourceCommit)
+      issues.push(name+": Worker version metadata differs from reviewed source commit");
     if(w.settings?.compatibility_date!=="2026-09-05")
       issues.push(name+": compatibility date differs from tested runtime");
     checkBindings(w.settings,name,d1Id.toLowerCase(),issues);
@@ -165,11 +179,20 @@ export async function auditDeployedCloudPreprod({
       get(fetchImpl,apiToken,base+"/deployments?page=1&per_page=1"),
     ]);
     const rawSchedules=Array.isArray(schedules.result)?schedules.result:schedules.result?.schedules;
+    const deployment=deployments.result?.deployments?.[0];
+    const versionId=deployment?.versions?.length===1 ?
+      deployment.versions[0].version_id : null;
+    // Read metadata for the ACTUALLY deployed version, not merely the newest
+    // uploaded candidate. Never collect or expose secret binding values.
+    const version=typeof versionId==="string" && UUID.test(versionId) ?
+      (await get(fetchImpl,apiToken,base+"/versions/"+versionId)).result : null;
     workers[name]={
       subdomain:subdomain.result,
       schedules:rawSchedules,
       settings:settings.result,
-      deployment:deployments.result?.deployments?.[0],
+      deployment,
+      version:version && {id:version.id,
+        sourceCommit:version.annotations?.["workers/commit_sha"]},
     };
   }
   const issues=validateDeployedCloudPreprod({
