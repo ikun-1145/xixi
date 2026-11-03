@@ -13,6 +13,7 @@ on:
       - "scripts/reliability/verify-payment-bundle-build.test.mjs"
       - "scripts/reliability/payment-bundle-smoke.mjs"
       - "scripts/reliability/payment-workerd-integration.mjs"
+      - "scripts/reliability/payment-workerd-convergence.mjs"
       - "docs/reliability/payment-worker-production-baseline-2026-11-03.json"
       - "docs/reliability/payment-release-preflight-2026-11-03.md"
       - "docs/reliability/payment-workerd-isolated-acceptance-2026-11-03.md"
@@ -133,3 +134,14 @@ jobs:
         run: |
           node --check scripts/reliability/payment-workerd-integration.mjs
           node scripts/reliability/payment-workerd-integration.mjs "$PAYMENT_BUNDLE_ROOT"
+
+      - name: Verify signed payment, refund and lost-RPC-ack recovery in isolated workerd
+        timeout-minutes: 8
+        env:
+          PAYMENT_BUNDLE_ROOT: ${{ runner.temp }}/payment-bundles
+          PAYMENT_MINIFLARE_ROOT: ${{ runner.temp }}/payment-miniflare
+          CLOUDFLARE_API_TOKEN: ""
+          CLOUDFLARE_ACCOUNT_ID: ""
+        run: |
+          node --check scripts/reliability/payment-workerd-convergence.mjs
+          node scripts/reliability/payment-workerd-convergence.mjs "$PAYMENT_BUNDLE_ROOT"
