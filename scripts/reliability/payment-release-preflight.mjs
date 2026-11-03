@@ -42,6 +42,7 @@ export function extractSingleModuleBundle(payload) {
   const ending = "\r\n" + boundary + "--";
   const endAt = payload.lastIndexOf(ending);
   if (endAt <= bodyStart ||
+      payload.slice(bodyStart, endAt).startsWith(boundary + "\r\n") ||
       payload.indexOf("\r\n" + boundary + "\r\n", bodyStart) !== -1 ||
       payload.slice(endAt + ending.length).trim() !== "") {
     throw new Error("Ambiguous Worker multipart bundle");
