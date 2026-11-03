@@ -11,6 +11,8 @@ on:
       - "scripts/reliability/payment-preprod-workerd-e2e.mjs"
       - "scripts/reliability/cloud-preprod-isolation-preflight.mjs"
       - "tests/payment-cloud-preprod-preflight.test.mjs"
+      - "scripts/reliability/cloud-preprod-postdeploy-audit.mjs"
+      - "tests/payment-cloud-preprod-postdeploy.test.mjs"
       - ".github/workflows/payment-preprod-isolation-ci.yml"
 
 permissions:
@@ -49,6 +51,8 @@ jobs:
           node --test tests/payment-preprod-isolation.test.mjs
           node --check scripts/reliability/cloud-preprod-isolation-preflight.mjs
           node --test tests/payment-cloud-preprod-preflight.test.mjs
+          node --check scripts/reliability/cloud-preprod-postdeploy-audit.mjs
+          node --test tests/payment-cloud-preprod-postdeploy.test.mjs
 
       - name: Full repository regression tests (no real credentials)
         run: npm test
@@ -58,7 +62,7 @@ jobs:
           CLOUDFLARE_ACCOUNT_ID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
         run: |
           node scripts/reliability/render-payment-preprod.mjs "$GITHUB_WORKSPACE/.preprod-generated"
-          if grep -Ei 'waffopay\.sunland\.dev|api\.waffo\.ai|supabase\.co|\[triggers\]|\[\[routes\]\]|WAFFO_IDENTITY_SERVICE|WAFFO_PRODUCTION_SERVICE_ROLE_KEY' \
+          if grep -Ei 'waffopay\.sunland\.dev|api\.waffo\.ai|supabase\.co|\[triggers\]|\[\[routes\]\]|WAFFO_IDENTITY_SERVICE|WAFFO_PRODUCTION_SERVICE_ROLE_KEY|preview_urls = true' \
             .preprod-generated/*.toml; then
             echo "::error::Staging config contains a production reference"
             exit 2
