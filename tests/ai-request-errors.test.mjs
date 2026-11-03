@@ -1,0 +1,69 @@
+import fs from "node:fs";
+import test from "node:test";
+import assert from "node:assert/strict";
+import { classifyAiHttpError, classifyAiResponseError } from "../ai/ai-request-errors.js";
+
+function response(status, payload, contentType = "application/json") {
+  return new Response(typeof payload === "string" ? payload : JSON.stringify(payload), {
+    status,
+    headers: { "content-type": contentType },
+  });
+}
+
+test("only explicit quota limit triggers the daily-limit modal", async () => {
+  const limit = await classifyAiResponseError(response(429, { error: "LIMIT" }));
+  assert.equal(limit.showLimitModal, true);
+  assert.match(limit.message, /今天的使用次数/);
+  for (const code of ["Too Many Requests", "QUOTA_BUSY", "UPSTREAM_RATE_LIMIT", null]) {
+    const result = await classifyAiResponseError(response(429, { error: code }));
+    assert.equal(result.showLimitModal, false, String(code));
+    assert.match(result.message, /频繁|限流/);
+  }
+});
+
+test("known uncertain quota and model outcomes discourage duplicate submissions", async () => {
+  for (const code of ["MODEL_OUTCOME_UNKNOWN", "QUOTA_COMMIT_UNKNOWN", "QUOTA_RELEASE_UNKNOWN"]) {
+    const result = await classifyAiResponseError(response(503, { error: code }));
+    assert.match(result.message, /避免重复发送/, code);
+    assert.equal(result.showLimitModal, false);
+  }
+});
+
+test("request conflict does not masquerade as a daily usage limit", async () => {
+  const result = await classifyAiResponseError(response(409, { error: "REQUEST_IN_FLIGHT" }));
+  assert.match(result.message, /正在处理/);
+  assert.equal(result.showLimitModal, false);
+});
+
+test("direct upstream 402 is distinct; mapped 503 stays generic without evidence", async () => {
+  const direct = await classifyAiResponseError(response(402, { error: "payment_required" }));
+  const mapped = await classifyAiResponseError(response(503, { error: "服务暂时不可用" }));
+  assert.match(direct.message, /上游服务额度/);
+  assert.doesNotMatch(mapped.message, /额度/);
+});
+
+test("untrusted and malformed response bodies are never rendered or logged", async () => {
+  const confidential = "sensitive upstream account balance: sk-secret-example";
+  const invalid = await classifyAiResponseError(response(503, confidential, "application/json"));
+  const embedded = await classifyAiResponseError(response(502, { error: { code: confidential, message: confidential } }));
+  const html = await classifyAiResponseError(response(502, "<p>" + confidential + "</p>", "text/html"));
+  for (const outcome of [invalid, embedded, html]) {
+    assert.doesNotMatch(outcome.message, /sensitive|sk-secret-example/);
+    assert.equal(outcome.showLimitModal, false);
+  }
+});
+
+test("missing response, authorization, and generic errors always return safe values", async () => {
+  assert.deepEqual(await classifyAiResponseError(null), classifyAiHttpError(undefined));
+  assert.match((await classifyAiResponseError(response(401, { error: "Unauthorized" }))).message, /重新登录/);
+  assert.match((await classifyAiResponseError(response(400, { error: "bad input" }))).message, /请求失败/);
+  assert.match((await classifyAiResponseError(response(403, { error: "PRO_REQUIRED" }))).message, /Pro/);
+});
+
+test("chat page uses safe classification rather than logging upstream response bodies", () => {
+  const app = fs.readFileSync(new URL("../ai/app.js", import.meta.url), "utf8");
+  const block = app.split("async function runDeepSeekRequest(requestContext) {")[1]?.split("const lastRealSendByConversation")[0];
+  assert.ok(block, "DeepSeek request handler must exist");
+  assert.match(block, /await classifyAiResponseError\(res\)/u);
+  assert.doesNotMatch(block, /console\.error\("API错误:",\s*res\.status,\s*errText\)/u);
+});
