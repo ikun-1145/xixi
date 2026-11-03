@@ -204,6 +204,33 @@ async function outbox(world) {
     .bind(ID.payment).first();
 }
 
+async function seedSyntheticBacklog(world, count) {
+  // refund.failed with no succeeded refund is an audit-only event. No
+  // entitlement RPC is expected, so this safely measures Cron queue draining.
+  for (let i = 0; i < count; i++) {
+    const eventId = "RF_AUDIT_" + String(i).padStart(3, "0");
+    const event = {
+      mode: "prod", storeId: ID.store, eventType: "refund.failed", eventId,
+      order: {
+        reference: ACCOUNT_REF, orderId: ID.order, paymentId: "",
+        productId: ID.product, currency: "CNY",
+      },
+    };
+    await world.db.prepare(
+      "INSERT INTO production_outbox" +
+      "(store_id,event_type,event_id,event_sha256,payload,state,updated_at)" +
+      " VALUES(?,?,?,?,?,'pending',0)"
+    ).bind(ID.store, "refund.failed", eventId, "a".repeat(64), JSON.stringify(event)).run();
+  }
+}
+
+async function outboxCounts(world) {
+  const rows = await world.db.prepare(
+    "SELECT state, COUNT(*) AS n FROM production_outbox GROUP BY state"
+  ).all();
+  return Object.fromEntries(rows.results.map(row => [row.state, row.n]));
+}
+
 async function scenario(title,bundlePath,runtimeModule,run) {
   const world = await setup(runtimeModule,bundlePath);
   try {
@@ -273,6 +300,35 @@ export async function main(argv = process.argv.slice(2)) {
     assert.equal(w.state.grants,0);
     assert.equal((await outbox(w)).state,"pending");
   });
+  await scenario("12 queued audit events drain in bounded 10+2 Cron batches",path,run,async w => {
+    await seedSyntheticBacklog(w,12);
+    assert.deepEqual(await outboxCounts(w),{pending:12});
+    await cron(w);
+    assert.deepEqual(await outboxCounts(w),{delivered:10,pending:2});
+    await cron(w);
+    assert.deepEqual(await outboxCounts(w),{delivered:12});
+    assert.equal(w.state.rpcCalls,0,"audit-only refund.failed must never grant Pro");
+    assert.equal(w.state.grants,0);
+  });
+
+  await scenario("overlapping Cron retries after lost RPC ack never double-grant",path,run,async w => {
+    w.state.loseNextRpcResponse = true;
+    const first = await deliver(w,webhookEnvelope());
+    assert.equal(first.status,503);
+    assert.equal((await outbox(w)).state,"pending");
+    assert.equal(w.state.grants,1);
+    await w.db.prepare("UPDATE production_outbox SET updated_at=0 WHERE state='pending'").run();
+    const executions = await Promise.all([
+      w.worker.scheduled({cron:"*/5 * * * *",scheduledTime:new Date(0)}),
+      w.worker.scheduled({cron:"*/5 * * * *",scheduledTime:new Date(0)}),
+    ]);
+    assert.ok(executions.every(x => x.outcome === "ok"));
+    assert.equal((await outbox(w)).state,"delivered");
+    assert.equal(w.state.grants,1,"duplicate Cron executions must not duplicate entitlement");
+    assert.equal(w.state.entitlement,"granted");
+    assert.ok(w.state.rpcCalls >= 2,"at least one retry must reach the RPC");
+  });
+
   process.stdout.write("PASS: " + tests +
     " genuine workerd+D1+mock RPC/payment scenarios; outbound requests handled only by in-process allowlist.\n");
 }
