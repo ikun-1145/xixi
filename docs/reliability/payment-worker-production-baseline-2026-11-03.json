@@ -1,0 +1,104 @@
+{
+  "captured_at_utc": "2026-11-03",
+  "evidence": "Read-only Cloudflare Workers API version/deployment/settings/schedules/script-content inspection",
+  "workers": [
+    {
+      "name": "afdianpay",
+      "version_id": "a84fa755-4a9e-456a-94eb-8746c7f11d1b",
+      "deployment_created_on": "2026-10-13T00:11:56.911179Z",
+      "bundle_sha256": "a512bdccaaa3168f3ed56a3009e2a317f8651160930315bed1c2b1850503ec4a",
+      "compatibility_date": "2026-09-05",
+      "cron": [
+        "*/2 * * * *"
+      ],
+      "observability": {
+        "logs_enabled": true
+      },
+      "bindings": {
+        "ADMIN_TOKEN": "secret_text",
+        "AFDIAN_IDENTITY_SERVICE": "service",
+        "AFDIAN_PLAN_ID": "plain_text",
+        "AFDIAN_ROLLOUT_DIAGNOSTICS_ONLY": "plain_text",
+        "ORDERS": "kv_namespace",
+        "SUPABASE_KEY": "secret_text",
+        "SUPABASE_URL": "plain_text",
+        "TOKEN": "secret_text",
+        "USER_ID": "plain_text"
+      },
+      "public_flags": {
+        "AFDIAN_ROLLOUT_DIAGNOSTICS_ONLY": "false"
+      },
+      "service_bindings": {
+        "AFDIAN_IDENTITY_SERVICE": {
+          "service": "ai",
+          "environment": "production"
+        }
+      },
+      "resources": {
+        "ORDERS": {
+          "type": "kv_namespace",
+          "id": "c331b9a7fe3e4589a373d46f814b3d14"
+        }
+      }
+    },
+    {
+      "name": "waffopay",
+      "version_id": "b414b89b-2218-47c6-bb7a-b85513af9125",
+      "deployment_created_on": "2026-10-07T11:36:43.095031Z",
+      "bundle_sha256": "90b6cc74748c9c26a99420eda251d6a7ac16252668caec80c6795e00a2f65db5",
+      "compatibility_date": "2026-09-05",
+      "cron": [
+        "*/5 * * * *"
+      ],
+      "observability": {
+        "logs_enabled": true
+      },
+      "bindings": {
+        "SUPABASE_ANON_KEY": "secret_text",
+        "WAFFO_ALLOWED_ORIGINS": "plain_text",
+        "WAFFO_CURRENCY": "plain_text",
+        "WAFFO_ENVIRONMENT": "plain_text",
+        "WAFFO_IDENTITY_SERVICE": "service",
+        "WAFFO_MERCHANT_ID": "plain_text",
+        "WAFFO_PRIVATE_KEY_PRODUCTION": "secret_text",
+        "WAFFO_PRIVATE_KEY_TEST": "secret_text",
+        "WAFFO_PROD_MERCHANT_ID": "plain_text",
+        "WAFFO_PROD_PRODUCT_ID": "plain_text",
+        "WAFFO_PROD_STORE_ID": "plain_text",
+        "WAFFO_PRODUCT_ID": "plain_text",
+        "WAFFO_PRODUCTION_ENABLED": "plain_text",
+        "WAFFO_PRODUCTION_ENTITLEMENT_ENABLED": "plain_text",
+        "WAFFO_PRODUCTION_LEDGER": "d1",
+        "WAFFO_PRODUCTION_SERVICE_ROLE_KEY": "secret_text",
+        "WAFFO_STORE_ID": "plain_text",
+        "WAFFO_TEST_BACKEND": "plain_text",
+        "WAFFO_TEST_INGEST_EMAIL": "secret_text",
+        "WAFFO_TEST_INGEST_PASSWORD": "secret_text",
+        "WAFFO_TEST_INGEST_SUB": "plain_text",
+        "WAFFO_TEST_PROJECT_REF": "plain_text",
+        "WAFFO_TEST_SCHEMA": "plain_text",
+        "WAFFO_TEST_SUCCESS_ORIGIN": "plain_text",
+        "WAFFO_TEST_SUPABASE_URL": "plain_text",
+        "WAFFO_WEBHOOK_PUBLIC_KEY_PROD": "plain_text",
+        "WAFFO_WEBHOOK_PUBLIC_KEY_TEST": "plain_text"
+      },
+      "public_flags": {
+        "WAFFO_ENVIRONMENT": "test",
+        "WAFFO_PRODUCTION_ENABLED": "true",
+        "WAFFO_PRODUCTION_ENTITLEMENT_ENABLED": "true"
+      },
+      "service_bindings": {
+        "WAFFO_IDENTITY_SERVICE": {
+          "service": "ai",
+          "environment": "production"
+        }
+      },
+      "resources": {
+        "WAFFO_PRODUCTION_LEDGER": {
+          "type": "d1",
+          "id": "9003f99a-bcef-4ba5-a961-33c399a01ab5"
+        }
+      }
+    }
+  ]
+}
