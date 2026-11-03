@@ -189,18 +189,30 @@ async function processProductionEvent(env,event,intent){
 }
 
 export async function reconcileProductionOutbox(env){
-  if(!configured(env))return;
+  // Return only aggregate outcome metadata. Never expose order IDs, identity,
+  // provider responses, raw payloads or D1 error strings in Cron health logs.
+  if(!configured(env))return { status:'disabled', due:0, processed:0, failed:0, unbound:0 };
   const db=env.WAFFO_PRODUCTION_LEDGER;
   const pending=await db.prepare(`SELECT payload FROM production_outbox WHERE state='pending' AND updated_at<?
     ORDER BY updated_at LIMIT 10`).bind(Date.now()-60000).all();
+  let due=0,processed=0,failed=0,unbound=0;
   for(const row of pending.results||[]){
+    due++;
     try{
       const event=JSON.parse(row.payload);
       const intent=await db.prepare('SELECT * FROM payment_intents WHERE payment_reference=?').bind(event.order.reference).first();
-      if(!intent)continue;
+      if(!intent){unbound++;continue;}
       await processProductionEvent(env,event,intent);
-    }catch(error){productionFailure(error);}
+      processed++;
+    }catch(error){
+      failed++;
+      productionFailure(error);
+    }
   }
+  return {
+    status:failed||unbound?'incomplete':'completed',
+    due,processed,failed,unbound,
+  };
 }
 
 export async function handleProductionReturnStatus(request,env){
