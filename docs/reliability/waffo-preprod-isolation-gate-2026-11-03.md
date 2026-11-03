@@ -39,6 +39,25 @@ node scripts/reliability/cloud-preprod-isolation-preflight.mjs after-d1-create
 
 GitHub Actions 新增 `tests/payment-cloud-preprod-preflight.test.mjs`，使用模拟 Cloudflare API 响应覆盖只读 GET、分页、权限不足、重名、D1 复用、生产绑定精确 ID 漂移等情况。**该模拟测试不等于已经在本机使用独立 Token 端到端运行 CLI**。本轮通过 Cloudflare 连接器只读复核了现场元数据，但没有在云端创建任何资源。
 
+## 新增云端暴露面审计与测试入口限制（2026-11-03）
+
+Cloudflare 文档明确：Workers 的 `workers.dev` 域名与 Preview/Version URL 是两套可独立配置的访问入口；关闭前者并不能代替检查后者，而且 Wrangler 对已有 Preview URL 配置可能保留旧值。
+
+- 本分支生成的两个 Wrangler 配置现在**同时明确写入** `workers_dev = false` 和 `preview_urls = false`。CI 必须拒绝任何 `preview_urls = true`，并验证生成配置中没有 Cron、公开 Route、真实支付地址或生产密钥。
+- 新增 `scripts/reliability/cloud-preprod-postdeploy-audit.mjs`，在**另行审批并实际创建云端资源之后**，仅使用 Cloudflare **GET** 读取两个 Worker 的 `/subdomain`、`/schedules`、`/settings`、`/deployments`，以及隔离 D1 详情、账号 Worker Custom Domains、全部 Zone 和其 Worker Routes。**缺少任何一项权限或完整分页证据即 BLOCKED。**
+- 两个 Worker 都必须满足：`enabled=false`、`previews_enabled=false`、没有 Cron、100% 单版本部署、兼容日期 `2026-09-05`。Mock Worker 不应有额外绑定；入口 Worker 只允许确定的隔离标识、测试 Secret、两个指向 `waffopay-preprod-mock` 的 Service Binding，以及独立 D1 UUID。若发现生产 Service Binding、生产 D1、意外 Secret、公开域名或 Zone Route，必须阻断。
+- 该脚本**不请求任何 Secret 值，不读取脚本正文，不访问数据库数据，也不能执行支付或部署**。使用独立只读 API Token，需额外能列出 Zones、Worker Routes 与 Worker Domains；不能仅因无法读取这些配置就声称不存在公网暴露。
+
+在独立云端 Worker 与 D1 经过单独授权、创建和部署后，再在受信任终端安全设置 `CLOUDFLARE_ACCOUNT_ID`、`CLOUDFLARE_API_TOKEN` 和 `WAFFO_PREPROD_D1_ID`，运行：
+
+```bash
+node scripts/reliability/cloud-preprod-postdeploy-audit.mjs
+```
+
+注意：**以上两套 Worker 都没有公网入口，因此外部脚本不能直接访问其健康检查或 Webhook。** 当前 7 项真实 workerd 端到端测试发生在本地，而不是 Cloudflare 云端。若希望实际在云端触发测试，需要额外明确授权一条受控调用路径，例如一次性、受 Cloudflare Access 保护的独立测试网关，并在测试完成后删除；它不属于本轮“两 Worker + 独立 D1”的资源创建范围。不得为了测试方便直接启用支付 Worker 的 `workers.dev` 或 Preview URL。
+
+参考 Cloudflare 官方文档：[Worker Version URLs](https://developers.cloudflare.com/workers/versions-and-deployments/version-urls/) 和 [Worker routes](https://developers.cloudflare.com/workers/configuration/routing/)。此文件只规划未来云端审计；**截至本轮，未创建、部署或修改任何云端资源**。
+
 ## 环境边界
 
 | 类别 | 预发布允许 | 必须阻断 |
