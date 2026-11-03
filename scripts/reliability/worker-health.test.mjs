@@ -177,6 +177,8 @@ test("payment business counts use only allowlisted structured event codes", () =
     { scriptName: "afdianpay", eventName: "scan_failed", events: 2 },
     { scriptName: "afdianpay", eventName: "payment_persisted", events: 772 },
     { scriptName: "afdianpay", eventName: "unknown_event_with_private_details", events: 11 },
+    { scriptName: "afdianpay", eventName: "__proto__", events: 3 },
+    { scriptName: "constructor", eventName: "scan_failed", events: 99 },
     { scriptName: "waffopay", eventName: null, events: 1 },
   ]);
   assert.deepEqual(report[0], {
