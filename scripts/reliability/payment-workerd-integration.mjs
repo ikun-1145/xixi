@@ -80,13 +80,17 @@ async function waffoCronCase({ Miniflare, convertV4MiniflareOptions, waffoPath, 
   try {
     const db = await mf.getD1Database("WAFFO_PRODUCTION_LEDGER");
     await db.exec(
-      "CREATE TABLE production_outbox (payload TEXT NOT NULL, state TEXT NOT NULL, updated_at INTEGER NOT NULL);" +
+      "CREATE TABLE production_outbox (store_id TEXT NOT NULL,event_type TEXT NOT NULL,event_id TEXT NOT NULL," +
+      "payload TEXT NOT NULL,state TEXT NOT NULL,updated_at INTEGER NOT NULL," +
+      "attempt_count INTEGER NOT NULL DEFAULT 0,last_error TEXT," +
+      "PRIMARY KEY(store_id,event_type,event_id));" +
       "CREATE TABLE payment_intents (payment_reference TEXT PRIMARY KEY);"
     );
     // The payment_intents table MUST exist. A missing row should exercise
     // the unbound branch, not be silently counted as a D1 query exception.
     if (payload !== undefined) {
-      await db.prepare("INSERT INTO production_outbox(payload,state,updated_at) VALUES(?,'pending',?)")
+      await db.prepare("INSERT INTO production_outbox(store_id,event_type,event_id,payload,state,updated_at)" +
+        " VALUES('STO_test','order.completed','PAY_test',?,'pending',?)")
         .bind(payload, 0).run();
     }
     const before = await db.prepare("SELECT COUNT(*) AS n FROM production_outbox").first();
@@ -95,6 +99,13 @@ async function waffoCronCase({ Miniflare, convertV4MiniflareOptions, waffoPath, 
     assertOutcome(result, expectation);
     const after = await db.prepare("SELECT COUNT(*) AS n FROM production_outbox").first();
     assert.equal(after.n, before.n, expectation + ": unexpected production outbox mutation");
+    if (payload !== undefined) {
+      const row = await db.prepare("SELECT state,attempt_count,last_error,updated_at FROM production_outbox").first();
+      assert.equal(row.state,"pending");
+      assert.equal(row.attempt_count,1,expectation + ": retry should advance exactly once");
+      assert.equal(row.last_error,payload.startsWith("{MALFORMED") ? "outbox_entry_failed" : "intent_unbound");
+      assert.ok(row.updated_at > 0,expectation + ": poisoned row must not remain oldest forever");
+    }
     assert.equal(outbound.attempts, 0, expectation + ": unexpectedly attempted external network");
   } finally {
     await mf.dispose();
