@@ -50,14 +50,19 @@ test('preprod configs have no external routes, Cron, live service or secrets',()
   const config=renderPreprodConfigs(source);
   assert.match(config.worker,/name = "waffopay-preprod-isolated"/);
   assert.match(config.worker,/workers_dev = false/);
+  assert.match(config.worker,/^preview_urls = false$/m);
   assert.match(config.worker,/WAFFO_PREPROD_ISOLATED = "true"/);
   assert.match(config.worker,/WAFFO_PRODUCTION_ENTITLEMENT_ENABLED = "false"/);
   assert.match(config.worker,/service = "waffopay-preprod-mock"/);
   assert.match(config.worker,/database_id = "11111111-1111-4111-8111-111111111111"/);
   assert.match(config.mock,/name = "waffopay-preprod-mock"/);
   assert.match(config.mock,/workers_dev = false/);
+  assert.match(config.mock,/^preview_urls = false$/m);
   for(const s of Object.values(config)){
     assert.doesNotMatch(s,/\[triggers\]|\[\[routes\]\]|crons|WAFFO_IDENTITY_SERVICE/);
+    assert.match(s,/^workers_dev = false$/m);
+    assert.match(s,/^preview_urls = false$/m);
+    assert.doesNotMatch(s,/^preview_urls = true$/m);
     assert.doesNotMatch(s,/api\.waffo\.ai|supabase\.co|waffopay\.sunland\.dev/);
     assert.doesNotMatch(s,/WAFFO_PRIVATE_KEY_PRODUCTION|WAFFO_PRODUCTION_SERVICE_ROLE_KEY/);
     assert.doesNotMatch(s,/9003f99a-bcef-4ba5-a961-33c399a01ab5/);
