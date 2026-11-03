@@ -138,7 +138,7 @@ test("uses only the analytics SQL endpoint with a scoped bearer token", async ()
   assert.equal(report.workers[0].scheduledInvocations, 160);
   assert.equal(report.paymentSignals[0].scanFailed, 2);
   assert.equal(report.paymentSignals[0].started, 730);
-  assert.equal(report.paymentSignals[0].cyclesCompleted, null);
+  assert.equal(report.paymentSignals[0].cyclesNoObservedFailure, null);
   assert.equal(report.paymentSignals[0].successVerified, false);
   assert.equal(report.paymentSignals[1].observed, false);
   assert.equal(report.paymentSignals[1].productionFailed, null);
