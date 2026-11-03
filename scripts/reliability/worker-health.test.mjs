@@ -5,6 +5,7 @@ import {
   MAX_HOURS,
   createHealthQuery,
   summarizeWorkerRows,
+  summarizePaymentBusinessSignals,
   fetchWorkerHealth,
   formatWorkerHealth,
   hoursFromArgs,
@@ -110,19 +111,37 @@ test("uses only the analytics SQL endpoint with a scoped bearer token", async ()
     now: "2026-11-03T04:00:00Z",
     fetchImpl: async (url, init) => {
       calls.push({ url, init });
-      return Response.json({ data: [sampleRow()] });
+      return Response.json({ data: calls.length === 1
+        ? [sampleRow()]
+        : [
+            { scriptName: "afdianpay", eventName: "reconciliation_started", events: 730 },
+            { scriptName: "afdianpay", eventName: "scan_failed", events: 2 },
+          ] });
     },
   });
-  assert.equal(calls.length, 1);
+  assert.equal(calls.length, 2);
   assert.equal(calls[0].url, "https://api.cloudflare.com/client/v4/accounts/" + accountId + "/analytics/sql");
   assert.equal(calls[0].init.method, "POST");
   assert.equal(calls[0].init.headers.authorization, "Bearer " + secret);
   const payload = JSON.parse(calls[0].init.body);
   assert.match(payload.query, /^SELECT /);
   assert.deepEqual(payload.scope, { accountTag: accountId });
+  const businessPayload = JSON.parse(calls[1].init.body);
+  assert.deepEqual(businessPayload.scope, payload.scope);
+  assert.deepEqual(businessPayload.time_range, payload.time_range);
+  assert.match(businessPayload.query, /attributes\['event'\] AS eventName/);
+  assert.match(businessPayload.query, /GROUP BY scriptName,attributes\['event'\]/);
+  assert.match(businessPayload.query, /LIMIT 100$/);
+  assert.doesNotMatch(businessPayload.query, /\bmessage\b|\burl\b|\btrace_id\b|\border_id\b/i);
   assert.equal(report.workers[0].http5xx, 12);
   assert.equal(report.workers[0].fetchInvocations, 240);
   assert.equal(report.workers[0].scheduledInvocations, 160);
+  assert.equal(report.paymentSignals[0].scanFailed, 2);
+  assert.equal(report.paymentSignals[0].started, 730);
+  assert.equal(report.paymentSignals[0].successVerified, false);
+  assert.equal(report.paymentSignals[1].observed, false);
+  assert.equal(report.paymentSignals[1].productionFailed, null);
+  assert.match(formatWorkerHealth(report), /outcome unknown/);
   assert.doesNotMatch(JSON.stringify(report), /private log message|token=private|test-token-do-not-print/);
 });
 
@@ -149,4 +168,68 @@ test("CLI options default to one day and reject invalid windows", () => {
   for (const args of [["--hours", "0"], ["--hours", "169"], ["--hours", "1.5"], ["--token", secret]]) {
     assert.throws(() => hoursFromArgs(args), /Usage|hours/);
   }
+});
+
+test("payment business counts use only allowlisted structured event codes", () => {
+  const report = summarizePaymentBusinessSignals([
+    { scriptName: "afdianpay", eventName: "reconciliation_started", events: 726 },
+    { scriptName: "afdianpay", eventName: "payment_scan_processed", events: 1438 },
+    { scriptName: "afdianpay", eventName: "scan_failed", events: 2 },
+    { scriptName: "afdianpay", eventName: "payment_persisted", events: 772 },
+    { scriptName: "afdianpay", eventName: "unknown_event_with_private_details", events: 11 },
+    { scriptName: "waffopay", eventName: null, events: 1 },
+  ]);
+  assert.deepEqual(report[0], {
+    name: "afdianpay", observed: true, successVerified: false,
+    started: 726, pagesProcessed: 1438, scanFailed: 2,
+  });
+  assert.deepEqual(report[1], {
+    name: "waffopay", observed: false, successVerified: false,
+    productionFailed: null, outboxUnavailable: null,
+  });
+  assert.doesNotMatch(JSON.stringify(report), /unknown_event_with_private_details|payment_persisted/);
+});
+
+test("absence of a Waffo success heartbeat is never reported as successful Cron", () => {
+  const report = summarizePaymentBusinessSignals([
+    { scriptName: "waffopay", eventName: "waffo_production_failed", events: 3 },
+    { scriptName: "waffopay", eventName: "waffo_production_outbox_unavailable", events: 1 },
+  ]);
+  assert.equal(report[1].observed, true);
+  assert.equal(report[1].successVerified, false);
+  assert.equal(report[1].productionFailed, 3);
+  assert.equal(report[1].outboxUnavailable, 1);
+  const output = formatWorkerHealth({
+    period: { start: "2026-11-02", end: "2026-11-03" },
+    workers: summarizeWorkerRows([]),
+    paymentSignals: report,
+  });
+  assert.match(output, /waffopay: production_failed=3 outbox_unavailable=1/);
+  assert.match(output, /no verified success heartbeat/);
+});
+
+test("business event schema failures fail closed instead of claiming zero incidents", () => {
+  assert.throws(() => summarizePaymentBusinessSignals(null), /Incomplete/);
+  assert.throws(() => summarizePaymentBusinessSignals(Array.from({length:100}, () => ({}))), /Incomplete/);
+  assert.throws(() => summarizePaymentBusinessSignals([
+    { scriptName: "afdianpay", eventName: "scan_failed", events: "invalid" },
+  ]), /Invalid business event count/);
+  assert.throws(() => summarizePaymentBusinessSignals([
+    { scriptName: "afdianpay", eventName: "scan_failed", events: 1 },
+    { scriptName: "afdianpay", eventName: "scan_failed", events: 2 },
+  ]), /Duplicate/);
+});
+
+test("a failed second analytics query does not give a misleading healthy report", async () => {
+  let number = 0;
+  await assert.rejects(fetchWorkerHealth({
+    accountId, apiToken: secret,
+    fetchImpl: async () => {
+      number++;
+      return number === 1 ? Response.json({ data: [sampleRow()] })
+        : new Response("private error: " + secret, { status: 403 });
+    },
+  }), error => error.message === "Cloudflare business metric query failed (HTTP 403)" &&
+    !error.message.includes(secret));
+  assert.equal(number, 2);
 });
