@@ -7,6 +7,9 @@ on:
       - "workers/waffopay/worker.js"
       - "workers/waffopay/production.js"
       - "tests/payment-cron-heartbeats.test.mjs"
+      - "scripts/reliability/payment-release-preflight.mjs"
+      - "scripts/reliability/payment-release-preflight.test.mjs"
+      - "docs/reliability/payment-worker-production-baseline-2026-11-03.json"
       - ".github/workflows/payment-cron-heartbeat-ci.yml"
 
 permissions:
@@ -37,6 +40,11 @@ jobs:
           node --check workers/waffopay/worker.js
           node --check workers/waffopay/production.js
           node --check tests/payment-cron-heartbeats.test.mjs
+          node --check scripts/reliability/payment-release-preflight.mjs
+          node --check scripts/reliability/payment-release-preflight.test.mjs
+
+      - name: Release preflight unit tests (fake API, no credentials)
+        run: node --test scripts/reliability/payment-release-preflight.test.mjs
 
       - name: Complete repository tests (mock only)
         run: npm test
