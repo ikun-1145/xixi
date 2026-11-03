@@ -143,9 +143,16 @@ export async function main(argv = process.argv.slice(2)) {
 }
 
 if (process.argv[1] && fileURLToPath(import.meta.url) === resolve(process.argv[1])) {
-  main().catch(() => {
-    // No stack trace or source path in shared CI logs.
-    process.stderr.write("[BLOCKED] Isolated workerd integration failed.\n");
+  main().catch(error => {
+    // This CI intentionally has no production credentials or network access.
+    // Emit only bounded diagnostic text; never echo stack traces or raw bundles.
+    const kind = /^[A-Za-z]+Error$/.test(error?.name || "") ? error.name : "Error";
+    const detail = String(error?.message || "unknown failure")
+      .split("\n")[0].replace(/https?:\/\/\S+/g, "[endpoint]")
+      .replace(/fake-test-[A-Za-z0-9-]+/g, "[redacted]")
+      .replace(/[A-Za-z0-9+_\/-]{65,}/g, "[redacted]")
+      .slice(0, 140);
+    process.stderr.write("[BLOCKED] Isolated workerd integration failed: " + kind + " " + detail + "\n");
     process.exitCode = 2;
   });
 }
