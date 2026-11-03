@@ -52,7 +52,7 @@ jobs:
       - name: Complete repository tests (mock only)
         run: npm test
 
-bundle-dry-run:
+  bundle-dry-run:
     # No Cloudflare credentials, uploads, previews or deployments.
     runs-on: ubuntu-latest
     timeout-minutes: 18
