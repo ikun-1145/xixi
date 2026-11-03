@@ -45,6 +45,9 @@ jobs:
           node --check scripts/reliability/render-payment-preprod.mjs
           node --test tests/payment-preprod-isolation.test.mjs
 
+      - name: Full repository regression tests (no real credentials)
+        run: npm test
+
       - name: Construct synthetic no-route no-cron configs
         env:
           CLOUDFLARE_ACCOUNT_ID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
