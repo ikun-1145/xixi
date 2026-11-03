@@ -128,6 +128,17 @@ const functionFingerprints = (await db.query(
   " order by proname"
 )).rows;
 assert.equal(functionFingerprints.length,3);
+// MD5 here is PostgreSQL's canonical text-comparison fingerprint, not a
+// cryptographic signature. The reviewed expected values came from a read-only
+// production inspection. Fail closed if checked-in SQL differs.
+const reviewed = JSON.parse(await readFile(resolve(root,
+  'docs/reliability/waffo-rpc-production-fingerprints-2026-11-03.json'), 'utf8'));
+assert.deepEqual(
+  functionFingerprints.map(f => ({name:f.proname,args:f.args,definition_md5:f.md5})),
+  reviewed.functions.map(f => ({name:f.name,args:f.args,definition_md5:f.definition_md5})),
+  'Reviewed live Waffo RPC definitions no longer match the repository migration'
+);
+checks++;
 console.log('Waffo SQL function fingerprints (PGlite): ' + JSON.stringify(functionFingerprints));
 await db.close();
 // Migration order vs verified-reconciliation: a replacement 2-arg RPC that never writes
