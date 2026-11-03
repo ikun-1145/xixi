@@ -172,11 +172,13 @@ async function setup({ Miniflare, convertV4MiniflareOptions }, bundlePath) {
     const db = await mf.getD1Database("WAFFO_PRODUCTION_LEDGER");
     const base = new URL("../../workers/waffopay/production-backend/",import.meta.url);
     for (const filename of ["schema.sql", "outbox.sql"]) {
-      // Miniflare D1.exec splits statements itself and rejects comment-only
-      // fragments; strip SQL comments from these trusted static fixtures.
+      // D1.exec parses each line independently; these static trusted schema
+      // fixtures contain multiline CREATE statements. Execute each complete
+      // semicolon-terminated statement through the real D1 prepared API.
       const statements = readFileSync(new URL(filename,base),"utf8")
-        .split("\n").filter(line => !line.trimStart().startsWith("--")).join("\n");
-      await db.exec(statements);
+        .split("\n").filter(line => !line.trimStart().startsWith("--"))
+        .join(" ").split(";").map(value => value.trim()).filter(Boolean);
+      for (const statement of statements) await db.prepare(statement).run();
     }
     await db.prepare("INSERT INTO payment_intents VALUES (?,'prod','synthetic-user',?,?,'CNY',1500,?,1)")
       .bind(ACCOUNT_REF, ID.store, ID.product, ACCOUNT_REF).run();
