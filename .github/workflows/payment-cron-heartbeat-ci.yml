@@ -21,6 +21,7 @@ on:
       - "docs/reliability/payment-release-preflight-2026-11-03.md"
       - "docs/reliability/payment-workerd-isolated-acceptance-2026-11-03.md"
       - "docs/reliability/payment-full-isolated-convergence-2026-11-03.md"
+      - "docs/reliability/payment-preproduction-gates-2026-11-03.md"
       - "docs/reliability/waffo-rpc-production-fingerprints-2026-11-03.json"
       - ".github/workflows/payment-cron-heartbeat-ci.yml"
 
