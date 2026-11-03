@@ -27,12 +27,13 @@
 
 - 将现有 `workers/waffopay/production-backend/verify-source-rpc.mjs` 纳入新 `postgres-rpc-sandbox` CI 作业。
 - 使用固定 `@electric-sql/pglite@0.3.16` 在 GitHub Actions 内存中执行仓库历史 RPC fixture + `20261002071010_waffo_production_entitlement_sources.sql`，**不连接生产 Supabase**。
-- GitHub Actions **Run #41591710806** 的 SQL 作业输出：**48 real PostgreSQL regression checks passed**。
+- GitHub Actions **Run #41591710806** 的 SQL 作业输出：**49 real PostgreSQL regression checks passed**。
+- 本轮另用 Supabase 生产数据库**只读**查询了 3 个 RPC 的函数定义 MD5、EXECUTE 权限、5 张私有表 RLS 状态；三项 MD5 与本地 PGlite 生成值 **3/3 完全一致**。将这些已审核值固定在 `docs/reliability/waffo-rpc-production-fingerprints-2026-11-03.json`，PGlite CI 现在一旦出现定义漂移即失败。MD5 在这里是文本变更检测指纹，不是数字签名。
 - 覆盖真实函数的事件重复、退款墓碑、退款后旧事件重放、人工/爱发电等其他权益来源保持、事务注入回滚、角色 EXECUTE 权限、私有 Schema 读取限制。
 
 ## 4. 仍然阻断生产发布的因素
 
-1. PGlite 验证的是仓库声明的 SQL 迁移与函数，尚未只读证明**当前线上 Supabase 对应函数**和所有依赖与该提交保持一致。
+1. 已确认生产 Waffo 三个入口 RPC 的函数定义与本地 SQL 迁移一致，但**不能据此证明所有跨 Schema 依赖、触发器及运行时数据库配置也全部相同**；后续变更仍需重新核验。
 2. `outboundService` 使用进程内 GraphQL/RPC 模拟器，不能代替真实 Waffo 支付验证、真实 Edge service binding、生产 webhook 重试和真实跨数据库网络故障。
 3. 暂无真实环境的并发 Cron / 大量 backlog / 实际 D1 读写延迟压力指标。
 4. PR #34 增加了支付 Cron 日志语义，但尚未在独立非生产 Worker 对完整支付流进行端到端部署验收。
@@ -43,3 +44,7 @@
 - GitHub Actions 无 Cloudflare/Supabase 生产凭据；Workerd 与 PGlite 都使用短暂内存状态。
 - 未开启真实付款、退款或 Pro 开通。
 - `PR #32` 网页错误提示、`PR #33` 只读监控、`PR #34` 支付心跳均保持 Draft。
+
+## 最新持续集成状态
+
+GitHub Actions Run **41592270013**：`postgres-rpc-sandbox`、`verify`、`bundle-dry-run` 三个 job 全部成功。**49** 项真实 PostgreSQL 检查通过（包括与已核实线上定义的 3 个函数指纹的逐项对照）；原生 workerd **9/9** 场景通过；全仓库 **798 项，797 通过、0 失败、1 跳过**。
