@@ -67,3 +67,16 @@ test("chat page uses safe classification rather than logging upstream response b
   assert.match(block, /await classifyAiResponseError\(res\)/u);
   assert.doesNotMatch(block, /console\.error\("API错误:",\s*res\.status,\s*errText\)/u);
 });
+
+test("all user-facing classifications are present in the shared site i18n catalog", () => {
+  const source = fs.readFileSync(new URL("../p/js/site-i18n.js", import.meta.url), "utf8");
+  const statuses = [
+    [429, "LIMIT"], [429, null], [409, "REQUEST_IN_FLIGHT"],
+    [503, "MODEL_OUTCOME_UNKNOWN"], [402, null], [503, null],
+    [403, "PRO_REQUIRED"], [401, null], [400, null],
+  ];
+  for (const [status, code] of statuses) {
+    const message = classifyAiHttpError(status, code).message;
+    assert.ok(source.includes(`[${JSON.stringify(message)},`), `missing translation: ${message}`);
+  }
+});
