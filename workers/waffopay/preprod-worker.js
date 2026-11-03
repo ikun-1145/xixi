@@ -15,8 +15,8 @@ export function preprodReady(env) {
     && env.WAFFO_WEBHOOK_PUBLIC_KEY_PROD.includes('-----BEGIN PUBLIC KEY-----')
     && typeof env.WAFFO_WEBHOOK_PUBLIC_KEY_TEST === 'string'
     && env.WAFFO_WEBHOOK_PUBLIC_KEY_TEST.includes('-----BEGIN PUBLIC KEY-----')
-    && env.WAFFO_WEBHOOK_PUBLIC_KEY_PROD.replace(/\\s/g,'') !==
-       env.WAFFO_WEBHOOK_PUBLIC_KEY_TEST.replace(/\\s/g,'')
+    && env.WAFFO_WEBHOOK_PUBLIC_KEY_PROD.replace(/\s/g,'') !==
+       env.WAFFO_WEBHOOK_PUBLIC_KEY_TEST.replace(/\s/g,'')
     && typeof env.WAFFO_PREPROD_RPC_TEST_KEY === 'string'
     && env.WAFFO_PREPROD_RPC_TEST_KEY.startsWith('waffo-preprod-')
     && env.WAFFO_PREPROD_RPC_TEST_KEY.length >= 32
