@@ -11,6 +11,7 @@ on:
       - "scripts/reliability/payment-release-preflight.test.mjs"
       - "scripts/reliability/verify-payment-bundle-build.mjs"
       - "scripts/reliability/verify-payment-bundle-build.test.mjs"
+      - "scripts/reliability/payment-bundle-smoke.mjs"
       - "docs/reliability/payment-worker-production-baseline-2026-11-03.json"
       - "docs/reliability/payment-release-preflight-2026-11-03.md"
       - ".github/workflows/payment-cron-heartbeat-ci.yml"
@@ -108,3 +109,8 @@ jobs:
         env:
           PAYMENT_BUNDLE_ROOT: ${{ runner.temp }}/payment-bundles
         run: node scripts/reliability/verify-payment-bundle-build.mjs "$PAYMENT_BUNDLE_ROOT"
+
+      - name: Smoke compiled candidate Worker modules without network
+        env:
+          PAYMENT_BUNDLE_ROOT: ${{ runner.temp }}/payment-bundles
+        run: node scripts/reliability/payment-bundle-smoke.mjs "$PAYMENT_BUNDLE_ROOT"
