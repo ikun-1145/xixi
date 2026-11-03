@@ -160,7 +160,7 @@ test("preflight refuses split traffic, missing bindings and unexpected resource 
   }), /split or missing/);
   assert.deepEqual(comparePaymentBaseline(
     baseline, {workers:[]}
-  ).sort(), ["afdianpay: missing Worker baseline", "waffopay: missing Worker baseline"].sort());
+  ).sort(), ["afdianpay: missing Worker baseline", "waffopay: missing Worker baseline", "Unexpected Worker in report"].sort());
 });
 
 test("stored baseline contains only fixed non-secret identifiers and safe flags", () => {
