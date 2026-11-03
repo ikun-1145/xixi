@@ -46,6 +46,32 @@
 这些安全入口仅证明 `preprod` 可安全配置、生成和离线构建；**尚未进行真实 Cloudflare 云端联调**。Service Binding 的云端目标、真实部署权限和沙箱运行时仍需要独立验收。模拟 RPC 没有持久化权益数据库，因此不能用这套 Mock 证明跨数据库事务；正式权益事务已经在 PR #34 的 PGlite 单独测试。禁止把这些不同层级的测试混为一谈。
 
 
+## 新增密钥完整性与真实双 Worker 验收
+
+进一步核对发现：仅有隔离健康检查和成功编译，并不能证明 `handleProductionWebhook` 会接受合法合成回调。它还要求两份不同的 Webhook 公钥及独立的 RSA 签名私钥。已在预发布入口增加**启动时拒绝**条件：
+
+- `WAFFO_PREPROD_SIGNING_KEY`：仅预发布使用、单独生成的 PKCS8 RSA 测试私钥，不读取 `WAFFO_PRIVATE_KEY_PRODUCTION`。
+- `WAFFO_WEBHOOK_PUBLIC_KEY_PROD`：在这个隔离 Worker 中只用于识别**合成的 prod-mode 测试 Webhook**，必须与下面公钥不同，不能复用线上 Waffo 公钥。
+- `WAFFO_WEBHOOK_PUBLIC_KEY_TEST`：另一把单独生成的 RSA 测试公钥，避免两套环境公钥混用。
+- `WAFFO_PREPROD_RPC_TEST_KEY`：仅模拟 RPC 接受的测试凭据，强制 `waffo-preprod-` 前缀与最小长度；不接收线上 Supabase service_role。
+- `WAFFO_PREPROD_GATE_TOKEN`：额外的内部测试入口令牌，必须独立生成且至少 32 字符；仅用于私有 Service Binding 的人工测试入口。
+
+**以上秘密均不加入配置仓库或 GitHub Actions Secrets。** 本地 CI 每次随机生成 RSA 密钥；未来创建云端预发布时必须在受信任设备上生成独立测试密钥并以专用预发布绑定注入，且与线上密钥核对不相同。
+
+新增 `scripts/reliability/payment-preprod-workerd-e2e.mjs`：直接读取 Wrangler 编译的两个候选 Worker 模块，使用固定 Miniflare 5.20261101.0-beta，在同一个真实 `workerd` 中连接两条独立 Service Binding 和临时 D1；拦截所有其他出站网络请求。已实际通过 **7/7** 场景：
+
+1. 未提供测试令牌时拒绝访问，并且 D1 不被修改。
+2. 正确测试令牌返回隔离模式健康信息，自动 Cron 与会员发放均关闭。
+3. 无效 RSA 签名在写入 D1 之前被拒绝。
+4. 有效合成回调完成 Webhook 验签、两次内部 Service Binding 调用及本地 D1 写入，权益字段保持禁用。
+5. 重放相同的合成付款不会新增 D1 事件或出站记录。
+6. 手动 Cron 报告空待处理队列正常，并且不使用生产网络。
+7. 生产 checkout、身份验证和正式 Webhook 路由保持不可访问。
+
+**实测 CI Run #41613637366：** 隔离单元测试 **8/8**，全仓库 **806 项中 805 通过、0 失败、1 跳过**，双 Worker 端到端 **7/7**，非模拟外部网络访问 **0 次**。独立复现构建 CI Run **#41613637335** 同样 PASS。
+
+以上均发生在**本地临时运行时**，还没有创建真正的 Cloudflare 云端预发布 Worker/D1、绑定云端资源、注入密钥或部署。下一道门禁仍是单独批准云端非生产资源创建和隔离联调。
+
 ## 本轮 CI 实测结果
 
 - Preproduction Isolation Gate Run **41598668646**：8/8 条隔离/合成签名/Service Binding 测试通过；完整仓库 806 项，805 通过、0 失败、1 跳过；两份带模拟独立 D1 UUID 的配置都成功通过 Wrangler 4.141.0 `deploy --dry-run`。
