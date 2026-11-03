@@ -18,7 +18,7 @@
 
 **重要：** `payment_scan_processed` 发生在完成游标 RPC 之前，不能算作整轮任务成功；Waffo 当前生产版本也没有可靠的成功心跳。没有业务事件或仅没有错误日志，都不能证明任务成功。Cloudflare 日志可能采样，计数只表示已观测事件。SQL **不查询** `message`、`url`、聊天正文、JWT、邮件、手机号或其他用户数据。
 
-已预留对 [Draft PR #34](https://github.com/ikun-1145/xixi/pull/34) 的未来日志格式的支持：爱发电 `reconciliation_cycle_completed`，以及 Waffo 的 `waffo_production_outbox_cycle`（`status` 分为 `completed`、`incomplete`、`disabled`）。**这些心跳尚未部署到生产；当前缺失时报告 `NOT_OBSERVED`，绝不当作零次成功。** `completed` 只说明当前 Cron 执行/待处理批次没有已知失败，不是订单、退款或 Pro 会员权益成功的证明。
+已预留对 [Draft PR #34](https://github.com/ikun-1145/xixi/pull/34) 的未来日志格式的支持：爱发电 `reconciliation_cycle_outcome`，其 `status` 包括 `no_observed_failure`、`partial_failure`、`deferred`、`failed`，以及 Waffo 的 `waffo_production_outbox_cycle`（`status` 分为 `completed`、`incomplete`、`disabled`）。**这些心跳尚未部署到生产；当前缺失时报告 `NOT_OBSERVED`，绝不当作零次成功。** `no_observed_failure` 也不代表待处理工作已全部执行；Waffo `completed` 只说明本次 Cron 执行/待处理批次没有已知失败，不是订单、退款或 Pro 会员权益成功的证明。
 
 ## 使用方法
 
