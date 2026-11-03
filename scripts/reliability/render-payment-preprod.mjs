@@ -31,6 +31,7 @@ export function renderPreprodConfigs(input) {
   const shared=`compatibility_date = "2026-09-05"
 account_id = "${accountId}"
 workers_dev = false
+preview_urls = false
 
 [observability]
 enabled = true
@@ -64,6 +65,12 @@ service = "${PREPROD.mock}"
   const mock=`name = "${PREPROD.mock}"
 main = "../workers/waffopay/preprod-mock.js"
 ${shared}`;
+  // workers.dev and version/preview URLs must both be explicitly disabled.
+  // Wrangler may preserve an old preview URL setting when omitted.
+  if (![worker,mock].every(doc =>
+    /^workers_dev = false$/m.test(doc) &&
+    /^preview_urls = false$/m.test(doc)
+  )) throw new Error('preprod_public_endpoint_not_disabled');
   // Reject accidental exposed routes, Cron or live production URLs/names.
   for(const doc of [worker,mock]){
     if(/(?:^|\n)\s*(?:routes?|crons?|triggers)\s*=/m.test(doc)
