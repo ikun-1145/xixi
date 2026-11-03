@@ -186,10 +186,11 @@ export function summarizePaymentBusinessSignals(rows) {
   }
   for (const group of Object.values(groups)) {
     if (!group.observed) continue;
-    const knownCategories = Object.values(PAYMENT_EVENTS[group.name]);
-    if (group.name === "waffopay") knownCategories.push(...Object.values(WAFFO_CYCLE_STATUSES));
-    for (const key of knownCategories) {
-      if (group[key] === null) group[key] = 0; // Zero *observed*, never confirmed success.
+    for (const key of Object.values(PAYMENT_EVENTS[group.name])) {
+      // Heartbeats may not yet be deployed. Missing one is NOT OBSERVED,
+      // not confirmed zero completed cycles.
+      if (key === "cyclesCompleted") continue;
+      if (group[key] === null) group[key] = 0; // Zero observed, not business success.
     }
   }
   return [groups.afdianpay, groups.waffopay];
@@ -286,6 +287,7 @@ export async function fetchWorkerHealth({
 
 export function formatWorkerHealth(report) {
   const fmt = value => value === null ? "N/A" : Number(value).toFixed(2);
+  const eventCount = value => value === null ? "NOT_OBSERVED" : String(value);
   const lines = [
     "Cloudflare Workers health snapshot (" + report.period.start + " to " + report.period.end + ")",
     "Worker      Total*       HTTP Fetch*  Scheduled*  HTTP 5xx*  HTTP 4xx*  Avg CPU(ms)  Approx max CPU(ms)",
@@ -311,14 +313,14 @@ export function formatWorkerHealth(report) {
         lines.push("afdianpay: started=" + signal.started +
           " pages_processed=" + signal.pagesProcessed +
           " scan_failed=" + signal.scanFailed +
-          " cycles_completed=" + signal.cyclesCompleted +
+          " cycles_completed=" + eventCount(signal.cyclesCompleted) +
           " (page event does not prove completed reconciliation)");
       } else {
         lines.push("waffopay: production_failed=" + signal.productionFailed +
           " outbox_unavailable=" + signal.outboxUnavailable +
-          " cycles_completed=" + signal.cyclesCompleted +
-          " cycles_incomplete=" + signal.cyclesIncomplete +
-          " cycles_disabled=" + signal.cyclesDisabled +
+          " cycles_completed=" + eventCount(signal.cyclesCompleted) +
+          " cycles_incomplete=" + eventCount(signal.cyclesIncomplete) +
+          " cycles_disabled=" + eventCount(signal.cyclesDisabled) +
           " (completed means outbox batch finished, not payment entitlement guaranteed)");
       }
     }
