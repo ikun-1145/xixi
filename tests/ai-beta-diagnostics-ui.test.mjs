@@ -190,6 +190,14 @@ async function waitForAsyncEvent() {
   await new Promise(resolve => setTimeout(resolve, 0));
 }
 
+async function waitForRuntimeMode(runtime, expected, timeoutMs = 1500) {
+  const deadline = Date.now() + timeoutMs;
+  while (runtime.getObservationMode() !== expected && Date.now() < deadline) {
+    await new Promise(resolve => setTimeout(resolve, 10));
+  }
+  assert.equal(runtime.getObservationMode(), expected);
+}
+
 test("settings UI is collapsed, explicit and keyboard-accessible by native controls", () => {
   const dom = new JSDOM(settingsSource);
   const { document } = dom.window;
@@ -588,8 +596,7 @@ test("settings mode, latest snapshot and clear synchronize with an open chat run
   assert.equal(runtime.getObservationMode(), "off");
 
   assert.equal((await page.controller.setParticipation(true)).ok, true);
-  await waitForAsyncEvent();
-  assert.equal(runtime.getObservationMode(), "summary");
+  await waitForRuntimeMode(runtime, "summary");
 
   const controller = new AbortController();
   const requestContext = {
@@ -644,8 +651,7 @@ test("settings mode, latest snapshot and clear synchronize with an open chat run
   );
 
   await page.controller.setParticipation(false);
-  await waitForAsyncEvent();
-  assert.equal(runtime.getObservationMode(), "off");
+  await waitForRuntimeMode(runtime, "off");
 });
 
 test("privacy policy describes opt-in local-only behavior without absolute promises", () => {
