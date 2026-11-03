@@ -10,7 +10,16 @@ export function preprodReady(env) {
     && typeof env.WAFFO_PREPROD_GATE_TOKEN === 'string'
     && env.WAFFO_PREPROD_GATE_TOKEN.length >= 32
     && typeof env.WAFFO_PREPROD_SIGNING_KEY === 'string'
+    && env.WAFFO_PREPROD_SIGNING_KEY.includes('-----BEGIN PRIVATE KEY-----')
+    && typeof env.WAFFO_WEBHOOK_PUBLIC_KEY_PROD === 'string'
+    && env.WAFFO_WEBHOOK_PUBLIC_KEY_PROD.includes('-----BEGIN PUBLIC KEY-----')
+    && typeof env.WAFFO_WEBHOOK_PUBLIC_KEY_TEST === 'string'
+    && env.WAFFO_WEBHOOK_PUBLIC_KEY_TEST.includes('-----BEGIN PUBLIC KEY-----')
+    && env.WAFFO_WEBHOOK_PUBLIC_KEY_PROD.replace(/\\s/g,'') !==
+       env.WAFFO_WEBHOOK_PUBLIC_KEY_TEST.replace(/\\s/g,'')
     && typeof env.WAFFO_PREPROD_RPC_TEST_KEY === 'string'
+    && env.WAFFO_PREPROD_RPC_TEST_KEY.startsWith('waffo-preprod-')
+    && env.WAFFO_PREPROD_RPC_TEST_KEY.length >= 32
     && typeof env.WAFFO_PREPROD_PROVIDER?.fetch === 'function'
     && typeof env.WAFFO_PREPROD_RPC?.fetch === 'function'
     && env.WAFFO_PRODUCTION_LEDGER
