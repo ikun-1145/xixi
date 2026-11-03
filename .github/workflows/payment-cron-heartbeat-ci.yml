@@ -10,6 +10,7 @@ on:
       - "scripts/reliability/payment-release-preflight.mjs"
       - "scripts/reliability/payment-release-preflight.test.mjs"
       - "docs/reliability/payment-worker-production-baseline-2026-11-03.json"
+      - "docs/reliability/payment-release-preflight-2026-11-03.md"
       - ".github/workflows/payment-cron-heartbeat-ci.yml"
 
 permissions:
