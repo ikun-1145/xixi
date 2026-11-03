@@ -117,6 +117,18 @@ for(const role of ['anon','authenticated']) {
 await db.exec('set role service_role');assert.equal((await status('rollback',uu(11))).entitlementState,'granted');
 await assert.rejects(()=>db.query('select * from waffo_prod.entitlement_sources'),/permission denied/);await db.exec('reset role');checks++;
 assert.equal((await db.query('select count(*)::int as n from waffo_prod.projection_context')).rows[0].n,0);checks++;
+// Fingerprints of normalized function definitions, not data or credentials.
+// Used to compare this checked-in migration with live Supabase read-only hashes.
+const functionFingerprints = (await db.query(
+  "select proname, pg_get_function_identity_arguments(p.oid) as args," +
+  " md5(pg_get_functiondef(p.oid)) as md5 from pg_proc p" +
+  " join pg_namespace n on n.oid=p.pronamespace" +
+  " where n.nspname='public' and proname in" +
+  " ('sunland_waffo_register_intent','sunland_waffo_apply_event','sunland_waffo_status')" +
+  " order by proname"
+)).rows;
+assert.equal(functionFingerprints.length,3);
+console.log('Waffo SQL function fingerprints (PGlite): ' + JSON.stringify(functionFingerprints));
 await db.close();
 // Migration order vs verified-reconciliation: a replacement 2-arg RPC that never writes
 // user_profiles is accepted and left untouched; any other changed definition fails closed.
