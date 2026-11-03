@@ -184,7 +184,9 @@ test("payment business counts use only allowlisted structured event codes", () =
   ]);
   assert.deepEqual(report[0], {
     name: "afdianpay", observed: true, successVerified: false,
-    started: 726, pagesProcessed: 1438, scanFailed: 2, cyclesCompleted: null,
+    started: 726, pagesProcessed: 1438, scanFailed: 2,
+    cyclesNoObservedFailure: null, cyclesPartialFailure: null,
+    cyclesDeferred: null, cyclesFailed: null,
   });
   assert.deepEqual(report[1], {
     name: "waffopay", observed: false, successVerified: false,
@@ -240,14 +242,21 @@ test("a failed second analytics query does not give a misleading healthy report"
 
 test("future payment Cron heartbeat statuses are classified without trusting arbitrary event fields", () => {
   const signals = summarizePaymentBusinessSignals([
-    { scriptName: "afdianpay", eventName: "reconciliation_cycle_completed", statusName: null, events: 44 },
+    { scriptName: "afdianpay", eventName: "reconciliation_cycle_outcome", statusName: "no_observed_failure", events: 44 },
+    { scriptName: "afdianpay", eventName: "reconciliation_cycle_outcome", statusName: "partial_failure", events: 3 },
+    { scriptName: "afdianpay", eventName: "reconciliation_cycle_outcome", statusName: "deferred", events: 2 },
+    { scriptName: "afdianpay", eventName: "reconciliation_cycle_outcome", statusName: "failed", events: 1 },
+    { scriptName: "afdianpay", eventName: "reconciliation_cycle_outcome", statusName: "__proto__", events: 99 },
     { scriptName: "waffopay", eventName: "waffo_production_outbox_cycle", statusName: "completed", events: 30 },
     { scriptName: "waffopay", eventName: "waffo_production_outbox_cycle", statusName: "incomplete", events: 4 },
     { scriptName: "waffopay", eventName: "waffo_production_outbox_cycle", statusName: "disabled", events: 2 },
     { scriptName: "waffopay", eventName: "waffo_production_outbox_cycle", statusName: "__proto__", events: 100 },
     { scriptName: "waffopay", eventName: "waffo_production_outbox_cycle", statusName: "constructor", events: 200 },
   ]);
-  assert.equal(signals[0].cyclesCompleted, 44);
+  assert.equal(signals[0].cyclesNoObservedFailure, 44);
+  assert.equal(signals[0].cyclesPartialFailure, 3);
+  assert.equal(signals[0].cyclesDeferred, 2);
+  assert.equal(signals[0].cyclesFailed, 1);
   assert.equal(signals[1].cyclesCompleted, 30);
   assert.equal(signals[1].cyclesIncomplete, 4);
   assert.equal(signals[1].cyclesDisabled, 2);
@@ -265,7 +274,7 @@ test("business heartbeat counts remain unknown before logging code is deployed",
   const signals = summarizePaymentBusinessSignals([
     { scriptName: "afdianpay", eventName: "reconciliation_started", events: 8 },
   ]);
-  assert.equal(signals[0].cyclesCompleted, null);
+  assert.equal(signals[0].cyclesNoObservedFailure, null);
   assert.equal(signals[1].cyclesCompleted, null);
   assert.equal(signals[1].observed, false);
   const rendered = formatWorkerHealth({
@@ -273,6 +282,6 @@ test("business heartbeat counts remain unknown before logging code is deployed",
     workers: summarizeWorkerRows([]),
     paymentSignals: signals,
   });
-  assert.match(rendered, /afdianpay:.*cycles_completed=NOT_OBSERVED/u);
+  assert.match(rendered, /afdianpay:.*no_observed_failure=NOT_OBSERVED/u);
   assert.match(rendered, /waffopay: NO OBSERVED STRUCTURED BUSINESS EVENTS/u);
 });
