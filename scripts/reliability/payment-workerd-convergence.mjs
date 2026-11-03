@@ -171,8 +171,13 @@ async function setup({ Miniflare, convertV4MiniflareOptions }, bundlePath) {
   try {
     const db = await mf.getD1Database("WAFFO_PRODUCTION_LEDGER");
     const base = new URL("../../workers/waffopay/production-backend/",import.meta.url);
-    await db.exec(readFileSync(new URL("schema.sql",base),"utf8"));
-    await db.exec(readFileSync(new URL("outbox.sql",base),"utf8"));
+    for (const filename of ["schema.sql", "outbox.sql"]) {
+      // Miniflare D1.exec splits statements itself and rejects comment-only
+      // fragments; strip SQL comments from these trusted static fixtures.
+      const statements = readFileSync(new URL(filename,base),"utf8")
+        .split("\n").filter(line => !line.trimStart().startsWith("--")).join("\n");
+      await db.exec(statements);
+    }
     await db.prepare("INSERT INTO payment_intents VALUES (?,'prod','synthetic-user',?,?,'CNY',1500,?,1)")
       .bind(ACCOUNT_REF, ID.store, ID.product, ACCOUNT_REF).run();
     return {mf,db,state,worker:await mf.getWorker()};
