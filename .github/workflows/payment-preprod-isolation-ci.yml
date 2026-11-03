@@ -69,7 +69,14 @@ jobs:
                 echo "::error::Blocked: isolated dry-run failed ($target)"
                 exit 2
               }
-            test -s "$output/worker.js"
-            node --check "$output/worker.js"
+            source_name="preprod-$target.js"
+            if [ ! -s "$output/$source_name" ]; then
+              # Wrangler may choose an output filename based on the module entrypoint.
+              # Print filenames only; never log compiled source or env values.
+              find "$output" -maxdepth 1 -type f -printf '%f\\n'
+              echo "::error::Missing expected compiled preprod $source_name"
+              exit 2
+            fi
+            node --check "$output/$source_name"
           done
           echo "PASS: synthetic staging Worker and mock compile offline. Nothing deployed."
