@@ -18,10 +18,10 @@ Cloudflare Workers 的 `scheduled` 调用完成不等于成功完成支付业务
 在 `workers/afdianpay/worker.js` 的现有 `RECONCILIATION_INCOMPLETE` 错误检查**之后**，新增固定事件：
 
 ```json
-{"event":"reconciliation_cycle_completed","lane_count":2}
+{"event":"reconciliation_cycle_outcome","status":"no_observed_failure","rejected_tasks":0,"deferred_lanes":0,"retry_failures":0}
 ```
 
-只有本次任务的既有三项工作（recent、history、due hints）均未抛错，才会记录事件。它表示“本轮处理函数走完”，**不表示已经核对所有历史订单或开通了会员**。原有异常传播、租约、分页及支付权益逻辑不变。
+任务结束时记录结构化状态：`failed`（未捕获任务失败）、`partial_failure`（内部捕获的重试失败）、`deferred`（扫描租约被占用等情况）、`no_observed_failure`（没有观察到这些失败）。**最后一个状态不表示订单全部处理成功**：重试通道返回空数组，也可能是重试租约被其他执行占用。原有异常传播、租约、分页及支付权益逻辑不变。
 
 ### Waffo
 
