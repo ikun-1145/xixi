@@ -10,6 +10,12 @@ const d1="11111111-1111-4111-8111-111111111111";
 const liveD1="9003f99a-bcef-4ba5-a961-33c399a01ab5";
 const token="synthetic-readonly-cloud-token-not-real";
 const entry="waffopay-preprod-isolated",mock="waffopay-preprod-mock";
+const reviewedCommit="e670f7ba43c1089ac1268d72bf1364fd65c1b45b";
+const reviewedVersions={
+  [entry]:"26863803-021d-46bd-b3d5-49c15abbfe90",
+  [mock]:"39fd33fd-173c-481d-ba99-03740c1a5574",
+};
+
 const flags={
   WAFFO_PREPROD_ISOLATED:"true",
   WAFFO_ENVIRONMENT:"test",
@@ -32,17 +38,18 @@ function healthySnapshot() {
     {name:"WAFFO_PREPROD_PROVIDER",type:"service",service:mock},
     {name:"WAFFO_PREPROD_RPC",type:"service",service:mock},
   ];
-  const make=(arr)=>({
+  const make=(arr,name)=>({
     subdomain:{enabled:false,previews_enabled:false},
     schedules:[],
     settings:{compatibility_date:"2026-09-05",bindings:arr},
-    deployment:{versions:[{version_id:"synthetic-version",percentage:100}]},
+    deployment:{versions:[{version_id:reviewedVersions[name],percentage:100}]},
+    version:{id:reviewedVersions[name],sourceCommit:reviewedCommit},
   });
   return {
     database:{name:"waffopay-preprod-ledger-isolated",uuid:d1},
     domains:[{service:"unrelated-worker"}],
     zones:[{routes:[{script:"unrelated-worker"}]}],
-    workers:{[entry]:make(bindings),[mock]:make([])},
+    workers:{[entry]:make(bindings,entry),[mock]:make([],mock)},
   };
 }
 
@@ -72,6 +79,9 @@ function fakeApi(snapshot=healthySnapshot(),override={}) {
       else if(suffix==="schedules")result={schedules:worker.schedules};
       else if(suffix==="settings")result=worker.settings;
       else if(suffix==="deployments?page=1&per_page=1")result={deployments:[worker.deployment]};
+      else if(suffix==="versions/"+worker.version.id)
+        result={id:worker.version.id,
+          annotations:{"workers/commit_sha":worker.version.sourceCommit}};
       else assert.fail("Unexpected read endpoint: "+suffix);
     }
     if(override.incompleteDomain && path.startsWith("/accounts/"+account+"/workers/domains?"))
@@ -88,7 +98,7 @@ test("strict postdeploy audit passes only with two isolated Workers and full GET
   assert.deepEqual(r.issues,[]);
   assert.equal(r.checkedWorkers,2);
   assert.equal(r.checkedZones,1);
-  assert.equal(remote.calls.length,12);
+  assert.equal(remote.calls.length,14);
   assert.ok(remote.calls.every(x=>x.method==="GET"));
   assert.doesNotMatch(JSON.stringify(r),/synthetic-readonly|PRODUCTION_SECRET/);
 });
@@ -132,6 +142,19 @@ test("wrong D1, production D1, modified service and extra secrets block",()=>{
   assert.ok(validateDeployedCloudPreprod(e,d1).some(x=>x.includes("wrong binding type")));
   const f=healthySnapshot();f.database.name="waffo-production-observation-ledger";
   assert.ok(validateDeployedCloudPreprod(f,d1).some(x=>x.includes("mismatched")));
+});
+
+test("unapproved version ID or wrong source commit is a hard blocker",()=>{
+  const versionDrift=healthySnapshot();
+  versionDrift.workers[entry].deployment.versions[0].version_id=
+    "00000000-0000-4000-8000-000000000000";
+  assert.ok(validateDeployedCloudPreprod(versionDrift,d1).some(x=>x.includes("version ID")));
+  const sourceDrift=healthySnapshot();
+  sourceDrift.workers[mock].version.sourceCommit="deadbeef".repeat(5);
+  assert.ok(validateDeployedCloudPreprod(sourceDrift,d1).some(x=>x.includes("source commit")));
+  const noVersion=healthySnapshot();
+  delete noVersion.workers[entry].version;
+  assert.ok(validateDeployedCloudPreprod(noVersion,d1).some(x=>x.includes("source commit")));
 });
 
 test("missing permissions or incomplete domain paging fail closed without leaking body",async()=>{
