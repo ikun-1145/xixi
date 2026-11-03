@@ -8,6 +8,7 @@
 - Node.js 22；显式使用 `wrangler@4.141.0`。
 - 无 Cloudflare API Token、无生产 Secrets。只执行 `wrangler deploy --dry-run --outdir`，不上传、部署或更新 Cron/绑定。
 - 同一 Runner 先从 `origin/main` 生成基线构建，再从 PR 候选 HEAD 生成构建，均做 JS 语法检查。
+- CI 随后加载候选产物执行 **Node 22 无网络冒烟测试**。外部 `fetch` 被替换为立即失败的防护函数，环境中不注入生产凭据。
 - 构建产物只在 Runner 临时目录保存。校验脚本只打印 SHA-256 和白名单事件标记，不公开打包源码。
 
 ## 实际结果
@@ -20,6 +21,17 @@
 校验结果：两个 Worker 均 `baseline_main_reproduces_live=true`、`candidate_differs=true`、`candidate_heartbeat_present=true`。新增哈希门禁单元测试 **5/5 通过**；同一次 CI 仓库完整测试 **798 项，797 通过、0 失败、1 跳过**。
 
 因此现有 `main` 代码已在这套环境里逐字节复现两个线上打包产物，解决了此前缺少独立 Waffo 构建复核的问题。未发现独立历史 Waffo 发布哈希记录这一事实不变，但现在已有**独立的当前构建复现证据**。
+
+## 编译后运行检查
+
+在更新后的 GitHub Actions Run #41583147174，离线构建指纹再次通过，候选产物执行了以下无网络运行检查：
+
+- `afdianpay`：实际加载已编译模块，GET 不存在路径返回 HTTP 404。
+- `waffopay`：实际加载已编译模块，GET 不存在路径返回 HTTP 404。
+- `waffopay`：使用空环境调用 `scheduled`，仅输出一条 `waffo_production_outbox_cycle(status=disabled)`，`due/processed/failed/unbound` 均为 0。
+- 使用 `scripts/reliability/payment-bundle-smoke.mjs` 进行检查，没有调用真实 Waffo / Afdian / Supabase / D1 或支付接口。
+
+这些检查在 **Node.js 执行已打包 ES module**，不是原生 workerd 的端到端支付集成测试，也不验证真实 D1 写入、外部供应商签名或付款证明。
 
 ## 不能据此放行的事项
 
