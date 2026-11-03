@@ -44,3 +44,10 @@
 ## 局限和剩余阻断
 
 这些安全入口仅证明 `preprod` 可安全配置、生成和离线构建；**尚未进行真实 Cloudflare 云端联调**。Service Binding 的云端目标、真实部署权限和沙箱运行时仍需要独立验收。模拟 RPC 没有持久化权益数据库，因此不能用这套 Mock 证明跨数据库事务；正式权益事务已经在 PR #34 的 PGlite 单独测试。禁止把这些不同层级的测试混为一谈。
+
+
+## 本轮 CI 实测结果
+
+- Preproduction Isolation Gate Run **41598668646**：8/8 条隔离/合成签名/Service Binding 测试通过；完整仓库 806 项，805 通过、0 失败、1 跳过；两份带模拟独立 D1 UUID 的配置都成功通过 Wrangler 4.141.0 `deploy --dry-run`。
+- Reproducible Build Audit Run **41598669011**：按已审核 `main` 源码而非 PR #34 候选作为生产基线，生产 bundle SHA 复现与新候选两次一致性验证通过。GitHub 堆叠 PR 的 base ref 不能被当作已审核生产快照。
+- CI 没有 Cloudflare API Token，测试环境的 D1 ID 仅为虚构 UUID；没有在 Cloudflare 创建资源、真正部署、注入密钥或调用 Waffo/Supabase 生产端点。
