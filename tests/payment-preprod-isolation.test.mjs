@@ -15,14 +15,21 @@ import { PREPROD,renderPreprodConfigs,validatePreprodInput,writePreprodConfigs }
 const accountId='a'.repeat(32);
 const testD1='11111111-1111-4111-8111-111111111111';
 const source={accountId,d1Id:testD1};
+const fakeWebhook = generateKeyPairSync('rsa', {modulusLength:2048});
+const otherWebhook = generateKeyPairSync('rsa', {modulusLength:2048});
+const fakePrivate = fakeWebhook.privateKey.export({type:'pkcs8',format:'pem'});
+const fakePublic = fakeWebhook.publicKey.export({type:'spki',format:'pem'});
+const otherPublic = otherWebhook.publicKey.export({type:'spki',format:'pem'});
 const goodEnv={
   WAFFO_PREPROD_ISOLATED:'true',
   WAFFO_ENVIRONMENT:'test',
   WAFFO_PRODUCTION_ENABLED:'true',
   WAFFO_PRODUCTION_ENTITLEMENT_ENABLED:'false',
   WAFFO_PREPROD_GATE_TOKEN:'synthetic-preprod-test-gate-only-12345678',
-  WAFFO_PREPROD_SIGNING_KEY:'synthetic-private-signing-test-only',
-  WAFFO_PREPROD_RPC_TEST_KEY:'synthetic-mock-role-key-not-prod',
+  WAFFO_PREPROD_SIGNING_KEY:fakePrivate,
+  WAFFO_WEBHOOK_PUBLIC_KEY_PROD:fakePublic,
+  WAFFO_WEBHOOK_PUBLIC_KEY_TEST:otherPublic,
+  WAFFO_PREPROD_RPC_TEST_KEY:'waffo-preprod-synthetic-role-key-not-prod',
   WAFFO_PREPROD_PROVIDER:{fetch:async()=>new Response('synthetic-provider')},
   WAFFO_PREPROD_RPC:{fetch:async()=>new Response('synthetic-rpc')},
   WAFFO_PRODUCTION_LEDGER:{prepare(){throw new Error('health must not read D1')}},
@@ -118,6 +125,10 @@ test('preprod entrypoint rejects missing gates, inherited real secrets, and all 
   }
   assert.equal(preprodReady({...goodEnv,WAFFO_PRODUCTION_ENTITLEMENT_ENABLED:'true'}),false);
   assert.equal(preprodReady({...goodEnv,WAFFO_PREPROD_ISOLATED:'false'}),false);
+  assert.equal(preprodReady({...goodEnv,WAFFO_WEBHOOK_PUBLIC_KEY_PROD:undefined}),false);
+  assert.equal(preprodReady({...goodEnv,WAFFO_WEBHOOK_PUBLIC_KEY_TEST:fakePublic}),false);
+  assert.equal(preprodReady({...goodEnv,WAFFO_PREPROD_SIGNING_KEY:'not-a-private-key'}),false);
+  assert.equal(preprodReady({...goodEnv,WAFFO_PREPROD_RPC_TEST_KEY:'a-real-secret-role'}),false);
   assert.equal((await preprodWorker.fetch(new Request('https://preprod.invalid/__preprod/health'),{})).status,503);
   assert.equal((await preprodWorker.fetch(new Request('https://preprod.invalid/__preprod/health'),goodEnv)).status,403);
   const headers={'X-Preprod-Test-Token':goodEnv.WAFFO_PREPROD_GATE_TOKEN};
