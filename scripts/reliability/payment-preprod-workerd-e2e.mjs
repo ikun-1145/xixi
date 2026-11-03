@@ -203,7 +203,7 @@ if(process.argv[1] && fileURLToPath(import.meta.url)===resolve(process.argv[1]))
     const message=String(error?.message||"unknown")
       .replace(/https?:\/\/\S+/g,"[endpoint]")
       .replace(/[A-Za-z0-9+_/=-]{75,}/g,"[masked]")
-      .split("\n")[0].slice(0,220);
+      .split("\n").slice(0,4).join(" | ").slice(0,360);
     process.stderr.write("[BLOCKED] isolated preprod workerd E2E: "+message+"\n");
     process.exitCode=2;
   });
