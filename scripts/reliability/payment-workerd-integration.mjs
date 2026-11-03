@@ -80,8 +80,11 @@ async function waffoCronCase({ Miniflare, convertV4MiniflareOptions, waffoPath, 
   try {
     const db = await mf.getD1Database("WAFFO_PRODUCTION_LEDGER");
     await db.exec(
-      "CREATE TABLE production_outbox (payload TEXT NOT NULL, state TEXT NOT NULL, updated_at INTEGER NOT NULL)"
+      "CREATE TABLE production_outbox (payload TEXT NOT NULL, state TEXT NOT NULL, updated_at INTEGER NOT NULL);" +
+      "CREATE TABLE payment_intents (payment_reference TEXT PRIMARY KEY);"
     );
+    // The payment_intents table MUST exist. A missing row should exercise
+    // the unbound branch, not be silently counted as a D1 query exception.
     if (payload !== undefined) {
       await db.prepare("INSERT INTO production_outbox(payload,state,updated_at) VALUES(?,'pending',?)")
         .bind(payload, 0).run();
