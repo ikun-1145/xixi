@@ -29,11 +29,11 @@ const STATEMENT = [
 ].join(" ");
 
 const BUSINESS_SIGNAL_STATEMENT = [
-  "SELECT scriptName, attributes['event'] AS eventName, COUNT(*) AS events",
+  "SELECT scriptName, attributes['event'] AS eventName, attributes['status'] AS statusName, COUNT(*) AS events",
   "FROM logs.workersLogs",
   "WHERE logType = 'cf-worker'",
   "AND scriptName IN ('afdianpay','waffopay')",
-  "GROUP BY scriptName,attributes['event']",
+  "GROUP BY scriptName,attributes['event'],attributes['status']",
   "ORDER BY events DESC",
   "LIMIT 100",
 ].join(" ");
@@ -43,11 +43,18 @@ const PAYMENT_EVENTS = Object.freeze({
     reconciliation_started: "started",
     payment_scan_processed: "pagesProcessed",
     scan_failed: "scanFailed",
+    reconciliation_cycle_completed: "cyclesCompleted",
   }),
   waffopay: Object.freeze({
     waffo_production_failed: "productionFailed",
     waffo_production_outbox_unavailable: "outboxUnavailable",
   }),
+});
+
+const WAFFO_CYCLE_STATUSES = Object.freeze({
+  completed: "cyclesCompleted",
+  incomplete: "cyclesIncomplete",
+  disabled: "cyclesDisabled",
 });
 
 function requireHours(value) {
@@ -142,6 +149,7 @@ export function summarizePaymentBusinessSignals(rows) {
       started: null,
       pagesProcessed: null,
       scanFailed: null,
+      cyclesCompleted: null,
     },
     waffopay: {
       name: "waffopay",
@@ -149,15 +157,25 @@ export function summarizePaymentBusinessSignals(rows) {
       successVerified: false,
       productionFailed: null,
       outboxUnavailable: null,
+      cyclesCompleted: null,
+      cyclesIncomplete: null,
+      cyclesDisabled: null,
     },
   };
   const seen = new Set();
   for (const item of rows) {
     const name = item?.scriptName;
     const eventName = item?.eventName;
-    if (!Object.hasOwn(PAYMENT_EVENTS, name) ||
-        !Object.hasOwn(PAYMENT_EVENTS[name], eventName)) continue;
-    const category = PAYMENT_EVENTS[name][eventName]; // Static allowlist only.
+    const statusName = item?.statusName;
+    if (!Object.hasOwn(PAYMENT_EVENTS, name)) continue;
+    let category;
+    if (name === "waffopay" && eventName === "waffo_production_outbox_cycle") {
+      if (!Object.hasOwn(WAFFO_CYCLE_STATUSES, statusName)) continue;
+      category = WAFFO_CYCLE_STATUSES[statusName];
+    } else {
+      if (!Object.hasOwn(PAYMENT_EVENTS[name], eventName)) continue;
+      category = PAYMENT_EVENTS[name][eventName];
+    }
     const count = nonnegativeNumber(item.events);
     if (count === null) throw new Error("Invalid business event count");
     const key = name + ":" + category;
@@ -168,7 +186,9 @@ export function summarizePaymentBusinessSignals(rows) {
   }
   for (const group of Object.values(groups)) {
     if (!group.observed) continue;
-    for (const key of Object.values(PAYMENT_EVENTS[group.name])) {
+    const knownCategories = Object.values(PAYMENT_EVENTS[group.name]);
+    if (group.name === "waffopay") knownCategories.push(...Object.values(WAFFO_CYCLE_STATUSES));
+    for (const key of knownCategories) {
       if (group[key] === null) group[key] = 0; // Zero *observed*, never confirmed success.
     }
   }
@@ -291,11 +311,15 @@ export function formatWorkerHealth(report) {
         lines.push("afdianpay: started=" + signal.started +
           " pages_processed=" + signal.pagesProcessed +
           " scan_failed=" + signal.scanFailed +
+          " cycles_completed=" + signal.cyclesCompleted +
           " (page event does not prove completed reconciliation)");
       } else {
         lines.push("waffopay: production_failed=" + signal.productionFailed +
           " outbox_unavailable=" + signal.outboxUnavailable +
-          " (no verified success heartbeat)");
+          " cycles_completed=" + signal.cyclesCompleted +
+          " cycles_incomplete=" + signal.cyclesIncomplete +
+          " cycles_disabled=" + signal.cyclesDisabled +
+          " (completed means outbox batch finished, not payment entitlement guaranteed)");
       }
     }
   }
