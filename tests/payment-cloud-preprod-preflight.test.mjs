@@ -86,7 +86,13 @@ test("staging Worker existence blocks even when D1 is isolated",()=>{
 test("production D1 baseline and identity service target drift block the check",()=>{
   const x=base();
   x.prodBindings.waffopay[0].id=NEW_D1;
-  assert.ok(checkCloudPreprodIsolation(x,"before-create").some(v=>v.includes("D1 baseline")));
+  assert.ok(checkCloudPreprodIsolation(x,"before-create").some(v=>v.includes("reviewed ID")));
+  // A different D1 *existing in the same account* still cannot replace the
+  // reviewed production binding without forcing an explicit re-review.
+  const z=base();
+  z.databases.push({name:"other-account-d1",id:NEW_D1});
+  z.prodBindings.waffopay[0].id=NEW_D1;
+  assert.ok(checkCloudPreprodIsolation(z,"before-create").some(v=>v.includes("reviewed ID")));
   const y=base();
   y.prodBindings.waffopay[1].service="waffopay-preprod-mock";
   assert.ok(checkCloudPreprodIsolation(y,"before-create").some(v=>v.includes("service baseline")));
