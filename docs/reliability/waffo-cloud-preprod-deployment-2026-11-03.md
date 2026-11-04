@@ -90,3 +90,28 @@ D1 创建时选择亚太主区域提示，关闭读副本。按照仓库 `worker
 - **候选 CI**：Draft PR #35 当前代码头 `99fd67656ca4f9c0b25dfff41e52f2ab00bd3f64` 的 Payment Preproduction Isolation Gate `#41633578777` 与 Payment Worker Reproducible Build Audit `#41633578816` 均已完成并成功。CI 仍是隔离本地/模拟证据，不是云端 Access E2E。
 
 **结论：资源隔离与既有版本指纹只读复核 PASS；真实云端 Access→Gateway→内部 Waffo Worker 的业务 E2E 为 BLOCKED。** 后续必须由负责人另行明确授权启用 Cloudflare Access、创建临时受保护测试入口/策略和匹配测试凭据的安全轮换，并先以未认证请求验证拒绝策略，再运行任何合成业务调用。未经新授权，不创建第三 Worker、不公开现有 Worker、不操作生产；生产支付上线依然 **NO-GO**。
+
+
+## 2026-11-04 Access 初始化与临时测试网关撤销记录
+
+本轮收到用户对“启用 Cloudflare Access、创建临时测试 Worker 与受限访问策略、验证后撤销”的明确授权。操作严格针对**非生产**测试资源，未触碰真实订单、付款接口、正式 Worker、Supabase 或会员权益。
+
+**已完成：**
+- 通过 Cloudflare 组织 API 启用 Zero Trust / Access，创建 `Shuanglan AI Preproduction Access`；保留此组织供后续明确授权的安全测试使用，未配置全账号级 Worker 默认封锁，也未选择付费计划。
+- 新建 Cloudflare 身份提供方 `Shuanglan Cloudflare Account`，`restrict_to_account_members=true`。未将任何用户邮箱或身份凭据写入仓库。
+- 临时 Access 应用使用精确邮箱 Allow 规则，仅针对 `waffo-preprod-gw-20261104.sunland.dev`；并通过 GET 确认 audience、IDP 与 policy 已保存，未建立宽泛 Everyone Allow。
+- 将当前 Draft PR 的 `preprod-gateway-proposal.js` 原样上传到临时 Worker `waffopay-preprod-gateway-20261104`，显式绑定 `WAFFO_PREPROD_GATEWAY_ENABLED=false`；确认 `workers.dev` 与 Preview 均关闭。该临时 Worker **未配置连接测试入口所需的 gate token、Service Binding、Access audience 或签名密钥**，因此不可执行支付测试。
+- 仅在 Access 应用已创建、临时 Worker 默认关闭以后，才短暂绑定临时 Custom Domain；没有修改原有 Waffo 两个私有 Worker 的任何绑定、代码或密钥。
+
+**未能完成的云端验证：**
+- 当前连接器的普通 HTTP `fetch` 对该临时域名返回的是**执行环境本身**的 `403 Forbidden: requests to ... are not allowed`，且无 Cloudflare `cf-ray`；外部网页读取也不可访问。因而无法取得来自 Cloudflare Access 边缘的真实“未登录阻断”响应，不能将这一 403 认定为 Cloudflare Access 保护生效。
+- 基于 fail-closed 门禁，没有启用 Gateway，没有从云端触发合成 Webhook、Cron、签名支付、RPC 或 D1 写入。**真实 Cloudflare Access→Gateway→私有 Waffo Worker E2E 仍是 BLOCKED / NOT VERIFIED。**
+- 从未向临时网关注入或读取真实/测试 gate token，也没有更改原有两个私有 Worker 的任何 Secret，因此**没有需要撤销的新测试凭据；没有轮换原有凭据**。此事项并非“已完成密钥轮换”。
+
+**撤销完成并 GET 核验：**
+- 删除临时 Custom Domain，自动创建的 DNS 记录已不存在。
+- 删除临时 Worker，以及这次创建的临时 Access 应用和应用内 Allow 策略。
+- 查询确认临时 Worker **不存在**、临时 Access 应用 **不存在**、临时域名 **不存在**、临时 DNS 记录 **0 条**；账号恢复为 **14 个 Workers、5 个 Custom Domains、2 个 D1**，其中原独立预发布 D1 与正式 D1 均仍存在。
+- **仅保留已获授权启用的 Zero Trust / Access 组织与限定账号成员的 Cloudflare 登录身份提供方**，未删除原预发布 Worker/D1。
+
+**结论：Access 初始化 PASS，临时资源清理 PASS；真实运行时 Access 拦截验证与云端支付 E2E 均 NOT VERIFIED。** 后续如要重新执行，需要能够向 Cloudflare Access 保护的真实 HTTPS 地址发起请求、并完成受限身份认证的测试执行环境；必须再次核对 Access 边缘 401/403/登录重定向后，才能配置新测试密钥并启用合成支付调用。当前不可据此申请生产发布，**正式支付继续 NO-GO**。
