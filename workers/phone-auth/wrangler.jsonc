@@ -17,7 +17,8 @@
     "PHONE_SMS_ENABLED": "false",
     "PHONE_NEW_REGISTRATION_ENABLED": "false",
     "PHONE_RELEASE_MODE": "canary",
-    "PHONE_SMS_PROVIDER": "aliyun",
+    "PHONE_SMS_PROVIDER": "relay",
+    "SMS_RELAY_URL": "https://xn--45tu69g.top/sms-api/v1/send",
     "PHONE_API_TIMEOUT_MS": "5000",
     "PHONE_TURNSTILE_HOSTNAME": "sunland.dev"
   },
