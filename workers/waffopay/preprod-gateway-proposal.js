@@ -17,6 +17,17 @@ function noCache(payload,status=200) {
   return Response.json(payload,{status,headers:{"Cache-Control":"no-store"}});
 }
 
+// Temporary stage-only health diagnostics. Never disclose private responses,
+// identities, tokens, D1 details, or errors. Default is fully fail-closed.
+function healthDiagnostic(request,env,status,reason) {
+  let health=false;
+  try { const url=new URL(request.url);health=url.pathname==="/__preprod/health" && !url.search && request.method==="GET"; }
+  catch {}
+  if(health && env?.WAFFO_PREPROD_DIAGNOSTICS_ENABLED==="true")
+    return noCache({ok:false,reason},status);
+  return noCache({ok:false},status);
+}
+
 export function gatewayConfigured(env) {
   return !!(
     env?.WAFFO_PREPROD_GATEWAY_ENABLED==="true" &&
@@ -81,7 +92,7 @@ export default {
     if(!gatewayConfigured(env))
       return noCache({ok:false,reason:"gateway_disabled"},503);
     if(!(await verifiedAccess(ctx,env.WAFFO_PREPROD_ACCESS_AUD)))
-      return noCache({ok:false},403);
+      return healthDiagnostic(request,env,403,"access_context_rejected");
 
     const url=new URL(request.url);
     if(url.search || url.hash || !Object.hasOwn(ALLOWED,url.pathname) ||
@@ -125,17 +136,19 @@ export default {
     }catch{return noCache({ok:false,reason:"private_target_unavailable"},503);}
 
     const status=classifyStatus(response.status);
-    if(status!==200)return noCache({ok:false},status);
+    if(status!==200)return healthDiagnostic(request,env,status,
+      status===403 ? "private_worker_gate_rejected" :
+      status===503 ? "private_worker_not_ready" : "private_worker_non_200");
     if(url.pathname==="/__preprod/webhook")
       return noCache({ok:true,syntheticOnly:true});
 
     let data;
     try { data=await response.json(); }
-    catch { return noCache({ok:false},502); }
+    catch { return healthDiagnostic(request,env,502,"private_health_invalid_json"); }
     if(url.pathname==="/__preprod/health") {
       if(data?.ok!==true || data?.mode!=="isolated" ||
          data?.entitlements!==false || data?.automaticCron!==false)
-        return noCache({ok:false},502);
+        return healthDiagnostic(request,env,502,"private_health_payload_mismatch");
       return noCache({ok:true,mode:"isolated",entitlements:false,automaticCron:false});
     }
 
