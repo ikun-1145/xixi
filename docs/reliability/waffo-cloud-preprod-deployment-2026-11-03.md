@@ -76,3 +76,17 @@ D1 创建时选择亚太主区域提示，关闭读副本。按照仓库 `worker
 - CI **#41633191662 PASS**，完整仓库 **827 项，826 通过、0 失败、1 跳过**；本地真实双 Worker + Access 网关模拟 **11/11**；独立可重复构建 **#41633191638 PASS**。
 
 > 版本指纹锁定是**代码来源与部署变更审计**，不是证明 Cloudflare 云端已实际执行签名 Webhook。两个私有 Worker 目前仍无被授权的云端测试入口。第三个 Cloudflare Access 网关和访问策略需另行明确批准；生产上线仍为 NO-GO。
+
+
+## 2026-11-04 只读复核与 Access 未启用阻塞
+
+本节仅记录通过 Cloudflare / GitHub 已连接账户完成的**只读**核验；没有运行 webhook、手动 Cron、D1 写入、部署、Secret 轮换、Access 开通或任何生产修改。
+
+- **部署版本未漂移**：`waffopay-preprod-isolated` 的当前 100% Version ID 是 `26863803-021d-46bd-b3d5-49c15abbfe90`，`waffopay-preprod-mock` 是 `39fd33fd-173c-481d-ba99-03740c1a5574`；两者实际部署版本的 `workers/commit_sha` 注解均为 `e670f7ba43c1089ac1268d72bf1364fd65c1b45b`。注解与登记来源匹配属于部署元数据核对，**不是独立的构建字节级证明**。
+- **隔离配置仍保持**：两个 Worker 的 `workers.dev` 和 Preview/Version URL 均禁用，自动 Cron 为 0；入口的 D1 仍为 `waffopay-preprod-ledger-isolated`（`021ab001-a309-40cf-afe0-43fceacc215a`），两个 Service Binding 指向私有 `waffopay-preprod-mock`；`WAFFO_PRODUCTION_ENTITLEMENT_ENABLED=false`，Mock 无任何绑定。
+- **公网路由清单仍隔离**：Cloudflare 账号 5 个 Worker Custom Domains 和 `sunland.dev` Zone 的 2 条 Worker Route 中，均无这两个预发布 Worker 的公开入口；不应把账户下其他 staging Worker 的域名误认为 Waffo 已获准暴露。
+- **生产版本保持旧审核基线**：正式 `waffopay` 最新 100% 版本 `b414b89b-2218-47c6-bb7a-b85513af9125`；`afdianpay` 最新 100% 版本 `a84fa755-4a9e-456a-94eb-8746c7f11d1b`。本次没有发布这两个生产服务。
+- **新识别的硬阻塞**：账号 `GET /accounts/{account_id}/access/apps` 返回 HTTP **403** 和 Cloudflare API 错误 `access.api.error.not_enabled`（“Access is not enabled”）。因此目前**不能声称 Access 保护的网关已经可配置或已完成云端身份校验**。不要将 403 误解释成已有 Access 策略通过。
+- **候选 CI**：Draft PR #35 当前代码头 `99fd67656ca4f9c0b25dfff41e52f2ab00bd3f64` 的 Payment Preproduction Isolation Gate `#41633578777` 与 Payment Worker Reproducible Build Audit `#41633578816` 均已完成并成功。CI 仍是隔离本地/模拟证据，不是云端 Access E2E。
+
+**结论：资源隔离与既有版本指纹只读复核 PASS；真实云端 Access→Gateway→内部 Waffo Worker 的业务 E2E 为 BLOCKED。** 后续必须由负责人另行明确授权启用 Cloudflare Access、创建临时受保护测试入口/策略和匹配测试凭据的安全轮换，并先以未认证请求验证拒绝策略，再运行任何合成业务调用。未经新授权，不创建第三 Worker、不公开现有 Worker、不操作生产；生产支付上线依然 **NO-GO**。
