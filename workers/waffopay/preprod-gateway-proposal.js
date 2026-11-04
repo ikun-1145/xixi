@@ -28,6 +28,33 @@ function healthDiagnostic(request,env,status,reason) {
   return noCache({ok:false},status);
 }
 
+// Diagnostic events are deliberately low-cardinality and contain no URL,
+// query value, header, Cookie, identity, secret, request body or private response.
+const DIAGNOSTIC_STAGES=new Set([
+  "config_rejected","access_rejected","route_rejected",
+  "webhook_disabled","cron_disabled","webhook_invalid",
+  "webhook_body_invalid","cron_body_invalid","private_target_unavailable",
+  "private_non_200","private_json_invalid","private_health_mismatch",
+  "health_pass","webhook_pass","cron_payload_invalid","cron_pass",
+]);
+function traceProbe(request,env,stage,status) {
+  if(env?.WAFFO_PREPROD_DIAGNOSTICS_ENABLED!=="true" ||
+     !DIAGNOSTIC_STAGES.has(stage)) return;
+  let route="invalid",extraParams=false;
+  try {
+    const u=new URL(request.url);
+    route=u.pathname==="/__preprod/health" ? "health" :
+      u.pathname==="/__preprod/webhook" ? "webhook" :
+      u.pathname==="/__preprod/cron" ? "cron" : "other";
+    extraParams=!!(u.search||u.hash);
+  }catch {}
+  const method=request.method==="GET" ? "GET" :
+    request.method==="POST" ? "POST" : "OTHER";
+  console.info("waffo_preprod_gateway_diag",{
+    schema:1,stage,status,route,method,extraParams,
+  });
+}
+
 export function gatewayConfigured(env) {
   return !!(
     env?.WAFFO_PREPROD_GATEWAY_ENABLED==="true" &&
@@ -89,21 +116,29 @@ function classifyStatus(status) {
 
 export default {
   async fetch(request,env,ctx) {
+    const reply=(body,status,stage)=>{
+      traceProbe(request,env,stage,status);
+      return noCache(body,status);
+    };
+    const healthFail=(status,reason,stage)=>{
+      traceProbe(request,env,stage,status);
+      return healthDiagnostic(request,env,status,reason);
+    };
     if(!gatewayConfigured(env))
-      return noCache({ok:false,reason:"gateway_disabled"},503);
+      return reply({ok:false,reason:"gateway_disabled"},503,"config_rejected");
     if(!(await verifiedAccess(ctx,env.WAFFO_PREPROD_ACCESS_AUD)))
-      return healthDiagnostic(request,env,403,"access_context_rejected");
+      return healthFail(403,"access_context_rejected","access_rejected");
 
     const url=new URL(request.url);
     if(url.search || url.hash || !Object.hasOwn(ALLOWED,url.pathname) ||
        request.method!==ALLOWED[url.pathname])
-      return noCache({ok:false},404);
+      return reply({ok:false},404,"route_rejected");
     if(url.pathname==="/__preprod/webhook" &&
        env.WAFFO_PREPROD_ALLOW_WEBHOOK!=="true")
-      return noCache({ok:false,reason:"manual_webhook_disabled"},403);
+      return reply({ok:false,reason:"manual_webhook_disabled"},403,"webhook_disabled");
     if(url.pathname==="/__preprod/cron" &&
        env.WAFFO_PREPROD_ALLOW_CRON!=="true")
-      return noCache({ok:false,reason:"manual_cron_disabled"},403);
+      return reply({ok:false,reason:"manual_cron_disabled"},403,"cron_disabled");
 
     const headers=new Headers({
       "X-Preprod-Test-Token":env.WAFFO_PREPROD_GATE_TOKEN,
@@ -115,15 +150,15 @@ export default {
       const signature=request.headers.get("x-waffo-signature")||"";
       if(!/^application\/json(?:;\s*charset=utf-8)?$/i.test(contentType) ||
          !/^t=\d{10,16},v1=[A-Za-z0-9+/=]{50,700}$/.test(signature)) {
-        return noCache({ok:false},400);
+        return reply({ok:false},400,"webhook_invalid");
       }
       body=await readLimited(request);
-      if(!body)return noCache({ok:false,reason:"invalid_body_size"},413);
+      if(!body)return reply({ok:false,reason:"invalid_body_size"},413,"webhook_body_invalid");
       headers.set("content-type","application/json");
       headers.set("x-waffo-signature",signature);
     }
     if(url.pathname==="/__preprod/cron" && request.body!==null)
-      return noCache({ok:false},400);
+      return reply({ok:false},400,"cron_body_invalid");
 
     // No Host, Authorization, Cookie or client-provided Access identity is
     // relayed. There is no global fetch and no user-controlled target.
@@ -133,23 +168,24 @@ export default {
         "https://preprod-private.invalid"+url.pathname,
         {method:request.method,headers,body,redirect:"error"},
       ));
-    }catch{return noCache({ok:false,reason:"private_target_unavailable"},503);}
+    }catch{return reply({ok:false,reason:"private_target_unavailable"},503,"private_target_unavailable");}
 
     const status=classifyStatus(response.status);
-    if(status!==200)return healthDiagnostic(request,env,status,
+    if(status!==200)return healthFail(status,
       status===403 ? "private_worker_gate_rejected" :
-      status===503 ? "private_worker_not_ready" : "private_worker_non_200");
+      status===503 ? "private_worker_not_ready" : "private_worker_non_200",
+      "private_non_200");
     if(url.pathname==="/__preprod/webhook")
-      return noCache({ok:true,syntheticOnly:true});
+      return reply({ok:true,syntheticOnly:true},200,"webhook_pass");
 
     let data;
     try { data=await response.json(); }
-    catch { return healthDiagnostic(request,env,502,"private_health_invalid_json"); }
+    catch { return healthFail(502,"private_health_invalid_json","private_json_invalid"); }
     if(url.pathname==="/__preprod/health") {
       if(data?.ok!==true || data?.mode!=="isolated" ||
          data?.entitlements!==false || data?.automaticCron!==false)
-        return healthDiagnostic(request,env,502,"private_health_payload_mismatch");
-      return noCache({ok:true,mode:"isolated",entitlements:false,automaticCron:false});
+        return healthFail(502,"private_health_payload_mismatch","private_health_mismatch");
+      return reply({ok:true,mode:"isolated",entitlements:false,automaticCron:false},200,"health_pass");
     }
 
     // Explicitly whitelist numerical counters, never echo arbitrary JSON
@@ -158,8 +194,8 @@ export default {
     if(!["disabled","completed","incomplete"].includes(data?.status) ||
        fields.some(field=>!Number.isSafeInteger(data[field]) ||
          data[field]<0 || data[field]>1000000))
-      return noCache({ok:false},502);
-    return noCache({status:data.status,
-      due:data.due,processed:data.processed,failed:data.failed,unbound:data.unbound});
+      return reply({ok:false},502,"cron_payload_invalid");
+    return reply({status:data.status,
+      due:data.due,processed:data.processed,failed:data.failed,unbound:data.unbound},200,"cron_pass");
   },
 };
