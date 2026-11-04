@@ -11,6 +11,7 @@ const baseEnv=()=>({
   WAFFO_PREPROD_ENTITLEMENTS_ENABLED:"false",
   WAFFO_PREPROD_ACCESS_AUD:AUD,
   WAFFO_PREPROD_GATE_TOKEN:TOKEN,
+  WAFFO_PREPROD_ALLOW_WEBHOOK:"true",
   WAFFO_PREPROD_ALLOW_CRON:"false",
   WAFFO_PREPROD_TARGET:{fetch:async()=>Response.json({
     ok:true,mode:"isolated",entitlements:false,automaticCron:false,
@@ -102,6 +103,23 @@ test("valid health is relayed only via private binding and strips client headers
   for(const name of ["Authorization","Cookie","Cf-Access-Jwt-Assertion","X-Payment-Reference"])
     assert.equal(requests[0].headers.has(name),false);
   assert.equal(response.headers.get("cache-control"),"no-store");
+});
+
+test("manual webhook requires explicit opt-in before Service Binding",async()=>{
+  const env=baseEnv();
+  let calls=0;
+  env.WAFFO_PREPROD_TARGET.fetch=async()=>{calls++;return Response.json({ok:true});};
+  for(const flag of [undefined,"false",null]){
+    env.WAFFO_PREPROD_ALLOW_WEBHOOK=flag;
+    const r=await run("/__preprod/webhook",{
+      method:"POST",
+      headers:{"content-type":"application/json","x-waffo-signature":signature},
+      body:"{}",
+    },env);
+    assert.equal(r.response.status,403);
+    assert.deepEqual(r.data,{ok:false,reason:"manual_webhook_disabled"});
+  }
+  assert.equal(calls,0);
 });
 
 test("signed webhook forwards byte-identical body, never exposes private response fields",async()=>{
