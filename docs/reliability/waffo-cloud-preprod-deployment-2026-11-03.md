@@ -115,3 +115,31 @@ D1 创建时选择亚太主区域提示，关闭读副本。按照仓库 `worker
 - **仅保留已获授权启用的 Zero Trust / Access 组织与限定账号成员的 Cloudflare 登录身份提供方**，未删除原预发布 Worker/D1。
 
 **结论：Access 初始化 PASS，临时资源清理 PASS；真实运行时 Access 拦截验证与云端支付 E2E 均 NOT VERIFIED。** 后续如要重新执行，需要能够向 Cloudflare Access 保护的真实 HTTPS 地址发起请求、并完成受限身份认证的测试执行环境；必须再次核对 Access 边缘 401/403/登录重定向后，才能配置新测试密钥并启用合成支付调用。当前不可据此申请生产发布，**正式支付继续 NO-GO**。
+
+
+## 2026-11-04 Browser Run 实际 Access 未授权拦截验收
+
+本节为上一条“普通连接器 HTTP fetch 无法访问测试域名”的后续补充。**在同一天改用 Cloudflare Browser Run REST `POST /accounts/{account_id}/browser-rendering/content` 取得了真实边缘返回的 Cloudflare Access 登录页，因此之前的“无法确认实际未登录拦截”限制已被本节的两项负向测试所解决。** 但**正向登录/服务身份与支付业务 E2E 仍未完成**。
+
+### 测试环境、约束与证据
+
+- 原账号上 `Shuanglan AI Preproduction Access` 和限制 Cloudflare 账号成员身份提供方持续存在；再次临时创建仅允许预先核对的账户邮箱的 Access 应用，未设置 Everyone、域名通配 Allow 或全账号保护。
+- 从 Draft PR #35 上传原样 `preprod-gateway-proposal.js` 至临时 `waffopay-preprod-gateway-20261104`；只有 `WAFFO_PREPROD_GATEWAY_ENABLED=false` 一项绑定。**没有**部署启用态、没有内部私有 Waffo Service Binding、没有注入 Waffo gate token、签名私钥或生产密钥。
+- 显式禁用临时 Worker 的 `workers.dev` 和 Preview URL，然后才绑定 `waffo-preprod-gw-20261104.sunland.dev` 这一唯一临时 Custom Domain；正式 Worker 与原两个私有 Waffo Worker 的版本及配置未修改。
+- Cloudflare Browser Run 先以不相关公开站点验证 API 可用，再向临时 URL 的 `GET /__preprod/health` 发起**未携带任何身份凭据**的访问。实际返回 HTML 标题为 `Sign in ・ Cloudflare Access`，而不是网关已关闭时会输出的 `gateway_disabled`。
+- 重新向同一路径发送**无效且非敏感**的伪造 `Cf-Access-Jwt-Assertion` 和 `Cf-Access-Authenticated-User-Email` 请求头；仍得到相同 Cloudflare Access 登录页面，未进入网关业务逻辑。两次输出只记录判定结果，未保存 HTML、任何身份令牌或用户会话。
+- 两项负向测试分别证实实际 Access 身份墙在边缘执行、伪造客户端身份头没有绕过。**Browser Run 返回的是最终渲染后的 HTML，不是原始 HTTP status code 证据**；不得声称已独立核实确切 401/403 或正向身份授权成功。
+
+### 尚未通过的测试
+
+- 正向机器身份凭据创建和自动调用尝试被当前执行环境的安全控制阻止，**没有绕过限制**；随后只读清单确认没有新增匹配的临时 Service Token。
+- 未运行通过 Cloudflare Access 的**已认证** Gateway 调用；未启用临时 Gateway 的业务开关；未连接原本私有的两个 Waffo Worker；未触发任何签名 Webhook、Cron、Provider/RPC 或 D1 写入。因此真实云端 Access→Gateway→Waffo 付款 E2E 仍然 **BLOCKED / NOT VERIFIED**。
+- 原有 11/11 本地 workerd 测试和全仓库 CI 仍是隔离离线证据，不能替代上面的云端正向 E2E。
+
+### 撤销完成与只读复核
+
+- 已删除临时 Worker Custom Domain、临时 Worker 和 Access App（其临时 Allow 策略随之撤销）；GET 确认临时 Worker、Access App、DNS 记录、Custom Domain 和新建的 Service Token 皆为 **0 残留**。
+- 清理后账号资源重新核对为 **14 个 Worker、5 个 Worker Custom Domain、2 个 D1**；独立预发布 D1、原两个私有 Worker、账号 Access 组织和限制成员的身份提供方仍保留。
+- 没有旋转或读取原两个私有 Worker 的现有测试 Secret，不存在本次生成而待轮换的支付凭据；正式付款、订单和权益未操作。
+
+**结论：Cloudflare Access 未认证访问拦截、伪造身份头拒绝、临时资源清理：PASS。正向 Cloudflare Access 身份授权与真实云端合成支付业务 E2E：NOT VERIFIED。生产支付继续 NO-GO。** 若后续要完成正向验证，应在已授权的浏览器执行环境内完成真实 Access 登录，或由经过独立安全审批的机器身份测试方案处理，不得以未认证 URL、伪造 JWT 或开放原私有 Worker 来替代。
