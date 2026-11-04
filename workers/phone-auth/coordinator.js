@@ -1,4 +1,5 @@
 import { DypnsapiClient } from './dypnsapi.js';
+import { SmsRelayClient, smsProvider } from './relay.js';
 import { PhoneAuthError, requireSmsEnabled } from './errors.js';
 import { requestJson } from './http.js';
 import { releasePolicy, allowCanaryRecipient, requireAdmin } from './release-policy.js';
@@ -70,6 +71,21 @@ async function digest(secret, domain, value) {
   return [...new Uint8Array(bytes)].map(n => n.toString(16).padStart(2, '0')).join('');
 }
 
+function randomCode() {
+  const bytes = new Uint32Array(1);
+  // Rejection sampling avoids modulo bias while retaining leading zeroes.
+  do { crypto.getRandomValues(bytes); } while (bytes[0] >= 4294000000);
+  return String(bytes[0] % 1000000).padStart(6, '0');
+}
+
+const otpValue = (id, phoneHash, purpose, code) => JSON.stringify([id, phoneHash, purpose, code]);
+async function verifyRelayCode(secret, mac, value) {
+  const enc = new TextEncoder();
+  const key = await crypto.subtle.importKey('raw', enc.encode(secret), { name: 'HMAC', hash: 'SHA-256' }, false, ['verify']);
+  return crypto.subtle.verify('HMAC', key, Uint8Array.from(mac.match(/../g), x => parseInt(x, 16)),
+    enc.encode(`sms-relay-otp:v1\0${value}`));
+}
+
 // Importable DO class using the supported constructor + fetch entrypoint.
 // ponytail: one coordinator is the global budget authority; sharding needs a
 // separate atomic global reservation authority before it can be introduced.
@@ -139,6 +155,9 @@ export class PhoneAuthCoordinator {
   async send(input, context) {
     const prepared = await this.prepare(input, context, 'send');
     const { phone, ip, phoneHash, ipHash, principalHash, policy } = prepared;
+    const provider = smsProvider(this.env);
+    const relay = provider === 'relay' ? new SmsRelayClient(this.env, { fetchImpl: this.fetchImpl }) : null;
+    if (relay && !['login', 'reauth'].includes(input.purpose)) fail('INVALID_REQUEST');
     const { status, data } = await requestJson('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ secret: this.env.TURNSTILE_SECRET, response: input.turnstile_token, remoteip: ip }),
@@ -154,7 +173,9 @@ export class PhoneAuthCoordinator {
     const phoneKey = `t:phone:${phoneHash}`;
     const ipKey = `t:ip:${ipHash}`;
     const challengeKey = `t:challenge:${id}`;
-    const challenge = { schema: 1, phoneHash, principalHash, purpose: input.purpose, status: 'sending',
+    const code = relay ? randomCode() : undefined;
+    const otpMac = relay ? await digest(this.env.PHONE_AUTH_HMAC_KEY, 'sms-relay-otp:v1', otpValue(id, phoneHash, input.purpose, code)) : undefined;
+    const challenge = { schema: 1, provider, ...(relay ? { otpMac } : {}), phoneHash, principalHash, purpose: input.purpose, status: 'sending',
       attempts: 0, expiresAt: now + TTL, deleteAfter: now + LOCK * 2 };
     const reservedAt = await this.transaction(async tx => {
       const now = this.now();
@@ -187,7 +208,8 @@ export class PhoneAuthCoordinator {
     });
 
     try {
-      await new DypnsapiClient(this.env, { fetchImpl: this.fetchImpl, now: this.now }).send({ phone, scheme: PURPOSES[input.purpose], outId: id });
+      if (relay) await relay.send({ phone, code, purpose: input.purpose });
+      else await new DypnsapiClient(this.env, { fetchImpl: this.fetchImpl, now: this.now }).send({ phone, scheme: PURPOSES[input.purpose], outId: id });
     } catch (error) {
       await this.transaction(async tx => {
         await this.account(tx, this.now());
@@ -243,21 +265,29 @@ export class PhoneAuthCoordinator {
       if (!nonnegative(c.expiresAt) || !nonnegative(c.attempts)) fail('SERVICE_UNAVAILABLE', 503);
       if (c.expiresAt <= now) fail('CHALLENGE_EXPIRED');
       if (c.status !== 'sent' || c.attempts >= 5) fail('CHALLENGE_USED', 409);
+      const provider = c.provider === undefined ? 'aliyun' : c.provider;
+      if (!['aliyun', 'relay'].includes(provider) ||
+          (provider === 'relay' && (typeof c.otpMac !== 'string' || !/^[0-9a-f]{64}$/.test(c.otpMac)))) fail('SERVICE_UNAVAILABLE', 503);
       c.status = 'verifying'; c.attempts++;
       await tx.put(key, c);
-      return c.attempts;
+      return { count: c.attempts, provider, otpMac: c.otpMac };
     });
     let providerError;
     try {
-      await new DypnsapiClient(this.env, { fetchImpl: this.fetchImpl, now: this.now }).check({
-        phone, scheme: PURPOSES[input.purpose], outId: input.challenge_id, code: input.code });
+      if (attempt.provider === 'relay') {
+        if (!await verifyRelayCode(this.env.PHONE_AUTH_HMAC_KEY, attempt.otpMac,
+          otpValue(input.challenge_id, phoneHash, input.purpose, input.code))) fail('CODE_INVALID');
+      } else {
+        await new DypnsapiClient(this.env, { fetchImpl: this.fetchImpl, now: this.now }).check({
+          phone, scheme: PURPOSES[input.purpose], outId: input.challenge_id, code: input.code });
+      }
     } catch (error) { providerError = error; }
     const expired = await this.transaction(async tx => {
       const now = this.now();
       await this.account(tx, now);
       validate(input, context, 'check', now);
       const c = await tx.get(key);
-      if (!c || c.status !== 'verifying' || c.attempts !== attempt) fail('SERVICE_UNAVAILABLE', 503);
+      if (!c || c.status !== 'verifying' || c.attempts !== attempt.count) fail('SERVICE_UNAVAILABLE', 503);
       const locked = await tx.get(`t:phone:${phoneHash}`);
       if (!locked || locked.challengeId !== input.challenge_id || locked.quarantined) fail('SERVICE_UNAVAILABLE', 503);
       const expired = c.expiresAt <= now;

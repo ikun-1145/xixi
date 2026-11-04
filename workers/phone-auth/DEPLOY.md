@@ -75,3 +75,79 @@ APP_JWT_LEGACY_SECRET、SUPABASE_SECRET_KEY、TURNSTILE_SECRET 已以 secret_tex
 6. 任何异常立即将新 Worker 的三个开关恢复 false，停止发码；不删除映射、轮换身份密钥、重置 DO 或更改 ai/邮箱。结束后同样恢复 false，网站公开入口保持关闭，保存不含号码/token/密钥的结果。
 
 依据：[阿里云发送接口](https://help.aliyun.com/en/pnvs/developer-reference/api-dypnsapi-2017-05-25-sendsmsverifycode)、[核验接口](https://help.aliyun.com/zh/pnvs/developer-reference/api-dypnsapi-2017-05-25-checksmsverifycode)。所有缺失值留待安全配置，没有填入占位生产值。
+
+## Relay 模式（本地实现，未部署）
+
+默认 `PHONE_SMS_PROVIDER=aliyun`，未设置时同样使用原 PNVS 的
+`SendSmsVerifyCode` / `CheckSmsVerifyCode`。显式设为 `relay` 才启用中转；
+空值、未知模式或所选模式缺少配置直接失败，不自动回退或切换供应商。
+
+仅配置独立 `phone-auth` Worker：
+
+| 配置 | 类型 | 含义 |
+|---|---|---|
+| PHONE_SMS_PROVIDER | 普通变量 | `aliyun`（默认）或 `relay` |
+| SMS_RELAY_URL | 普通变量 | 经确认的 HTTPS 接口 URL，不含 URL 用户名、密码或 fragment |
+| SMS_RELAY_KEY | Secret | 平台 Secret store 配置，不放入 vars、源码、命令参数或日志 |
+
+Relay 非敏感配置示例（地址须替换为已确认的实际端点）：
+
+```json
+{
+  "PHONE_SMS_PROVIDER": "relay",
+  "SMS_RELAY_URL": "https://sms-relay.example.invalid/send"
+}
+```
+
+`SMS_RELAY_KEY` 和阿里云 AK 均为按 provider 条件必需的 Secret，不列入全局 required 清单；
+分别由对应适配器在调用前严格检查。阿里云模式仍要求原阿里云凭据及模板；relay 新发送不依赖阿里云凭据。
+切换后若仍需校验在途阿里云 challenge，须保留阿里云配置。不要删除历史身份密钥。
+原 identity/SMS/registration 开关、Turnstile、HMAC/key ID、canary 白名单和预算仍适用；
+`unitCostMicros` 必须覆盖中转实际收费上界，不能假定接口内部无重试或额外计费。
+
+中转只接收 POST JSON 的 `api_key`、11 位 `phone`、六位字符串 `code`、`scene`。
+现有首次注册与登录共用 `purpose=login`，统一映射 `scene=login`；手机号再验
+`purpose=reauth` 也使用 `scene=login`，内部 challenge/HMAC/会话仍按 reauth 隔离。
+**上线前必须确认中转模板允许登录、首次注册及注销所需的手机号再验用途。**
+不增加独立 register API；relay 拒绝 bind/change/unbind 发码，不静默降级。
+
+仅 HTTP 2xx 且 JSON `ok === 1` 成功；不转发供应商 msg/request_id 或原始错误。
+固定 8 秒总超时（包括响应体），禁止重定向、不自动重试。非成功响应、异常 JSON、
+网络错误和超时都保留已预留费用及号码隔离；中转返回失败也不视为“确定未发送”。
+隔离没有自动恢复接口，不按 TTL 解锁、不退款、不清账重试。
+
+本地验证码使用 Web Crypto 安全随机数和拒绝采样生成；DO 仅保存绑定
+challenge ID、手机号 HMAC、purpose 的带域 HMAC，不保存明文验证码、号码或 API Key。
+保留 300 秒有效期、最多 5 次校验和原事务消费协议。每条 challenge 保存 provider，
+校验按记录分流；历史缺 provider 的记录按 aliyun 处理。模式切换只影响新发送。
+现有开关、配额和隔离均保留；不新增全局错误率熔断器。
+
+### 本地验证（全部 Mock 出站）
+
+```bash
+node --test workers/phone-auth/tests/relay.test.mjs
+node --test tests/phone-auth-provider.test.mjs tests/phone-auth-service.test.mjs tests/phone-release-policy.test.mjs tests/phone-auth-routes.test.mjs
+node scripts/test-phone-workerd.mjs --standalone
+node workers/phone-auth/tests/relay-workerd.mjs
+```
+
+workerd 验收使用临时本地 SQLite，测试结束删除临时目录；不连接生产 DO 或短信端点。
+原本地 workerd 测试保持阿里云默认模式，新测试验证 relay 并发、重启、再验、模式切换、
+预算及隔离。Node Mock 另覆盖失败/异常 JSON/HTTP/8 秒超时/过期/五次错误/摘要绑定。
+
+### 部署与回滚边界
+
+本轮不执行部署、配置 Secret、生产初始化或真实短信。之后如获单独部署授权，
+沿用独立构建入口，输出到新候选目录，仅部署 phone-auth；保持原 DO 绑定、类名、
+固定对象名及账本，不新增 DO 迁移、不重新 initialize，不部署主 ai Worker。
+
+优先在这份兼容新旧 challenge 的代码上将 `PHONE_SMS_PROVIDER` 切回 `aliyun`，
+恢复/保留原阿里云配置。此时在途 relay challenge 仍本地校验，旧阿里云 challenge
+仍走 PNVS，不重置累计预算或号码锁。
+
+紧急关闭使用 `PHONE_SMS_ENABLED=false`，必要时同时关闭
+`PHONE_IDENTITY_ENABLED` / `PHONE_NEW_REGISTRATION_ENABLED`。关闭不能撤销已送达中转的请求。
+若需回退到不认识 relay challenge 的历史代码，先关闭手机号入口，确认所有在途发送
+终止且最后一次预留后至少 300 秒的 challenge 有效期已过，再回退并保持关闭复核。
+不要在尚有 relay challenge 时直接回退旧代码：旧代码只会调用阿里云校验。
+任何回滚均不得清空/重建 DO、退款配额、删除隔离记录或修改身份数据库/JWT。
