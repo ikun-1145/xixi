@@ -180,3 +180,14 @@ D1 创建时选择亚太主区域提示，关闭读副本。按照仓库 `worker
 3. 重新执行 Cloudflare 只读审计，确认全部临时 Worker/Access App/域名/DNS/OTP 无残留，正式 Waffo、Afdian 及生产数据库未改变。**只有这三个收尾条件确认后才能把本阶段记为完成。** 未完成前不得合并 PR #35 或将任何支付路径上线。
 
 **生产状态：NO-GO；本阶段仅健康路径检查，签名支付 E2E 仍待更细致的受控测试方案。**
+
+
+## 2026-11-04 首次真实云端健康请求拒绝与 Worker 级 Access 修正
+
+受邀审查人使用 Cloudflare Access OTP 正常登录 `waffo-preprod-e2e-20261104.sunland.dev/__preprod/health` 后，浏览器实际显示 `{"ok":false}`，**健康检查未通过**。Access Authentication 日志同时显示 `2026-11-04T04:33:40Z` 有 `action=login, allowed=true`。因此认证层放行成立，但不能把 Worker 链路写为 PASS；`{"ok":false}` 在候选代码中可能是 Access Worker 上下文校验失败，亦可能是私有目标错误被 Gateway 安全屏蔽，缺乏 HTTP 状态及服务器追踪尚不能完全区分。
+
+根据 Cloudflare 2026-11-02 官方 Workers Access 文档，`ctx.access` 是应用 Access 保护在 Worker 调用上下文的身份对象。候选网关 `verifiedAccess(ctx,audience)` 对该对象及精确 AUD 强制 fail closed。本轮最小调整仅涉及**现有临时 Access 应用的目的地模式**：从 `destinations:[{type:"public",uri:"waffo-preprod-e2e-20261104.sunland.dev"}]` 切换为 `destinations:[{type:"worker",worker_id:"979a32154d3748e282dbdd959eaca24d"}]`，保留相同应用 ID `44d96853-d386-481c-b5ce-b44ae6dba634`、相同 Audience `d91acb5be2f84f46b7332618624ba7aff97354ac5e2f861938f4ab5ec3c6e4d7`、相同唯一精确邮箱 Allow 策略、同一独立 OTP 身份提供方和 30 分钟会话。没有添加 Everyone、全账号 Worker Access 或额外域名。
+
+**变更后只读验证通过**：GET 确认 Worker 目的地 ID、策略与原 Audience 匹配，临时 Custom Domain 仍只绑定该 Gateway，Webhook/Cron 分别为 `false`；Cloudflare Browser Run 的未登录 GET 再次呈现 `Sign in ・ Cloudflare Access`。**已认证的重新健康检查尚待审查人刷新完成，故本次修正仍是待验证的假设，不能声称问题已解决或 E2E PASS。** 未测试真实签名 Webhook，独立 D1 未写入。
+
+重要：原 `waffopay-preprod-isolated` 的临时 Secret 轮换版本 `eedf9bb3-0b18-44f4-a40e-18babc0ccef2` 仍部署中，必须在完成或放弃健康检查后先解除临时公网入口，删除临时 Gateway、Access 应用及 OTP，最后恢复审计认可版本 `26863803-021d-46bd-b3d5-49c15abbfe90` 并核验。生产支付、会员权益及正式数据库均未获授权修改，继续 **NO-GO**。
