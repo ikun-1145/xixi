@@ -286,6 +286,62 @@ test("opt-in Gateway trace emits only stable stages and safe request buckets",as
   }
 });
 
+test("diagnostic stage trace covers disabled and upstream failure cases",async()=>{
+  const env=baseEnv();
+  env.WAFFO_PREPROD_DIAGNOSTICS_ENABLED="true";
+  const notes=[];
+  const original=console.info;
+  console.info=(...parts)=>notes.push(parts);
+  try {
+    env.WAFFO_PREPROD_GATEWAY_ENABLED="false";
+    let r=await run("/__preprod/health",{},env);
+    assert.equal(r.response.status,503);
+    env.WAFFO_PREPROD_GATEWAY_ENABLED="true";
+
+    env.WAFFO_PREPROD_ALLOW_WEBHOOK="false";
+    r=await run("/__preprod/webhook",{
+      method:"POST",headers:{"content-type":"application/json","x-waffo-signature":signature},
+      body:"{}",
+    },env);
+    assert.equal(r.response.status,403);
+
+    r=await run("/__preprod/cron",{method:"POST"},env);
+    assert.equal(r.response.status,403);
+
+    env.WAFFO_PREPROD_TARGET.fetch=async()=>{
+      throw Error("never-log-this-private-exception");
+    };
+    r=await run("/__preprod/health",{},env);
+    assert.equal(r.response.status,503);
+    assert.equal(r.data.reason,"private_target_unavailable");
+
+    env.WAFFO_PREPROD_TARGET.fetch=async()=>new Response("internal-secret-body",{status:200});
+    r=await run("/__preprod/health",{},env);
+    assert.equal(r.response.status,502);
+    assert.equal(r.data.reason,"private_health_invalid_json");
+
+    env.WAFFO_PREPROD_TARGET.fetch=async()=>Response.json({
+      ok:true,mode:"isolated",entitlements:true,automaticCron:false,
+      privateInfo:"should-not-appear",
+    });
+    r=await run("/__preprod/health",{},env);
+    assert.equal(r.response.status,502);
+    assert.equal(r.data.reason,"private_health_payload_mismatch");
+
+    assert.deepEqual(notes.map(x=>x[1].stage),[
+      "config_rejected","webhook_disabled","cron_disabled",
+      "private_target_unavailable","private_json_invalid","private_health_mismatch",
+    ]);
+    const flattened=JSON.stringify(notes);
+    for(const value of ["never-log-this-private-exception","internal-secret-body",
+      "should-not-appear",TOKEN]){
+      assert.equal(flattened.includes(value),false,value);
+    }
+  } finally {
+    console.info=original;
+  }
+});
+
 test("private target failures do not leak response bodies or exception messages",async()=>{
   const env=baseEnv();
   env.WAFFO_PREPROD_TARGET.fetch=async()=>{throw Error("internal secret details");};
