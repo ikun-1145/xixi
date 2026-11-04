@@ -27,10 +27,12 @@ jobs:
         with:
           persist-credentials: false
 
-      - name: Checkout exact PR base commit (baseline only)
+      - name: Checkout audited main production-source baseline (not stacked PR base)
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event.pull_request.base.sha }}
+          # A stacked PR can target another Draft branch; that branch is not
+          # the reviewed live production bundle baseline.
+          ref: main
           path: _verified-base
           persist-credentials: false
 

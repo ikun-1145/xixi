@@ -1,5 +1,6 @@
 // Official query-only API + verified webhook display amounts. No client data is proof.
 import { signApiRequest, fetchWithTimeout, validateWaffoAmounts } from './worker.js';
+import { paymentEgress } from './preprod-transport.js';
 
 export class ProofError extends Error {
   constructor(code, permanent = false) { super(code); this.code = code; this.permanent = permanent; }
@@ -65,8 +66,11 @@ export function validateProductionRefund(data, event, intent, env) {
 }
 
 export async function queryProductionOrder(env, event, intent) {
-  if (!env.WAFFO_PRIVATE_KEY_PRODUCTION || env.WAFFO_PRIVATE_KEY_PRODUCTION.replace(/\s/g, '')
-    === String(env.WAFFO_PRIVATE_KEY_TEST || '').replace(/\s/g, '')) throw new ProofError('proof_key_unavailable');
+  const isolated = env.WAFFO_PREPROD_ISOLATED === 'true';
+  const signingKey = isolated ? env.WAFFO_PREPROD_SIGNING_KEY : env.WAFFO_PRIVATE_KEY_PRODUCTION;
+  const testKey = isolated ? env.WAFFO_PREPROD_TEST_SIGNING_KEY : env.WAFFO_PRIVATE_KEY_TEST;
+  if (!signingKey || signingKey.replace(/\s/g, '') === String(testKey || '').replace(/\s/g, ''))
+    throw new ProofError('proof_key_unavailable');
   // Production introspection defines these IDs as String!, unlike the guide's ID! examples.
   const body = JSON.stringify({ query: `query PaymentProof($id: String!, $merchant: String!) {
     merchant(id: $merchant) { id storeMerchants { store { id } } }
@@ -75,11 +79,12 @@ export async function queryProductionOrder(env, event, intent) {
   }`, variables: { id: event.order.orderId, merchant: env.WAFFO_PROD_MERCHANT_ID } });
   const timestamp = String(Math.floor(Date.now() / 1000));
   try {
-    const signature = await signApiRequest(env.WAFFO_PRIVATE_KEY_PRODUCTION, 'POST', '/v1/graphql', timestamp, body);
-    const response = await fetchWithTimeout('https://api.waffo.ai/v1/graphql', {
+    const signature = await signApiRequest(signingKey, 'POST', '/v1/graphql', timestamp, body);
+    const transport = paymentEgress(env, 'provider', 'https://api.waffo.ai/v1/graphql');
+    const response = await fetchWithTimeout(transport.url, {
       method: 'POST', redirect: 'error', headers: { 'Content-Type': 'application/json',
         'X-Merchant-Id': env.WAFFO_PROD_MERCHANT_ID, 'X-Timestamp': timestamp, 'X-Signature': signature }, body,
-    });
+    }, undefined, transport.fetchImpl);
     if (!response.ok) throw new ProofError('proof_http');
     const result = await response.json();
     if (!result || typeof result !== 'object' || Array.isArray(result) || result.errors?.length

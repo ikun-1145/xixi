@@ -1,0 +1,114 @@
+name: Payment Preproduction Isolation Gate
+
+on:
+  pull_request:
+    paths:
+      - "workers/waffopay/preprod-*.js"
+      - "workers/waffopay/preprod-gateway-proposal.js"
+      - "workers/waffopay/payment-proof.js"
+      - "workers/waffopay/production-rpc.js"
+      - "scripts/reliability/render-payment-preprod.mjs"
+      - "tests/payment-preprod-isolation.test.mjs"
+      - "tests/payment-preprod-gateway.test.mjs"
+      - "scripts/reliability/payment-preprod-workerd-e2e.mjs"
+      - "scripts/reliability/cloud-preprod-isolation-preflight.mjs"
+      - "tests/payment-cloud-preprod-preflight.test.mjs"
+      - "scripts/reliability/cloud-preprod-postdeploy-audit.mjs"
+      - "tests/payment-cloud-preprod-postdeploy.test.mjs"
+      - ".github/workflows/payment-preprod-isolation-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  safe-preprod-dry-run:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: "true"
+      CLOUDFLARE_API_TOKEN: ""
+      CLOUDFLARE_ACCOUNT_ID: ""
+      WRANGLER_SEND_METRICS: "false"
+      WAFFO_PREPROD_D1_ID: "11111111-1111-4111-8111-111111111111"
+    steps:
+      - name: Checkout candidate without write credentials
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Install Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install locked dependencies without scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Validate isolation, token gate and mock service semantics
+        run: |
+          node --check workers/waffopay/preprod-worker.js
+          node --check workers/waffopay/preprod-mock.js
+          node --check workers/waffopay/preprod-transport.js
+          node --check scripts/reliability/render-payment-preprod.mjs
+          node --test tests/payment-preprod-isolation.test.mjs
+          node --check workers/waffopay/preprod-gateway-proposal.js
+          node --test tests/payment-preprod-gateway.test.mjs
+          node --check scripts/reliability/cloud-preprod-isolation-preflight.mjs
+          node --test tests/payment-cloud-preprod-preflight.test.mjs
+          node --check scripts/reliability/cloud-preprod-postdeploy-audit.mjs
+          node --test tests/payment-cloud-preprod-postdeploy.test.mjs
+
+      - name: Full repository regression tests (no real credentials)
+        run: npm test
+
+      - name: Construct synthetic no-route no-cron configs
+        env:
+          CLOUDFLARE_ACCOUNT_ID: "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+        run: |
+          node scripts/reliability/render-payment-preprod.mjs "$GITHUB_WORKSPACE/.preprod-generated"
+          if grep -Ei 'waffopay\.sunland\.dev|api\.waffo\.ai|supabase\.co|\[triggers\]|\[\[routes\]\]|WAFFO_IDENTITY_SERVICE|WAFFO_PRODUCTION_SERVICE_ROLE_KEY|preview_urls = true' \
+            .preprod-generated/*.toml; then
+            echo "::error::Staging config contains a production reference"
+            exit 2
+          fi
+
+      - name: Offline Wrangler compile only, never deploy
+        timeout-minutes: 9
+        run: |
+          set -eu
+          for target in worker mock; do
+            output="$RUNNER_TEMP/preprod-compiled/$target"
+            mkdir -p "$output"
+            npx --yes wrangler@4.141.0 deploy --dry-run \
+              --config ".preprod-generated/$target.toml" \
+              --outdir "$output" > "$RUNNER_TEMP/compile-$target.log" 2>&1 || {
+                echo "::error::Blocked: isolated dry-run failed ($target)"
+                exit 2
+              }
+            source_name="preprod-$target.js"
+            if [ ! -s "$output/$source_name" ]; then
+              # Wrangler may choose an output filename based on the module entrypoint.
+              # Print filenames only; never log compiled source or env values.
+              find "$output" -maxdepth 1 -type f -printf '%f\\n'
+              echo "::error::Missing expected compiled preprod $source_name"
+              exit 2
+            fi
+            node --check "$output/$source_name"
+          done
+          echo "PASS: synthetic staging Worker and mock compile offline. Nothing deployed."
+
+      - name: Install pinned local workerd runner (no remote credentials)
+        run: |
+          npm install --prefix "$RUNNER_TEMP/payment-preprod-miniflare" \
+            --no-save --no-package-lock --ignore-scripts --no-audit --no-fund \
+            miniflare@5.20261101.0-beta
+
+      - name: End-to-end synthetic webhook across two compiled Workers and ephemeral D1
+        timeout-minutes: 8
+        env:
+          PAYMENT_MINIFLARE_ROOT: ${{ runner.temp }}/payment-preprod-miniflare
+          CLOUDFLARE_API_TOKEN: ""
+          CLOUDFLARE_ACCOUNT_ID: ""
+        run: |
+          node --check scripts/reliability/payment-preprod-workerd-e2e.mjs
+          node scripts/reliability/payment-preprod-workerd-e2e.mjs "$RUNNER_TEMP/preprod-compiled"
