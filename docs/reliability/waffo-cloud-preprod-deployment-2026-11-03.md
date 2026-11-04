@@ -158,3 +158,25 @@ D1 创建时选择亚太主区域提示，关闭读副本。按照仓库 `worker
 **测试结束即清理，云端复核 PASS：** 删除临时 Worker Custom Domain、临时 Gateway Worker、临时 Access 应用及其 Allow 策略、临时 OTP 身份提供方。再次通过 GET 核对这五类临时资源 / DNS 均为 0 残留，账号恢复 **14 个 Worker、5 个 Worker Custom Domain、2 个 D1**；只保留早前已授权建立的 `Shuanglan AI Preproduction Access` 组织和 `Shuanglan Cloudflare Account` 身份提供方。既有两个私有 Waffo Worker、独立 D1 和生产支付资源未变。
 
 **后续门禁：** 真实云端 `Access → Gateway → Waffo isolated Worker → Provider/RPC Mock → D1` 正向合成 E2E 仍 **BLOCKED/NOT VERIFIED**。要继续需要单独设计安全的独立测试凭据发放/轮换、内网 Service Binding 和可控合成签名请求执行路径。严禁借此登录验收直接开启正式支付或扩大公开 Worker 攻击面；生产支付仍 **NO-GO**。
+
+
+## 2026-11-04 隔离云端 Service Binding 健康检查待用户验收
+
+**本节为进行中的非生产云端验收，不是 PASS。** 用户已在前一轮完成受保护的**旧临时网关**的真实 Access 登录（`allowed=true`）；旧资源已清理。本节是新的、通过内部 Service Binding 真正调用私有 Worker 的验证阶段。
+
+- 先将草稿测试网关 `workers/waffopay/preprod-gateway-proposal.js` 增加显式独立开关 `WAFFO_PREPROD_ALLOW_WEBHOOK`，默认不是 `true` 时固定返回 `403 manual_webhook_disabled`，**不会调用私有 Service Binding**。增加对应否定测试，离线 workerd 合成验证中才明确传 `true`。Draft PR #35 此轮隔离 CI / 可重复构建 CI 均 PASS；未合并或部署任何正式支付 Worker。
+- 临时 Access 应用 `Waffo isolated cloud-health E2E 20261104` 仅允许事先验证的账户邮箱（精确 Email Allow 规则），仅启用独立 OTP 身份提供方，应用固定域名 `waffo-preprod-e2e-20261104.sunland.dev`。
+- 临时 `waffopay-preprod-e2e-gateway-20261104` 已按本 PR 候选代码部署，仅配置以下用途：`WAFFO_PREPROD_GATEWAY_ENABLED=true`、`WAFFO_PREPROD_ISOLATED=true`、`WAFFO_PREPROD_ENTITLEMENTS_ENABLED=false`、`WAFFO_PREPROD_ALLOW_WEBHOOK=false`、`WAFFO_PREPROD_ALLOW_CRON=false`、独立 Access Audience 和唯一内部 Service Binding `WAFFO_PREPROD_TARGET → waffopay-preprod-isolated`。不含生产密钥，不持有 D1、Provider 或 RPC 绑定，不开放 Cron。临时 Worker 的 `workers.dev`、Preview URL 均关闭。
+- 在云端连接器内使用 `crypto.getRandomValues` 生成全新**随机、非生产、仅用于隔离测试的 96 位十六进制 Gate Token**，一次性写入 Gateway 与私有 `waffopay-preprod-isolated` 的 `secret_text` Binding；**没有输出明文或把密钥提交至 GitHub**。这一步**确实轮换了私有预发布 Worker 的既有 Gate Token**，而不是读取旧 Secret。其他 4 项测试 Secret、原有内部 Mock Service Bindings 与独立 D1 绑定未变。
+- **版本漂移警告：**密钥轮换使 `waffopay-preprod-isolated` 当前 100% 部署版本变为 `eedf9bb3-0b18-44f4-a40e-18babc0ccef2`，其 Version 元数据没有 `workers/commit_sha` 注解；因此原严格 postdeploy audit 预期会返回 **BLOCKED**，此阶段**禁止声称原版本审核通过**。原已审核版本 `26863803-021d-46bd-b3d5-49c15abbfe90` 仍存在，元数据 `workers/commit_sha=e670f7ba43c1089ac1268d72bf1364fd65c1b45b` 已核验，**必须在阶段结束后将私有预发布 Worker 恢复到这一原版本并重新验收**。不要修改审核基线去掩盖临时漂移。
+- Gateway 通过 Secret 上传后当前独立版本为 `0cf34866-7cbd-4916-aa0f-358f9d0d2b91`，完整保留 `WAFFO_PREPROD_ALLOW_WEBHOOK=false`、`WAFFO_PREPROD_ALLOW_CRON=false`，与唯一私有 Service Binding。
+- 先检查 Access 应用/精确邮箱规则、OTP IDP、无 DNS 域名冲突，随后绑定临时 Custom Domain。Cloudflare Browser Run 对 `GET /__preprod/health` 的**未登录**调用实际返回 `Sign in ・ Cloudflare Access`，没有触达业务 Worker；正向登录和私有 Service Binding 真实健康检查**等待用户浏览器验收**。其他一项伪造头探测没有取得可判定结果，不能把这项计作本轮通过。
+- 预发布 D1 的只读基线仍为 `payment_intents=1`、`event_ledger=0`、`production_outbox=0`，本轮没有执行签名 Webhook、Cron、RPC/Mock 调用或 D1 写入。**完整支付 E2E 尚未通过。**
+
+### 待完成的清理门禁（不要遗漏）
+
+1. 用户确认正向请求显示 `{"ok":true,"mode":"isolated","entitlements":false,"automaticCron":false}`，或者测试无法继续时，**先解除临时 Custom Domain**，再删除临时 Gateway Worker、Access 应用及其 Email Allow 策略、独立 OTP IDP。
+2. 将 `waffopay-preprod-isolated` 的 100% 部署版本恢复到 `26863803-021d-46bd-b3d5-49c15abbfe90`；以 GET 核验实际部署版本、对应来源 commit 注解、所有原 Secret Binding 类型、Mock/D1 指向和 0 Cron。原 Worker `workers.dev`、Preview 仍关闭。
+3. 重新执行 Cloudflare 只读审计，确认全部临时 Worker/Access App/域名/DNS/OTP 无残留，正式 Waffo、Afdian 及生产数据库未改变。**只有这三个收尾条件确认后才能把本阶段记为完成。** 未完成前不得合并 PR #35 或将任何支付路径上线。
+
+**生产状态：NO-GO；本阶段仅健康路径检查，签名支付 E2E 仍待更细致的受控测试方案。**
