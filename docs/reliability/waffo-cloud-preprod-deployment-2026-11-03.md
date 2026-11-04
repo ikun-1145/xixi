@@ -211,3 +211,22 @@ D1 创建时选择亚太主区域提示，关闭读副本。按照仓库 `worker
 仅对临时 `waffopay-preprod-e2e-gateway-20261104` 进行了新版本上传，在 multipart metadata 保留原有 `secret_text` Binding 类型，未读/回显密钥或改变现有私有 Worker。云端 GET 复核：Gateway 已部署单一 100% Version `00649704-3eb4-4860-be9d-77d3533e879b`，保留唯一私有 Service Binding `WAFFO_PREPROD_TARGET → waffopay-preprod-isolated` 和名为 `WAFFO_PREPROD_GATE_TOKEN` 的 Secret Binding；`WAFFO_PREPROD_DIAGNOSTICS_ENABLED=true`，`WAFFO_PREPROD_ALLOW_WEBHOOK=false`、`WAFFO_PREPROD_ALLOW_CRON=false`、`WAFFO_PREPROD_ENTITLEMENTS_ENABLED=false`，workers.dev 和 Preview URL 关闭，Worker 级 Access 应用仅允许精确邮箱。原私有 Worker 临时 Version `eedf9bb3-0b18-44f4-a40e-18babc0ccef2` 未改变。
 
 **当前诊断请求仍待审查人用已认证浏览器重新 GET**，尚未判定故障链路，不得将这次代码变更称为“修复完成”。完成本轮后必须立刻解除临时 Custom Domain、移除 Gateway/Access App/OTP IdP，并恢复私有预发布 Worker 至原审核版 `26863803-021d-46bd-b3d5-49c15abbfe90`，重新 GET 审计。任何真实签名 Webhook、D1 写入、正式支付发布继续禁止。
+
+
+## 2026-11-04 云端健康验证未通过与受控回滚最终记录
+
+**验收结果：BLOCKED / NOT VERIFIED，不得标记为 PASS。** 审查人在已认证浏览器中复测 `GET /__preprod/health`，即使将临时 Access 应用目的地改为 Worker-scoped、再部署添加安全健康诊断的 Gateway 版本，页面仍显示 `{"ok":false}`。Cloudflare Access 服务端认证日志在 `2026-11-04T04:39:36Z` 等时间记录 `action=login, allowed=true`，但不能由此推定 Gateway 自身的 `ctx.access` 验证成功。
+
+查明的观测条件：
+
+- 临时 Gateway 的 Workers Logs / traces 原本未开启，无法从历史日志读取故障路径。Cloudflare API 已验证诊断版 `00649704-3eb4-4860-be9d-77d3533e879b` 为 **100% 活跃部署**，Settings 中 `WAFFO_PREPROD_DIAGNOSTICS_ENABLED=true`、唯一内部 Service Binding、Secret Binding 均存在；`WAFFO_PREPROD_ALLOW_WEBHOOK=false`、`WAFFO_PREPROD_ALLOW_CRON=false`、权益开关关闭。部署版本与绑定存在**不等于**取得了单次失败请求所执行的具体分支。
+- 仓库 Gateway 代码的健康诊断仅在精确 GET `/__preprod/health` 且无查询参数时输出固定 `reason`。目前的通用 `{"ok":false}` 可能来自路径 / 查询参数 / 方法不匹配的路由拒绝分支、与当前部署代码不一致的响应或其他尚未被观测到的因素。**没有真实请求的 HTTP 状态、完整路径与追踪数据，不能认定根因为 Access、Secret 或内部 Service Binding。**
+- CI 的离线 workerd 合成用例及可重复构建通过，但本次**真实云端健康检查及签名支付 E2E 都没有通过**。独立 D1 的只读计数仍是 `payment_intents=1`、`event_ledger=0`、`production_outbox=0`，没有执行业务写入。
+
+**安全清理与回滚：PASS。** 先删除临时 Custom Domain，再 GET 确认该域名与 DNS 均不存在、没有临时 Zone Route；随后删除 `waffopay-preprod-e2e-gateway-20261104`、对应 Access 应用及临时 One-time PIN 身份提供方。再次 GET 核查五类临时资源均为 0 残留，账号恢复 **14 个 Worker、5 个 Worker Custom Domain、2 个 D1**，原有 Cloudflare Access 组织与正式身份提供方保留。
+
+- 私有预发布 Worker 在本次测试中曾经轮换 `WAFFO_PREPROD_GATE_TOKEN`，临时部署版本为 `eedf9bb3-0b18-44f4-a40e-18babc0ccef2`。回滚到审核版时 Cloudflare API 先返回 **10220**，提示旧版之后该 Secret 已改变，须显式 `force=true` 才能恢复。**在测试公网入口已撤销、目标 Version ID 与旧来源 Commit 注解已重新核验后**，用 `POST /deployments?force=true` 创建单一 100% 审核版本部署。
+- 回滚后实际版本确认为 `waffopay-preprod-isolated = 26863803-021d-46bd-b3d5-49c15abbfe90`，来源 Commit 注解 `e670f7ba43c1089ac1268d72bf1364fd65c1b45b`；Mock 仍是审核版 `39fd33fd-173c-481d-ba99-03740c1a5574`。两者 `workers.dev=false`、`previews_enabled=false`、Cron 数量 0，Entry 的原有 15 项 Binding 类型与合成 D1 / 内部 Mock 指向重新核验匹配。
+- 正式 `waffopay` 版本仍为 `b414b89b-2218-47c6-bb7a-b85513af9125`，`afdianpay` 仍为 `a84fa755-4a9e-456a-94eb-8746c7f11d1b`；未修改生产付款、会员权益或数据库。
+
+**后续建议**：先改进离线 Gateway 诊断覆盖范围，增加未携带任何凭据的路由与带查询参数的错误分支测试；若仍需云端复现，启用最小化、脱敏的 Worker request/response 状态日志，利用一次明确的授权浏览器访问采集 HTTP status、路径（不含查询值、Cookie、JWT）及脱敏跟踪标识。禁止直接放宽 Access、把隔离 Worker 开放给公网或为了诊断重演真实付款。**生产继续 NO-GO。**
