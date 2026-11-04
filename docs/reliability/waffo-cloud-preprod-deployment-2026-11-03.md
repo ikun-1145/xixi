@@ -247,3 +247,33 @@ D1 创建时选择亚太主区域提示，关闭读副本。按照仓库 `worker
 **人工阻塞：** 自动创建并配对非生产 `WAFFO_PREPROD_GATE_TOKEN` Secret 到诊断 Gateway 与既有私有 Worker 的执行请求被当前工具安全检查拒绝，**工具调用没有执行**。执行后再次 GET 证实：诊断 Gateway 完全没有此 Secret Binding，原私有 Worker 仍为旧审核版本且存在原 Secret Binding，没有发生半途轮换，也没有公网入口。**不得**更换工具参数绕过该检查；下一步必须由拥有该 Cloudflare 账号权限的用户在可信管理界面人工生成并在两个 Worker 上设置相同的新随机测试 Token，不在聊天或 GitHub 提交明文。人工设置完成后，继续 GET 核实两个绑定的名称与类型、临时新版本、Access 安全策略与脱敏日志，匿名拦截测试 PASS 后才能临时绑定域名，再由用户完成一次授权健康检查并收集安全阶段日志。
 
 **状态：USER_ACTION_REQUIRED，PRIVATE_GATEWAY_NOT_ROUTABLE，PRODUCTION_NO_GO。** 禁止在 Secret 未配对及安全核验之前公开测试域名；测试结束后必须按本 PR runbook 的顺序解绑域名、删除临时 Gateway/Access/OTP，并将私有 Worker 恢复到审核 Version，必要时仅在原审核元数据核实后遵循 Cloudflare 的 force 回滚保护。
+
+
+## 2026-11-04 生产安全发布与临时诊断资源待清理
+
+用户指示暂停尚未完成的 Waffo 真实云端 E2E 测试，优先收尾并将**可安全上线**的稳定性代码部署生产。本次因此严格分离：
+
+- **已发布** `PR #33`（只读 Worker 聚合健康 CLI），Squash Commit `77304840dfe747757e4da0cb5033f521e0493154`；Cloudflare Pages 首次 main 构建/部署 SUCCESS。
+- **已发布** `PR #32`（网页 AI HTTP 错误分类和多语言展示），Squash Commit `e32eb5f0bf18428418c5c22ce0572c9024ca9a85`；Cloudflare Pages `sunland` 生产分支 `main` 最新部署 `bee494e8-d0d0-48aa-92ac-74aa290f8182`，build/deploy 全阶段 SUCCESS。该 PR 的 GitHub CI 已 PASS；真实登录后的多语言/错误弹窗浏览器 E2E 尚未全部验收，不应夸大为完成。主 `ai` Worker 版本未变。
+- **未发布** `PR #34`（付款 Cron 结果、队列元数据逻辑）和堆叠的 `PR #35`（Waffo 隔离测试），继续 Draft + NO-GO，不改正式 Waffo / 爱发电 Worker、支付路由、Cron、密钥、生产 D1 或用户权益。
+
+### 本轮未能完成的清理（明确不得标记成功）
+
+本次原计划删除临时诊断网关及登录资源，但 Cloudflare API 变更操作被当前自动执行安全检查阻止，**删除请求未执行**。禁止通过替换工具或其他绕过手段重试。
+
+只读复核仍存在：
+
+1. 临时 Gateway Worker `waffopay-preprod-diagnostic-20261104`；
+2. 临时 Access App `Waffo one-shot diag Access 20261104`（ID `17729548-132b-4746-a131-940dea958d0d`）；
+3. 临时 OTP 身份提供方 `Waffo one-shot diagnostic OTP 20261104`（ID `acaceac2-7741-453b-9c7f-09795715a470`）。
+
+安全状态为 **no-route / no-Custom-Domain / workers.dev=false / previews_enabled=false**。Gateway `WAFFO_PREPROD_GATE_TOKEN` Binding 不存在；私有入口 `waffopay-preprod-isolated` 的部署版本仍是旧审核版 `26863803-021d-46bd-b3d5-49c15abbfe90`，未轮换 Gate Token。独立 D1 未执行新的支付写入。本轮不需要回滚旧私有 Worker。
+
+**手动清理顺序**（有权限的账号持有人通过 Cloudflare Dashboard 操作）：
+
+1. 确认临时 Gateway 没有 Custom Domain / Route、workers.dev / Preview URL 仍关闭；删除 `waffopay-preprod-diagnostic-20261104`。
+2. 删除上述临时 Access App（仅此单个应用）。
+3. 删除上述临时 OTP IdP（仅此单个身份提供方），保留 `Shuanglan Cloudflare Account` IdP 与 `Shuanglan AI Preproduction Access` Access 组织。
+4. 重新只读验证 14 个 Worker、5 个 Worker Custom Domain、2 个 D1、0 个临时 Access App / OTP / DNS / Route，私有 Entry 和 Mock Version 与已审核版本匹配，并再次确认正式 `waffopay`、`afdianpay`、`ai` 版本未变。
+
+**最终状态**：生产网页稳定性修复已发布；支付生产逻辑未发布；临时诊断资源清理**待用户手动完成**。禁止将本轮标记为“临时资源已清除”或“真实支付 E2E PASS”。
