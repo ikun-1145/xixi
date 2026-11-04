@@ -87,6 +87,9 @@ export default {
     if(url.search || url.hash || !Object.hasOwn(ALLOWED,url.pathname) ||
        request.method!==ALLOWED[url.pathname])
       return noCache({ok:false},404);
+    if(url.pathname==="/__preprod/webhook" &&
+       env.WAFFO_PREPROD_ALLOW_WEBHOOK!=="true")
+      return noCache({ok:false,reason:"manual_webhook_disabled"},403);
     if(url.pathname==="/__preprod/cron" &&
        env.WAFFO_PREPROD_ALLOW_CRON!=="true")
       return noCache({ok:false,reason:"manual_cron_disabled"},403);
