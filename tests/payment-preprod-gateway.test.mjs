@@ -211,6 +211,81 @@ test("temporary health diagnostics identify failing gate without leaking private
   assert.deepEqual(r.data,{ok:false});
 });
 
+test("opt-in Gateway trace emits only stable stages and safe request buckets",async()=>{
+  const env=baseEnv();
+  const notes=[];
+  const original=console.info;
+  const hidden="top-secret-value-PRIVATE-123";
+  const fakeEmail="private@example.invalid";
+  env.WAFFO_PREPROD_DIAGNOSTICS_ENABLED="true";
+  console.info=(...parts)=>notes.push(parts);
+  try {
+    // These probes must not log raw URL path, query value or credentials.
+    let r=await run("/__preprod/health?secret="+hidden,{
+      headers:{Cookie:"sid="+hidden,Authorization:"Bearer "+hidden},
+    },env);
+    assert.equal(r.response.status,404);
+    assert.deepEqual(r.data,{ok:false});
+    r=await run("/nonapproved/"+hidden,{},env);
+    assert.equal(r.response.status,404);
+    r=await run("/__preprod/health",{method:"POST"},env);
+    assert.equal(r.response.status,404);
+    r=await run("/__preprod/health",{},env,{access:{
+      aud:"wrong",getIdentity:async()=>({email:fakeEmail}),
+    }});
+    assert.equal(r.response.status,403);
+    assert.deepEqual(r.data,{ok:false,reason:"access_context_rejected"});
+
+    env.WAFFO_PREPROD_TARGET.fetch=async()=>Response.json({
+      secret:hidden,email:fakeEmail,
+    },{status:503});
+    r=await run("/__preprod/health",{},env);
+    assert.equal(r.response.status,503);
+    assert.equal(r.data.reason,"private_worker_not_ready");
+
+    env.WAFFO_PREPROD_TARGET.fetch=async()=>Response.json({
+      ok:true,mode:"isolated",entitlements:false,automaticCron:false,
+      secret:hidden,email:fakeEmail,
+    });
+    r=await run("/__preprod/health",{},env);
+    assert.equal(r.response.status,200);
+    assert.deepEqual(r.data,{
+      ok:true,mode:"isolated",entitlements:false,automaticCron:false,
+    });
+
+    const stages=notes.map(part=>part[1]?.stage);
+    assert.deepEqual(stages,[
+      "route_rejected","route_rejected","route_rejected",
+      "access_rejected","private_non_200","health_pass",
+    ]);
+    for(const [tag,fields] of notes){
+      assert.equal(tag,"waffo_preprod_gateway_diag");
+      assert.deepEqual(Object.keys(fields).sort(),[
+        "extraParams","method","route","schema","stage","status",
+      ].sort());
+      assert.equal(fields.schema,1);
+      assert.ok(["health","webhook","cron","other","invalid"].includes(fields.route));
+      assert.ok(["GET","POST","OTHER"].includes(fields.method));
+    }
+    assert.equal(notes[0][1].route,"health");
+    assert.equal(notes[0][1].extraParams,true);
+    assert.equal(notes[1][1].route,"other");
+    assert.equal(notes[2][1].method,"POST");
+
+    const serialized=JSON.stringify(notes);
+    for(const sensitive of [hidden,fakeEmail,TOKEN,
+      "sid=", "Bearer", "/nonapproved", "private@example.invalid"]){
+      assert.equal(serialized.includes(sensitive),false,sensitive);
+    }
+
+    env.WAFFO_PREPROD_DIAGNOSTICS_ENABLED="false";
+    await run("/__preprod/health",{},env);
+    assert.equal(notes.length,6,"logs disabled when opt-in flag is not true");
+  } finally {
+    console.info=original;
+  }
+});
+
 test("private target failures do not leak response bodies or exception messages",async()=>{
   const env=baseEnv();
   env.WAFFO_PREPROD_TARGET.fetch=async()=>{throw Error("internal secret details");};
