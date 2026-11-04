@@ -230,3 +230,20 @@ D1 创建时选择亚太主区域提示，关闭读副本。按照仓库 `worker
 - 正式 `waffopay` 版本仍为 `b414b89b-2218-47c6-bb7a-b85513af9125`，`afdianpay` 仍为 `a84fa755-4a9e-456a-94eb-8746c7f11d1b`；未修改生产付款、会员权益或数据库。
 
 **后续建议**：先改进离线 Gateway 诊断覆盖范围，增加未携带任何凭据的路由与带查询参数的错误分支测试；若仍需云端复现，启用最小化、脱敏的 Worker request/response 状态日志，利用一次明确的授权浏览器访问采集 HTTP status、路径（不含查询值、Cookie、JWT）及脱敏跟踪标识。禁止直接放宽 Access、把隔离 Worker 开放给公网或为了诊断重演真实付款。**生产继续 NO-GO。**
+
+
+## 2026-11-04 第二次诊断演练：待人工配对测试密钥
+
+用户要求持续推进，直到必须人工参与时暂停。本轮复查 Draft PR #35 的 Isolation CI 和可重复构建 CI 都已通过。新部署使用当前草稿分支的分段日志 Gateway 代码，**并未执行云端支付 E2E**。
+
+**已经完成的非生产、只读和临时配置动作：**
+
+- 独立 Cloudflare Access 账号成员 OTP 身份提供方：`Waffo one-shot diagnostic OTP 20261104`（ID `acaceac2-7741-453b-9c7f-09795715a470`）。
+- 独立 Access 应用：`Waffo one-shot diag Access 20261104`（ID `17729548-132b-4746-a131-940dea958d0d`，Audience `dfdae64c7b4fc3058ce7a3ed39210a7320cf06b8941f1936b9f88b6db8d656d8`），严格单邮箱 Allow、无 Everyone / Bypass，已切换为 Worker-scoped 保护，目标 Worker ID `f3ddba13cd734eea93f552d5eb877199`。
+- 新建私有诊断 Gateway `waffopay-preprod-diagnostic-20261104`，当前 100% Version `e10cba71-ccc5-4814-aa80-f92a6b083de4`。已设置 `WAFFO_PREPROD_GATEWAY_ENABLED=true`、`WAFFO_PREPROD_ISOLATED=true`、`WAFFO_PREPROD_ENTITLEMENTS_ENABLED=false`、`WAFFO_PREPROD_DIAGNOSTICS_ENABLED=true`、`WAFFO_PREPROD_ALLOW_WEBHOOK=false`、`WAFFO_PREPROD_ALLOW_CRON=false`、精确 Access AUD，唯一 Service Binding 目标 `waffopay-preprod-isolated`。
+- 仅该临时 Gateway 启用 Workers Observability Logs（100% 采样），**关闭自动 invocation_logs，关闭 traces**。阶段日志由源代码固定枚举安全生成；已核对 Gateway Worker 的实际 API settings 生效。Gateway 的 `workers.dev=false`、Preview=false、Cron=0，**不存在公网 Custom Domain**。Access 应用的预留域名 `waffo-preprod-diag-20261104.sunland.dev` 尚未绑定 Worker。
+- 私有审核 Worker `waffopay-preprod-isolated` 仍为原版 `26863803-021d-46bd-b3d5-49c15abbfe90`（100%），未修改其任何 Secret / Binding，已有 15 项 Binding 完整。独立 D1 仍为 1 payment intent、0 events、0 outbox。生产 Worker 版本未动。
+
+**人工阻塞：** 自动创建并配对非生产 `WAFFO_PREPROD_GATE_TOKEN` Secret 到诊断 Gateway 与既有私有 Worker 的执行请求被当前工具安全检查拒绝，**工具调用没有执行**。执行后再次 GET 证实：诊断 Gateway 完全没有此 Secret Binding，原私有 Worker 仍为旧审核版本且存在原 Secret Binding，没有发生半途轮换，也没有公网入口。**不得**更换工具参数绕过该检查；下一步必须由拥有该 Cloudflare 账号权限的用户在可信管理界面人工生成并在两个 Worker 上设置相同的新随机测试 Token，不在聊天或 GitHub 提交明文。人工设置完成后，继续 GET 核实两个绑定的名称与类型、临时新版本、Access 安全策略与脱敏日志，匿名拦截测试 PASS 后才能临时绑定域名，再由用户完成一次授权健康检查并收集安全阶段日志。
+
+**状态：USER_ACTION_REQUIRED，PRIVATE_GATEWAY_NOT_ROUTABLE，PRODUCTION_NO_GO。** 禁止在 Secret 未配对及安全核验之前公开测试域名；测试结束后必须按本 PR runbook 的顺序解绑域名、删除临时 Gateway/Access/OTP，并将私有 Worker 恢复到审核 Version，必要时仅在原审核元数据核实后遵循 Cloudflare 的 force 回滚保护。
