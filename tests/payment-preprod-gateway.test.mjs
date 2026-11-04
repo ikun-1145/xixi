@@ -179,6 +179,38 @@ test("Cron needs explicit second opt-in and only returns approved counters",asyn
   assert.equal((await run("/__preprod/cron",{method:"POST"},env)).response.status,502);
 });
 
+test("temporary health diagnostics identify failing gate without leaking private response",async()=>{
+  const env=baseEnv();
+  env.WAFFO_PREPROD_DIAGNOSTICS_ENABLED="true";
+  let r=await run("/__preprod/health",{},env,{});
+  assert.equal(r.response.status,403);
+  assert.deepEqual(r.data,{ok:false,reason:"access_context_rejected"});
+
+  env.WAFFO_PREPROD_TARGET.fetch=async()=>Response.json({secret:"NEVER_LOG_ME"},{status:403});
+  r=await run("/__preprod/health",{},env);
+  assert.equal(r.response.status,403);
+  assert.deepEqual(r.data,{ok:false,reason:"private_worker_gate_rejected"});
+
+  env.WAFFO_PREPROD_TARGET.fetch=async()=>Response.json({secret:"NEVER_LOG_ME"},{status:503});
+  r=await run("/__preprod/health",{},env);
+  assert.equal(r.response.status,503);
+  assert.deepEqual(r.data,{ok:false,reason:"private_worker_not_ready"});
+
+  env.WAFFO_PREPROD_TARGET.fetch=async()=>Response.json({ok:true,mode:"wrong",secret:"NEVER_LOG_ME"});
+  r=await run("/__preprod/health",{},env);
+  assert.equal(r.response.status,502);
+  assert.deepEqual(r.data,{ok:false,reason:"private_health_payload_mismatch"});
+
+  env.WAFFO_PREPROD_DIAGNOSTICS_ENABLED="false";
+  r=await run("/__preprod/health",{},env,{});
+  assert.deepEqual(r.data,{ok:false});
+
+  // Even with diagnostics enabled, non-health routes retain generic denial.
+  env.WAFFO_PREPROD_DIAGNOSTICS_ENABLED="true";
+  r=await run("/__preprod/webhook",{method:"POST",headers:{"content-type":"application/json"},body:"{}"},env,{});
+  assert.deepEqual(r.data,{ok:false});
+});
+
 test("private target failures do not leak response bodies or exception messages",async()=>{
   const env=baseEnv();
   env.WAFFO_PREPROD_TARGET.fetch=async()=>{throw Error("internal secret details");};
