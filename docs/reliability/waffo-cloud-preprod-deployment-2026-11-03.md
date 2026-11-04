@@ -143,3 +143,18 @@ D1 创建时选择亚太主区域提示，关闭读副本。按照仓库 `worker
 - 没有旋转或读取原两个私有 Worker 的现有测试 Secret，不存在本次生成而待轮换的支付凭据；正式付款、订单和权益未操作。
 
 **结论：Cloudflare Access 未认证访问拦截、伪造身份头拒绝、临时资源清理：PASS。正向 Cloudflare Access 身份授权与真实云端合成支付业务 E2E：NOT VERIFIED。生产支付继续 NO-GO。** 若后续要完成正向验证，应在已授权的浏览器执行环境内完成真实 Access 登录，或由经过独立安全审批的机器身份测试方案处理，不得以未认证 URL、伪造 JWT 或开放原私有 Worker 来替代。
+
+
+## 2026-11-04 真实用户 Access 登录成功与临时入口清理
+
+在原用户明确授权的隔离预发布验收范围内，临时创建精确邮箱 Allow 的 Cloudflare Access 应用及 `waffopay-preprod-gateway-manual-20261104` Worker，并配置只供该应用使用的临时 One-time PIN 邮箱登录身份提供方。原 Cloudflare 账号身份提供方也保留作为另一项登录选项。
+
+**Cloudflare Access 正向验收：PASS（仅身份链路）。** 用户在其自身浏览器完成 Cloudflare Access 邮箱登录后，访问 `GET https://waffo-preprod-manual-20261104.sunland.dev/__preprod/health`，实际页面返回 `{"ok":false,"reason":"gateway_disabled"}`。此响应来自此前已确认仅绑定 `WAFFO_PREPROD_GATEWAY_ENABLED=false` 的网关候选，故证明经 Access 身份校验后到达了 Worker 的安全关闭状态。**Cloudflare Access 认证日志 GET** 也显示应用 `Waffo manual Access login check 20261104` 在 `2026-11-04T04:19:01Z` 有 `action=login`、`allowed=true` 的记录；没有读取、收集或持久化用户邮件验证码、Cookie、Access JWT、Session Token 或密码。
+
+- 已通过 Cloudflare Browser Run 验证未登录访问被重定向到 `Sign in ・ Cloudflare Access`，而非 Worker 业务；前轮的伪造身份请求头负向测试仍成立。
+- 本轮用户首次使用 Cloudflare OAuth 登录遇到 `Authentication error, please login`；通过启用临时 OTP IdP 成功完成 Access 正向验证。该 OAuth 故障根因尚未定位，不能据此宣称已修复 Cloudflare 登录。
+- **未**开启网关业务开关；临时网关**没有**配置任何 `WAFFO_PREPROD_TARGET` Service Binding、`WAFFO_PREPROD_GATE_TOKEN` 或签名材料；没有触发合成付款、Webhook、Cron、Provider Mock、RPC 或独立 D1 写入。所谓“正向登录通过”不等于“真实支付端到端通过”。
+
+**测试结束即清理，云端复核 PASS：** 删除临时 Worker Custom Domain、临时 Gateway Worker、临时 Access 应用及其 Allow 策略、临时 OTP 身份提供方。再次通过 GET 核对这五类临时资源 / DNS 均为 0 残留，账号恢复 **14 个 Worker、5 个 Worker Custom Domain、2 个 D1**；只保留早前已授权建立的 `Shuanglan AI Preproduction Access` 组织和 `Shuanglan Cloudflare Account` 身份提供方。既有两个私有 Waffo Worker、独立 D1 和生产支付资源未变。
+
+**后续门禁：** 真实云端 `Access → Gateway → Waffo isolated Worker → Provider/RPC Mock → D1` 正向合成 E2E 仍 **BLOCKED/NOT VERIFIED**。要继续需要单独设计安全的独立测试凭据发放/轮换、内网 Service Binding 和可控合成签名请求执行路径。严禁借此登录验收直接开启正式支付或扩大公开 Worker 攻击面；生产支付仍 **NO-GO**。
