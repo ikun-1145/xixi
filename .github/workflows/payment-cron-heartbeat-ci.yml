@@ -1,0 +1,190 @@
+name: Payment Cron Heartbeat CI
+
+on:
+  pull_request:
+    paths:
+      - "workers/afdianpay/worker.js"
+      - "workers/waffopay/worker.js"
+      - "workers/waffopay/production.js"
+      - "workers/waffopay/production-backend/**"
+      - "supabase/migrations/20261002071010_waffo_production_entitlement_sources.sql"
+      - "tests/fixtures/waffo-legacy-payment-rpc.sql"
+      - "tests/payment-cron-heartbeats.test.mjs"
+      - "scripts/reliability/payment-release-preflight.mjs"
+      - "scripts/reliability/payment-release-preflight.test.mjs"
+      - "scripts/reliability/verify-payment-bundle-build.mjs"
+      - "scripts/reliability/verify-payment-bundle-build.test.mjs"
+      - "scripts/reliability/payment-bundle-smoke.mjs"
+      - "scripts/reliability/payment-workerd-integration.mjs"
+      - "scripts/reliability/payment-workerd-convergence.mjs"
+      - "docs/reliability/payment-worker-production-baseline-2026-11-03.json"
+      - "docs/reliability/payment-release-preflight-2026-11-03.md"
+      - "docs/reliability/payment-workerd-isolated-acceptance-2026-11-03.md"
+      - "docs/reliability/payment-full-isolated-convergence-2026-11-03.md"
+      - "docs/reliability/payment-preproduction-gates-2026-11-03.md"
+      - "docs/reliability/waffo-rpc-production-fingerprints-2026-11-03.json"
+      - ".github/workflows/payment-cron-heartbeat-ci.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout proposed code
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Install locked dependencies without postinstall hooks
+        run: npm ci --ignore-scripts --no-audit --no-fund
+
+      - name: Syntax checks
+        run: |
+          node --check workers/afdianpay/worker.js
+          node --check workers/waffopay/worker.js
+          node --check workers/waffopay/production.js
+          node --check tests/payment-cron-heartbeats.test.mjs
+          node --check scripts/reliability/payment-release-preflight.mjs
+          node --check scripts/reliability/payment-release-preflight.test.mjs
+
+      - name: Release preflight unit tests (fake API, no credentials)
+        run: node --test scripts/reliability/payment-release-preflight.test.mjs
+
+      - name: Complete repository tests (mock only)
+        run: npm test
+
+  bundle-dry-run:
+    # No Cloudflare credentials, uploads, previews or deployments.
+    runs-on: ubuntu-latest
+    timeout-minutes: 26
+    steps:
+      - name: Checkout candidate with baseline history
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Verify fingerprint guard unit tests (offline)
+        run: node --test scripts/reliability/verify-payment-bundle-build.test.mjs
+
+      - name: Dry-run compile reviewed main and candidate with pinned Wrangler
+        env:
+          CLOUDFLARE_API_TOKEN: ""
+        run: |
+          set -eu
+          mkdir -p "$RUNNER_TEMP/payment-base"
+          git archive origin/main | tar -x -C "$RUNNER_TEMP/payment-base"
+          for worker in afdianpay waffopay; do
+            for revision in main candidate; do
+              if [ "$revision" = main ]; then
+                root="$RUNNER_TEMP/payment-base"
+              else
+                root="$GITHUB_WORKSPACE"
+              fi
+              output="$RUNNER_TEMP/payment-bundles/$worker/$revision"
+              mkdir -p "$output"
+              echo "Compile dry-run: $worker / $revision"
+              (
+                cd "$root"
+                npx --yes wrangler@4.141.0 deploy \
+                  --dry-run \
+                  --config "workers/$worker/wrangler.toml" \
+                  --outdir "$output" \
+                  > "$RUNNER_TEMP/build-$worker-$revision.log" 2>&1
+              )
+              if [ ! -s "$output/worker.js" ]; then
+                echo "::error::Dry-run did not produce worker.js for $worker / $revision"
+                exit 2
+              fi
+              node --check "$output/worker.js"
+            done
+          done
+
+      - name: Compare bundle hashes against reviewed production
+        env:
+          PAYMENT_BUNDLE_ROOT: ${{ runner.temp }}/payment-bundles
+        run: node scripts/reliability/verify-payment-bundle-build.mjs "$PAYMENT_BUNDLE_ROOT"
+
+      - name: Smoke compiled candidate Worker modules without network
+        env:
+          PAYMENT_BUNDLE_ROOT: ${{ runner.temp }}/payment-bundles
+        run: node scripts/reliability/payment-bundle-smoke.mjs "$PAYMENT_BUNDLE_ROOT"
+
+      - name: Install isolated workerd runner for 2026-09 compatibility (no credentials)
+        run: |
+          npm install --prefix "$RUNNER_TEMP/payment-miniflare" \
+            --no-save --no-package-lock --ignore-scripts --no-audit --no-fund \
+            miniflare@5.20261101.0-beta
+
+      - name: Exercise isolated workerd Cron and local D1 (no outbound)
+        timeout-minutes: 8
+        env:
+          PAYMENT_BUNDLE_ROOT: ${{ runner.temp }}/payment-bundles
+          PAYMENT_MINIFLARE_ROOT: ${{ runner.temp }}/payment-miniflare
+          CLOUDFLARE_API_TOKEN: ""
+          CLOUDFLARE_ACCOUNT_ID: ""
+        run: |
+          node --check scripts/reliability/payment-workerd-integration.mjs
+          node scripts/reliability/payment-workerd-integration.mjs "$PAYMENT_BUNDLE_ROOT"
+
+      - name: Verify signed payment, refund and lost-RPC-ack recovery in isolated workerd
+        timeout-minutes: 8
+        env:
+          PAYMENT_BUNDLE_ROOT: ${{ runner.temp }}/payment-bundles
+          PAYMENT_MINIFLARE_ROOT: ${{ runner.temp }}/payment-miniflare
+          CLOUDFLARE_API_TOKEN: ""
+          CLOUDFLARE_ACCOUNT_ID: ""
+        run: |
+          node --check scripts/reliability/payment-workerd-convergence.mjs
+          node scripts/reliability/payment-workerd-convergence.mjs "$PAYMENT_BUNDLE_ROOT"
+
+  postgres-rpc-sandbox:
+    # Executes the checked-in SQL migration inside ephemeral in-memory
+    # PostgreSQL (PGlite), never the user's Supabase project.
+    runs-on: ubuntu-latest
+    timeout-minutes: 18
+    permissions:
+      contents: read
+    env:
+      CLOUDFLARE_API_TOKEN: ""
+      CLOUDFLARE_ACCOUNT_ID: ""
+      SUPABASE_SERVICE_ROLE_KEY: ""
+      DATABASE_URL: ""
+    steps:
+      - name: Checkout SQL and test fixtures
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install pinned in-memory PostgreSQL runtime
+        run: |
+          npm install --prefix "$RUNNER_TEMP/waffo-pglite" \
+            --no-save --no-package-lock --ignore-scripts --no-audit --no-fund \
+            @electric-sql/pglite@0.3.16
+
+      - name: Execute real SQL regression and role-isolation tests (offline)
+        timeout-minutes: 12
+        env:
+          WAFFO_PGLITE_PATH: ${{ runner.temp }}/waffo-pglite/node_modules/@electric-sql/pglite/dist/index.js
+        run: |
+          node --check workers/waffopay/production-backend/verify-source-rpc.mjs
+          node workers/waffopay/production-backend/verify-source-rpc.mjs
