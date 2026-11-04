@@ -191,3 +191,23 @@ D1 创建时选择亚太主区域提示，关闭读副本。按照仓库 `worker
 **变更后只读验证通过**：GET 确认 Worker 目的地 ID、策略与原 Audience 匹配，临时 Custom Domain 仍只绑定该 Gateway，Webhook/Cron 分别为 `false`；Cloudflare Browser Run 的未登录 GET 再次呈现 `Sign in ・ Cloudflare Access`。**已认证的重新健康检查尚待审查人刷新完成，故本次修正仍是待验证的假设，不能声称问题已解决或 E2E PASS。** 未测试真实签名 Webhook，独立 D1 未写入。
 
 重要：原 `waffopay-preprod-isolated` 的临时 Secret 轮换版本 `eedf9bb3-0b18-44f4-a40e-18babc0ccef2` 仍部署中，必须在完成或放弃健康检查后先解除临时公网入口，删除临时 Gateway、Access 应用及 OTP，最后恢复审计认可版本 `26863803-021d-46bd-b3d5-49c15abbfe90` 并核验。生产支付、会员权益及正式数据库均未获授权修改，继续 **NO-GO**。
+
+
+## 2026-11-04 临时健康路径分段诊断开关
+
+审查人确认在原 Cloudflare Access 应用切换到 Worker-scoped destination 后，健康访问仍仅显示 `{"ok":false}`，因此**不认定 Worker 级 Access 调整解决了问题**。Access 账户只读审计显示 `2026-11-04T04:39:36Z` 的认证事件为 `action=login, allowed=true`，但临时 Gateway 的 Cloudflare Workers Observability 原先是禁用状态，不能从现有服务端日志还原失败的内部步骤。尚不清楚是运行时 `ctx.access` 不符合网关断言、后端 Token 校验拒绝、内侧 `preprodReady` 返回 503，或其他原因。
+
+为避免继续反复试错、猜测或放宽安全规则，Draft PR #35 新增仅在 `WAFFO_PREPROD_DIAGNOSTICS_ENABLED=true` 且**精确 GET /__preprod/health（不带查询参数）**时输出预定义的安全错误类别：
+
+- `access_context_rejected`：Worker 级 Access 上下文与要求不符。
+- `private_worker_gate_rejected`：私有 Worker 返回 403。
+- `private_worker_not_ready`：私有 Worker 返回 503。
+- `private_worker_non_200`：其他被批准范围内的非 200 响应。
+- `private_health_invalid_json`、`private_health_payload_mismatch`：下游 200 健康报文不是预期安全结构。
+- 独立的 `private_target_unavailable` 仍仅指内部 Service Binding 调用异常。
+
+**从不返回下游原始响应、Exception、Token、JWT、邮箱、D1 内容或用户凭证；不改变 Access 失败时的 403，也不放开付款路由。** 非健康接口与未启用诊断的 Gateway 维持原有通用错误输出。对应单元测试及全仓离线测试、可重复构建的两项 CI 均 PASS（`#41774824034`、`#41774824068`）。
+
+仅对临时 `waffopay-preprod-e2e-gateway-20261104` 进行了新版本上传，在 multipart metadata 保留原有 `secret_text` Binding 类型，未读/回显密钥或改变现有私有 Worker。云端 GET 复核：Gateway 已部署单一 100% Version `00649704-3eb4-4860-be9d-77d3533e879b`，保留唯一私有 Service Binding `WAFFO_PREPROD_TARGET → waffopay-preprod-isolated` 和名为 `WAFFO_PREPROD_GATE_TOKEN` 的 Secret Binding；`WAFFO_PREPROD_DIAGNOSTICS_ENABLED=true`，`WAFFO_PREPROD_ALLOW_WEBHOOK=false`、`WAFFO_PREPROD_ALLOW_CRON=false`、`WAFFO_PREPROD_ENTITLEMENTS_ENABLED=false`，workers.dev 和 Preview URL 关闭，Worker 级 Access 应用仅允许精确邮箱。原私有 Worker 临时 Version `eedf9bb3-0b18-44f4-a40e-18babc0ccef2` 未改变。
+
+**当前诊断请求仍待审查人用已认证浏览器重新 GET**，尚未判定故障链路，不得将这次代码变更称为“修复完成”。完成本轮后必须立刻解除临时 Custom Domain、移除 Gateway/Access App/OTP IdP，并恢复私有预发布 Worker 至原审核版 `26863803-021d-46bd-b3d5-49c15abbfe90`，重新 GET 审计。任何真实签名 Webhook、D1 写入、正式支付发布继续禁止。
