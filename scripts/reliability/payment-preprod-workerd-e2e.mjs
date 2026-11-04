@@ -150,6 +150,7 @@ export async function main(argv = process.argv.slice(2)) {
       WAFFO_PREPROD_ENTITLEMENTS_ENABLED:"false",
       WAFFO_PREPROD_ACCESS_AUD:gatewayAudit,
       WAFFO_PREPROD_GATE_TOKEN:TOKEN,
+      WAFFO_PREPROD_ALLOW_WEBHOOK:"true",
       WAFFO_PREPROD_ALLOW_CRON:"false",
       WAFFO_PREPROD_TARGET:{fetch:request=>worker.fetch(request)},
     };
