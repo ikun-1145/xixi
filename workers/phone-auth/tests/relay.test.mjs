@@ -8,7 +8,7 @@ const START = Date.parse('2026-11-04T00:00:00Z');
 const phone = '13800000000';
 const context = { ip: '192.0.2.1' };
 const env = () => ({ PHONE_SMS_ENABLED: 'true', PHONE_SMS_PROVIDER: 'relay',
-  SMS_RELAY_URL: 'https://relay.invalid/send', SMS_RELAY_KEY: 'synthetic-relay-key',
+  SMS_RELAY_URL: 'https://relay.invalid/send', SUNLAND_SMS_RELAY_KEY: 'synthetic-relay-key',
   PHONE_RELEASE_MODE: 'public', PHONE_AUTH_HMAC_KEY: 'synthetic-hmac-key-at-least-32-characters',
   PHONE_AUTH_HMAC_KEY_ID: 'test-v1', PHONE_AUTH_ADMIN_TOKEN: 'synthetic-admin-token-at-least-32-characters',
   TURNSTILE_SECRET: 'synthetic-turnstile', PHONE_TURNSTILE_HOSTNAME: 'sunland.dev',
@@ -63,7 +63,7 @@ test('relay sends exact JSON once, accepts only numeric ok=1 with HTTP 2xx, and 
     const client = new SmsRelayClient(env(), { fetchImpl: async (url, options) => {
       calls++; assert.equal(url, env().SMS_RELAY_URL); assert.equal(options.method, 'POST');
       assert.equal(options.redirect, 'manual'); assert.ok(options.signal instanceof AbortSignal);
-      assert.deepEqual(JSON.parse(options.body), { api_key: env().SMS_RELAY_KEY, phone, code: '012345', scene: 'login' });
+      assert.deepEqual(JSON.parse(options.body), { api_key: env().SUNLAND_SMS_RELAY_KEY, phone, code: '012345', scene: 'login' });
       return Response.json({ ok: 1, msg: 'synthetic', request_id: 'id' }, { status });
     } });
     assert.deepEqual(await client.send(input), { accepted: true }); assert.equal(calls, 1);
@@ -73,11 +73,11 @@ test('relay sends exact JSON once, accepts only numeric ok=1 with HTTP 2xx, and 
     ...[400, 401, 403, 429, 500, 503].map(status => () => Response.json({ ok: 1 }, { status })),
     () => new Response('', { status: 302, headers: { location: 'https://other.invalid/' } }),
     () => new Response('sensitive invalid json'), () => Response.json([]), () => Response.json(null),
-    () => new Response(null, { status: 204 }), () => { throw Error(phone + input.code + env().SMS_RELAY_KEY); }];
+    () => new Response(null, { status: 204 }), () => { throw Error(phone + input.code + env().SUNLAND_SMS_RELAY_KEY); }];
   for (const reply of replies) {
     let calls = 0;
     const client = new SmsRelayClient(env(), { fetchImpl: async () => { calls++; return reply(); } });
-    await assert.rejects(client.send(input), e => e.code && ![phone, input.code, env().SMS_RELAY_KEY].some(s => e.message.includes(s)));
+    await assert.rejects(client.send(input), e => e.code && ![phone, input.code, env().SUNLAND_SMS_RELAY_KEY].some(s => e.message.includes(s)));
     assert.equal(calls, 1);
   }
 });
@@ -104,7 +104,7 @@ test('provider selection and relay configuration fail closed before paid sends',
   }
   for (const override of [{ SMS_RELAY_URL: undefined }, { SMS_RELAY_URL: 'http://relay.invalid/' },
     { SMS_RELAY_URL: 'https://user:pass@relay.invalid/' }, { SMS_RELAY_URL: 'https://relay.invalid/#fragment' },
-    { SMS_RELAY_KEY: undefined }, { SMS_RELAY_KEY: '' }, { SMS_RELAY_KEY: ' bad ' }, { SMS_RELAY_KEY: 'bad\nkey' },
+    { SUNLAND_SMS_RELAY_KEY: undefined }, { SUNLAND_SMS_RELAY_KEY: '' }, { SUNLAND_SMS_RELAY_KEY: ' bad ' }, { SUNLAND_SMS_RELAY_KEY: 'bad\nkey' },
     { PHONE_SMS_PROVIDER: '' }, { PHONE_SMS_PROVIDER: 'unknown' }]) {
     const h = await fixture(); Object.assign(h.env, override);
     await assert.rejects(h.send(), { code: 'SMS_CONFIG' });
@@ -145,7 +145,7 @@ test('relay DO persists only bound MAC, survives restart, consumes once under co
   assert.match(code, /^\d{6}$/); assert.equal(h.row(sent.challenge_id).provider, 'relay');
   assert.match(h.row(sent.challenge_id).otpMac, /^[0-9a-f]{64}$/);
   const stored = JSON.stringify([...h.storage.data]);
-  for (const raw of [phone, h.env.SMS_RELAY_KEY, h.env.PHONE_AUTH_HMAC_KEY, context.ip]) assert.equal(stored.includes(raw), false);
+  for (const raw of [phone, h.env.SUNLAND_SMS_RELAY_KEY, h.env.PHONE_AUTH_HMAC_KEY, context.ip]) assert.equal(stored.includes(raw), false);
   // Check string values rather than substrings of timestamps/random MACs.
   for (const row of h.storage.data.values()) {
     assert.equal(Object.hasOwn(row, 'code'), false);
@@ -196,7 +196,7 @@ test('MAC cannot be transplanted between challenge, phone or purpose', async () 
 
 test('switch and rollback use saved provider, including historical aliyun records', async () => {
   const h = await fixture(); const relay = await h.send(); const code = h.messages[0].code;
-  h.env.PHONE_SMS_PROVIDER = 'aliyun'; delete h.env.SMS_RELAY_KEY; delete h.env.SMS_RELAY_URL; h.rebuild();
+  h.env.PHONE_SMS_PROVIDER = 'aliyun'; delete h.env.SUNLAND_SMS_RELAY_KEY; delete h.env.SMS_RELAY_URL; h.rebuild();
   await h.check(relay, code); assert.equal(h.calls.includes('dypnsapi.aliyuncs.com'), false);
   h.now += 600000; const ali = await h.send(); assert.equal(h.row(ali.challenge_id).provider, 'aliyun');
   delete h.row(ali.challenge_id).provider; // Existing records before this change.

@@ -88,7 +88,7 @@ APP_JWT_LEGACY_SECRET、SUPABASE_SECRET_KEY、TURNSTILE_SECRET 已以 secret_tex
 |---|---|---|
 | PHONE_SMS_PROVIDER | 普通变量 | `aliyun`（默认）或 `relay` |
 | SMS_RELAY_URL | 普通变量 | 经确认的 HTTPS 接口 URL，不含 URL 用户名、密码或 fragment |
-| SMS_RELAY_KEY | Secret | 平台 Secret store 配置，不放入 vars、源码、命令参数或日志 |
+| SUNLAND_SMS_RELAY_KEY | Secret | 平台 Secret store 配置，不放入 vars、源码、命令参数或日志 |
 
 Relay 非敏感配置示例（地址须替换为已确认的实际端点）：
 
@@ -99,7 +99,7 @@ Relay 非敏感配置示例（地址须替换为已确认的实际端点）：
 }
 ```
 
-`SMS_RELAY_KEY` 和阿里云 AK 均为按 provider 条件必需的 Secret，不列入全局 required 清单；
+`SUNLAND_SMS_RELAY_KEY` 和阿里云 AK 均为按 provider 条件必需的 Secret，不列入全局 required 清单；
 分别由对应适配器在调用前严格检查。阿里云模式仍要求原阿里云凭据及模板；relay 新发送不依赖阿里云凭据。
 切换后若仍需校验在途阿里云 challenge，须保留阿里云配置。不要删除历史身份密钥。
 原 identity/SMS/registration 开关、Turnstile、HMAC/key ID、canary 白名单和预算仍适用；

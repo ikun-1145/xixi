@@ -16,7 +16,7 @@ const secret = 'synthetic-runtime-hmac-key-at-least-32';
 const admin = 'synthetic-runtime-admin-token-at-least-32';
 const phones = Array.from({ length: 8 }, (_, i) => `1380000000${i}`);
 const bindings = { PHONE_SMS_ENABLED: 'true', PHONE_IDENTITY_ENABLED: 'false', PHONE_NEW_REGISTRATION_ENABLED: 'false',
-  PHONE_SMS_PROVIDER: 'relay', SMS_RELAY_URL: 'https://relay.invalid/send', SMS_RELAY_KEY: 'synthetic-runtime-relay-key',
+  PHONE_SMS_PROVIDER: 'relay', SMS_RELAY_URL: 'https://relay.invalid/send', SUNLAND_SMS_RELAY_KEY: 'synthetic-runtime-relay-key',
   PHONE_RELEASE_MODE: 'public', PHONE_AUTH_HMAC_KEY: secret, PHONE_AUTH_HMAC_KEY_ID: 'v1', PHONE_AUTH_ADMIN_TOKEN: admin,
   TURNSTILE_SECRET: 'synthetic', PHONE_TURNSTILE_HOSTNAME: 'sunland.dev',
   PHONE_ALIYUN_ACCESS_KEY_ID: 'synthetic', PHONE_ALIYUN_ACCESS_KEY_SECRET: 'synthetic', PHONE_SMS_SIGN_NAME: 'synthetic', PHONE_SMS_TEMPLATE_CODE: 'synthetic',
@@ -36,7 +36,7 @@ const options = { name: 'phone-auth', script, modules: true, compatibilityDate: 
     if (url.hostname === 'relay.invalid') {
       relayCalls++; const body = await request.json();
       assert.deepEqual(Object.keys(body).sort(), ['api_key', 'code', 'phone', 'scene']);
-      assert.equal(body.api_key, bindings.SMS_RELAY_KEY); assert.equal(body.scene, 'login'); assert.match(body.code, /^\d{6}$/);
+      assert.equal(body.api_key, bindings.SUNLAND_SMS_RELAY_KEY); assert.equal(body.scene, 'login'); assert.match(body.code, /^\d{6}$/);
       messages.set(body.phone, body.code);
       if (timeout) return new Response(new ReadableStream({ start(c) { c.enqueue(new TextEncoder().encode('{')); } }));
       return Response.json({ ok: failure ? 0 : 1 });
@@ -76,10 +76,10 @@ try {
   assert.equal((await check(phones[1], second.challenge_id)).status, 409);
 
   const third = await (await send(phones[2])).json();
-  bindings.PHONE_SMS_PROVIDER = 'aliyun'; delete bindings.SMS_RELAY_URL; delete bindings.SMS_RELAY_KEY;
+  bindings.PHONE_SMS_PROVIDER = 'aliyun'; delete bindings.SMS_RELAY_URL; delete bindings.SUNLAND_SMS_RELAY_KEY;
   await restart(); assert.equal((await check(phones[2], third.challenge_id)).status, 200); assert.equal(aliyunCalls, 0);
   const fourth = await (await send(phones[3])).json(); assert.equal(aliyunCalls, 1);
-  bindings.PHONE_SMS_PROVIDER = 'relay'; bindings.SMS_RELAY_URL = 'https://relay.invalid/send'; bindings.SMS_RELAY_KEY = 'synthetic-runtime-relay-key';
+  bindings.PHONE_SMS_PROVIDER = 'relay'; bindings.SMS_RELAY_URL = 'https://relay.invalid/send'; bindings.SUNLAND_SMS_RELAY_KEY = 'synthetic-runtime-relay-key';
   await restart(); assert.equal((await check(phones[3], fourth.challenge_id, '123456')).status, 200); assert.equal(aliyunCalls, 2);
 
   const auth = { ...context, userId: 'user', sessionId: 'synthetic-session-1234', identityStatus: 'active', reauthentication: true };
@@ -92,10 +92,10 @@ try {
   await restart(); assert.deepEqual(await (await post('status')).json(), before);
   assert.equal((await send(phones[5])).status, 503); assert.equal(relayCalls, 5);
   failure = false;
-  delete bindings.SMS_RELAY_KEY; await restart();
+  delete bindings.SUNLAND_SMS_RELAY_KEY; await restart();
   assert.equal((await send(phones[6])).status, 503); assert.equal(relayCalls, 5);
   assert.equal((await post('status')).status, 200); assert.equal((await (await post('status')).json()).total_micros, 42);
-  bindings.SMS_RELAY_KEY = 'synthetic-runtime-relay-key'; await restart();
+  bindings.SUNLAND_SMS_RELAY_KEY = 'synthetic-runtime-relay-key'; await restart();
   timeout = true; const started = Date.now();
   const timedOut = await send(phones[6]);
   assert.equal(timedOut.status, 504); assert.equal((await timedOut.json()).code, 'UPSTREAM_TIMEOUT');
