@@ -28,6 +28,17 @@
   });
 
   const rows = [
+    // Chat HTTP error messages (kept in the reviewed source catalog).
+    ["请求失败，请稍后重试。", "Request failed. Please try again later.", "リクエストに失敗しました。しばらくしてからお試しください。", { "zh-Hant": "請求失敗，請稍後再試。", ko: "요청에 실패했습니다. 잠시 후 다시 시도해 주세요.", es: "La solicitud falló. Inténtalo de nuevo más tarde." }],
+    ["今天的使用次数已达上限，请稍后再试。", "You've reached today's usage limit. Please try again later.", "本日の利用回数の上限に達しました。しばらくしてからお試しください。", { "zh-Hant": "今天的使用次數已達上限，請稍後再試。", ko: "오늘 사용 한도에 도달했습니다. 나중에 다시 시도해 주세요.", es: "Has alcanzado el límite de uso de hoy. Vuelve a intentarlo más tarde." }],
+    ["请求过于频繁或模型暂时限流，请稍后再试。", "Too many requests or temporary model rate limiting. Please try again later.", "リクエストが多すぎるか、モデル側で一時的に制限されています。しばらくしてからお試しください。", { "zh-Hant": "請求過於頻繁或模型暫時限流，請稍後再試。", ko: "요청이 너무 많거나 모델에 일시적인 요청 제한이 적용되었습니다. 잠시 후 다시 시도해 주세요.", es: "Demasiadas solicitudes o limitación temporal del modelo. Inténtalo más tarde." }],
+    ["当前请求已提交或正在处理，请先检查对话状态，避免重复发送。", "This request is already submitted or processing. Check the chat before sending it again.", "このリクエストは送信済みか処理中です。重複送信を避けるため、まずチャットの状態を確認してください。", { "zh-Hant": "目前請求已提交或正在處理，請先檢查對話狀態，避免重複傳送。", ko: "요청이 이미 제출되었거나 처리 중입니다. 중복 전송을 피하려면 먼저 채팅 상태를 확인하세요.", es: "Esta solicitud ya se envió o se está procesando. Comprueba el chat antes de volver a enviarla." }],
+    ["请求处理结果暂时无法确认，请先刷新使用额度，避免重复发送。", "The request outcome is uncertain. Refresh your usage status before sending again.", "処理結果をまだ確認できません。重複送信を避けるため、利用状況を更新してから再試行してください。", { "zh-Hant": "請求處理結果暫時無法確認，請先重新整理使用額度，避免重複傳送。", ko: "요청 처리 결과를 확인할 수 없습니다. 중복 전송을 피하려면 사용량 상태를 새로고침하세요.", es: "No se puede confirmar el resultado. Actualiza el estado de uso antes de volver a enviar la solicitud." }],
+    ["AI 上游服务额度暂时不可用，请稍后再试。", "Upstream AI service quota is temporarily unavailable. Please try again later.", "上流 AI サービスの利用枠が一時的に利用できません。しばらくしてからお試しください。", { "zh-Hant": "AI 上游服務額度暫時無法使用，請稍後再試。", ko: "상위 AI 서비스의 사용 한도를 일시적으로 이용할 수 없습니다. 잠시 후 다시 시도해 주세요.", es: "La cuota del servicio de IA externo no está disponible temporalmente. Inténtalo más tarde." }],
+    ["AI 服务暂时不可用，请稍后再试。", "The AI service is temporarily unavailable. Please try again later.", "AI サービスは一時的に利用できません。しばらくしてからお試しください。", { "zh-Hant": "AI 服務暫時無法使用，請稍後再試。", ko: "AI 서비스를 일시적으로 사용할 수 없습니다. 잠시 후 다시 시도해 주세요.", es: "El servicio de IA no está disponible temporalmente. Inténtalo más tarde." }],
+    ["当前模型需要 Pro 会员，请检查会员状态。", "This model requires Pro. Check your membership status.", "このモデルには Pro 会員資格が必要です。会員状態をご確認ください。", { "zh-Hant": "目前模型需要 Pro 會員，請檢查會員狀態。", ko: "이 모델을 사용하려면 Pro 멤버십이 필요합니다. 멤버십 상태를 확인하세요.", es: "Este modelo requiere Pro. Comprueba el estado de tu suscripción." }],
+    ["登录状态已失效，请重新登录。", "Your session has expired. Please sign in again.", "ログインの有効期限が切れました。もう一度ログインしてください。", { "zh-Hant": "登入狀態已失效，請重新登入。", ko: "로그인 세션이 만료되었습니다. 다시 로그인해 주세요.", es: "Tu sesión ha caducado. Inicia sesión de nuevo." }],
+
     // Common shell and navigation.
     ["页面加载中", "Page loading", "ページを読み込み中"],
     ["语言切换", "Language selector", "言語切り替え"],
