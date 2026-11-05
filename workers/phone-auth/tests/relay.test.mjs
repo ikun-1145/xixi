@@ -220,9 +220,12 @@ test('relay failures retain budget and quarantine across restart/day/provider ch
 
 test('relay DO timeout retains budget, closes challenge and never retries after recovery', async t => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
-  const h = await fixture(); h.reply = () => new Promise(() => {});
+  const h = await fixture();
+  let notifyStarted;
+  const started = new Promise(resolve => { notifyStarted = resolve; });
+  h.reply = () => { notifyStarted(); return new Promise(() => {}); };
   const pending = assert.rejects(h.send(), { code: 'UPSTREAM_TIMEOUT' });
-  for (let i = 0; i < 100 && !h.messages.length; i++) await new Promise(resolve => setImmediate(resolve));
+  await started;
   assert.equal(h.messages.length, 1); t.mock.timers.tick(8000); await pending;
   assert.equal(h.storage.data.get(LEDGER_KEY).totalMicros, 7);
   h.now += 86400000; h.rebuild(); await assert.rejects(h.send(), { code: 'SERVICE_UNAVAILABLE' });
