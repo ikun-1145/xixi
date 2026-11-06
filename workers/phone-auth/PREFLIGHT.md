@@ -78,3 +78,5 @@ python3 workers/phone-auth/operations/turnstile-probe.py --admin-fd 3 --token-fd
 输出 `verified` 表示 Siteverify 成功、hostname/action/时间窗匹配；`failed` 包括超时和未知状态，不重试。若首次已确认成功、同一个 token 未更换，且三个开关仍确认关闭，可单独以相同 FD 输入加 `--expect-replay` 验证二次拒绝；`rejected` 只证明返回拒绝，需结合首次成功与开关状态判读。不得用测试密钥代替生产配对。诊断结束后应评估移除此额外管理入口。
 
 2026-11-07：六个 profile 触发器及七个直接依赖表已在 PGlite 使用合成数据进行关联测试，函数与列目录摘要及 RLS 开关经只读 catalog 对照；这是单后端测试，不是完整生产 Schema、ACL、PostgreSQL 并发或备份恢复证明。IPv4 Session Pooler 须从项目 Connect 面板获得准确主机及可信 CA，使用 5432 和 `verify-full`；现有初始化脚本只允许直连，尚未验证通过 Pooler 的会话身份、日志设置与锁，不得改用未经验证的连接。
+
+2026-11-07：GitHub Actions `Phone auth isolated PostgreSQL acceptance` 使用临时 PostgreSQL 17 与 psycopg，在同一隔离实例完成手机认证迁移、六个直接相关触发器、七张重建依赖表、并发初始化、RPC 锁、非空拒绝、RLS 和会话日志保护验收；只使用仓库中的已审查结构 fixture 和合成数据。运行记录：`https://github.com/ikun-1145/xixi/actions/runs/42308802804`。该验收仍不等同完整生产 Schema、全部 ACL/扩展或真实备份恢复。Session Pooler 的准确主机和 CA 需从项目 Connect 面板核实；在真实会话中验证身份、TLS、锁和日志前，不得修改脚本绕开直连保护。
