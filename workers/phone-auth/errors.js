@@ -13,6 +13,7 @@ const MESSAGES = Object.freeze({
   SERVICE_UNAVAILABLE: '短信认证服务暂不可用',
   CHALLENGE_INVALID: '验证请求无效',
   CHALLENGE_EXPIRED: '验证请求已过期',
+  CHALLENGE_PENDING: '验证请求仍在处理，请稍后重试验证',
   CHALLENGE_USED: '验证请求已使用',
   CODE_INVALID: '验证码无效或已过期',
   PROVIDER_RATE_LIMITED: '短信服务请求过于频繁',

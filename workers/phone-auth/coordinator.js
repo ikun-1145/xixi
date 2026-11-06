@@ -33,12 +33,14 @@ function settings(env) {
 function validate(input, context, operation, now) {
   const fields = operation === 'send' ? ['phone', 'purpose', 'turnstile_token'] : ['phone', 'purpose', 'challenge_id', 'code'];
   if (!input || typeof input !== 'object' || Array.isArray(input) ||
-      Object.keys(input).length !== fields.length || Object.keys(input).some(k => !fields.includes(k)) ||
+      fields.some(k => !Object.hasOwn(input, k)) ||
+      Object.keys(input).some(k => !fields.includes(k) && !(operation === 'send' && k === 'challenge_id')) ||
       !Object.hasOwn(PURPOSES, input.purpose) || typeof input.phone !== 'string') fail('INVALID_REQUEST');
   const phone = input.phone.startsWith('+86') ? input.phone.slice(3) : input.phone;
   if (!/^1[3-9]\d{9}$/.test(phone)) fail('INVALID_REQUEST');
   if (operation === 'send') {
-    if (typeof input.turnstile_token !== 'string' || !input.turnstile_token.length || input.turnstile_token.length > 2048) fail('INVALID_REQUEST');
+    if (typeof input.turnstile_token !== 'string' || !input.turnstile_token.length || input.turnstile_token.length > 2048 ||
+        (Object.hasOwn(input, 'challenge_id') && (typeof input.challenge_id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(input.challenge_id)))) fail('INVALID_REQUEST');
   } else if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(input.challenge_id || '') ||
       typeof input.code !== 'string' || !/^\d{6}$/.test(input.code)) fail('INVALID_REQUEST');
   // The ingress must supply CF-Connecting-IP itself, never a client body or XFF.
@@ -169,7 +171,7 @@ export class PhoneAuthCoordinator {
 
     const now = this.now();
     validate(input, context, 'send', now);
-    const id = crypto.randomUUID();
+    const id = input.challenge_id ?? crypto.randomUUID();
     const phoneKey = `t:phone:${phoneHash}`;
     const ipKey = `t:ip:${ipHash}`;
     const challengeKey = `t:challenge:${id}`;
@@ -183,6 +185,7 @@ export class PhoneAuthCoordinator {
       const account = await this.account(tx, now);
       const release = releasePolicy(this.env);
       allowCanaryRecipient(release, phoneHash);
+      if (await tx.get(challengeKey)) fail('OPERATION_CONFLICT', 409);
       if (release.mode === 'canary' && account.testReserved >= 3) fail('CANARY_LIMITED', 429);
       const p = await tx.get(phoneKey);
       const i = await tx.get(ipKey);
@@ -261,9 +264,11 @@ export class PhoneAuthCoordinator {
       const c = await tx.get(key);
       if (!c || c.schema !== 1 || c.phoneHash !== phoneHash || c.principalHash !== principalHash || c.purpose !== input.purpose) fail('CHALLENGE_INVALID');
       const locked = await tx.get(`t:phone:${phoneHash}`);
-      if (!locked || locked.challengeId !== input.challenge_id || locked.quarantined || !nonnegative(locked.lockUntil)) fail('SERVICE_UNAVAILABLE', 503);
+      if (!locked || locked.challengeId !== input.challenge_id || !nonnegative(locked.lockUntil)) fail('SERVICE_UNAVAILABLE', 503);
       if (!nonnegative(c.expiresAt) || !nonnegative(c.attempts)) fail('SERVICE_UNAVAILABLE', 503);
       if (c.expiresAt <= now) fail('CHALLENGE_EXPIRED');
+      if (c.status === 'sending' && locked.quarantined === true) fail('CHALLENGE_PENDING', 409);
+      if (locked.quarantined) fail('SERVICE_UNAVAILABLE', 503);
       if (c.status !== 'sent' || c.attempts >= 5) fail('CHALLENGE_USED', 409);
       const provider = c.provider === undefined ? 'aliyun' : c.provider;
       if (!['aliyun', 'relay'].includes(provider) ||

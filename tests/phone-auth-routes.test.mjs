@@ -66,6 +66,16 @@ test('login send is anonymous and forwards only Phase1 fields with ingress IP', 
   assert.equal(calls.some(x => x[0] === 'session'), false);
 });
 
+test('send accepts and forwards a UUIDv4 recovery challenge without changing the legacy request', async () => {
+  const { invoke, calls } = fixture();
+  const result = await invoke('/v1/phone/send-code', { phone: PHONE, purpose: 'login', turnstile_token: 'captcha', challenge_id: UUID });
+  assert.equal(result.data.success, true);
+  assert.equal(calls.find(x => x[0] === 'send')[2].challenge_id, UUID);
+  const invalid = await invoke('/v1/phone/send-code', { phone: PHONE, purpose: 'login', turnstile_token: 'captcha', challenge_id: '12345678-1234-1234-8234-123456789abc' });
+  assert.equal(invalid.response.status, 400);
+  assert.equal(calls.filter(x => x[0] === 'send').length, 1);
+});
+
 test('SMS check precedes identity login and signs only authoritative identity using existing JWT helper', async () => {
   const { invoke, calls } = fixture();
   const { data } = await invoke('/v1/phone/verify-code', { ...checkBody(), operation_id: UUID });

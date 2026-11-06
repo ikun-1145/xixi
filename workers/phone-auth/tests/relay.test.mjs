@@ -50,12 +50,72 @@ async function fixture() {
   const initialized = await h.coordinator.fetch(new Request('https://internal/initialize', {
     method: 'POST', headers: { Authorization: 'Bearer ' + h.env.PHONE_AUTH_ADMIN_TOKEN }, body: '{}' }));
   assert.equal(initialized.status, 200);
-  h.send = (number = phone, purpose = 'login', ctx = context) => h.coordinator.send({ phone: number, purpose, turnstile_token: purpose }, ctx);
+  h.send = (number = phone, purpose = 'login', ctx = context, challengeId) => h.coordinator.send({ phone: number, purpose, turnstile_token: purpose,
+    ...(challengeId !== undefined ? { challenge_id: challengeId } : {}) }, ctx);
   h.check = (sent, code = h.messages.at(-1)?.code, purpose = 'login', ctx = context, number = phone) =>
     h.coordinator.check({ phone: number, purpose, challenge_id: sent.challenge_id, code }, ctx);
   h.row = id => h.storage.data.get('t:challenge:' + id);
   return h;
 }
+
+test('client challenge survives a lost send response and pending checks never consume attempts', async () => {
+  const h = await fixture(); const id = crypto.randomUUID();
+  let started; const ready = new Promise(resolve => { started = resolve; });
+  let finish; h.reply = () => { started(); return new Promise(resolve => { finish = resolve; }); };
+  const sending = h.send(phone, 'login', context, id); await ready;
+  const sent = { challenge_id: id }; const code = h.messages[0].code;
+  await assert.rejects(h.check(sent, code), { code: 'CHALLENGE_PENDING' });
+  assert.equal(h.row(id).attempts, 0);
+  finish(Response.json({ ok: 1 }));
+  assert.equal((await sending).challenge_id, id); // The HTTP response may be lost after this point.
+  h.rebuild();
+  assert.deepEqual(await h.check(sent, code), { success: true, verified: true });
+  await assert.rejects(h.check(sent, code), { code: 'CHALLENGE_USED' });
+  assert.equal(h.messages.length, 1);
+});
+
+test('client challenge ID collision is atomic and never spends a second reservation', async () => {
+  const h = await fixture(); const id = crypto.randomUUID();
+  let started; const ready = new Promise(resolve => { started = resolve; });
+  let finish; h.reply = () => { started(); return new Promise(resolve => { finish = resolve; }); };
+  const first = h.send(phone, 'login', context, id); await ready;
+  const saved = structuredClone(h.row(id));
+  await assert.rejects(h.send('13900000000', 'login', context, id), { code: 'OPERATION_CONFLICT' });
+  assert.deepEqual(h.row(id), saved);
+  assert.equal(h.storage.data.get(LEDGER_KEY).totalMicros, 7);
+  assert.equal(h.messages.length, 1);
+  finish(Response.json({ ok: 1 })); await first;
+});
+
+test('concurrent requests using the same client challenge reserve at most once', async () => {
+  const h = await fixture(); const id = crypto.randomUUID();
+  const results = await Promise.allSettled([
+    h.send(phone, 'login', context, id), h.send('13900000000', 'login', context, id),
+  ]);
+  assert.equal(results.filter(r => r.status === 'fulfilled').length, 1);
+  assert.equal(results.filter(r => r.status === 'rejected' && r.reason.code === 'OPERATION_CONFLICT').length, 1);
+  assert.equal(h.messages.length, 1);
+  assert.equal(h.storage.data.get(LEDGER_KEY).totalMicros, 7);
+});
+
+test('unknown relay outcome never makes a client challenge usable or permits automatic resend', async () => {
+  const h = await fixture(); const id = crypto.randomUUID();
+  h.reply = () => Response.json({ ok: 0 });
+  await assert.rejects(h.send(phone, 'login', context, id), { code: 'PROVIDER_UNAVAILABLE' });
+  assert.equal(h.row(id).status, 'failed');
+  await assert.rejects(h.check({ challenge_id: id }, h.messages[0].code), { code: 'SERVICE_UNAVAILABLE' });
+  await assert.rejects(h.send('13900000000', 'login', context, id), { code: 'OPERATION_CONFLICT' });
+  assert.equal(h.messages.length, 1);
+  assert.equal(h.storage.data.get(LEDGER_KEY).totalMicros, 7);
+});
+
+test('malformed client challenge IDs are rejected before outgoing requests', async () => {
+  for (const id of ['', null, 1, '12345678-1234-1234-8234-123456789abc', '12345678-1234-4234-7234-123456789abc']) {
+    const h = await fixture();
+    await assert.rejects(h.send(phone, 'login', context, id), { code: 'INVALID_REQUEST' });
+    assert.equal(h.calls.length, 0); assert.equal(h.storage.data.get(LEDGER_KEY).totalMicros, 0);
+  }
+});
 
 test('relay sends exact JSON once, accepts only numeric ok=1 with HTTP 2xx, and sanitizes failures', async () => {
   for (const status of [200, 201, 299]) {

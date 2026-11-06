@@ -79,8 +79,9 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
         }
 
         if (route === 'send-code') {
-          fields(input, ['phone', 'purpose', 'turnstile_token'], ['reauth_token']);
+          fields(input, ['phone', 'purpose', 'turnstile_token'], ['reauth_token', 'challenge_id']);
           phone(input.phone);
+          if (Object.hasOwn(input, 'challenge_id')) operationId(input.challenge_id);
           if (loginOnly && !['login', 'reauth'].includes(input.purpose)) throw new PhoneAuthError('IDENTITY_DISABLED', 503);
           if (!['login', 'bind', 'change', 'unbind', 'reauth'].includes(input.purpose) ||
               typeof input.turnstile_token !== 'string' || !input.turnstile_token.length || input.turnstile_token.length > 2048) invalid();
@@ -99,7 +100,8 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
             if (input.purpose === 'unbind' && grant.method !== 'email') throw new PhoneAuthError('ALTERNATIVE_LOGIN_REQUIRED', 403);
             trusted = { ...context(auth), reauthenticatedAt: grant.issued_at };
           } else if (input.reauth_token !== undefined) invalid();
-          return respond(await sms.sendPhoneCode(env, { phone: input.phone, purpose: input.purpose, turnstile_token: input.turnstile_token }, trusted));
+          return respond(await sms.sendPhoneCode(env, { phone: input.phone, purpose: input.purpose, turnstile_token: input.turnstile_token,
+            ...(Object.hasOwn(input, 'challenge_id') ? { challenge_id: input.challenge_id } : {}) }, trusted));
         }
         if (route === 'verify-code') {
           fields(input, ['phone', 'challenge_id', 'code', 'operation_id']);

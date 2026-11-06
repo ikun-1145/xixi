@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <script defer src="p/js/site-i18n-extra.js?v=20260808-2"></script>
+  <script defer src="p/js/site-i18n-extra.js?v=20261024-phone-1"></script>
   <script defer src="p/js/site-i18n.js?v=20260808-2"></script>
 
 <title>登录 Sunland AI · Beta</title>
@@ -137,6 +137,9 @@ function normalizeLoginUser(data, fallbackEmail) {
 
 <link rel="stylesheet" href="p/css/tokens.css">
 <link rel="stylesheet" href="p/css/base.css">
+<link rel="stylesheet" href="p/css/phone-auth.css">
+<meta name="sunland-turnstile-sitekey" content="">
+<meta name="sunland-phone-ui-enabled" content="false">
 <style>
 /* ===== 登录页（依赖 tokens.css / base.css，登录逻辑不变） ===== */
 html, body { height: 100%; margin: 0; }
@@ -356,6 +359,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
 
 <script src="ai/database-token-client.js"></script>
 <script src="ai/login-ban-status.js"></script>
+<script src="p/js/phone-auth.js?v=20261024-1"></script>
 <script>
 (function () {
   // ====== 占位函数：保持与原 app.js 调用接口一致，避免登录逻辑报错 ======
@@ -390,12 +394,26 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       <h2 class="title">登录 Sunland AI · Beta</h2>
       <p class="subtitle">输入邮箱获取验证码，无需注册</p>
 
-      <div class="field">
+      <div class="phone-auth phone-tabs" role="group" aria-label="登录方式">
+        <button id="emailLoginTab" type="button" aria-pressed="true">邮箱登录</button>
+        <button id="phoneLoginTab" type="button" aria-pressed="false">手机号登录</button>
+      </div>
+      <div id="phoneLoginFields" class="phone-auth" hidden data-site-i18n-ignore>
+        <div class="field">
+          <label for="phoneInput" data-phone-copy="中国大陆手机号"></label>
+          <div class="phone-row"><span aria-hidden="true">+86</span><input id="phoneInput" type="tel" inputmode="tel" autocomplete="tel-national" maxlength="14" aria-label="中国大陆手机号"></div>
+        </div>
+        <div class="field">
+          <label for="phoneCodeInput" data-phone-copy="短信验证码"></label>
+          <div class="code-row"><input id="phoneCodeInput" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" aria-label="短信验证码"><button id="sendPhoneCodeBtn" type="button"></button></div>
+        </div>
+      </div>
+      <div class="field" id="emailLoginField">
         <label for="emailInput">邮箱</label>
         <input id="emailInput" type="email" placeholder="输入邮箱">
       </div>
 
-      <div class="field">
+      <div class="field" id="emailCodeField">
         <label for="codeInput">验证码</label>
         <div class="code-row">
           <input id="codeInput" type="text" inputmode="numeric" placeholder="输入验证码">
@@ -415,7 +433,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
 
       <button id="loginBtn" type="button">登录</button>
 
-      <p id="loginMsg"></p>
+      <p id="loginMsg" role="status" aria-live="polite"></p>
     </div>
     `;
 
@@ -521,6 +539,98 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
     const loginBtn = modal.querySelector("#loginBtn");
     const msg = modal.querySelector("#loginMsg");
     const agreeCheck = modal.querySelector("#agreeCheck");
+    const phoneUiEnabled = document.querySelector('meta[name="sunland-phone-ui-enabled"]')?.content === 'true';
+    modal.querySelector('#phoneLoginTab').closest('.phone-tabs').hidden = !phoneUiEnabled;
+    const phoneAuth = window.SunlandPhoneAuth;
+    const phoneClient = phoneAuth.createClient();
+    const phoneInput = modal.querySelector('#phoneInput');
+    const phoneCodeInput = modal.querySelector('#phoneCodeInput');
+    const phoneSend = modal.querySelector('#sendPhoneCodeBtn');
+    let loginMode = 'email', loginGeneration = 0, phonePending = false, challenge = null, phoneNotice = null;
+    const captureLogin = () => ({ generation: loginGeneration, token: localStorage.getItem('token'), mode: loginMode });
+    const currentLogin = attempt => attempt.generation === loginGeneration && attempt.token === localStorage.getItem('token') && attempt.mode === loginMode && modal.isConnected;
+    const tr = source => phoneAuth.text(source);
+    function phoneMessage(source, error) {
+      phoneNotice = { source, code: error?.code };
+      msg.textContent = error ? phoneAuth.errorText(error) : tr(source);
+    }
+    function renderPhone() {
+      if (loginMode === 'phone' && phoneNotice) msg.textContent = phoneNotice.code ? phoneAuth.errorText({code: phoneNotice.code}) : tr(phoneNotice.source);
+      modal.querySelectorAll('[data-phone-copy]').forEach(el => { el.textContent = tr(el.dataset.phoneCopy); });
+      phoneInput.setAttribute('aria-label', tr('中国大陆手机号'));
+      phoneCodeInput.setAttribute('aria-label', tr('短信验证码'));
+      const seconds = phoneAuth.cooldown(phoneInput.value);
+      let hasPending = true;
+      try { hasPending = !!phoneClient.recovery('login'); } catch {}
+      phoneSend.disabled = phonePending || seconds > 0 || hasPending;
+      phoneSend.textContent = phonePending ? tr('正在处理…') : seconds > 0 ? `${seconds}${tr('秒后重新发送')}` : tr('发送验证码');
+      if (loginMode === 'phone') loginBtn.textContent = tr('登录或注册');
+    }
+    function setLoginMode(mode) {
+      if (mode === "phone" && !phoneUiEnabled) return;
+      loginGeneration++; phoneClient.cancel(); challenge = null; phonePending = false; loginPending = false;
+      phoneInput.value = ''; phoneCodeInput.value = ''; codeInput.value = ''; phoneNotice = null; msg.textContent = ''; loginMode = mode;
+      modal.querySelector('#phoneLoginFields').hidden = mode !== 'phone';
+      modal.querySelector('#emailLoginField').hidden = mode !== 'email';
+      modal.querySelector('#emailCodeField').hidden = mode !== 'email';
+      modal.querySelector('#emailLoginTab').setAttribute('aria-pressed', String(mode === 'email'));
+      modal.querySelector('#phoneLoginTab').setAttribute('aria-pressed', String(mode === 'phone'));
+      renderEmailCooldown();
+      loginBtn.disabled = !agreeCheck.checked; loginBtn.textContent = tr(mode === 'phone' ? '登录或注册' : '登录');
+      modal.querySelector('.subtitle').textContent = tr(mode === 'phone' ? '首次验证手机号将自动注册，不会合并邮箱账号' : '输入邮箱获取验证码，无需注册');
+      renderPhone(); (mode === 'phone' ? phoneInput : emailInput).focus();
+    }
+    modal.querySelector('#emailLoginTab').onclick = () => setLoginMode('email');
+    modal.querySelector('#phoneLoginTab').onclick = () => setLoginMode('phone');
+    phoneInput.addEventListener('input', () => {
+      challenge = null; phoneCodeInput.value = '';
+      try {
+        const phone = phoneAuth.normalizePhone(phoneInput.value), pending = phoneClient.recovery('login');
+        if (pending && !pending.expired) {
+          challenge = { phone, id: pending.challenge_id, expiresAt: Date.now() + pending.expires_in * 1000 };
+          phoneMessage('', {code:'SEND_UNCERTAIN'});
+        }
+      } catch {} // An incomplete number or unavailable storage must not unlock sending.
+      renderPhone();
+    });
+    phoneCodeInput.addEventListener('keydown', event => { if (event.key === 'Enter') loginBtn.click(); });
+    phoneSend.onclick = async () => {
+      if (phonePending || loginMode !== 'phone') return;
+      const attempt = captureLogin(); phonePending = true; msg.classList.remove('ok'); renderPhone();
+      let phone;
+      try {
+        phone = phoneAuth.normalizePhone(phoneInput.value);
+        const result = await phoneClient.send(phone, 'login');
+        if (!currentLogin(attempt) || phoneAuth.normalizePhone(phoneInput.value) !== phone) return;
+        challenge = { phone, id: result.challenge_id, expiresAt: Date.now() + result.expires_in * 1000 };
+        phoneMessage('验证码已发送（有效期约5分钟）'); msg.classList.add('ok'); phoneCodeInput.focus();
+      } catch (error) {
+        if (currentLogin(attempt)) {
+          if (error.code === 'SEND_UNCERTAIN' && phone) {
+            try {
+              const pending = phoneClient.recovery('login');
+              if (pending && !pending.expired && phoneAuth.normalizePhone(phoneInput.value) === phone)
+                challenge = { phone, id: pending.challenge_id, expiresAt: Date.now() + pending.expires_in * 1000 };
+            } catch {}
+          }
+          phoneMessage('', error);
+        }
+      }
+      finally { if (currentLogin(attempt)) { phonePending = false; renderPhone(); } }
+    };
+    let phoneTimer = setInterval(renderPhone, 1000);
+    window.addEventListener('site-language-change', renderPhone);
+    function cancelLogin() { loginGeneration++; phoneClient.cancel(); challenge = null; phoneInput.value = ''; phoneCodeInput.value = ''; codeInput.value = ''; clearInterval(phoneTimer); clearInterval(timer); }
+    window.addEventListener('pagehide', cancelLogin);
+    window.addEventListener('pageshow', event => {
+      if (!event.persisted) return;
+      setLoginMode(loginMode);
+      clearInterval(phoneTimer); phoneTimer = setInterval(renderPhone, 1000);
+      if (emailCooldownUntil > Date.now()) timer = setInterval(renderEmailCooldown, 1000);
+      renderEmailCooldown();
+    });
+    window.addEventListener('storage', event => { if (event.key === 'token' || event.key === null) setLoginMode(loginMode); });
+    renderPhone();
     let loginPending = false;
     loginBtn.disabled = true;
     loginBtn.style.opacity = "0.6";
@@ -531,11 +641,18 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
     };
 
     let cooldown = 0;
-    let timer = null;
+    let timer = null, emailCooldownUntil = 0;
+    function renderEmailCooldown() {
+      cooldown = Math.max(0, Math.ceil((emailCooldownUntil - Date.now()) / 1000));
+      sendBtn.disabled = cooldown > 0;
+      sendBtn.textContent = cooldown > 0 ? cooldown + 's' : tr('发送验证码');
+      if (cooldown === 0) clearInterval(timer);
+    }
 
     // ===== 发送验证码 =====
     sendBtn.onclick = async () => {
-      if (cooldown > 0) return;
+      if (cooldown > 0 || sendBtn.disabled || loginMode !== "email") return;
+      const attempt = captureLogin();
       msg.classList.remove("ok"); // 复位为错误色，成功时再标记
 
       const email = emailInput.value.trim();
@@ -555,8 +672,10 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       let token;
       try {
         token = await runCaptcha();
+        if (!currentLogin(attempt)) return;
         msg.innerText = "";
       } catch (e) {
+        if (!currentLogin(attempt)) return;
         msg.innerText = e.message;
         sendBtn.disabled = false;
         return;
@@ -580,6 +699,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
         });
 
         const data = await res.json().catch(() => ({}));
+        if (!currentLogin(attempt)) return;
 
         console.log("send-code 返回状态:", res.status);
 
@@ -598,22 +718,13 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
         msg.innerText = "验证码已发送（有效期约5分钟）";
         msg.classList.add("ok"); // 成功提示用绿色
 
-        // 开始倒计时
-        cooldown = 60;
-        sendBtn.innerText = "60s";
-
-        timer = setInterval(() => {
-          cooldown--;
-          sendBtn.innerText = cooldown + "s";
-
-          if (cooldown <= 0) {
-            clearInterval(timer);
-            sendBtn.innerText = "发送验证码";
-            sendBtn.disabled = false;
-          }
-        }, 1000);
+        // Wall-clock deadline also survives background throttling / BFCache.
+        emailCooldownUntil = Date.now() + 60000;
+        renderEmailCooldown(); clearInterval(timer);
+        timer = setInterval(renderEmailCooldown, 1000);
 
       } catch (e) {
+        if (!currentLogin(attempt)) return;
         console.error(e);
         if (e.message === "Failed to fetch") {
           msg.innerText = "网络连接失败（API不可达）";
@@ -629,9 +740,64 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       }
     };
 
+    async function completeLogin(data, email, attempt) {
+        const loginUser = normalizeLoginUser(data, email);
+        if (!loginUser?.id) {
+          msg.innerText = "暂时无法确认账号状态，请稍后再试";
+          return;
+        }
+
+        if (!currentLogin(attempt)) return false;
+        msg.innerText = "正在检查账号状态...";
+        let banStatus;
+        try {
+          banStatus = await window.SunlandLoginBanStatus.check({
+            appToken: data.token,
+            userId: loginUser.id,
+          });
+        } catch (statusError) {
+          console.error("账号状态检查失败:", statusError);
+          msg.innerText = "暂时无法确认账号状态，请稍后再试";
+          return;
+        }
+
+        if (!currentLogin(attempt)) return false;
+        if (banStatus.isBanned) {
+          localStorage.removeItem("token");
+          localStorage.removeItem("user");
+          msg.innerText = "账号已被封禁";
+          showBannedAccount(banStatus.reason);
+          return;
+        }
+
+        localStorage.setItem("token", data.token);
+        if (loginUser) {
+          localStorage.setItem("user", JSON.stringify(loginUser));
+        } else {
+          localStorage.removeItem("user");
+        }
+
+        attempt.token = data.token;
+        msg.innerText = "登录成功";
+        msg.classList.add("ok"); // 成功提示用绿色
+
+
+        // 登录成功后回到来源页（默认 ai.html），由目标页的 app.js 完成会话恢复与云端同步
+        var postTarget = getPostLoginTarget();
+        setTimeout(() => {
+          if (!currentLogin(attempt)) return;
+          cancelLogin();
+          modal.remove();
+          location.href = postTarget;
+        }, 800);
+        return true;
+    }
+
     // ===== 登录 =====
     loginBtn.onclick = async () => {
       if (loginPending) return;
+      if (loginMode === 'phone') { await submitPhoneLogin(); return; }
+      const attempt = captureLogin();
       msg.classList.remove("ok"); // 复位为错误色，成功时再标记
       if (!agreeCheck.checked) {
         msg.innerText = "请先同意用户协议";
@@ -670,7 +836,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
           return;
         }
 
-        console.log("verify-code 返回状态:", res.status);
+        if (!currentLogin(attempt)) return;
 
         if (!res.ok) {
           let errMsg = data?.error || "服务器异常";
@@ -702,50 +868,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
           return;
         }
 
-        const loginUser = normalizeLoginUser(data, email);
-        if (!loginUser?.id) {
-          msg.innerText = "暂时无法确认账号状态，请稍后再试";
-          return;
-        }
-
-        msg.innerText = "正在检查账号状态...";
-        let banStatus;
-        try {
-          banStatus = await window.SunlandLoginBanStatus.check({
-            appToken: data.token,
-            userId: loginUser.id,
-          });
-        } catch (statusError) {
-          console.error("账号状态检查失败:", statusError);
-          msg.innerText = "暂时无法确认账号状态，请稍后再试";
-          return;
-        }
-
-        if (banStatus.isBanned) {
-          localStorage.removeItem("token");
-          localStorage.removeItem("user");
-          msg.innerText = "账号已被封禁";
-          showBannedAccount(banStatus.reason);
-          return;
-        }
-
-        localStorage.setItem("token", data.token);
-        if (loginUser) {
-          localStorage.setItem("user", JSON.stringify(loginUser));
-        } else {
-          localStorage.removeItem("user");
-        }
-
-        msg.innerText = "登录成功";
-        msg.classList.add("ok"); // 成功提示用绿色
-        keepLocked = true;
-
-        // 登录成功后回到来源页（默认 ai.html），由目标页的 app.js 完成会话恢复与云端同步
-        var postTarget = getPostLoginTarget();
-        setTimeout(() => {
-          modal.remove();
-          location.href = postTarget;
-        }, 800);
+        keepLocked = await completeLogin(data, email, attempt) === true;
 
       } catch (e) {
         console.error("登录异常:", e);
@@ -762,7 +885,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
           });
         }
       } finally {
-        if (!keepLocked) {
+        if (!keepLocked && currentLogin(attempt)) {
           loginPending = false;
           loginBtn.disabled = !agreeCheck.checked;
           loginBtn.style.opacity = agreeCheck.checked ? "1" : "0.6";
@@ -770,7 +893,28 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       }
     };
 
+    async function submitPhoneLogin() {
+      if (loginPending || phonePending) return;
+      if (!agreeCheck.checked) { phoneMessage('请先同意用户协议'); return; }
+      const attempt = captureLogin();
+      if (!challenge || challenge.expiresAt <= Date.now()) { phoneMessage('', {code:'SEND_UNCERTAIN'}); return; }
+      if (!/^\d{6}$/.test(phoneCodeInput.value)) { phoneMessage('请输入6位验证码'); return; }
+      phoneNotice = null; msg.classList.remove('ok');
+      loginPending = true; loginBtn.disabled = true; let completed = false;
+      try {
+        const result = await phoneClient.login(challenge.phone, challenge.id, phoneCodeInput.value);
+        if (!currentLogin(attempt)) return;
+        completed = await completeLogin(result, '', attempt) === true;
+      } catch (error) {
+        if (currentLogin(attempt)) {
+          phoneMessage('', error);
+          if (!['CODE_INVALID','CHALLENGE_PENDING','VERIFY_UNCERTAIN'].includes(error.code)) { challenge = null; phoneCodeInput.value = ''; }
+        }
+      } finally { if (!completed && currentLogin(attempt)) { loginPending = false; loginBtn.disabled = !agreeCheck.checked; } }
+    }
+
     function closeModal() {
+      cancelLogin();
       modal.classList.add("closing");
       document.body.style.overflow = "";
       // 独立登录页：关闭后返回首页（避免留下空白页面）
