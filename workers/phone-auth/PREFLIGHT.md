@@ -8,7 +8,7 @@
 
 Secret 名称、Key ID 或白名单格式存在不证明 Secret 值正确、白名单与当前 HMAC key 匹配、或 keyring 的 `v1` 与备份一致。必须从安全保管源核对，不轮换、不输出、不将其写入 PR。数据库初始化前需具备独立可恢复的密钥备份及经完整恢复验证的备份；历史备份验证有约束失败，不能直接认定可恢复。本机加密密钥备份文件的目录/文件权限已检查为 700/600；其余核心密钥未找到同等本机备份。仅使用合成密钥验证了加密、校验和解密流程，未读取或核对真实密钥，须由保管人独立确认所有密钥的安全备份与恢复。
 
-2026-11-06 已部署独立 Worker 版本 `9ccf310e-6009-47f2-957a-d4b785f64823`，代码对应 `906d5d3`，100% 流量；既有 Secret 名称、三个 `v1` Key ID、relay、canary 和三个关闭开关均复核通过，DO 命名空间仍无对象。关闭入口的 Pages 生产部署 `0b1faae4-528b-48fa-bc3c-dca54e41c413` 对应提交 `bef96ba`，真实 `sunland.dev/login` 返回新版登录页且手机入口关闭，包含过期请求的人工确认恢复入口；版本化客户端与语言包均返回 JavaScript 且内容摘要与提交一致。网页旧生产回滚点为 Pages 部署 `bee494e8-d0d0-48aa-92ac-74aa290f8182`，Worker 回滚点为 `adef974d-63eb-4cdb-aeb9-dc38b6309cd4`；后者不包含旧客户端保护，回滚后必须保持功能关闭。生产状态会随时间变化，实际操作前重新只读检查。
+2026-11-06 已部署独立 Worker 版本 `99c72944-07a3-4a92-ad37-54f5772e2bc9`，代码对应 `dc270ec`，100% 流量；既有 Secret 名称、三个 `v1` Key ID、relay、canary 和三个关闭开关均复核通过，DO 命名空间仍无对象。关闭入口的 Pages 生产部署 `0b1faae4-528b-48fa-bc3c-dca54e41c413` 对应提交 `bef96ba`，真实 `sunland.dev/login` 返回新版登录页且手机入口关闭，包含过期请求的人工确认恢复入口；版本化客户端与语言包均返回 JavaScript 且内容摘要与提交一致。网页旧生产回滚点为 Pages 部署 `bee494e8-d0d0-48aa-92ac-74aa290f8182`，Worker 回滚点为 `9ccf310e-6009-47f2-957a-d4b785f64823`（保留旧客户端保护但无诊断入口）；更早的 `adef974d-63eb-4cdb-aeb9-dc38b6309cd4` 不包含旧客户端保护，回滚后必须保持功能关闭。生产状态会随时间变化，实际操作前重新只读检查。
 
 ## 数据库初始化方案（未执行）
 
@@ -69,7 +69,7 @@ python3 workers/phone-auth/operations/initialize-do.py --execute initialize < /s
 
 独立 Worker 提供管理员诊断 `POST /v1/phone/_admin/turnstile-probe`：仅在三个功能开关均为 `false` 时，使用现有管理员认证和生产 Turnstile Secret 向固定 Siteverify 地址发一次请求；不访问 DO、数据库或短信服务。服务端只返回 `ok`，不会返回 token、Secret 或上游响应。诊断不传 `remoteip`，所以成功不能替代正式短信链路验收。
 
-部署包含此探针的 Worker 并核对版本、三个开关、hostname 和管理员 Secret 绑定后，在真实 `https://sunland.dev` 页面使用现有 `SunlandPhoneAuth.runTurnstile('phone_login')` 获得一次性 token，通过受保护方式分别传入下列文件描述符；切勿在命令参数、日志、聊天或共享剪贴板暴露 token 或管理员凭据。示例中的路径指本机权限 600 的受保护文件，不是密钥值：
+2026-11-07 已部署上述包含探针的 Worker，并核对三个开关、hostname、管理员 Secret 绑定及未经认证请求返回 401。操作前重新核对版本和配置；在真实 `https://sunland.dev` 页面使用现有 `SunlandPhoneAuth.runTurnstile('phone_login')` 获得一次性 token，通过受保护方式分别传入下列文件描述符；切勿在命令参数、日志、聊天或共享剪贴板暴露 token 或管理员凭据。示例中的路径指本机权限 600 的受保护文件，不是密钥值：
 
 ```sh
 python3 workers/phone-auth/operations/turnstile-probe.py --admin-fd 3 --token-fd 4 3< /secure/admin-token 4< /secure/turnstile-token
