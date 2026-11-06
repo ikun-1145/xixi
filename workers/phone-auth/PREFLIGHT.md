@@ -43,7 +43,7 @@ RETURNING singleton;
 - 用户须确认单条真实含费上界不超过策略的 `unitCostMicros=200000`，以及 relay 不会在内部产生超出预算的重复计费。Canary 最多三次**预留**，失败也不退；未知发送结果永久隔离号码，不自动重试。
 - 确认 relay 支持 POST JSON `api_key`、`phone`、`code`、`scene`，数值 `ok=1` 表示供应商已接受发送；确认 `scene=login` 模板可用于登录、首次注册及手机号再验。2026-11-06 无密钥、无手机号的 HTTPS POST 空对象返回 401；Mock 覆盖请求协议及失败、超时和不重试，真实凭据、模板和计费尚未验证。
 - 确认实际 Turnstile widget 与 Secret 配对，真实 `sunland.dev` origin、hostname 和 `phone_login` action 一致。2026-11-06 Cloudflare 只读查询确认现有非交互 widget 的公开 sitekey 已写入本 PR 登录页，允许 `sunland.dev`；Worker 配置的 hostname 为 `sunland.dev`，客户端 action 与服务端按 purpose 校验一致。仅有 Secret 绑定名称无法证明与 widget 配对，真实 origin 的 widget→Siteverify 尚未验收；公开站点内容本轮无法确认，不能假设 UI 已启用。
-- 本 PR 将发送总超时调整为 20 秒，发送前生成 challenge 并保存在同标签页 sessionStorage（不含手机号或验证码）；丢失响应时禁止自动重发，重新输入相同号码可继续验证。服务端在事务中检查 challenge 冲突，发送中校验不会消耗错误次数。旧生产 Worker 不支持客户端 challenge：须先经授权部署兼容 Worker，再发布网页；本 PR 未部署。
+- 独立 relay 入口拒绝不提供客户端 challenge 的旧发送请求，拒绝发生在 DO 与预算预留之前；阿里云和历史 challenge 校验保持兼容。本 PR 将发送总超时调整为 20 秒，发送前生成 challenge 并保存在同标签页 sessionStorage（不含手机号或验证码）；丢失响应时禁止自动重发，重新输入相同号码可继续验证。服务端在事务中检查 challenge 冲突，发送中校验不会消耗错误次数。旧生产 Worker 不支持客户端 challenge：须先经授权部署兼容 Worker，再发布网页；本 PR 未部署。
 - 仅同标签页刷新或返回可恢复；关闭标签页、清理存储、跨标签页、设备丢失，以及中转接口自身超时后的服务端隔离，均不能保证恢复。由 opener 打开的标签页可能克隆旧 sessionStorage：一页消费后另一页仍可能被旧句柄阻止；不能将非原子的 localStorage 读写当作跨页互斥，也不能按手机号公开查询 challenge。未知结果、过期后仍阻止页面重发，须人工核实供应商状态和账本；不要用清理浏览器存储绕过号码锁。验证码校验结果未知时先核实登录状态，不重新发送。模拟浏览器不等于真实 origin 的端到端验收。
 - 本 PR 的登录页手机号入口默认关闭，已填入公开 Turnstile sitekey。正式验收前需确认已授权的站点、sitekey 与 Secret 配对、生产 hostname 和 action，且在明确授权后才可配置入口。账号设置页不在本 PR，绑定、换绑、再验证和删除页面尚未接入并未验收。
 - 获单独授权后仅使用事先确认的唯一号码、真实 origin 和 canary 白名单，预期最多三次预留。先进行一次注册发送与校验，验证仅一次消费、身份创建和既有 JWT/状态兼容；至少等待现有 600 秒号码锁后再做同号登录。验收过程不记录号码、验证码、Token、请求体或摘要。
@@ -52,15 +52,15 @@ RETURNING singleton;
 
 ## 待授权的操作脚本与网页切换
 
-以下脚本已准备但**本轮未执行**。只可在独立授权、备份恢复验证、目标与开关只读复核全部完成后使用。仅安装可信来源的 `psycopg` 3，配置受保护的 libpq `PGUSER`、`PGPASSFILE` 和 TLS 根证书；密码不放进命令行。数据库脚本固定连接本项目直连主机并要求 `sslmode=verify-full`，要求当前连接隔离级别为 `read committed`、参数日志上限为零、`log_statement=none`，不满足即拒绝，不能通过忽略错误继续。2026-11-06 只读检查得到 `log_statement=ddl`、`log_parameter_max_length=-1`、错误参数上限为 0；须先由数据库负责人确认并提供安全日志环境，本脚本不会更改数据库日志设置。认证和日志设置可能因连接角色而异，执行前须重新核对。以下输入重定向路径须为权限 600 的安全文件或受控文件描述符，文件不得有尾随换行；路径不含密钥本身：
+以下脚本已准备但**本轮未执行**。只可在独立授权、备份恢复验证、目标与开关只读复核全部完成后使用。仅安装可信来源的 `psycopg` 3，配置受保护的 libpq `PGUSER`、`PGPASSFILE` 和 TLS 根证书；密码不放进命令行。数据库脚本固定连接本项目直连主机并要求 `sslmode=verify-full`，要求当前连接隔离级别为 `read committed`；脚本仅用 `SET LOCAL` 将参数日志上限设为零，并检查 auto_explain、pgaudit，权限不足或设置不安全即拒绝，不更改全局日志设置。2026-11-06 只读检查表明生产 postgres 角色无参数日志 SET 权限、auto_explain 参数上限为 -1；须由数据库负责人提供安全且具备必要会话权限的连接，不能绕过检查。认证和日志设置可能因连接角色而异，执行前须重新核对。以下输入重定向路径须为权限 600 的安全文件或受控文件描述符，文件不得有尾随换行；路径不含密钥本身：
 
 ```sh
 python3 workers/phone-auth/operations/initialize-db.py --execute < /secure/path/existing-lookup-key
 python3 workers/phone-auth/operations/initialize-do.py --execute initialize < /secure/path/existing-admin-token
 ```
 
-数据库脚本在单事务中持锁、条件更新，只有恰好一行才提交；提交后只检查结果是否匹配，异常不输出参数或异常详情。DO 脚本固定目标、关闭重定向、只发一次请求并检查 canary 零账本。`initialize-do.py --execute status` 也会调用 DO，可能创建对象，**只可在授权后使用**，不能用于初始化前探测。任意 409、超时或连接中断均按结果未知处理，禁止自动重试。脚本操作逻辑已通过合成 Mock；数据库事务函数还使用 `psycopg` 3.3.8 在隔离 PostgreSQL 16 与简化表结构上验证了参数化提交、零行回滚和不覆盖。完整脚本尚未在真实驱动与完整生产结构的隔离环境中运行，生产使用前还需完成该项验收，不要把 PG 16 简化锁测试当作完整脚本验收。
+数据库脚本在单事务中持锁、条件更新，只有恰好一行才提交；提交后只检查结果是否匹配，异常不输出参数或异常详情。DO 脚本固定目标、关闭重定向、只发一次请求并检查 canary 零账本。`initialize-do.py --execute status` 也会调用 DO，可能创建对象，**只可在授权后使用**，不能用于初始化前探测。任意 409、超时或连接中断均按结果未知处理，禁止自动重试。脚本操作逻辑已通过合成 Mock；数据库事务函数还使用 `psycopg` 3.3.8 在隔离 PostgreSQL 16 与简化表结构上验证了参数化提交、零行回滚和不覆盖。真实手机认证迁移及 psycopg 已在隔离 PostgreSQL 16 完成并发、四表非空回滚、RPC 锁、RLS 和无权限拒绝验收；用户资料和删除表为合成 stub，非完整生产 Supabase 结构，生产前仍须核对实际对象、权限和备份恢复。
 
-网页切换顺序：保持三个开关关闭，先审查并获授权部署支持客户端 challenge 的独立 Worker，再检查版本与路由；随后获授权发布 PR 中的网页，检查实际 `login.html` 引用 `phone-auth.js?v=20261106-recovery-1`、站点返回正确 JavaScript MIME 和恢复逻辑，入口仍关闭，再做真实 origin 的无短信人工浏览器验证。缓存标识可防止新版 HTML 取到旧脚本，但**不能强制已打开的旧页面升级**；开启前必须验证既有页面版本及用户会话的退出或刷新策略。若存在可能发送的旧客户端，须先提供服务端拒绝旧请求的兼容切换方案或确保其已退出，不能只等 CDN 缓存过期。此顺序不是生产部署授权。
+网页切换顺序：保持三个开关关闭，先审查并获授权部署支持客户端 challenge 的独立 Worker，再检查版本与路由；随后获授权发布 PR 中的网页，检查实际 `login.html` 引用 `phone-auth.js?v=20261106-recovery-1`、站点返回正确 JavaScript MIME 和恢复逻辑，入口仍关闭，再做真实 origin 的无短信人工浏览器验证。缓存标识可防止新版 HTML 取到旧脚本，但**不能强制已打开的旧页面升级**；开启前必须验证既有页面版本及用户会话的退出或刷新策略。部署包含旧客户端拒绝保护的独立 Worker 后，旧 relay 客户端发送会在预留前被拒；不能只等 CDN 缓存过期，发布后仍须验证生产版本和缓存。此顺序不是生产部署授权。
 
 上面的隔离 PG 并发测试与初始化 SQL 的 advisory 锁、四表锁顺序和条件更新一致；它在零匹配时提交空事务，生产脚本则明确回滚。合成单元测试覆盖零匹配回滚和提交异常不重试；仍需上述真实驱动隔离验收。
