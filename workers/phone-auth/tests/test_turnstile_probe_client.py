@@ -36,8 +36,8 @@ class Tests(unittest.TestCase):
             result=client.main()
         return result,out.getvalue(),opener.calls
     def test_success_and_separate_expected_replay(self):
-        self.assertEqual(self.run_client(),(0,'ok\n',1))
-        self.assertEqual(self.run_client(403,b'{"ok":false}',('--expect-replay',)),(0,'ok\n',1))
+        self.assertEqual(self.run_client(),(0,'verified\n',1))
+        self.assertEqual(self.run_client(403,b'{"ok":false}',('--expect-replay',)),(0,'rejected\n',1))
     def test_never_retry_or_leak_on_unknown_or_bad_reply(self):
         for status,body in [(302,b'{"ok":true}'),(500,b'synthetic-secret'),(200,b'synthetic-secret'),(200,b'x'*1025)]:
             self.assertEqual(self.run_client(status,body),(1,'failed\n',1))

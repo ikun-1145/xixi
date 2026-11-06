@@ -64,3 +64,17 @@ python3 workers/phone-auth/operations/initialize-do.py --execute initialize < /s
 网页切换顺序：保持三个开关关闭，先审查并获授权部署支持客户端 challenge 的独立 Worker，再检查版本与路由；随后获授权发布 PR 中的网页，检查实际 `login.html` 引用 `phone-auth.js?v=20261106-recovery-1`、站点返回正确 JavaScript MIME 和恢复逻辑，入口仍关闭，再做真实 origin 的无短信人工浏览器验证。缓存标识可防止新版 HTML 取到旧脚本，但**不能强制已打开的旧页面升级**；开启前必须验证既有页面版本及用户会话的退出或刷新策略。部署包含旧客户端拒绝保护的独立 Worker 后，旧 relay 客户端发送会在预留前被拒；不能只等 CDN 缓存过期，发布后仍须验证生产版本和缓存。此顺序不是生产部署授权。
 
 上面的隔离 PG 并发测试与初始化 SQL 的 advisory 锁、四表锁顺序和条件更新一致；它在零匹配时提交空事务，生产脚本则明确回滚。合成单元测试覆盖零匹配回滚和提交异常不重试；仍需上述真实驱动隔离验收。
+
+## 无短信 Turnstile 配对探针
+
+独立 Worker 提供管理员诊断 `POST /v1/phone/_admin/turnstile-probe`：仅在三个功能开关均为 `false` 时，使用现有管理员认证和生产 Turnstile Secret 向固定 Siteverify 地址发一次请求；不访问 DO、数据库或短信服务。服务端只返回 `ok`，不会返回 token、Secret 或上游响应。诊断不传 `remoteip`，所以成功不能替代正式短信链路验收。
+
+部署包含此探针的 Worker 并核对版本、三个开关、hostname 和管理员 Secret 绑定后，在真实 `https://sunland.dev` 页面使用现有 `SunlandPhoneAuth.runTurnstile('phone_login')` 获得一次性 token，通过受保护方式分别传入下列文件描述符；切勿在命令参数、日志、聊天或共享剪贴板暴露 token 或管理员凭据。示例中的路径指本机权限 600 的受保护文件，不是密钥值：
+
+```sh
+python3 workers/phone-auth/operations/turnstile-probe.py --admin-fd 3 --token-fd 4 3< /secure/admin-token 4< /secure/turnstile-token
+```
+
+输出 `verified` 表示 Siteverify 成功、hostname/action/时间窗匹配；`failed` 包括超时和未知状态，不重试。若首次已确认成功、同一个 token 未更换，且三个开关仍确认关闭，可单独以相同 FD 输入加 `--expect-replay` 验证二次拒绝；`rejected` 只证明返回拒绝，需结合首次成功与开关状态判读。不得用测试密钥代替生产配对。诊断结束后应评估移除此额外管理入口。
+
+2026-11-07：六个 profile 触发器及七个直接依赖表已在 PGlite 使用合成数据进行关联测试，函数与列目录摘要及 RLS 开关经只读 catalog 对照；这是单后端测试，不是完整生产 Schema、ACL、PostgreSQL 并发或备份恢复证明。IPv4 Session Pooler 须从项目 Connect 面板获得准确主机及可信 CA，使用 5432 和 `verify-full`；现有初始化脚本只允许直连，尚未验证通过 Pooler 的会话身份、日志设置与锁，不得改用未经验证的连接。

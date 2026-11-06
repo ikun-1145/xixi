@@ -65,7 +65,7 @@ def main():
             expected_value = {'ok': not args.expect_replay}
             if response.status != expected_status or value != expected_value:
                 raise ValueError('unexpected response')
-        print('ok')
+        print('rejected' if args.expect_replay else 'verified')
         return 0
     except Exception:
         print('failed')
