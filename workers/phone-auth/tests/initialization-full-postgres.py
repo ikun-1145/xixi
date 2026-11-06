@@ -20,7 +20,7 @@ spec.loader.exec_module(op)
 migration = Path(os.environ['PHONE_IDENTITY_MIGRATION']).read_text()
 assert 'create table public.sunland_phone_auth_config' in migration
 name = 'phone-full-schema-' + uuid.uuid4().hex[:12]
-image = 'public.ecr.aws/docker/library/postgres:16-alpine'
+image = os.environ.get('PHONE_TEST_POSTGRES_IMAGE', 'public.ecr.aws/docker/library/postgres:16-alpine')
 password = 'synthetic-isolated-database-only'
 
 def run(args):
