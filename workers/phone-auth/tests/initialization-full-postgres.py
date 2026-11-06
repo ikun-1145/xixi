@@ -42,12 +42,27 @@ try:
     else: raise RuntimeError('isolated database unavailable')
     with conn:
         conn.execute('create role anon; create role authenticated; create role service_role')
-        conn.execute('''create table public.user_profiles(user_id text primary key,email text,
-           onboarding_version int,onboarding_step int,identity_status text default 'active',is_banned boolean default false,
-           deletion_job_id uuid,deletion_attempt_id uuid,deletion_fencing_version bigint);
-           create table public.account_deletion_jobs(id uuid primary key,user_id text,status text,attempt_id uuid,
-           fencing_version bigint,lease_expires_at timestamptz,recovery_expires_at timestamptz,data_deleted_at timestamptz,
-           token_hash text,expires_at timestamptz)''')
+        # Columns and constraints match production catalog as of 2026-11-06;
+        # unrelated triggers and their dependencies remain deliberately absent.
+        conn.execute("create schema extensions; create extension pgcrypto with schema extensions")
+        conn.execute('''create table public.user_profiles(
+           user_id text primary key, avatar_url text, avatar_path text, updated_at timestamptz default now(),
+           name text, pro boolean not null default false, email text, created_at timestamptz default now(),
+           is_banned boolean not null default false, ban_reason text, identity_status text not null default 'active',
+           deletion_job_id uuid, deletion_attempt_id text, deletion_fencing_version bigint not null default 0,
+           deletion_started_at timestamptz, retired_at timestamptz, profile_sanitized_at timestamptz,
+           onboarding_version smallint not null default 0, onboarding_step smallint not null default 1,
+           check (identity_status in ('active','deleting','retired')),
+           check ((onboarding_version=0 and onboarding_step between 1 and 3) or (onboarding_version=1 and onboarding_step=3)));
+           create table public.account_deletion_jobs(
+           id uuid primary key default extensions.gen_random_uuid(), user_id text not null, token_hash text not null unique,
+           status text not null default 'pending', claimed_at timestamptz, lease_expires_at timestamptz,
+           attempt_id text, fencing_version bigint not null default 0, expires_at timestamptz not null,
+           recovery_expires_at timestamptz, legacy_avatar_path text, external_revoked_at timestamptz,
+           data_deleted_at timestamptz, completed_at timestamptz, created_at timestamptz not null default now(),
+           identity_retired_at timestamptz, profile_sanitized_at timestamptz,
+           check (status in ('pending','in_progress','completed')),
+           check (user_id ~ '^[A-Za-z0-9][A-Za-z0-9@._+-]{0,127}$'))''')
         conn.commit()
         conn.execute(migration)
         # Actual privilege configuration and phone schema, no customer profile schema assumed.
