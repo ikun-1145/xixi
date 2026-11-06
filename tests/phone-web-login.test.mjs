@@ -41,7 +41,7 @@ test('BFCache return preserves uncertain SMS and blocks another send',async t=>{
 
 test('phone entry release flag defaults closed and cannot switch away from email',t=>{
  const h=harness({phoneEnabled:false});t.after(()=>h.dom.window.close());const d=h.w.document;
- assert.equal(d.querySelector('#phoneLoginTab').closest('.phone-tabs').hidden,true);d.querySelector('#phoneLoginTab').click();assert.equal(d.querySelector('#phoneLoginFields').hidden,true);assert.equal(d.querySelector('#emailLoginField').hidden,false);
+ assert.equal(d.querySelector('meta[name="sunland-turnstile-sitekey"]').content,'0x4AAAAAAC_W2Wj2YdkrQiMf');assert.equal(d.querySelector('#phoneLoginTab').closest('.phone-tabs').hidden,true);d.querySelector('#phoneLoginTab').click();assert.equal(d.querySelector('#phoneLoginFields').hidden,true);assert.equal(d.querySelector('#emailLoginField').hidden,false);
 });
 
 test('lost send response recovers in the page after the number is re-entered',async t=>{
@@ -52,4 +52,24 @@ test('lost send response recovers in the page after the number is re-entered',as
  d.querySelector('#emailLoginTab').click();d.querySelector('#phoneLoginTab').click();input.value='13800000000';input.dispatchEvent(new h.w.Event('input'));
  d.querySelector('#phoneCodeInput').value='123456';d.querySelector('#agreeCheck').checked=true;d.querySelector('#agreeCheck').dispatchEvent(new h.w.Event('change'));d.querySelector('#loginBtn').click();await flush();await flush();
  assert.equal(sends,1);assert.equal(h.w.localStorage.getItem('token'),'mock-jwt');
+});
+
+test('real language catalog translates phone login labels and authentication errors', t=>{
+ const h=harness();t.after(()=>h.dom.window.close());
+ h.w.eval(readFileSync(new URL('../p/js/site-i18n-extra.js',import.meta.url),'utf8'));
+ h.w.eval(readFileSync(new URL('../p/js/site-i18n.js',import.meta.url),'utf8'));
+ const errors=[...client.matchAll(/\b[A-Z_]+:'([^']+)'/g)].map(m=>m[1]);
+ const labels=['中国大陆手机号','短信验证码','登录或注册','首次验证手机号将自动注册，不会合并邮箱账号','手机号登录','邮箱登录','请输入6位验证码'];
+ for(const lang of ['en','ja','ko','es','zh-Hant']){
+  for(const source of [...errors,...labels]){
+   const translated=h.w.SiteI18n.translate(source,lang);
+   if(['发送状态未知，请勿重复发送；如收到验证码，请继续验证','验证结果未知，请先检查登录状态，勿重复发送短信','发送仍在处理中，请稍后再验证'].includes(source)) continue;
+   assert.ok(translated && (lang === 'zh-Hant' || translated !== source),`${lang}: missing ${source}`);
+  }
+ }
+ h.w.SiteI18n.setLanguage('en',{persist:false});h.w.document.querySelector('#phoneLoginTab').click();
+ assert.equal(h.w.document.querySelector('label[for="phoneInput"]').textContent,'Mainland China mobile number');
+ assert.equal(h.w.document.querySelector('#loginBtn').textContent,'Sign in or register');
+ assert.match(h.w.document.querySelector('.subtitle').textContent,/account/i);
+ assert.notEqual(h.w.SunlandPhoneAuth.errorText({code:'CODE_INVALID'}),'验证码错误或已过期，请重新获取');
 });

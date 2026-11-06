@@ -29,7 +29,7 @@ RETURNING singleton;
 
 只有恰好返回一行且参数格式正确时才提交；否则回滚并停止。提交后在受控会话内仅返回“配置存在且与相同参数匹配”的布尔结果，不输出摘要。超时、连接断开或提交结果不确定时先只读核实，禁止盲目重试、覆盖或更换 key。
 
-使用合成数据的本地 PGlite PostgreSQL 模拟已验证：首次条件更新成功；重复执行、已有身份/状态/授权/操作记录及半配置状态均拒绝，字段不被覆盖。可用 `PHONE_PREFLIGHT_PACKAGE_ROOT=/path/to/local/package node --test workers/phone-auth/tests/initialization-rehearsal.mjs` 复验；该目录须已有 `@electric-sql/pglite`。该模拟只使用一个后端和简化表结构，**不证明独立连接并发锁行为**；本轮尝试启动本机 OrbStack 和使用本机 PostgreSQL 17 均未取得可用的隔离服务；生产执行前仍需在隔离的真实 PostgreSQL 多连接环境完成并发验证。上述语句不是数据库迁移，也没有在生产执行。
+使用合成数据的本地 PGlite PostgreSQL 模拟已验证：首次条件更新成功；重复执行、已有身份/状态/授权/操作记录及半配置状态均拒绝，字段不被覆盖。可用 `PHONE_PREFLIGHT_PACKAGE_ROOT=/path/to/local/package node --test workers/phone-auth/tests/initialization-rehearsal.mjs` 复验；该目录须已有 `@electric-sql/pglite`。该模拟只使用一个后端和简化表结构，不证明独立连接并发锁行为。另以本机一次性 PostgreSQL 16.15 容器（无网络、无映射端口、临时内存存储）和合成表测试多连接：两个初始化器串行且仅一个更新；四张表分别验证先写入提交会阻止初始化、初始化持锁时写入会等待，9 项均通过。可运行 `python3 workers/phone-auth/tests/initialization-postgres-rehearsal.py` 复验，需本地 Docker 和 PostgreSQL 16 镜像。该测试验证锁与事务行为，使用简化表结构和模拟写入，不证明完整生产 RPC、权限、约束或真实状态；初始化前仍须只读复核。上述语句不是数据库迁移，也没有在生产执行。
 
 ## DO 初始化方案（未执行）
 
@@ -41,10 +41,10 @@ RETURNING singleton;
 ## 真实短信 Canary 前的阻断和验收
 
 - 用户须确认单条真实含费上界不超过策略的 `unitCostMicros=200000`，以及 relay 不会在内部产生超出预算的重复计费。Canary 最多三次**预留**，失败也不退；未知发送结果永久隔离号码，不自动重试。
-- 确认 relay 支持 POST JSON `api_key`、`phone`、`code`、`scene`，数值 `ok=1` 表示供应商已接受发送；确认 `scene=login` 模板可用于登录、首次注册及手机号再验。只有 HTTPS 401 空请求与 Mock 已验证，真实凭据和模板尚未验证。
-- 确认实际 Turnstile widget 与 Secret 配对，真实 `sunland.dev` origin、hostname 和 `phone_login` action 一致。本地网页 sitekey 为空，公开入口与受控浏览器方案仍须核实；不得假设公开 UI 已启用。
+- 确认 relay 支持 POST JSON `api_key`、`phone`、`code`、`scene`，数值 `ok=1` 表示供应商已接受发送；确认 `scene=login` 模板可用于登录、首次注册及手机号再验。2026-11-06 无密钥、无手机号的 HTTPS POST 空对象返回 401；Mock 覆盖请求协议及失败、超时和不重试，真实凭据、模板和计费尚未验证。
+- 确认实际 Turnstile widget 与 Secret 配对，真实 `sunland.dev` origin、hostname 和 `phone_login` action 一致。2026-11-06 Cloudflare 只读查询确认现有非交互 widget 的公开 sitekey 已写入本 PR 登录页，允许 `sunland.dev`；Worker 配置的 hostname 为 `sunland.dev`，客户端 action 与服务端按 purpose 校验一致。仅有 Secret 绑定名称无法证明与 widget 配对，真实 origin 的 widget→Siteverify 尚未验收；公开站点内容本轮无法确认，不能假设 UI 已启用。
 - 本 PR 将发送总超时调整为 20 秒，发送前生成 challenge 并保存在同标签页 sessionStorage（不含手机号或验证码）；丢失响应时禁止自动重发，重新输入相同号码可继续验证。服务端在事务中检查 challenge 冲突，发送中校验不会消耗错误次数。旧生产 Worker 不支持客户端 challenge：须先经授权部署兼容 Worker，再发布网页；本 PR 未部署。
-- 仅同标签页刷新或返回可恢复；关闭标签页、清理存储、跨标签页、设备丢失，以及中转接口自身超时后的服务端隔离，均不能保证恢复。未知结果、过期后仍阻止页面重发，须人工核实供应商状态和账本；不要用清理浏览器存储绕过号码锁。验证码校验结果未知时先核实登录状态，不重新发送。模拟浏览器不等于真实 origin 的端到端验收。
-- 本 PR 的登录页手机号入口默认关闭，Turnstile sitekey 留空。正式验收前需确认已授权的站点、sitekey 与 Secret 配对、生产 hostname 和 action，且在明确授权后才可配置入口。账号设置页不在本 PR，绑定、换绑、再验证和删除页面尚未接入并未验收。
+- 仅同标签页刷新或返回可恢复；关闭标签页、清理存储、跨标签页、设备丢失，以及中转接口自身超时后的服务端隔离，均不能保证恢复。由 opener 打开的标签页可能克隆旧 sessionStorage：一页消费后另一页仍可能被旧句柄阻止；不能将非原子的 localStorage 读写当作跨页互斥，也不能按手机号公开查询 challenge。未知结果、过期后仍阻止页面重发，须人工核实供应商状态和账本；不要用清理浏览器存储绕过号码锁。验证码校验结果未知时先核实登录状态，不重新发送。模拟浏览器不等于真实 origin 的端到端验收。
+- 本 PR 的登录页手机号入口默认关闭，已填入公开 Turnstile sitekey。正式验收前需确认已授权的站点、sitekey 与 Secret 配对、生产 hostname 和 action，且在明确授权后才可配置入口。账号设置页不在本 PR，绑定、换绑、再验证和删除页面尚未接入并未验收。
 - 获单独授权后仅使用事先确认的唯一号码、真实 origin 和 canary 白名单，预期最多三次预留。先进行一次注册发送与校验，验证仅一次消费、身份创建和既有 JWT/状态兼容；至少等待现有 600 秒号码锁后再做同号登录。验收过程不记录号码、验证码、Token、请求体或摘要。
 - 任何超时、未知供应商结果、错误计费或身份不一致立即停止并关闭开关，保留账本和隔离记录；不得清账、切换对象、自动重发或绕过预算。真实账号创建、短信费用、功能开关开启和生产初始化均需事先分别明确授权。
