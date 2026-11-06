@@ -81,6 +81,8 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
         if (route === 'send-code') {
           fields(input, ['phone', 'purpose', 'turnstile_token'], ['reauth_token', 'challenge_id']);
           phone(input.phone);
+          // Relay sends must remain recoverable even from an old cached login page.
+          if (loginOnly && env?.PHONE_SMS_PROVIDER === 'relay' && !Object.hasOwn(input, 'challenge_id')) invalid();
           if (Object.hasOwn(input, 'challenge_id')) operationId(input.challenge_id);
           if (loginOnly && !['login', 'reauth'].includes(input.purpose)) throw new PhoneAuthError('IDENTITY_DISABLED', 503);
           if (!['login', 'bind', 'change', 'unbind', 'reauth'].includes(input.purpose) ||

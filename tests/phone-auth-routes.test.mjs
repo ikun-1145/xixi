@@ -36,7 +36,7 @@ function fixture(options = {}) {
   };
   const scheduled = () => 'scheduled';
   const original = { scheduled, fetch: async request => { calls.push(['delegate', request]); return new Response(await request.text()); } };
-  const worker = createPhoneAuthWorker(original, hooks, { identityFactory: () => identity, sms });
+  const worker = createPhoneAuthWorker(original, hooks, { identityFactory: () => identity, sms, loginOnly: options.loginOnly || false });
   const env = { PHONE_IDENTITY_ENABLED: 'true', test: true };
   const invoke = async (path, body = {}, opts = {}) => {
     const response = await worker.fetch(new Request(`https://api.sunland.dev${path}`, { method: opts.method || 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer raw-existing-jwt', 'CF-Connecting-IP': '192.0.2.1', ...opts.headers }, body: JSON.stringify(body) }), env, {});
@@ -74,6 +74,19 @@ test('send accepts and forwards a UUIDv4 recovery challenge without changing the
   const invalid = await invoke('/v1/phone/send-code', { phone: PHONE, purpose: 'login', turnstile_token: 'captcha', challenge_id: '12345678-1234-1234-8234-123456789abc' });
   assert.equal(invalid.response.status, 400);
   assert.equal(calls.filter(x => x[0] === 'send').length, 1);
+});
+
+test('standalone relay rejects legacy sends before SMS while preserving new and aliyun clients', async () => {
+  const f = fixture({ loginOnly: true }); f.env.PHONE_SMS_PROVIDER = 'relay';
+  const body = { phone: PHONE, purpose: 'login', turnstile_token: 'captcha' };
+  const old = await f.invoke('/v1/phone/send-code', body);
+  assert.equal(old.response.status, 400); assert.equal(old.data.code, 'INVALID_REQUEST');
+  assert.equal(f.calls.some(x => x[0] === 'send'), false);
+  assert.equal((await f.invoke('/v1/phone/send-code', { ...body, challenge_id: UUID })).data.success, true);
+  f.env.PHONE_SMS_PROVIDER = 'aliyun';
+  assert.equal((await f.invoke('/v1/phone/send-code', body)).data.success, true);
+  const other = fixture(); other.env.PHONE_SMS_PROVIDER = 'relay';
+  assert.equal((await other.invoke('/v1/phone/send-code', body)).data.success, true);
 });
 
 test('SMS check precedes identity login and signs only authoritative identity using existing JWT helper', async () => {
