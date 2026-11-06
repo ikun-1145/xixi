@@ -8,7 +8,7 @@
 
 Secret 名称、Key ID 或白名单格式存在不证明 Secret 值正确、白名单与当前 HMAC key 匹配、或 keyring 的 `v1` 与备份一致。必须从安全保管源核对，不轮换、不输出、不将其写入 PR。数据库初始化前需具备独立可恢复的密钥备份及经完整恢复验证的备份；历史备份验证有约束失败，不能直接认定可恢复。本机加密密钥备份文件的目录/文件权限已检查为 700/600；其余核心密钥未找到同等本机备份。仅使用合成密钥验证了加密、校验和解密流程，未读取或核对真实密钥，须由保管人独立确认所有密钥的安全备份与恢复。
 
-生产版本 `adef974d-63eb-4cdb-aeb9-dc38b6309cd4` 以 xixi 本地 `bb0dca1` 的独立构建部署；本轮只读取回当前生产模块并计算 SHA-256，与该提交从原检出位置重建的 bundle 均为 `4686354414700d421873a33d469bc527582015c7c0fea13f4f48d16519de8382`。本 PR 后续增加 challenge 恢复相关 Worker 改动，尚未部署；生产版本不包含这些改动。不同检出目录的本地构建只有源码路径注释不同，因此原始 bundle 摘要不同；去除这些路径注释后已确认构建文本一致。
+2026-11-06 已部署独立 Worker 版本 `9ccf310e-6009-47f2-957a-d4b785f64823`，代码对应 `906d5d3`，100% 流量；既有 Secret 名称、三个 `v1` Key ID、relay、canary 和三个关闭开关均复核通过，DO 命名空间仍无对象。关闭入口的 Pages 生产部署 `62a3e502-a98d-45ee-8c51-4bf32536156a` 对应同一提交，真实 `sunland.dev/login` 返回新版登录页且手机入口关闭；版本化客户端返回 JavaScript，内容摘要与提交一致。网页旧生产回滚点为 Pages 部署 `bee494e8-d0d0-48aa-92ac-74aa290f8182`，Worker 回滚点为 `adef974d-63eb-4cdb-aeb9-dc38b6309cd4`；后者不包含旧客户端保护，回滚后必须保持功能关闭。生产状态会随时间变化，实际操作前重新只读检查。
 
 ## 数据库初始化方案（未执行）
 
@@ -42,8 +42,8 @@ RETURNING singleton;
 
 - 用户须确认单条真实含费上界不超过策略的 `unitCostMicros=200000`，以及 relay 不会在内部产生超出预算的重复计费。Canary 最多三次**预留**，失败也不退；未知发送结果永久隔离号码，不自动重试。
 - 确认 relay 支持 POST JSON `api_key`、`phone`、`code`、`scene`，数值 `ok=1` 表示供应商已接受发送；确认 `scene=login` 模板可用于登录、首次注册及手机号再验。2026-11-06 无密钥、无手机号的 HTTPS POST 空对象返回 401；Mock 覆盖请求协议及失败、超时和不重试，真实凭据、模板和计费尚未验证。
-- 确认实际 Turnstile widget 与 Secret 配对，真实 `sunland.dev` origin、hostname 和 `phone_login` action 一致。2026-11-06 Cloudflare 只读查询确认现有非交互 widget 的公开 sitekey 已写入本 PR 登录页，允许 `sunland.dev`；Worker 配置的 hostname 为 `sunland.dev`，客户端 action 与服务端按 purpose 校验一致。仅有 Secret 绑定名称无法证明与 widget 配对，真实 origin 的 widget→Siteverify 尚未验收；公开站点内容本轮无法确认，不能假设 UI 已启用。
-- 独立 relay 入口拒绝不提供客户端 challenge 的旧发送请求，拒绝发生在 DO 与预算预留之前；阿里云和历史 challenge 校验保持兼容。本 PR 将发送总超时调整为 20 秒，发送前生成 challenge 并保存在同标签页 sessionStorage（不含手机号或验证码）；丢失响应时禁止自动重发，重新输入相同号码可继续验证。服务端在事务中检查 challenge 冲突，发送中校验不会消耗错误次数。旧生产 Worker 不支持客户端 challenge：须先经授权部署兼容 Worker，再发布网页；本 PR 未部署。
+- 确认实际 Turnstile widget 与 Secret 配对，真实 `sunland.dev` origin、hostname 和 `phone_login` action 一致。2026-11-06 Cloudflare 只读查询确认现有非交互 widget 的公开 sitekey 已写入本 PR 登录页，允许 `sunland.dev`；Worker 配置的 hostname 为 `sunland.dev`，客户端 action 与服务端按 purpose 校验一致。仅有 Secret 绑定名称无法证明与 widget 配对，真实 origin 的 widget→Siteverify 尚未验收；真实公开登录页已核对 UI 关闭，不得假设真实 widget 或生产 Secret 配对已验证。
+- 独立 relay 入口拒绝不提供客户端 challenge 的旧发送请求，拒绝发生在 DO 与预算预留之前；阿里云和历史 challenge 校验保持兼容。本 PR 将发送总超时调整为 20 秒，发送前生成 challenge 并保存在同标签页 sessionStorage（不含手机号或验证码）；丢失响应时禁止自动重发，重新输入相同号码可继续验证。服务端在事务中检查 challenge 冲突，发送中校验不会消耗错误次数。兼容 Worker 和默认关闭的网页均已按上述版本部署。
 - 仅同标签页刷新或返回可恢复；关闭标签页、清理存储、跨标签页、设备丢失，以及中转接口自身超时后的服务端隔离，均不能保证恢复。由 opener 打开的标签页可能克隆旧 sessionStorage：一页消费后另一页仍可能被旧句柄阻止；不能将非原子的 localStorage 读写当作跨页互斥，也不能按手机号公开查询 challenge。未知结果、过期后仍阻止页面重发，须人工核实供应商状态和账本；不要用清理浏览器存储绕过号码锁。验证码校验结果未知时先核实登录状态，不重新发送。模拟浏览器不等于真实 origin 的端到端验收。
 - 本 PR 的登录页手机号入口默认关闭，已填入公开 Turnstile sitekey。正式验收前需确认已授权的站点、sitekey 与 Secret 配对、生产 hostname 和 action，且在明确授权后才可配置入口。账号设置页不在本 PR，绑定、换绑、再验证和删除页面尚未接入并未验收。
 - 获单独授权后仅使用事先确认的唯一号码、真实 origin 和 canary 白名单，预期最多三次预留。先进行一次注册发送与校验，验证仅一次消费、身份创建和既有 JWT/状态兼容；至少等待现有 600 秒号码锁后再做同号登录。验收过程不记录号码、验证码、Token、请求体或摘要。
