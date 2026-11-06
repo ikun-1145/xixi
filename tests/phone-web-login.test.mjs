@@ -78,3 +78,15 @@ test('phone client uses a recovery-specific cache key and stays disabled by defa
  assert.match(html,/p\/js\/phone-auth\.js\?v=20261106-recovery-1/);
  assert.match(html,/<meta name="sunland-phone-ui-enabled" content="false">/);
 });
+
+test('expired phone send requires waiting and explicit review before local recovery is cleared', t=>{
+ const h=harness(), d=h.w.document;t.after(()=>h.dom.window.close());const key='sunland.phone.pending.v1';
+ const pending={version:1,id:crypto.randomUUID(),purpose:'login',expiresAt:Date.now()-299000};
+ h.w.sessionStorage.setItem(key,JSON.stringify(pending));d.querySelector('#phoneLoginTab').click();
+ const button=d.querySelector('#reviewPhoneSendBtn'),send=d.querySelector('#sendPhoneCodeBtn');
+ assert.equal(button.hidden,true);assert.equal(send.disabled,true);
+ pending.expiresAt=Date.now()-301000;h.w.sessionStorage.setItem(key,JSON.stringify(pending));
+ d.querySelector('#emailLoginTab').click();d.querySelector('#phoneLoginTab').click();assert.equal(button.hidden,false);
+ h.w.confirm=()=>false;button.click();assert.ok(h.w.sessionStorage.getItem(key));assert.equal(send.disabled,true);
+ h.w.confirm=()=>true;button.click();assert.equal(h.w.sessionStorage.getItem(key),null);assert.equal(send.disabled,false);assert.equal(h.calls.length,0);
+});

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <script defer src="p/js/site-i18n-extra.js?v=20261106-phone-2"></script>
+  <script defer src="p/js/site-i18n-extra.js?v=20261106-phone-3"></script>
   <script defer src="p/js/site-i18n.js?v=20260808-2"></script>
 
 <title>登录 Sunland AI · Beta</title>
@@ -407,6 +407,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
           <label for="phoneCodeInput" data-phone-copy="短信验证码"></label>
           <div class="code-row"><input id="phoneCodeInput" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" aria-label="短信验证码"><button id="sendPhoneCodeBtn" type="button"></button></div>
         </div>
+        <button id="reviewPhoneSendBtn" type="button" hidden data-phone-copy="检查后继续"></button>
       </div>
       <div class="field" id="emailLoginField">
         <label for="emailInput">邮箱</label>
@@ -546,6 +547,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
     const phoneInput = modal.querySelector('#phoneInput');
     const phoneCodeInput = modal.querySelector('#phoneCodeInput');
     const phoneSend = modal.querySelector('#sendPhoneCodeBtn');
+    const phoneReview = modal.querySelector('#reviewPhoneSendBtn');
     let loginMode = 'email', loginGeneration = 0, phonePending = false, challenge = null, phoneNotice = null;
     const captureLogin = () => ({ generation: loginGeneration, token: localStorage.getItem('token'), mode: loginMode });
     const currentLogin = attempt => attempt.generation === loginGeneration && attempt.token === localStorage.getItem('token') && attempt.mode === loginMode && modal.isConnected;
@@ -560,8 +562,9 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       phoneInput.setAttribute('aria-label', tr('中国大陆手机号'));
       phoneCodeInput.setAttribute('aria-label', tr('短信验证码'));
       const seconds = phoneAuth.cooldown(phoneInput.value);
-      let hasPending = true;
-      try { hasPending = !!phoneClient.recovery('login'); } catch {}
+      let hasPending = true, pending = null;
+      try { pending = phoneClient.recovery('login'); hasPending = !!pending; } catch {}
+      phoneReview.hidden = !pending || !pending.expired || Date.now() < pending.review_after || phonePending;
       phoneSend.disabled = phonePending || seconds > 0 || hasPending;
       phoneSend.textContent = phonePending ? tr('正在处理…') : seconds > 0 ? `${seconds}${tr('秒后重新发送')}` : tr('发送验证码');
       if (loginMode === 'phone') loginBtn.textContent = tr('登录或注册');
@@ -593,6 +596,14 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       } catch {} // An incomplete number or unavailable storage must not unlock sending.
       renderPhone();
     });
+    phoneReview.onclick = () => {
+      if (phoneReview.hidden || phonePending) return;
+      if (!window.confirm(tr('请先核实上次短信和登录结果。继续后可再次请求验证码，服务端仍会限制重复发送。确定已核实吗？'))) return;
+      try {
+        phoneClient.acknowledgeReviewed('login', true); challenge = null; phoneCodeInput.value = '';
+        phoneNotice = null; msg.textContent = ''; renderPhone();
+      } catch (error) { phoneMessage('', error); renderPhone(); }
+    };
     phoneCodeInput.addEventListener('keydown', event => { if (event.key === 'Enter') loginBtn.click(); });
     phoneSend.onclick = async () => {
       if (phonePending || loginMode !== 'phone') return;

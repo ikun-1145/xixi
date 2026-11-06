@@ -6,6 +6,8 @@
   "use strict";
 
   const generatedCatalog = {
+  "检查后继续": {"zh-Hant":"檢查後繼續","en":"Continue after checking","ja":"確認後に続行","ko":"확인 후 계속","es":"Continuar tras comprobar"},
+  "请先核实上次短信和登录结果。继续后可再次请求验证码，服务端仍会限制重复发送。确定已核实吗？": {"zh-Hant":"請先核實上次簡訊和登入結果。繼續後可再次要求驗證碼，伺服器仍會限制重複傳送。確定已核實嗎？","en":"Check the previous SMS and sign-in result first. Continuing allows another code request; server-side restrictions still apply. Have you checked?","ja":"前回のSMSとログイン結果を確認してください。続行すると再度コードを要求できますが、サーバーの制限は引き続き適用されます。確認しましたか？","ko":"이전 SMS와 로그인 결과를 먼저 확인하세요. 계속하면 인증번호를 다시 요청할 수 있으며 서버 제한은 유지됩니다. 확인했나요?","es":"Comprueba primero el SMS anterior y el resultado del acceso. Al continuar podrás solicitar otro código; las restricciones del servidor siguen vigentes. ¿Lo has comprobado?"},
   "暂未开放手机号新用户注册": {"zh-Hant":"暫未開放手機號碼新用戶註冊","en":"New phone registrations are not available yet","ja":"電話番号による新規登録はまだ利用できません","ko":"전화번호 신규 가입은 아직 지원되지 않습니다","es":"El registro con teléfono aún no está disponible"},
   "本次短信验收额度已用完": {"zh-Hant":"本次簡訊驗收額度已用完","en":"The SMS acceptance limit has been reached","ja":"SMS検証の上限に達しました","ko":"SMS 검증 한도에 도달했습니다","es":"Se alcanzó el límite de pruebas SMS"},
   "当前号码不在短信验收范围": {"zh-Hant":"目前號碼不在簡訊驗收範圍","en":"This number is not authorized for SMS acceptance","ja":"この番号はSMS検証の対象外です","ko":"이 번호는 SMS 검증 대상이 아닙니다","es":"Este número no está autorizado para pruebas SMS"},
