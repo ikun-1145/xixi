@@ -38,6 +38,24 @@ class OperationsTests(unittest.TestCase):
             self.assertEqual(conn.rollbacks, int(expected == 'rejected'))
             self.assertIn('pg_advisory_xact_lock(20261024, 2)', conn.executed[2][0])
             self.assertEqual(conn.executed[-1][1], ('v1', 'a' * 64))
+    def test_logging_guard_uses_transaction_local_limits_and_rejects_unsafe_extensions(self):
+        class Settings(Connection):
+            def fetchone(self): return self.rows
+        safe = Settings(('0', '0', 'read committed', None, 'off'))
+        db.secure_logging(safe)
+        self.assertEqual([q for q, _ in safe.executed[:2]], [
+            'SET LOCAL log_parameter_max_length = 0', 'SET LOCAL log_parameter_max_length_on_error = 0'])
+        class AutoExplain(Settings):
+            def execute(self, query, params=None):
+                super().execute(query, params)
+                if query == 'SET LOCAL auto_explain.log_parameter_max_length = 0':
+                    self.rows = ('0', '0', 'read committed', '0', None)
+                return self
+        extension = AutoExplain(('0', '0', 'read committed', '-1', None))
+        db.secure_logging(extension)
+        self.assertIn('SET LOCAL auto_explain.log_parameter_max_length = 0', [q for q, _ in extension.executed])
+        for row in [('0','0','repeatable read',None,None), ('0','0','read committed','-1',None), ('0','0','read committed',None,'on')]:
+            with self.assertRaises(RuntimeError): db.secure_logging(Settings(row))
     def test_uncertain_commit_is_not_retried(self):
         conn = Connection([(True,)], fail_commit=True)
         with self.assertRaises(RuntimeError): db.initialize(conn, 'a' * 64)

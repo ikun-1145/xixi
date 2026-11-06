@@ -21,6 +21,20 @@ WHERE singleton = true AND lookup_key_id IS NULL AND lookup_check IS NULL
 RETURNING singleton'''
 
 
+def secure_logging(conn):
+    # LOCAL confines both changes to this transaction. Do not suppress audit logs.
+    # An unprivileged operator must fail closed before sending sensitive parameters.
+    conn.execute("SET LOCAL log_parameter_max_length = 0")
+    conn.execute("SET LOCAL log_parameter_max_length_on_error = 0")
+    settings = conn.execute("SELECT current_setting('log_parameter_max_length'), current_setting('log_parameter_max_length_on_error'), current_setting('transaction_isolation'), current_setting('auto_explain.log_parameter_max_length', true), current_setting('pgaudit.log_parameter', true)").fetchone()
+    if settings[3] not in (None, '0'):
+        # auto_explain can log bind parameters independently of server log limits.
+        conn.execute("SET LOCAL auto_explain.log_parameter_max_length = 0")
+        settings = conn.execute("SELECT current_setting('log_parameter_max_length'), current_setting('log_parameter_max_length_on_error'), current_setting('transaction_isolation'), current_setting('auto_explain.log_parameter_max_length', true), current_setting('pgaudit.log_parameter', true)").fetchone()
+    if settings[:3] != ('0', '0', 'read committed') or settings[3] not in (None, '0') or settings[4] not in (None, 'off'):
+        raise RuntimeError('unsafe logging or transaction isolation')
+
+
 def initialize(conn, digest):
     conn.execute("SET LOCAL lock_timeout = '10s'")
     conn.execute("SET LOCAL statement_timeout = '20s'")
@@ -41,24 +55,20 @@ def main():
         return 2
     try:
         import psycopg
-        key = sys.stdin.buffer.read(4097)
-        if not 32 <= len(key) <= 4096 or b'\n' in key or b'\r' in key:
-            raise ValueError('invalid key input')
-        key.decode('utf-8')
-        digest = hmac.new(key, b'sunland-phone-index-canary:v1\0', hashlib.sha256).hexdigest()
-        del key
         with psycopg.connect(host=HOST, dbname='postgres', sslmode='verify-full', connect_timeout=10) as conn:
-            # Do not send the digest unless server parameter logging is demonstrably disabled.
-            settings = conn.execute("SELECT current_setting('log_statement'), current_setting('log_parameter_max_length'), current_setting('log_parameter_max_length_on_error'), current_setting('transaction_isolation')").fetchone()
-            if settings != ('none', '0', '0', 'read committed'):
-                conn.rollback()
-                print('Stopped: database logging or isolation settings need independent review.')
-                return 1
+            secure_logging(conn)
+            key = sys.stdin.buffer.read(4097)
+            if not 32 <= len(key) <= 4096 or b'\n' in key or b'\r' in key:
+                raise ValueError('invalid key input')
+            key.decode('utf-8')
+            digest = hmac.new(key, b'sunland-phone-index-canary:v1\0', hashlib.sha256).hexdigest()
+            del key
             result = initialize(conn, digest)
             if result != 'committed':
                 print('Stopped: initialization preconditions did not match; transaction rolled back.')
                 return 1
             # Only a boolean leaves the connection; never display the digest or parameters.
+            secure_logging(conn)  # COMMIT resets LOCAL settings; verification needs a new guard.
             match = conn.execute('SELECT lookup_key_id = %s AND lookup_check = %s FROM public.sunland_phone_auth_config WHERE singleton', ('v1', digest)).fetchone()
             if match != (True,):
                 print('Commit completed; verification inconclusive. Stop and investigate without retrying.')
