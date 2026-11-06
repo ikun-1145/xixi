@@ -73,3 +73,8 @@ test('real language catalog translates phone login labels and authentication err
  assert.match(h.w.document.querySelector('.subtitle').textContent,/account/i);
  assert.notEqual(h.w.SunlandPhoneAuth.errorText({code:'CODE_INVALID'}),'验证码错误或已过期，请重新获取');
 });
+
+test('phone client uses a recovery-specific cache key and stays disabled by default',()=>{
+ assert.match(html,/p\/js\/phone-auth\.js\?v=20261106-recovery-1/);
+ assert.match(html,/<meta name="sunland-phone-ui-enabled" content="false">/);
+});

@@ -37,7 +37,7 @@ async function fixture() {
   const fetchImpl = async (url, options) => {
     h.calls.push(new URL(url).hostname);
     if (new URL(url).hostname === 'challenges.cloudflare.com') return Response.json({ success: true,
-      hostname: 'sunland.dev', action: `phone_${JSON.parse(options.body).response}`, challenge_ts: new Date(h.now).toISOString() });
+      hostname: 'sunland.dev', action: `phone_${JSON.parse(options.body).response}`, challenge_ts: new Date(h.now).toISOString(), ...(h.turnstileResponse || {}) });
     if (new URL(url).hostname === 'relay.invalid') {
       h.messages.push(JSON.parse(options.body));
       return h.reply ? h.reply(options) : Response.json({ ok: 1, msg: '验证码已发送', request_id: 'synthetic' });
@@ -57,6 +57,15 @@ async function fixture() {
   h.row = id => h.storage.data.get('t:challenge:' + id);
   return h;
 }
+
+test('Turnstile rejects wrong hostname, action and expiry before relay or budget reservation', async () => {
+  for (const response of [{hostname:'other.example'}, {action:'phone_reauth'},
+    {challenge_ts:new Date(START - 301000).toISOString()}, {success:false}]) {
+    const h = await fixture(); h.turnstileResponse = response;
+    await assert.rejects(h.send(), {code:'CAPTCHA_FAILED'});
+    assert.equal(h.messages.length, 0); assert.equal(h.storage.data.get(LEDGER_KEY).totalMicros, 0);
+  }
+});
 
 test('client challenge survives a lost send response and pending checks never consume attempts', async () => {
   const h = await fixture(); const id = crypto.randomUUID();
