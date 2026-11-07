@@ -70,6 +70,10 @@ try:
             conn.execute(trigger_fixture)
         conn.commit()
         conn.execute(migration)
+        conn.commit()
+        # Exercise the exact pooler probe against two independent, synthetic sessions.
+        with connect() as first, connect() as second:
+            op.probe_session_locks(first, second)
         # Actual privilege configuration and phone schema, no customer profile schema assumed.
         assert conn.execute("select count(*) from pg_tables where schemaname='public' and tablename like 'sunland_phone_%' and rowsecurity").fetchone()[0] == 5
         conn.execute("insert into public.user_profiles(user_id) values ('synthetic')")

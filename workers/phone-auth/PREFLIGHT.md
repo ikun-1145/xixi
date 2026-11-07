@@ -52,7 +52,7 @@ RETURNING singleton;
 
 ## 待授权的操作脚本与网页切换
 
-以下脚本已准备但**本轮未执行**。只可在独立授权、备份恢复验证、目标与开关只读复核全部完成后使用。仅安装可信来源的 `psycopg` 3，配置受保护的 libpq `PGUSER`、`PGPASSFILE` 和 TLS 根证书；密码不放进命令行。数据库脚本固定连接本项目直连主机并要求 `sslmode=verify-full`，要求当前连接隔离级别为 `read committed`；脚本仅用 `SET LOCAL` 将参数日志上限设为零，并检查 auto_explain、pgaudit，权限不足或设置不安全即拒绝，不更改全局日志设置。2026-11-06 只读权限函数未显示对参数日志的显式 SET 授权，但随后在 Supabase 管理连接中，以不含敏感参数的事务实测三个 SET LOCAL（普通日志、错误日志与 auto_explain 参数上限）均可设为 0，pgaudit 参数记录为 off、隔离级别为 read committed；ROLLBACK 后原有设置恢复，全局配置未改。权限函数的静态结果不能替代会话实测；实际初始化使用的 psycopg 直连及其角色尚未验证，脚本必须逐事务重做检查，不能绕过。本机只读网络测试发现该直连主机仅返回 IPv6 地址，而本机无法连接其 5432 端口；未来需在可访问该主机的安全 IPv6 环境运行，不能关闭 TLS 校验或直接换用未经验收的连接池。以下输入重定向路径须为权限 600 的安全文件或受控文件描述符，文件不得有尾随换行；路径不含密钥本身：
+以下脚本已准备但**本轮未执行**。只可在独立授权、备份恢复验证、目标与开关只读复核全部完成后使用。仅安装可信来源的 `psycopg` 3，配置受保护的 libpq `PGUSER`、`PGPASSFILE` 和 TLS 根证书；密码不放进命令行。数据库脚本固定连接本项目直连主机并要求 `sslmode=verify-full`，要求当前连接隔离级别为 `read committed`；脚本仅用 `SET LOCAL` 将参数日志上限设为零，并检查 auto_explain、pgaudit，权限不足或设置不安全即拒绝，不更改全局日志设置。2026-11-06 只读权限函数未显示对参数日志的显式 SET 授权，但随后在 Supabase 管理连接中，以不含敏感参数的事务实测三个 SET LOCAL（普通日志、错误日志与 auto_explain 参数上限）均可设为 0，pgaudit 参数记录为 off、隔离级别为 read committed；ROLLBACK 后原有设置恢复，全局配置未改。权限函数的静态结果不能替代会话实测；实际初始化使用的 psycopg 直连及其角色尚未验证，脚本必须逐事务重做检查，不能绕过。本机只读网络测试发现该直连主机仅返回 IPv6 地址，而本机无法连接其 5432 端口；也可显式选择下述 Session Pooler，须先通过真实连接探测；不得关闭 TLS 校验。以下输入重定向路径须为权限 600 的安全文件或受控文件描述符，文件不得有尾随换行；路径不含密钥本身：
 
 ```sh
 python3 workers/phone-auth/operations/initialize-db.py --execute < /secure/path/existing-lookup-key
@@ -77,6 +77,10 @@ python3 workers/phone-auth/operations/turnstile-probe.py --admin-fd 3 --token-fd
 
 输出 `verified` 表示 Siteverify 成功、hostname/action/时间窗匹配；`failed` 包括超时和未知状态，不重试。若首次已确认成功、同一个 token 未更换，且三个开关仍确认关闭，可单独以相同 FD 输入加 `--expect-replay` 验证二次拒绝；`rejected` 只证明返回拒绝，需结合首次成功与开关状态判读。不得用测试密钥代替生产配对。诊断结束后应评估移除此额外管理入口。
 
-2026-11-07：六个 profile 触发器及七个直接依赖表已在 PGlite 使用合成数据进行关联测试，函数与列目录摘要及 RLS 开关经只读 catalog 对照；这是单后端测试，不是完整生产 Schema、ACL、PostgreSQL 并发或备份恢复证明。IPv4 Session Pooler 须从项目 Connect 面板获得准确主机及可信 CA，使用 5432 和 `verify-full`；现有初始化脚本只允许直连，尚未验证通过 Pooler 的会话身份、日志设置与锁，不得改用未经验证的连接。
+2026-11-07：六个 profile 触发器及七个直接依赖表已在 PGlite 使用合成数据进行关联测试，函数与列目录摘要及 RLS 开关经只读 catalog 对照；这是单后端测试，不是完整生产 Schema、ACL、PostgreSQL 并发或备份恢复证明。用户已确认本项目 IPv4 Session Pooler 的主机、端口和用户名；真实 CA、会话身份、日志设置与锁仍需在实际连接上验证。
 
-2026-11-07：GitHub Actions `Phone auth isolated PostgreSQL acceptance` 使用临时 PostgreSQL 17 与 psycopg，在同一隔离实例完成手机认证迁移、六个直接相关触发器、七张重建依赖表、并发初始化、RPC 锁、非空拒绝、RLS 和会话日志保护验收；只使用仓库中的已审查结构 fixture 和合成数据。运行记录：`https://github.com/ikun-1145/xixi/actions/runs/42308802804`。该验收仍不等同完整生产 Schema、全部 ACL/扩展或真实备份恢复。Session Pooler 的准确主机和 CA 需从项目 Connect 面板核实；在真实会话中验证身份、TLS、锁和日志前，不得修改脚本绕开直连保护。
+2026-11-07：GitHub Actions `Phone auth isolated PostgreSQL acceptance` 使用临时 PostgreSQL 17 与 psycopg，在同一隔离实例完成手机认证迁移、六个直接相关触发器、七张重建依赖表、并发初始化、RPC 锁、非空拒绝、RLS 和会话日志保护验收；只使用仓库中的已审查结构 fixture 和合成数据。运行记录：`https://github.com/ikun-1145/xixi/actions/runs/42308802804`。该验收仍不等同完整生产 Schema、全部 ACL/扩展或真实备份恢复。Session Pooler 实际连接的 TLS、身份、日志及锁行为仍未验证，隔离测试不替代真实连接验收。
+
+2026-11-07：初始化脚本增加显式 `--check-session-pooler` 只读探测与 `--execute --session-pooler` 可选路径，固定用户确认的项目主机、5432、数据库和用户名，强制 `verify-full`、核对后端身份并在读取密钥前验证日志保护。探测使用两个只读事务、随机 advisory 锁及四张表的非等待 ACCESS SHARE 锁，事务结束回滚；不能代替隔离环境对初始化强锁的验收。Pooler 会话模式仍需结合实际连接信息确认，后端 PID 连续性检查单独不足以证明池模式。本机尚缺可信项目 CA 与受保护的 PostgreSQL passfile，真实 psycopg 连接未成功验证。
+
+通过安全渠道安装项目可信 CA，并以 libpq 标准格式准备当前用户所有、权限 600 的 `PGPASSFILE`；不得输出文件内容。配置 `PGSSLROOTCERT` 指向 CA 文件，避免设置 `PGPASSWORD`、`PGSERVICE`、`PGSERVICEFILE` 和 `PGOPTIONS`，然后在受控环境运行 `python3 workers/phone-auth/operations/initialize-db.py --check-session-pooler`。此探测不会读取身份密钥或初始化；失败时不降级 TLS。即使探测通过，生产初始化仍须独立满足真实密钥备份恢复、完整隔离验收与现有前置条件。

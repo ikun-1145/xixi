@@ -56,6 +56,39 @@ class OperationsTests(unittest.TestCase):
         self.assertIn('SET LOCAL auto_explain.log_parameter_max_length = 0', [q for q, _ in extension.executed])
         for row in [('0','0','repeatable read',None,None), ('0','0','read committed','-1',None), ('0','0','read committed',None,'on')]:
             with self.assertRaises(RuntimeError): db.secure_logging(Settings(row))
+    def test_pooler_target_is_explicit_tls_and_private_passfile_only(self):
+        import os, tempfile
+        from types import SimpleNamespace
+        with tempfile.TemporaryDirectory() as directory:
+            passfile = Path(directory) / 'passfile'
+            passfile.write_text('synthetic')
+            passfile.chmod(0o600)
+            with patch.dict(os.environ, {'PGPASSFILE': str(passfile)}, clear=True):
+                params = db.pooler_parameters()
+                self.assertEqual(params, {'host': db.POOLER_HOST, 'port': 5432, 'user': db.POOLER_USER,
+                                          'dbname': 'postgres', 'sslmode': 'verify-full', 'connect_timeout': 10})
+                for variable in ('PGPASSWORD', 'PGSERVICE', 'PGSERVICEFILE', 'PGOPTIONS'):
+                    with patch.dict(os.environ, {variable: 'synthetic'}):
+                        with self.assertRaises(ValueError): db.pooler_parameters()
+                passfile.chmod(0o644)
+                with self.assertRaises(ValueError): db.pooler_parameters()
+        class Identity:
+            info = SimpleNamespace(host=db.POOLER_HOST, port=5432, user=db.POOLER_USER, dbname='postgres', ssl_in_use=True)
+            def execute(self, query): return self
+            def fetchone(self): return (True, True, True)
+        valid = Identity()
+        db.verify_pooler_identity(valid)
+        for field, value in [('host', 'wrong.example'), ('port', 6543), ('user', 'wrong'), ('dbname', 'wrong'), ('ssl_in_use', False)]:
+            candidate = Identity()
+            candidate.info = SimpleNamespace(**vars(valid.info))
+            setattr(candidate.info, field, value)
+            with self.assertRaises(ValueError): db.verify_pooler_identity(candidate)
+        class BadIdentity(Identity):
+            def fetchone(self): return (True, False, True)
+        with self.assertRaises(ValueError): db.verify_pooler_identity(BadIdentity())
+    def test_invalid_mode_never_connects_or_reads_lookup_key(self):
+        with patch.object(db.sys, 'argv', ['initialize-db.py', '--session-pooler']):
+            self.assertEqual(db.main(), 2)
     def test_uncertain_commit_is_not_retried(self):
         conn = Connection([(True,)], fail_commit=True)
         with self.assertRaises(RuntimeError): db.initialize(conn, 'a' * 64)
