@@ -1,0 +1,26 @@
+{
+  "schema": 1,
+  "sourceRepository": "sunland_ai_app",
+  "sourceCommit": "3398d8801efe93a2063536b0a5d460974a8fc65f",
+  "files": {
+    "src/admin.js": "3b48339211c0ec32127ae3611fc31a44999fc50509e23efd2b35bb8055cfc2b8",
+    "src/ai-quota.js": "6434e1600d3a55bb891ea5148a651265ad95095f914ddadf57e1cf25b81c30be",
+    "src/assistant-gallery.js": "36712e3aa8bea484dc5a33001820b8017afb6c041cd67d1d9abceb67c9a882c6",
+    "src/chat.js": "48d5ac6015693940c598e7d32068da9484bbf7037b8981a20f1aa7bd76918f27",
+    "src/email-otp.js": "5c983b0f9d7eb934cce35e18c1c19812993d76df30bc7e9b43ba3bc3927f5e4e",
+    "src/index.js": "9d5f864416683bceec9a85745a469054c6d9bf759fcd99a5717d6b94138d7362",
+    "src/oc-b2-smoke.js": "d82974b4aefd3738c014f18defbd939c7ec6fa707a80255903999305b92f3be9",
+    "src/oc-metadata.js": "fde1e9b9e8bec93269603f7347492bab72ce75fd19cb9e48988d0ea4e49a305c",
+    "src/oc-storage.js": "92a9c1505406779768a0f094e3fb61cfa82f8491bd50cd3f4426846ab38e5bae",
+    "src/oc.js": "ac094d1ff791f108c4d3de5a34b21cffb0bfe73b8b30a3119f58f65c3b788864",
+    "src/onboarding.js": "8762629eb23926159df245854d15a9ec034fcad6eadb3244e7d3ef91380eec11",
+    "src/otp-maintenance-gateway.js": "48187ae7eb6259a586fff2d07c6648bb6fb07e716abdb7c55af2f208ac47f73a",
+    "src/release-evidence.js": "6fe12fc21cc381cbe6ecfffd9de260a9de65b46fd4a9d72ce2fdf24d65af11af",
+    "src/schema-evidence.js": "ca32896ab59d67f07275a0e81e2f7cddc97ab7a46a0288d45ca13af45e7097e4",
+    "src/staging-maintenance.js": "e7039f02aac622bff72a396b65d20952723fcb872262810e268d38ad88e2cd53",
+    "src/web-search.js": "ba699faa81b318c8cd79cfa9e7b023b9c308db58b3b3c27e0dfdc730221dc2bc",
+    "package.json": "85db04785a2e17bc71146786a367340d076afdb49a86bcc9f10bf41c6a176e18",
+    "package-lock.json": "4272acc22b893d6f42eaa5314564a323d2490406686878b8e473c31e7c0c7ce9"
+  },
+  "integration": "Temporary build-only helper exports; original files unchanged"
+}
