@@ -57,7 +57,7 @@ def pooler_parameters():
 
 def verify_pooler_identity(conn):
     info = conn.info
-    if (info.host, info.port, info.user, info.dbname, info.ssl_in_use) != (POOLER_HOST, 5432, POOLER_USER, 'postgres', True):
+    if (info.host, info.port, info.user, info.dbname, conn.pgconn.ssl_in_use) != (POOLER_HOST, 5432, POOLER_USER, 'postgres', True):
         raise ValueError('unexpected pooler connection')
     if conn.execute("SELECT current_user = 'postgres', session_user = 'postgres', current_database() = 'postgres'").fetchone() != (True, True, True):
         raise ValueError('unexpected backend identity')

@@ -73,16 +73,20 @@ class OperationsTests(unittest.TestCase):
                 passfile.chmod(0o644)
                 with self.assertRaises(ValueError): db.pooler_parameters()
         class Identity:
-            info = SimpleNamespace(host=db.POOLER_HOST, port=5432, user=db.POOLER_USER, dbname='postgres', ssl_in_use=True)
+            info = SimpleNamespace(host=db.POOLER_HOST, port=5432, user=db.POOLER_USER, dbname='postgres')
+            pgconn = SimpleNamespace(ssl_in_use=True)
             def execute(self, query): return self
             def fetchone(self): return (True, True, True)
         valid = Identity()
         db.verify_pooler_identity(valid)
-        for field, value in [('host', 'wrong.example'), ('port', 6543), ('user', 'wrong'), ('dbname', 'wrong'), ('ssl_in_use', False)]:
+        for field, value in [('host', 'wrong.example'), ('port', 6543), ('user', 'wrong'), ('dbname', 'wrong')]:
             candidate = Identity()
             candidate.info = SimpleNamespace(**vars(valid.info))
             setattr(candidate.info, field, value)
             with self.assertRaises(ValueError): db.verify_pooler_identity(candidate)
+        candidate = Identity()
+        candidate.pgconn = SimpleNamespace(ssl_in_use=False)
+        with self.assertRaises(ValueError): db.verify_pooler_identity(candidate)
         class BadIdentity(Identity):
             def fetchone(self): return (True, False, True)
         with self.assertRaises(ValueError): db.verify_pooler_identity(BadIdentity())
