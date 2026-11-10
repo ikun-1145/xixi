@@ -63,7 +63,10 @@ test("login, identity and request failures give a recoverable next action", () =
     appSource,
     /Sunland AI · Beta 暂时出了点问题，请稍后重试/u,
   );
-  assert.match(appSource, /请求失败（\$\{res\.status\}），请稍后重试/u);
+  assert.match(appSource, /await classifyAiResponseError\(res\)/u);
+  const errorPolicySource = fs.readFileSync(new URL("../ai/ai-request-errors.js", import.meta.url), "utf8");
+  assert.match(errorPolicySource, /请求失败，请稍后重试/u);
+  assert.match(errorPolicySource, /请求过于频繁或模型暂时限流/u);
   assert.match(appSource, /消息处理失败，请稍后重试/u);
 });
 

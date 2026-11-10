@@ -805,6 +805,7 @@ item.style.borderRadius = "12px";
 // 统一接口与各 Provider 通信；DeepSeek 现有逻辑保持不变，只有新增的 Sunland
 // 分支会用到这个 registry。
 import { createProviderRegistry } from './providers/registry.js';
+import { classifyAiResponseError } from './ai-request-errors.js';
 import { parseRemaining, readUsage, usageDate, watchUsage } from './usage.js';
 import {
   buildVisionMessages,
@@ -3841,18 +3842,13 @@ async function runDeepSeekRequest(requestContext) {
       }
       if (abortMissingTarget(requestContext)) return;
 
-      if (res.status === 429) {
-        if (currentId === requestContext.conversationId) showLimitModal();
-        const message = uiText("今天的使用次数已达上限，请稍后再试");
-        renderRequestError(requestContext, message);
-        return;
-      }
-
       if (!res.ok) {
-        const errText = await res.text();
-        console.error("API错误:", res.status, errText);
-        const message = uiText(`请求失败（${res.status}），请稍后重试`);
-        renderRequestError(requestContext, message);
+        const classified = await classifyAiResponseError(res);
+        if (abortMissingTarget(requestContext)) return;
+        if (classified.showLimitModal && currentId === requestContext.conversationId) {
+          showLimitModal();
+        }
+        renderRequestError(requestContext, uiText(classified.message));
         return;
       }
 

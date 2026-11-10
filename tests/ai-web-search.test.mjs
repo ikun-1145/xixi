@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import fs from 'node:fs';
 import { JSDOM } from 'jsdom';
+import { classifyAiResponseError } from '../ai/ai-request-errors.js';
 
 const read = path => fs.readFileSync(new URL(path, import.meta.url), 'utf8');
 const app = read('../ai/app.js');
@@ -25,7 +26,7 @@ function buttonHarness() {
 
 function requestHarness({ enabled = true, response, visible = true, cancel = false, deep = false } = {}) {
   const dom = new JSDOM('<div id="bubble"></div>');
-  const requests = [], messages = [], statuses = [], notices = [], errors = [], usage = [], labels = [], timers = [];
+  const requests = [], messages = [], statuses = [], notices = [], errors = [], usage = [], labels = [], timers = [], modals = [];
   const context = {
     webSearch: enabled, model: 'deepseek-v4-flash', deep,
     sessionGeneration: 0, userId: 'user-a', conversationId: 7, history: [{ role: 'user', content: '原始问题' }],
@@ -45,7 +46,7 @@ function requestHarness({ enabled = true, response, visible = true, cancel = fal
     parseRemaining: x => x === null ? null : Number(x), usageDate: () => '2026-10-19',
     renderRemaining: x => usage.push(x), refreshChatUsage: noop,
     abortMissingTarget: () => context.controller.signal.aborted,
-    currentId: 7, showLimitModal: noop,
+    currentId: 7, showLimitModal: () => modals.push(true), classifyAiResponseError,
     requestCoordinator: { canWrite: () => !context.controller.signal.aborted },
     ensureReasoningDisclosure: noop, ensureAssistantContent: x => x,
     renderSafeMarkdown: (target, text) => { target.textContent = text; },
@@ -68,7 +69,7 @@ function requestHarness({ enabled = true, response, visible = true, cancel = fal
   if (cancel) context.controller.abort();
   return {
     run: () => run(context), setVisible: value => { visible = value; },
-    context, requests, messages, statuses, notices, errors, usage, labels, timers, dom,
+    context, requests, messages, statuses, notices, errors, usage, labels, timers, modals, dom,
   };
 }
 
@@ -248,6 +249,26 @@ test('cancelled and hidden conversations never leak search status or answer into
   assert.equal(hidden.messages[0].content, '正常回复');
 });
 
+test('cancelling while an error response is parsed does not show a stale quota modal', async () => {
+  let resolveBody;
+  let parsingStarted;
+  const started = new Promise(resolve => { parsingStarted = resolve; });
+  const body = new Promise(resolve => { resolveBody = resolve; });
+  const response = {
+    ok: false, status: 429, headers: new Headers({ 'content-type': 'application/json' }),
+    clone: () => ({ json: () => { parsingStarted(); return body; } }),
+  };
+  const h = requestHarness({ response });
+  const running = h.run();
+  await started;
+  h.context.controller.abort();
+  resolveBody({ error: 'LIMIT' });
+  await running;
+  assert.deepEqual(h.modals, []);
+  assert.deepEqual(h.errors, []);
+  h.dom.window.close();
+});
+
 test('six-language catalog translates all search UI labels and cache version is updated', () => {
   const dom = new JSDOM('<html></html>', { runScripts: 'outside-only', url: 'https://sunland.dev' });
   dom.window.eval(read('../p/js/site-i18n-extra.js'));
@@ -259,7 +280,7 @@ test('six-language catalog translates all search UI labels and cache version is 
   }
   dom.window.SiteI18n.setLanguage('zh', { persist: false });
   for (const label of labels) assert.equal(dom.window.SiteI18n.translate(label), label);
-  assert.match(html, /site-i18n\.js\?v=20261019-web-search/);
+  assert.match(html, /site-i18n\.js\?v=20261110-request-errors/);
   assert.match(html, /id="webSearchBtn"[^>]*aria-pressed="false"/);
   dom.window.close();
 });
