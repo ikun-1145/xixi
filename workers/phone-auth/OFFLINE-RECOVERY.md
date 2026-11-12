@@ -7,7 +7,7 @@
 - 加密卷中 `backup/native17-full.dump`、`backup/native17-roles2.sql`、`backup/production-database-acl.json`；原归档不包含 Storage 文件或角色密码。
 - 加密卷中 `storage-independent-3e04b9e0/`：密文归档、`.source.json` 与 `inventory.json` 必须一起保留。解密密钥是本机 `~/.config/sunland-backup/encryption.key`，必须经独立安全渠道另行备份；不要复制到仓库、日志或与密文一同放入未加密存储。
 - 加密卷中 `offline-recovery-tools-20261112/`：Storage 加解密和验证工具、文件校验清单，以及基于归档生成的 `extension-owner.sql`。该 SQL 的 51 条语句已在隔离库事务中执行并回滚验证；只可用于同版本隔离恢复。清单和数据同处一处无法防止同时被篡改；须另存经认证的清单副本。
-- 加密卷中 `supabase-isolated-b642/restore-main.list` 和 `restore-events.list`：严格恢复时分别保留主体和七个事件触发器的条目顺序。`backup/authorization-check-20261112-final.json` 只是核对结果，不包含完整源端权限快照。
+- `workers/phone-auth/operations/offline-rehearsal.py` 和同目录的 `initialize-db.py`；恢复条目由脚本从数据库归档重新生成，不依赖旧实例目录。`backup/production-database-acl.json` 是必需的生产数据库级权限基准，不能从归档还原。
 - 四项 Phone Auth 核心密钥均需独立安全备份；当前只找到身份加密 keyring 的本机文件和同机加密卷副本。`PHONE_AUTH_HMAC_KEY`、`PHONE_AUTH_ADMIN_TOKEN`、`PHONE_IDENTITY_LOOKUP_KEY` 的独立备份及四项与 Cloudflare 当前值的一致性仍未证明。不可根据 Key ID 或 Secret 名称推断一致，也不可重新生成替代。
 
 ## 在当前 Mac 上校验归档
@@ -24,7 +24,12 @@ assert any(i.get('image-encrypted') is True and any(
     e.get('mount-point') == str(root) for e in i.get('system-entities', [])
 ) for i in images), '恢复卷未挂载或未确认加密'
 manifest = json.loads((root / 'offline-recovery-tools-20261112/manifest.json').read_text())
-for relative, expected in manifest['files'].items():
+required = ('backup/native17-full.dump', 'backup/native17-roles2.sql', 'backup/production-database-acl.json',
+    'storage-independent-3e04b9e0/storage.tar.aesgcm', 'storage-independent-3e04b9e0/storage.tar.aesgcm.source.json',
+    'storage-independent-3e04b9e0/inventory.json', 'offline-recovery-tools-20261112/aead-file.mjs',
+    'offline-recovery-tools-20261112/storage_verify.py', 'offline-recovery-tools-20261112/extension-owner.sql')
+for relative in required:
+    expected = manifest['files'][relative]
     path = (root / relative).resolve(strict=True)
     assert root in path.parents and path.is_file()
     digest = hashlib.sha256()
@@ -65,8 +70,16 @@ printf '%s\n' '隔离提取与逐对象校验通过。'
 
 ## 数据库隔离恢复
 
-已验证的本机副本是加密卷中的 `supabase-isolated-b642/data`，使用本机缓存的官方镜像 `supabase/postgres:17.4.1.054_arm64`；其中 phone-auth 配置曾用合成值初始化，**不能直接作为生产恢复源**。原始数据库归档未改变。需要跨机器重新构建时，必须先离线准备并验证同版本镜像、角色、扩展及安全容器环境；没有可信镜像或无法确保加密和无网络时停止。
+离线演练依赖 macOS 加密磁盘映像、Docker Engine、Node.js、Python 3，以及提前从可信来源取得的 ARM64 官方镜像 `supabase/postgres:17.4.1.054_arm64`；脚本校验固定镜像 ID，不自动下载。其他平台或架构未经验证。先运行上方归档校验，再在本仓库执行：
 
-此前验证采用空数据库、原角色定义及生产数据库级 ACL，先以事务和 `--exit-on-error` 恢复 `restore-main.list`，再以 `--use-set-session-authorization` 按原所有者恢复七个事件触发器。原归档不包含数据库级 ACL；直接以统一所有者恢复会因 Supabase 安全检查失败。恢复后还需核对并修正 51 个扩展对象所有者、ACL，比较角色继承、默认权限、有效权限、RLS、触发器和各表数据；只比较导出 SQL 或忽略错误不算通过。当前材料没有封装可移植的全自动重建脚本，不能将上述描述当成已验证的一键恢复流程。
+```sh
+python3 workers/phone-auth/operations/offline-rehearsal.py \
+  --root "$RECOVERY_ROOT" \
+  --storage-key "$HOME/.config/sunland-backup/encryption.key"
+```
+
+脚本独占创建加密卷内目录和全新容器，禁用容器网络及交换，使用独立随机临时数据库密码；按归档重建角色、数据库级 ACL、Schema、数据和事件触发器，然后执行 51 项扩展对象所有者修复。它比较角色、数据库与对象权限、RLS、触发器、扩展版本及所有归档表行数；对扩展初始权限的差异，在同一隔离容器中从官方镜像重建权限基准并核对实际 ACL 与角色有效权限。Storage 解密到加密临时目录，逐对象比较大小、摘要和路径，并核对数据库元数据。phone-auth 初始化只对隔离副本使用合成值，验证首次和重复行为。失败不标记通过；结束后删除本次容器与临时数据，清理失败则保留加密目录供排查。通过时仅在加密卷留下脱敏 JSON 结果。任何日志或差异文件也只在加密卷中。
+
+旧的 `supabase-isolated-b642/data` 含合成初始化结果，不能作为生产恢复源，脚本不读取该目录。归档不包含角色密码、Vault 根密钥和托管配置，且数据库与 Storage 并非原子快照；本工具是隔离验收，不是线上一键恢复或数据回灌工具。
 
 Vault 在 2026-11-12 的生产只读计数为零；不代表未来始终为空。生产 Vault 根密钥及平台托管设置的恢复没有验证，真实 Storage 服务上传恢复也没有验证。发生故障时先确认这些独立依赖和备份时点，不得用隔离环境新生成的密钥冒充生产密钥。
