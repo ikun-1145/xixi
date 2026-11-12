@@ -70,7 +70,7 @@ class OperationsTests(unittest.TestCase):
         with patch.object(do.sys, 'argv', ['initialize-do.py']), patch.object(do.urllib.request, 'build_opener', side_effect=AssertionError('network forbidden')):
             self.assertEqual(do.main(), 2)
         self.assertIsNone(do.NoRedirect().redirect_request(None, None, 302, '', {}, 'https://example.invalid'))
-    def test_do_accepts_only_canary_zero_ledger(self):
+    def test_do_accepts_compatible_canary_ledger_without_requiring_zero_counters(self):
         class Input:
             buffer = io.BytesIO(b'synthetic-token-not-a-real-secret-0000')
         class Response:
@@ -78,8 +78,8 @@ class OperationsTests(unittest.TestCase):
             def __enter__(self): return self
             def __exit__(self, *args): pass
             def read(self, limit):
-                return json.dumps({'success':True,'schema':1,'enabled':True,'mode':'canary',
-                    'test_reserved':0,'total_micros':0,'day_count':0,'day_micros':0}).encode()
+                return json.dumps({'success':True,'state':'ready','schema':1,'enabled':True,'mode':'canary',
+                    'test_reserved':1,'total_micros':5,'day_count':1,'day_micros':5}).encode()
         class Opener:
             def open(self, request, timeout):
                 self.url = request.full_url
@@ -105,5 +105,20 @@ class OperationsTests(unittest.TestCase):
         self.assertEqual(opener.count, 1)
         self.assertNotIn('sensitive', out.getvalue())
         self.assertIn('Do not retry', out.getvalue())
+
+    def test_do_status_reports_uninitialized_without_claiming_success(self):
+        class Input:
+            buffer = io.BytesIO(b'synthetic-token-not-a-real-secret-0000')
+        class Response:
+            status = 200
+            def __enter__(self): return self
+            def __exit__(self, *args): pass
+            def read(self, limit): return b'{"success":true,"state":"uninitialized"}'
+        class Opener:
+            def open(self, request, timeout): return Response()
+        out = io.StringIO()
+        with patch.object(do.sys, 'argv', ['initialize-do.py', '--execute', 'status']), patch.object(do.sys, 'stdin', Input()), patch.object(do.sys, 'stdout', out), patch.object(do.urllib.request, 'build_opener', return_value=Opener()):
+            self.assertEqual(do.main(), 1)
+        self.assertIn('uninitialized', out.getvalue())
 
 if __name__ == '__main__': unittest.main()

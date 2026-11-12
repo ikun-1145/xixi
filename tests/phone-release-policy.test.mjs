@@ -65,12 +65,12 @@ test('canary fails closed for malformed mode, allowlist, all unapproved purposes
   await assert.rejects(h.send(phones[3]),{code:'CANARY_LIMITED'});
   assert.equal(h.storage.data.get(LEDGER_KEY).testReserved,3);
 });
-test('internal initialization requires independent strong admin credential and refuses all existing state',async()=>{
+test('initialization requires independent admin and preserves existing state',async()=>{
   const h=await fixture();assert.equal((await h.admin('initialize','wrong')).status,401);assert.equal(h.storage.data.size,0);
   h.env.PHONE_AUTH_ADMIN_TOKEN='short';assert.equal((await h.admin('initialize','short')).status,503);h.env.PHONE_AUTH_ADMIN_TOKEN=admin;
   h.storage.data.set('t:phone:old',{quarantined:true});assert.equal((await h.admin('initialize')).status,409);h.storage.data.clear();
   assert.equal((await h.admin('initialize')).status,200);const saved=structuredClone(h.storage.data);
-  assert.equal((await h.admin('initialize')).status,409);assert.deepEqual(h.storage.data,saved);
+  assert.equal((await h.admin('initialize')).status,200);assert.deepEqual(h.storage.data,saved);
   const status=await(await h.admin('status')).json();assert.equal(status.test_reserved,0);assert.ok(!JSON.stringify(status).includes('phone:'));
   h.storage.data.get(LEDGER_KEY).testReserved=undefined;await assert.rejects(h.send(),{code:'SERVICE_UNAVAILABLE'});
 });
@@ -85,13 +85,43 @@ test('initialization uses server values only, is safe with SMS off, and is never
   for(const forbidden of [secret,admin,'test-v1','13800000000','phoneHash','challengeId','lockUntil'])assert.equal(serialized.includes(forbidden),false);
   h.env.PHONE_AUTH_ADMIN_TOKEN=secret;assert.equal((await h.admin('status',secret)).status,503);
 });
-test('concurrent initialization permits one fresh ledger and does not repair or replace legacy state',async()=>{
+test('concurrent initialization is idempotent and does not repair legacy state',async()=>{
   const h=await fixture();const responses=await Promise.all([h.admin('initialize'),h.admin('initialize')]);
-  assert.deepEqual(responses.map(r=>r.status).sort(),[200,409]);
+  assert.deepEqual(responses.map(r=>r.status).sort(),[200,200]);
   const original=structuredClone(h.storage.data.get(LEDGER_KEY));delete h.storage.data.get(LEDGER_KEY).testReserved;
   const legacy=structuredClone(h.storage.data);assert.equal((await h.admin('initialize')).status,409);
-  assert.equal((await h.admin('status')).status,503);assert.deepEqual(h.storage.data,legacy);
+  assert.equal((await (await h.admin('status')).json()).state,'abnormal');assert.deepEqual(h.storage.data,legacy);
   assert.equal(original.totalMicros,0);
+});
+test('status is storage-read-only and distinguishes empty, foreign, version and configuration states',async()=>{
+  const h=await fixture();
+  assert.equal((await (await h.admin('status')).json()).state,'uninitialized');assert.equal(h.storage.data.size,0);
+  h.storage.data.set('foreign',1);assert.equal((await (await h.admin('status')).json()).state,'abnormal');
+  assert.equal((await h.admin('initialize')).status,409);h.storage.data.clear();
+  await h.admin('initialize');const before=structuredClone(h.storage.data);h.advance(86400000);
+  assert.equal((await (await h.admin('status')).json()).state,'ready');assert.deepEqual(h.storage.data,before);
+  assert.equal((await h.admin('initialize')).status,200);assert.deepEqual(h.storage.data,before);
+  h.storage.data.get(LEDGER_KEY).schema=2;assert.equal((await (await h.admin('status')).json()).state,'incompatible');
+  assert.equal((await h.admin('initialize')).status,409);h.storage.data=structuredClone(before);
+  h.env.PHONE_AUTH_POLICY=JSON.stringify({...JSON.parse(h.env.PHONE_AUTH_POLICY),dailyLimit:19});
+  assert.equal((await (await h.admin('status')).json()).state,'incompatible');assert.equal((await h.admin('initialize')).status,409);
+  assert.deepEqual(h.storage.data,before);
+  h.env.PHONE_AUTH_POLICY=JSON.stringify({...JSON.parse(h.env.PHONE_AUTH_POLICY),dailyLimit:20});
+  delete h.storage.data.get(LEDGER_KEY).initConfig;
+  assert.equal((await (await h.admin('status')).json()).state,'unverified');assert.equal((await h.admin('initialize')).status,409);
+});
+test('storage failures do not create or reset a ledger and can recover safely',async()=>{
+  const h=await fixture();const transaction=h.storage.transaction.bind(h.storage);
+  h.storage.transaction=async()=>{throw Error('synthetic failure');};
+  assert.equal((await h.admin('status')).status,503);assert.equal((await h.admin('initialize')).status,503);
+  assert.equal(h.storage.data.size,0);h.storage.transaction=transaction;
+  assert.equal((await (await h.admin('status')).json()).state,'uninitialized');
+  h.storage.transaction=fn=>transaction(tx=>fn({...tx,put:async(k,v)=>{await tx.put(k,v);throw Error('synthetic post-write failure');}}));
+  assert.equal((await h.admin('initialize')).status,503);assert.equal(h.storage.data.size,0);h.storage.transaction=transaction;
+  assert.equal((await h.admin('initialize')).status,200);const before=structuredClone(h.storage.data);
+  h.storage.transaction=async()=>{throw Error('synthetic failure');};assert.equal((await h.admin('initialize')).status,503);
+  assert.deepEqual(h.storage.data,before);h.storage.transaction=transaction;
+  assert.equal((await (await h.admin('status')).json()).state,'ready');
 });
 test('new registration policy is a trusted strict server boolean and known denial remains classified',async()=>{
   for(const value of [undefined,false,true,'false','true']) {

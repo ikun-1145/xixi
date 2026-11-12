@@ -14,15 +14,15 @@ const PURPOSES = Object.freeze({ login: 'sl-login-v1', bind: 'sl-bind-v1', chang
 const positive = n => Number.isSafeInteger(n) && n > 0;
 const nonnegative = n => Number.isSafeInteger(n) && n >= 0;
 const fail = (code, status = 400) => { throw new PhoneAuthError(code, status); };
+const policyFields = ['perPhoneDaily', 'perIpDaily', 'dailyLimit', 'unitCostMicros', 'dailyBudgetMicros',
+  'totalBudgetMicros', 'ipRequestsPerMinute', 'globalRequestsPerMinute'];
 
 function settings(env) {
   requireSmsEnabled(env);
   releasePolicy(env);
   let policy;
   try { policy = JSON.parse(env.PHONE_AUTH_POLICY); } catch { fail('SMS_CONFIG', 503); }
-  const fields = ['perPhoneDaily', 'perIpDaily', 'dailyLimit', 'unitCostMicros', 'dailyBudgetMicros',
-    'totalBudgetMicros', 'ipRequestsPerMinute', 'globalRequestsPerMinute'];
-  if (!policy || fields.some(k => !positive(policy[k])) || policy.dailyLimit > 10000 ||
+  if (!policy || policyFields.some(k => !positive(policy[k])) || policy.dailyLimit > 10000 ||
       typeof env.PHONE_AUTH_HMAC_KEY !== 'string' || env.PHONE_AUTH_HMAC_KEY.length < 32 ||
       !/^[a-zA-Z0-9_-]{1,32}$/.test(env.PHONE_AUTH_HMAC_KEY_ID || '') ||
       typeof env.TURNSTILE_SECRET !== 'string' || !env.TURNSTILE_SECRET.trim() ||
@@ -329,15 +329,38 @@ export class PhoneAuthCoordinator {
         const now = this.now();
         if (!nonnegative(now) || !/^[a-zA-Z0-9_-]{1,32}$/.test(this.env.PHONE_AUTH_HMAC_KEY_ID || '') ||
             typeof this.env.PHONE_AUTH_HMAC_KEY !== 'string' || this.env.PHONE_AUTH_HMAC_KEY.length < 32) fail('RELEASE_CONFIG', 503);
+        let config;
+        try { config = JSON.parse(this.env.PHONE_AUTH_POLICY); } catch { fail('RELEASE_CONFIG', 503); }
+        if (!config || policyFields.some(k => !positive(config[k])) || config.dailyLimit > 10000) fail('RELEASE_CONFIG', 503);
+        const fingerprint = await digest(this.env.PHONE_AUTH_HMAC_KEY, 'ledger-config:v1', JSON.stringify([
+          this.env.PHONE_AUTH_HMAC_KEY_ID, policy.mode, [...policy.hashes].sort(), policyFields.map(k => config[k])
+        ]));
         const output = await this.transaction(async tx => {
-          if (path === '/initialize') {
-            if ((await tx.list({ limit: 1 })).size) fail('OPERATION_CONFLICT', 409);
-            await tx.put(LEDGER_KEY, { schema: 1, enabled: true, keyId: this.env.PHONE_AUTH_HMAC_KEY_ID,
+          const stored = await tx.get(LEDGER_KEY);
+          const any = (await tx.list({ limit: 1 })).size > 0;
+          let state = !stored ? (any ? 'abnormal' : 'uninitialized') :
+            stored.schema !== 1 ? 'incompatible' : 'ready';
+          let account;
+          if (state === 'ready') {
+            if (stored.keyId !== this.env.PHONE_AUTH_HMAC_KEY_ID) state = 'incompatible';
+          }
+          if (state === 'ready') {
+            try { account = await this.account(tx, now); }
+            catch (error) { if (!(error instanceof PhoneAuthError)) throw error; state = 'abnormal'; }
+            if (state === 'ready' && stored.initConfig === undefined) state = 'unverified';
+            else if (state === 'ready' && (typeof stored.initConfig !== 'string' || !/^[0-9a-f]{64}$/.test(stored.initConfig))) state = 'abnormal';
+            else if (state === 'ready' && stored.initConfig !== fingerprint) state = 'incompatible';
+          }
+          if (path === '/status' && state !== 'ready') return { success: true, state };
+          if (path === '/initialize' && state === 'uninitialized') {
+            await tx.put(LEDGER_KEY, { schema: 1, enabled: true, keyId: this.env.PHONE_AUTH_HMAC_KEY_ID, initConfig: fingerprint,
               testReserved: 0, totalMicros: 0, day: Math.floor(now / DAY), dayCount: 0, dayMicros: 0,
               minute: Math.floor(now / 60000), minuteCount: 0, lastNow: now });
+            account = await this.account(tx, now);
+          } else if (path === '/initialize' && (state !== 'ready' || stored.initConfig !== fingerprint)) {
+            fail('OPERATION_CONFLICT', 409);
           }
-          const account = await this.account(tx, now);
-          return { success: true, schema: account.schema, enabled: account.enabled, mode: policy.mode,
+          return { success: true, state: 'ready', schema: account.schema, enabled: account.enabled, mode: policy.mode,
             test_reserved: account.testReserved, total_micros: account.totalMicros,
             day_count: account.dayCount, day_micros: account.dayMicros };
         });

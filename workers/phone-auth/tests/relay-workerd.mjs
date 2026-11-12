@@ -61,7 +61,10 @@ const send = (phone, purpose = 'login', ctx = context, challengeId, token = `${p
 const check = (phone, id, code = messages.get(phone), purpose = 'login', ctx = context) => post('check', {
   input: { phone, purpose, code, challenge_id: id }, context: ctx });
 try {
-  await start(); assert.equal((await post('initialize')).status, 200);
+  await start(); assert.equal((await (await post('status')).json()).state, 'uninitialized');
+  const inits = await Promise.all([post('initialize'), post('initialize')]);
+  assert.deepEqual(inits.map(r => r.status).sort(), [200, 200]);
+  assert.equal((await (await post('status')).json()).state, 'ready');
   const replayToken = 'login:synthetic-replay';
   const sends = await Promise.all([send(phones[0], 'login', context, undefined, replayToken), send(phones[0])]);
   assert.equal(sends.filter(r => r.status === 200).length, 1);
@@ -69,7 +72,9 @@ try {
   // after completion it is rate limited. Both reject duplicate sends.
   assert.ok(sends.some(r => [429, 503].includes(r.status))); assert.equal(relayCalls, 1);
   const first = await sends.find(r => r.status === 200).json();
-  await restart(); assert.equal((await post('initialize')).status, 409);
+  await restart(); const savedBudget = await (await post('status')).json();
+  assert.equal((await post('initialize')).status, 200);
+  assert.deepEqual(await (await post('status')).json(), savedBudget);
   const replay = await send(phones[9], 'login', context, undefined, replayToken);
   assert.equal(replay.status, 403); assert.equal((await replay.json()).code, 'CAPTCHA_FAILED'); assert.equal(relayCalls, 1);
   const checks = await Promise.all([check(phones[0], first.challenge_id), check(phones[0], first.challenge_id)]);

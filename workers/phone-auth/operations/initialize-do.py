@@ -33,11 +33,15 @@ def main():
         if len(raw) > 4096:
             raise ValueError('unexpected response')
         body = json.loads(raw)
+        if (sys.argv[2] == 'status' and isinstance(body, dict) and body.get('success') is True and
+            body.get('state') in ('uninitialized', 'incompatible', 'abnormal', 'unverified')):
+            print('DO ledger state:', body['state'])
+            return 1
         if (not isinstance(body, dict) or body.get('success') is not True or body.get('schema') != 1 or
-            body.get('enabled') is not True or body.get('mode') != 'canary' or
-            any(type(body.get(k)) is not int or body[k] != 0 for k in ('test_reserved','total_micros','day_count','day_micros'))):
+            body.get('state') != 'ready' or body.get('enabled') is not True or body.get('mode') != 'canary' or
+            any(type(body.get(k)) is not int or body[k] < 0 for k in ('test_reserved','total_micros','day_count','day_micros'))):
             raise ValueError('unexpected state')
-        print('DO response confirms initialized canary ledger and zero counters.')
+        print('DO response confirms compatible initialized canary ledger; counters preserved.')
         return 0
     except Exception:
         print('Stopped: operation failed or outcome may be unknown. Do not retry; investigate separately.')
