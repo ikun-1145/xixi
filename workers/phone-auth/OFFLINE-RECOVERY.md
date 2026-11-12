@@ -6,7 +6,7 @@
 
 - 加密卷中 `backup/native17-full.dump`、`backup/native17-roles2.sql`、`backup/production-database-acl.json`；原归档不包含 Storage 文件或角色密码。
 - 加密卷中 `storage-independent-3e04b9e0/`：密文归档、`.source.json` 与 `inventory.json` 必须一起保留。解密密钥是本机 `~/.config/sunland-backup/encryption.key`，必须经独立安全渠道另行备份；不要复制到仓库、日志或与密文一同放入未加密存储。
-- 加密卷中 `offline-recovery-tools-20261112/`：Storage 加解密和验证工具、文件校验清单。清单和数据同处一处无法防止同时被篡改；须另存经认证的清单副本。
+- 加密卷中 `offline-recovery-tools-20261112/`：Storage 加解密和验证工具、文件校验清单，以及基于归档生成的 `extension-owner.sql`。该 SQL 的 51 条语句已在隔离库事务中执行并回滚验证；只可用于同版本隔离恢复。清单和数据同处一处无法防止同时被篡改；须另存经认证的清单副本。
 - 加密卷中 `supabase-isolated-b642/restore-main.list` 和 `restore-events.list`：严格恢复时分别保留主体和七个事件触发器的条目顺序。`backup/authorization-check-20261112-final.json` 只是核对结果，不包含完整源端权限快照。
 - 四项 Phone Auth 核心密钥均需独立安全备份；当前只找到身份加密 keyring 的本机文件和同机加密卷副本。`PHONE_AUTH_HMAC_KEY`、`PHONE_AUTH_ADMIN_TOKEN`、`PHONE_IDENTITY_LOOKUP_KEY` 的独立备份及四项与 Cloudflare 当前值的一致性仍未证明。不可根据 Key ID 或 Secret 名称推断一致，也不可重新生成替代。
 
