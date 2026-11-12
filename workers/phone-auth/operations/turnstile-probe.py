@@ -47,7 +47,8 @@ def main():
         if len(admin.encode('ascii')) < 32:
             raise ValueError('invalid admin')
         request = urllib.request.Request(URL, method='POST',
-            headers={'Authorization': 'Bearer ' + admin, 'Content-Type': 'application/json'},
+            headers={'Authorization': 'Bearer ' + admin, 'Content-Type': 'application/json',
+                     'User-Agent': 'sunland-phone-auth-probe/1.0'},
             data=json.dumps({'token': token}, separators=(',', ':')).encode('ascii'))
         del admin, token
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect(),
@@ -63,7 +64,9 @@ def main():
             value = json.loads(body)
             expected_status = 403 if args.expect_replay else 200
             expected_value = {'ok': not args.expect_replay}
-            if response.status != expected_status or value != expected_value:
+            cache_control = response.headers.get('Cache-Control', '')
+            if (response.status != expected_status or value != expected_value or
+                    'no-store' not in {part.strip().lower() for part in cache_control.split(',')}):
                 raise ValueError('unexpected response')
         print('rejected' if args.expect_replay else 'verified')
         return 0
