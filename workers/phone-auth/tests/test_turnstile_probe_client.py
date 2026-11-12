@@ -48,6 +48,11 @@ class Tests(unittest.TestCase):
         self.assertEqual(self.run_client(200,b'{"ok":true}',('--expect-replay',)),(1,'failed\n',1))
     def test_rejects_response_without_worker_no_store_marker(self):
         self.assertEqual(self.run_client(403,b'{"ok":false}',('--expect-replay',),headers={}), (1,'failed\n',1))
+    def test_safe_failure_categories_do_not_expose_response(self):
+        options = ('--expect-replay', '--safe-details')
+        self.assertEqual(self.run_client(200,b'{"ok":true}',options), (1,'failed:unexpected_acceptance\n',1))
+        self.assertEqual(self.run_client(503,b'{"ok":false}',options), (1,'failed:service_error\n',1))
+        self.assertEqual(self.run_client(200,b'synthetic-secret',options), (1,'failed:invalid_response\n',1))
     def test_no_redirect(self):
         self.assertIsNone(client.NoRedirect().redirect_request(None,None,302,'',{},'https://bad.invalid'))
 

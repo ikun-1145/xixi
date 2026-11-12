@@ -36,8 +36,11 @@ async function fixture() {
   const h = { env: env(), storage: new Storage(), now: START, calls: [], messages: [] };
   const fetchImpl = async (url, options) => {
     h.calls.push(new URL(url).hostname);
-    if (new URL(url).hostname === 'challenges.cloudflare.com') return Response.json({ success: true,
-      hostname: 'sunland.dev', action: `phone_${JSON.parse(options.body).response}`, challenge_ts: new Date(h.now).toISOString(), ...(h.turnstileResponse || {}) });
+    if (new URL(url).hostname === 'challenges.cloudflare.com') {
+      if (h.turnstileReply) return h.turnstileReply(options);
+      return Response.json({ success: true, hostname: 'sunland.dev', action: `phone_${JSON.parse(options.body).response.split(':')[0]}`,
+        challenge_ts: new Date(h.now).toISOString(), ...(h.turnstileResponse || {}) });
+    }
     if (new URL(url).hostname === 'relay.invalid') {
       h.messages.push(JSON.parse(options.body));
       return h.reply ? h.reply(options) : Response.json({ ok: 1, msg: '验证码已发送', request_id: 'synthetic' });
@@ -50,7 +53,8 @@ async function fixture() {
   const initialized = await h.coordinator.fetch(new Request('https://internal/initialize', {
     method: 'POST', headers: { Authorization: 'Bearer ' + h.env.PHONE_AUTH_ADMIN_TOKEN }, body: '{}' }));
   assert.equal(initialized.status, 200);
-  h.send = (number = phone, purpose = 'login', ctx = context, challengeId) => h.coordinator.send({ phone: number, purpose, turnstile_token: purpose,
+  let tokenSequence = 0;
+  h.send = (number = phone, purpose = 'login', ctx = context, challengeId, token = `${purpose}:${++tokenSequence}`) => h.coordinator.send({ phone: number, purpose, turnstile_token: token,
     ...(challengeId !== undefined ? { challenge_id: challengeId } : {}) }, ctx);
   h.check = (sent, code = h.messages.at(-1)?.code, purpose = 'login', ctx = context, number = phone) =>
     h.coordinator.check({ phone: number, purpose, challenge_id: sent.challenge_id, code }, ctx);
@@ -65,6 +69,75 @@ test('Turnstile rejects wrong hostname, action and expiry before relay or budget
     await assert.rejects(h.send(), {code:'CAPTCHA_FAILED'});
     assert.equal(h.messages.length, 0); assert.equal(h.storage.data.get(LEDGER_KEY).totalMicros, 0);
   }
+});
+
+test('one Turnstile token cannot reserve twice across numbers, purposes or restart', async () => {
+  const h = await fixture(); const token = 'login:synthetic-single-use';
+  await h.send(phone, 'login', context, undefined, token);
+  const auth = { ...context, userId:'user', sessionId:'synthetic-session-1234', identityStatus:'active', reauthentication:true };
+  h.rebuild();
+  await assert.rejects(h.send('13900000000', 'login', context, undefined, token), {code:'CAPTCHA_FAILED'});
+  await assert.rejects(h.send('13900000000', 'reauth', auth, undefined, token), {code:'CAPTCHA_FAILED'});
+  h.env.PHONE_SMS_PROVIDER = 'aliyun'; h.rebuild();
+  await assert.rejects(h.send('13900000000', 'login', context, undefined, token), {code:'CAPTCHA_FAILED'});
+  assert.equal(h.calls.filter(name => name === 'challenges.cloudflare.com').length, 1);
+  assert.equal(h.messages.length, 1);
+  assert.equal(h.storage.data.get(LEDGER_KEY).totalMicros, 7);
+  assert.equal(h.storage.data.get(LEDGER_KEY).minuteCount, 4);
+  assert.equal(JSON.stringify([...h.storage.data]).includes(token), false);
+  const marker = [...h.storage.data].find(([key]) => key.startsWith('t:turnstile:'));
+  assert.ok(marker); assert.equal(marker[1].deleteAfter, START + 340000);
+});
+
+test('simultaneous reuse and failed verification remain fail closed', async t => {
+  const h = await fixture(); const token = 'login:synthetic-concurrent';
+  const results = await Promise.allSettled([
+    h.send(phone, 'login', context, undefined, token),
+    h.send('13900000000', 'login', context, undefined, token),
+  ]);
+  assert.equal(results.filter(x => x.status === 'fulfilled').length, 1);
+  assert.equal(results.filter(x => x.status === 'rejected' && x.reason.code === 'CAPTCHA_FAILED').length, 1);
+  assert.equal(h.calls.filter(name => name === 'challenges.cloudflare.com').length, 1);
+  assert.equal(h.messages.length, 1); assert.equal(h.storage.data.get(LEDGER_KEY).totalMicros, 7);
+
+  const failed = await fixture(); failed.turnstileResponse = { success:false };
+  await assert.rejects(failed.send(phone, 'login', context, undefined, token), {code:'CAPTCHA_FAILED'});
+  failed.rebuild(); failed.turnstileResponse = undefined; failed.now += 339999;
+  await assert.rejects(failed.send('13900000000', 'login', context, undefined, token), {code:'CAPTCHA_FAILED'});
+  assert.equal(failed.calls.filter(name => name === 'challenges.cloudflare.com').length, 1);
+  assert.equal(failed.messages.length, 0); assert.equal(failed.storage.data.get(LEDGER_KEY).totalMicros, 0);
+
+  const unavailable = await fixture(); unavailable.turnstileReply = () => { throw Error('synthetic upstream error'); };
+  await assert.rejects(unavailable.send(phone, 'login', context, undefined, token), {code:'UPSTREAM_UNAVAILABLE'});
+  unavailable.rebuild(); unavailable.turnstileReply = undefined;
+  await assert.rejects(unavailable.send('13900000000', 'login', context, undefined, token), {code:'CAPTCHA_FAILED'});
+  assert.equal(unavailable.calls.filter(name => name === 'challenges.cloudflare.com').length, 1);
+  assert.equal(unavailable.storage.data.get(LEDGER_KEY).totalMicros, 0);
+
+  t.mock.timers.enable({ apis:['setTimeout'] });
+  const timedOut = await fixture(); let notifyStarted;
+  const started = new Promise(resolve => { notifyStarted = resolve; });
+  timedOut.turnstileReply = () => { notifyStarted(); return new Promise(() => {}); };
+  const sending = timedOut.send(phone, 'login', context, undefined, token);
+  await started; t.mock.timers.tick(5000);
+  await assert.rejects(sending, {code:'UPSTREAM_TIMEOUT'});
+  timedOut.rebuild(); timedOut.turnstileReply = undefined;
+  await assert.rejects(timedOut.send('13900000000', 'login', context, undefined, token), {code:'CAPTCHA_FAILED'});
+  assert.equal(timedOut.calls.filter(name => name === 'challenges.cloudflare.com').length, 1);
+  assert.equal(timedOut.storage.data.get(LEDGER_KEY).totalMicros, 0);
+});
+
+test('expired replay markers are cleaned without making an expired token valid', async () => {
+  const h = await fixture(); const token = 'login:synthetic-expired';
+  h.turnstileResponse = { success:false };
+  await assert.rejects(h.send(phone, 'login', context, undefined, token), {code:'CAPTCHA_FAILED'});
+  const markerKey = [...h.storage.data.keys()].find(key => key.startsWith('t:turnstile:'));
+  h.now += 340000;
+  await assert.rejects(h.send('13900000000', 'login', context, undefined, token), {code:'CAPTCHA_FAILED'});
+  assert.equal(h.storage.data.has(markerKey), false);
+  h.turnstileResponse = { challenge_ts:new Date(START).toISOString() };
+  await assert.rejects(h.send('13900000000', 'login', context, undefined, token), {code:'CAPTCHA_FAILED'});
+  assert.equal(h.messages.length, 0); assert.equal(h.storage.data.get(LEDGER_KEY).totalMicros, 0);
 });
 
 test('client challenge survives a lost send response and pending checks never consume attempts', async () => {

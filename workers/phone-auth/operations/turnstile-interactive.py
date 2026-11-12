@@ -89,11 +89,22 @@ def invoke(admin, token, replay=False):
         with os.fdopen(token_write, 'wb') as out:
             descriptors.remove(token_write)
             out.write(token)
-        command = [sys.executable, str(PROBE), '--admin-fd', str(admin_read), '--token-fd', str(token_read)]
+        command = [sys.executable, str(PROBE), '--admin-fd', str(admin_read), '--token-fd', str(token_read), '--safe-details']
         if replay:
             command.append('--expect-replay')
         result = subprocess.run(command, pass_fds=(admin_read, token_read), capture_output=True, timeout=15)
-        return result.returncode == 0 and result.stdout == (b'rejected\n' if replay else b'verified\n')
+        accepted = result.returncode == 0 and result.stdout == (b'rejected\n' if replay else b'verified\n')
+        if not accepted:
+            messages = {
+                b'failed:unexpected_acceptance\n': '诊断入口返回成功：重复 token 未被拒绝。',
+                b'failed:unauthorized\n': '诊断入口未接受管理员凭据。',
+                b'failed:rate_limited\n': '诊断请求受到限流。',
+                b'failed:service_error\n': '诊断服务或上游返回服务错误。',
+                b'failed:transport_error\n': '诊断请求连接失败或超时。',
+                b'failed:invalid_response\n': '诊断响应无法确认。',
+            }
+            print(messages.get(result.stdout, '诊断结果未知。'))
+        return accepted
     finally:
         for descriptor in descriptors:
             os.close(descriptor)
@@ -122,6 +133,9 @@ def main(argv=None):
             print('合法 token 未确认通过；已停止，不重试。')
             return 1
         print('合法 token：通过')
+        # Cloudflare documents eventually consistent token redemption. This is
+        # one deliberate replay check after propagation, not an automatic retry.
+        time.sleep(6)
         if not invoke(admin, token, replay=True):
             print('重复 token 未确认被拒绝；已停止，不重试。')
             return 1

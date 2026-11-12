@@ -22,6 +22,10 @@
 
 补充的本机顺序检查可运行 `python3 workers/phone-auth/operations/turnstile-interactive.py`：隐藏输入现有管理员凭据和真实 `sunland.dev` 页面的 `phone_login` 一次性 token，仅在合法 token 确认成功后分别测试同一 token 的重放和固定无效 token；不发送短信，不自动重试。token 必须通过受控方式从真实页面取得，不写入聊天、日志或文件。验证前后均须只读复核三个生产开关关闭：后两次 403 也可能由开关变化导致，不能单凭拒绝推断重放和无效 token 检查成功。本地模拟测试不证明生产配对。
 
+用户提供的 2026-11-12 截图显示真实登录页生成的合法 `phone_login` token 经生产探针验证成功；重复 token 的响应未确认，错误 token 测试未执行。生产开关随后只读核对仍关闭。探针现在对失败只显示固定的脱敏分类，并在合法验证后等待 6 秒再发起一次明确的重放检查；已有未知结果不自动重试。Cloudflare 文档指出 token 重放检测是最终一致的，短时间的重复校验可能都成功，等待也不构成绝对保证（[官方说明](https://developers.cloudflare.com/turnstile/get-started/server-side-validation/#token-reuse-and-network-convergence)）。
+
+为避免短信发送依赖上游即时去重，本 PR 在既有协调器中于 Siteverify 前原子登记 token 的域隔离 HMAC 摘要，保留至少 340 秒；失败或超时也不释放，重复使用必须重新获取 token。限流仍计数，重复请求不预留短信费用，也不保存 token 明文。此改动目前仅经本地测试，尚未部署；回滚到不含该保护的版本前须关闭短信功能并至少等待 340 秒。
+
 如果暂时没有安全取得真实 token 的途径，可以先运行同一命令并加 `--admin-only`，只需隐藏输入管理员凭据，以固定无效 token 调用诊断入口一次。根据已部署入口先鉴权、后检查开关和 token 的顺序，符合预期的 403 只能说明管理员凭据被接受，不能证明真实 Turnstile 配对或其他三项核心密钥一致；失败或结果未知时停止，不重试。
 
 本机排查发现 Python 默认 User-Agent 的合成凭据请求遭 Cloudflare 1010 拦截；为本地探针增加明确的客户端标识后，合成凭据请求到达 Worker 并得到预期 401，未发送短信。该结果不能证明此前输入的管理员凭据正确或错误，也不能证明生产 Turnstile 配对。

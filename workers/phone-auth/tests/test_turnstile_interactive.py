@@ -58,20 +58,30 @@ class Tests(unittest.TestCase):
         with patch.object(client.subprocess, 'run', side_effect=fake_run):
             self.assertTrue(client.invoke(b'a' * 32, b'synthetic-token'))
 
+    def test_unexpected_child_output_is_not_disclosed(self):
+        output = io.StringIO()
+        with patch.object(client.subprocess, 'run', return_value=SimpleNamespace(returncode=1, stdout=b'synthetic-secret')), \
+             patch('sys.stdout', output):
+            self.assertFalse(client.invoke(b'a' * 32, b'synthetic-token', replay=True))
+        self.assertNotIn('synthetic', output.getvalue())
+
     def test_sequence_sends_once_each_and_only_after_success(self):
         with patch.object(client.getpass, 'getpass', side_effect=['a' * 32, 'synthetic-token']), \
-             patch.object(client, 'invoke', side_effect=[True, True, True]) as invoke, patch('sys.stdout', new_callable=io.StringIO):
+             patch.object(client, 'invoke', side_effect=[True, True, True]) as invoke, \
+             patch.object(client.time, 'sleep') as sleep, patch('sys.stdout', new_callable=io.StringIO):
             self.assertEqual(client.main([]), 0)
         self.assertEqual(invoke.call_args_list[0].args, (b'a' * 32, b'synthetic-token'))
         self.assertEqual(invoke.call_args_list[1].kwargs, {'replay': True})
         self.assertEqual(invoke.call_args_list[2].args[1], client.INVALID_TOKEN)
         self.assertEqual(invoke.call_count, 3)
+        sleep.assert_called_once_with(6)
 
     def test_failure_or_unknown_stops_without_retry_or_secret_output(self):
         for outcome in ([False], [True, False], [True, subprocess.TimeoutExpired('synthetic-secret', 1)]):
             output = io.StringIO()
             with patch.object(client.getpass, 'getpass', side_effect=['a' * 32, 'synthetic-token']), \
-                 patch.object(client, 'invoke', side_effect=outcome) as invoke, patch('sys.stdout', output):
+                 patch.object(client, 'invoke', side_effect=outcome) as invoke, \
+                 patch.object(client.time, 'sleep'), patch('sys.stdout', output):
                 self.assertEqual(client.main([]), 1)
             self.assertEqual(invoke.call_count, len(outcome))
             self.assertNotIn('synthetic', output.getvalue())
@@ -93,7 +103,8 @@ class Tests(unittest.TestCase):
     def test_browser_mode_does_not_prompt_for_token(self):
         with patch.object(client.getpass, 'getpass', return_value='a' * 32) as prompt, \
              patch.object(client, 'receive_browser_token', return_value=b'synthetic-token'), \
-             patch.object(client, 'invoke', side_effect=[True, True, True]), patch('sys.stdout', new_callable=io.StringIO):
+             patch.object(client, 'invoke', side_effect=[True, True, True]), \
+             patch.object(client.time, 'sleep'), patch('sys.stdout', new_callable=io.StringIO):
             self.assertEqual(client.main(['--browser']), 0)
         prompt.assert_called_once()
 

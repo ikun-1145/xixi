@@ -134,7 +134,10 @@ export class PhoneAuthCoordinator {
       digest(this.env.PHONE_AUTH_HMAC_KEY, 'principal', normalized.principal),
     ]);
     if (operation === 'send') allowCanaryRecipient(releasePolicy(this.env), phoneHash);
-    await this.transaction(async tx => {
+    const tokenHash = operation === 'send'
+      ? await digest(this.env.PHONE_AUTH_HMAC_KEY, 'turnstile-token:v1', input.turnstile_token) : null;
+    const tokenReused = await this.transaction(async tx => {
+      let tokenReused = false;
       const now = this.now();
       const account = await this.account(tx, now);
       const key = `t:requests:${ipHash}`;
@@ -145,12 +148,20 @@ export class PhoneAuthCoordinator {
       account.minuteCount++;
       await tx.put(LEDGER_KEY, account);
       await tx.put(key, { minute: account.minute, count: count + 1, deleteAfter: now + 120000 });
+      if (tokenHash) {
+        const tokenKey = `t:turnstile:${tokenHash}`;
+        if (await tx.get(tokenKey) !== undefined) tokenReused = true;
+        // Cover the accepted future-clock skew plus the maximum Siteverify deadline.
+        else await tx.put(tokenKey, { deleteAfter: now + TTL + 30000 + 10000 });
+      }
       // Bounded opportunistic maintenance, never scans/deletes the account key.
       const cursor = await tx.get('cleanup-cursor');
       const records = await tx.list({ prefix: 't:', startAfter: typeof cursor === 'string' ? cursor : '', limit: 32 });
       for (const [name, value] of records) if (nonnegative(value?.deleteAfter) && value.deleteAfter <= now) await tx.delete(name);
       await tx.put('cleanup-cursor', records.size === 32 ? [...records.keys()].at(-1) : '');
+      return tokenReused;
     });
+    if (tokenReused) fail('CAPTCHA_FAILED', 403);
     return { ...normalized, phoneHash, ipHash, principalHash, policy };
   }
 
