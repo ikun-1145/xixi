@@ -2,10 +2,15 @@ import importlib.util
 import io
 import os
 from pathlib import Path
+import re
 import subprocess
+import threading
+import time
 import unittest
 from unittest.mock import patch
 from types import SimpleNamespace
+import urllib.error
+import urllib.request
 
 spec = importlib.util.spec_from_file_location('interactive', Path(__file__).resolve().parents[1] / 'operations' / 'turnstile-interactive.py')
 client = importlib.util.module_from_spec(spec)
@@ -13,6 +18,36 @@ spec.loader.exec_module(client)
 
 
 class Tests(unittest.TestCase):
+    def test_browser_bridge_rejects_other_origins_and_keeps_token_out_of_output(self):
+        output, received = io.StringIO(), []
+        with patch('sys.stdout', output):
+            thread = threading.Thread(target=lambda: received.append(client.receive_browser_token()), daemon=True)
+            thread.start()
+            deadline = time.monotonic() + 5
+            match = None
+            while time.monotonic() < deadline and not match:
+                match = re.search(r'http://127\.0\.0\.1:\d+/[A-Za-z0-9_-]+', output.getvalue())
+                time.sleep(0.01)
+            self.assertIsNotNone(match)
+            opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+            wrong = urllib.request.Request(match.group(), data=b'synthetic-token', method='POST',
+                                           headers={'Origin': 'https://attacker.invalid'})
+            with self.assertRaises(urllib.error.HTTPError) as error:
+                opener.open(wrong, timeout=2)
+            self.assertEqual(error.exception.code, 403)
+            error.exception.close()
+            preflight = urllib.request.Request(match.group(), method='OPTIONS', headers={'Origin': client.ORIGIN})
+            with opener.open(preflight, timeout=2) as response:
+                self.assertEqual(response.headers.get('Access-Control-Allow-Private-Network'), 'true')
+            valid = urllib.request.Request(match.group(), data=b'synthetic-token', method='POST',
+                                           headers={'Origin': client.ORIGIN})
+            with opener.open(valid, timeout=2) as response:
+                self.assertEqual(response.status, 204)
+            thread.join(5)
+        self.assertFalse(thread.is_alive())
+        self.assertEqual(received, [b'synthetic-token'])
+        self.assertNotIn('synthetic-token', output.getvalue())
+
     def test_sensitive_inputs_use_pipes_not_arguments(self):
         def fake_run(command, *, pass_fds, capture_output, timeout):
             self.assertNotIn('synthetic-token', command)
@@ -54,6 +89,13 @@ class Tests(unittest.TestCase):
             self.assertEqual(client.main(['--admin-only']), 0)
         prompt.assert_called_once()
         invoke.assert_called_once_with(b'a' * 32, client.INVALID_TOKEN, replay=True)
+
+    def test_browser_mode_does_not_prompt_for_token(self):
+        with patch.object(client.getpass, 'getpass', return_value='a' * 32) as prompt, \
+             patch.object(client, 'receive_browser_token', return_value=b'synthetic-token'), \
+             patch.object(client, 'invoke', side_effect=[True, True, True]), patch('sys.stdout', new_callable=io.StringIO):
+            self.assertEqual(client.main(['--browser']), 0)
+        prompt.assert_called_once()
 
 
 if __name__ == '__main__':
