@@ -24,19 +24,19 @@ class Storage {
   }
 }
 async function fixture() {
-  let now=START; const storage=new Storage(); const calls=[];
+  let now=START, tokenSequence=0; const storage=new Storage(); const calls=[];
   const env={PHONE_SMS_ENABLED:'true',PHONE_RELEASE_MODE:'canary',PHONE_AUTH_HMAC_KEY:secret,PHONE_AUTH_HMAC_KEY_ID:'test-v1',PHONE_AUTH_ADMIN_TOKEN:admin,
     PHONE_SMS_CANARY_PHONE_HASHES:JSON.stringify(await Promise.all(phones.slice(0,4).map(phoneHash))),
     PHONE_AUTH_POLICY:JSON.stringify({perPhoneDaily:10,perIpDaily:20,dailyLimit:20,unitCostMicros:1,dailyBudgetMicros:20,totalBudgetMicros:100,ipRequestsPerMinute:50,globalRequestsPerMinute:100}),
     TURNSTILE_SECRET:'mock',PHONE_TURNSTILE_HOSTNAME:'sunland.dev',PHONE_ALIYUN_ACCESS_KEY_ID:'mock',PHONE_ALIYUN_ACCESS_KEY_SECRET:'mock',PHONE_SMS_SIGN_NAME:'mock',PHONE_SMS_TEMPLATE_CODE:'mock'};
   const fetchImpl=async(url,options)=>{
     const captcha=new URL(url).hostname==='challenges.cloudflare.com'; calls.push(captcha?'captcha':'supplier');
-    if(captcha) return Response.json({success:true,hostname:'sunland.dev',action:`phone_${JSON.parse(options.body).response}`,challenge_ts:new Date(now).toISOString()});
+    if(captcha) return Response.json({success:true,hostname:'sunland.dev',action:`phone_${JSON.parse(options.body).response.split(':')[0]}`,challenge_ts:new Date(now).toISOString()});
     if(h.providerFailure) return Response.json({Success:false,Code:'isv.BUSINESS_LIMIT_CONTROL'});
     return Response.json({Success:true,Code:'OK'});
   };
   const h={env,storage,calls,advance(ms){now+=ms;},rebuild(){h.do=new PhoneAuthCoordinator({storage},env,{now:()=>now,fetchImpl});},
-    send(phone=phones[0],purpose='login'){return h.do.send({phone,purpose,turnstile_token:purpose},{ip:'192.0.2.1',userId:'u',sessionId:'server-session-123456',identityStatus:'active',reauthenticatedAt:now});},
+    send(phone=phones[0],purpose='login'){return h.do.send({phone,purpose,turnstile_token:`${purpose}:${++tokenSequence}`},{ip:'192.0.2.1',userId:'u',sessionId:'server-session-123456',identityStatus:'active',reauthenticatedAt:now});},
     admin(path,token=admin,body={}){return h.do.fetch(new Request(`https://phone-auth.internal/${path}`,{method:'POST',headers:{Authorization:`Bearer ${token}`},body:JSON.stringify(body)}));}};
   h.rebuild(); return h;
 }

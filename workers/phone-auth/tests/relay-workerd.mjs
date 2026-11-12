@@ -31,7 +31,7 @@ const options = { name: 'phone-auth', script, modules: true, compatibilityDate: 
     const url = new URL(request.url);
     if (url.hostname === 'challenges.cloudflare.com') {
       const body = await request.json();
-      return Response.json({ success: true, hostname: 'sunland.dev', action: `phone_${body.response}`, challenge_ts: new Date().toISOString() });
+      return Response.json({ success: true, hostname: 'sunland.dev', action: `phone_${body.response.split(':')[0]}`, challenge_ts: new Date().toISOString() });
     }
     if (url.hostname === 'relay.invalid') {
       relayCalls++; const body = await request.json();
@@ -55,19 +55,23 @@ async function restart() { await runtime.dispose(); runtime = undefined; await s
 const post = (path, body = {}) => stub.fetch('https://internal/' + path, { method: 'POST',
   headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + admin }, body: JSON.stringify(body) });
 const context = { ip: '192.0.2.1' };
-const send = (phone, purpose = 'login', ctx = context, challengeId) => post('send', { input: { phone, purpose, turnstile_token: purpose,
+let tokenSequence = 0;
+const send = (phone, purpose = 'login', ctx = context, challengeId, token = `${purpose}:${++tokenSequence}`) => post('send', { input: { phone, purpose, turnstile_token: token,
   ...(challengeId ? {challenge_id:challengeId} : {}) }, context: ctx });
 const check = (phone, id, code = messages.get(phone), purpose = 'login', ctx = context) => post('check', {
   input: { phone, purpose, code, challenge_id: id }, context: ctx });
 try {
   await start(); assert.equal((await post('initialize')).status, 200);
-  const sends = await Promise.all([send(phones[0]), send(phones[0])]);
+  const replayToken = 'login:synthetic-replay';
+  const sends = await Promise.all([send(phones[0], 'login', context, undefined, replayToken), send(phones[0])]);
   assert.equal(sends.filter(r => r.status === 200).length, 1);
   // During the supplier call the existing phone lock is still quarantined;
   // after completion it is rate limited. Both reject duplicate sends.
   assert.ok(sends.some(r => [429, 503].includes(r.status))); assert.equal(relayCalls, 1);
   const first = await sends.find(r => r.status === 200).json();
   await restart(); assert.equal((await post('initialize')).status, 409);
+  const replay = await send(phones[9], 'login', context, undefined, replayToken);
+  assert.equal(replay.status, 403); assert.equal((await replay.json()).code, 'CAPTCHA_FAILED'); assert.equal(relayCalls, 1);
   const checks = await Promise.all([check(phones[0], first.challenge_id), check(phones[0], first.challenge_id)]);
   assert.deepEqual(checks.map(r => r.status).sort(), [200, 409]);
   assert.equal((await check(phones[0], first.challenge_id)).status, 409);
@@ -122,7 +126,7 @@ try {
   console.log(JSON.stringify({ passed: true, runtime: 'local workerd + SQLite DO',
     concurrent_send: true, concurrent_consume: true, five_attempt_limit: true, restart: true,
     provider_switch_and_rollback: true, reauth_isolation: true, retained_budget: true,
-    quarantine: true, missing_config: true, eight_second_body_timeout: true, client_id_recovery: true, emergency_off: true, real_network_calls: 0 }));
+    quarantine: true, missing_config: true, eight_second_body_timeout: true, client_id_recovery: true, turnstile_replay: true, emergency_off: true, real_network_calls: 0 }));
 } finally {
   if (runtime) await runtime.dispose();
   await rm(root, { recursive: true, force: true });

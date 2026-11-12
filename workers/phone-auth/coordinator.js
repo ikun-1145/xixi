@@ -124,6 +124,20 @@ export class PhoneAuthCoordinator {
     return account;
   }
 
+  async claimTurnstile(tx, tokenHash, now) {
+    const key = `t:turnstile:${tokenHash}`;
+    if (await tx.get(key) !== undefined) return false;
+    await tx.put(key, { deleteAfter: now + TTL + 30000 + 10000 });
+    return true;
+  }
+
+  async cleanup(tx, now) {
+    const cursor = await tx.get('cleanup-cursor');
+    const records = await tx.list({ prefix: 't:', startAfter: typeof cursor === 'string' ? cursor : '', limit: 32 });
+    for (const [name, value] of records) if (nonnegative(value?.deleteAfter) && value.deleteAfter <= now) await tx.delete(name);
+    await tx.put('cleanup-cursor', records.size === 32 ? [...records.keys()].at(-1) : '');
+  }
+
   async prepare(input, context, operation) {
     const policy = settings(this.env);
     const now = this.now();
@@ -134,7 +148,8 @@ export class PhoneAuthCoordinator {
       digest(this.env.PHONE_AUTH_HMAC_KEY, 'principal', normalized.principal),
     ]);
     if (operation === 'send') allowCanaryRecipient(releasePolicy(this.env), phoneHash);
-    await this.transaction(async tx => {
+    const tokenHash = operation === 'send' ? await digest(this.env.PHONE_AUTH_HMAC_KEY, 'turnstile-token:v1', input.turnstile_token) : null;
+    const claimed = await this.transaction(async tx => {
       const now = this.now();
       const account = await this.account(tx, now);
       const key = `t:requests:${ipHash}`;
@@ -145,12 +160,11 @@ export class PhoneAuthCoordinator {
       account.minuteCount++;
       await tx.put(LEDGER_KEY, account);
       await tx.put(key, { minute: account.minute, count: count + 1, deleteAfter: now + 120000 });
-      // Bounded opportunistic maintenance, never scans/deletes the account key.
-      const cursor = await tx.get('cleanup-cursor');
-      const records = await tx.list({ prefix: 't:', startAfter: typeof cursor === 'string' ? cursor : '', limit: 32 });
-      for (const [name, value] of records) if (nonnegative(value?.deleteAfter) && value.deleteAfter <= now) await tx.delete(name);
-      await tx.put('cleanup-cursor', records.size === 32 ? [...records.keys()].at(-1) : '');
+      const claimed = !tokenHash || await this.claimTurnstile(tx, tokenHash, now);
+      await this.cleanup(tx, now);
+      return claimed;
     });
+    if (!claimed) fail('CAPTCHA_FAILED', 403);
     return { ...normalized, phoneHash, ipHash, principalHash, policy };
   }
 
@@ -161,7 +175,7 @@ export class PhoneAuthCoordinator {
     const relay = provider === 'relay' ? new SmsRelayClient(this.env, { fetchImpl: this.fetchImpl }) : null;
     if (relay && !['login', 'reauth'].includes(input.purpose)) fail('INVALID_REQUEST');
     const { status, data } = await requestJson('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
-      method: 'POST', headers: { 'content-type': 'application/json' },
+      method: 'POST', cache:'no-store', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ secret: this.env.TURNSTILE_SECRET, response: input.turnstile_token, remoteip: ip }),
     }, { fetchImpl: this.fetchImpl, timeoutMs: Number(this.env.PHONE_API_TIMEOUT_MS ?? 5000) });
     const challengeTime = Date.parse(data?.challenge_ts);
@@ -329,7 +343,12 @@ export class PhoneAuthCoordinator {
         });
         return Response.json(output, { headers: { 'Cache-Control': 'no-store' } });
       }
-      if (request.method !== 'POST' || !['/send', '/check'].includes(path)) fail('INVALID_REQUEST');
+      if (request.method !== 'POST' || !['/send', '/check', '/claim-turnstile'].includes(path)) fail('INVALID_REQUEST');
+      if (path === '/claim-turnstile') {
+        await requireAdmin(this.env, request);
+        if (this.env.PHONE_TURNSTILE_DIAGNOSTICS_ENABLED !== 'true' ||
+            ['PHONE_IDENTITY_ENABLED', 'PHONE_SMS_ENABLED', 'PHONE_NEW_REGISTRATION_ENABLED'].some(k => this.env[k] !== 'false')) fail('SERVICE_UNAVAILABLE', 503);
+      }
       // Binding transport only; no public route is installed by this module.
       const reader = request.body?.getReader();
       if (!reader) fail('INVALID_REQUEST');
@@ -345,6 +364,22 @@ export class PhoneAuthCoordinator {
       for (const part of parts) { bytes.set(part, offset); offset += part.byteLength; }
       let body;
       try { body = JSON.parse(new TextDecoder().decode(bytes)); } catch { fail('INVALID_REQUEST'); }
+      if (path === '/claim-turnstile') {
+        const token = body?.token;
+        if (!body || Object.keys(body).length !== 1 || typeof token !== 'string' || !token.length || token.length > 2048 ||
+            typeof this.env.PHONE_AUTH_HMAC_KEY !== 'string' || this.env.PHONE_AUTH_HMAC_KEY.length < 32) fail('INVALID_REQUEST');
+        const tokenHash = await digest(this.env.PHONE_AUTH_HMAC_KEY, 'turnstile-token:v1', token);
+        const claimed = await this.transaction(async tx => {
+          const now = this.now();
+          const account = await this.account(tx, now); // Missing ledger must never create markers.
+          await tx.put(LEDGER_KEY, account);
+          const claimed = await this.claimTurnstile(tx, tokenHash, now);
+          await this.cleanup(tx, now);
+          return claimed;
+        });
+        if (!claimed) fail('CAPTCHA_FAILED', 403);
+        return Response.json({ success:true }, { headers:{ 'Cache-Control':'no-store' } });
+      }
       const output = await this[path.slice(1)](body?.input, body?.context);
       return Response.json(output, { headers: { 'Cache-Control': 'no-store' } });
     } catch (error) {
