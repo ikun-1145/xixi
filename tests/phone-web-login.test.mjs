@@ -19,6 +19,7 @@ test('phone mode sends contract request, duplicate clicks suppressed, shared log
  assert.ok(d.querySelector('#phoneLoginTab'));d.querySelector('#phoneLoginTab').click();
  d.querySelector('#phoneInput').value='13800000000';d.querySelector('#sendPhoneCodeBtn').click();d.querySelector('#sendPhoneCodeBtn').click();await flush();
  assert.equal(h.calls.length,1);assert.equal(h.calls[0].body.purpose,'login');assert.equal(d.querySelector('#sendPhoneCodeBtn').disabled,true);
+ assert.equal(d.querySelector('#loginMsg').textContent,'验证码请求已受理，请留意短信（有效期约5分钟）');
  d.querySelector('#phoneCodeInput').value='123456';d.querySelector('#agreeCheck').checked=true;d.querySelector('#agreeCheck').dispatchEvent(new h.w.Event('change'));
  d.querySelector('#loginBtn').click();await flush();await flush();assert.equal(h.w.localStorage.getItem('token'),'mock-jwt');assert.equal(JSON.parse(h.w.localStorage.getItem('user')).id,'same-account');
  assert.ok(!JSON.stringify({...h.w.localStorage}).includes('13800000000'));h.dom.window.close();
@@ -71,7 +72,7 @@ test('real language catalog translates phone login labels and authentication err
  for(const lang of ['en','ja','ko','es','zh-Hant']){
   for(const source of [...errors,...labels]){
    const translated=h.w.SiteI18n.translate(source,lang);
-   if(['发送状态未知，请勿重复发送；如收到验证码，请继续验证','验证结果未知，请先检查登录状态，勿重复发送短信','发送仍在处理中，请稍后再验证'].includes(source)) continue;
+   if(['发送状态未知，请勿重复发送；收到验证码后可尝试验证，未必能通过','验证结果未知，请先检查登录状态，勿重复发送短信','发送仍在处理中，请稍后再验证'].includes(source)) continue;
    assert.ok(translated && (lang === 'zh-Hant' || translated !== source),`${lang}: missing ${source}`);
   }
  }
@@ -83,7 +84,7 @@ test('real language catalog translates phone login labels and authentication err
 });
 
 test('phone client uses a recovery-specific cache key and stays disabled by default',()=>{
- assert.match(html,/p\/js\/phone-auth\.js\?v=20261114-phone-settings-1/);
+ assert.match(html,/p\/js\/phone-auth\.js\?v=20261114-relay-1/);
  assert.match(html,/<meta name="sunland-phone-ui-enabled" content="false">/);
 });
 

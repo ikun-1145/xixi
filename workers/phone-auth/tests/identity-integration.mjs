@@ -31,7 +31,9 @@ if (process.env.PHONE_TEST_POSTGRES_IMAGE) {
   execFileSync('docker',['run','-d','--rm','--name',container,'--network','none','--tmpfs','/var/lib/postgresql/data:rw,size=256m',
     '-e','POSTGRES_HOST_AUTH_METHOD=trust',process.env.PHONE_TEST_POSTGRES_IMAGE,'postgres','-c','fsync=off'],{stdio:'ignore'});
   const query = sql => new Promise((resolveQuery,reject) => {
-    const child=spawn('docker',['exec','-i',container,'psql','-U','postgres','-d','postgres','-Atq','-v','ON_ERROR_STOP=1']);
+    // The image's temporary bootstrap server exposes only a Unix socket;
+    // TCP loopback becomes available after the final server has started.
+    const child=spawn('docker',['exec','-i',container,'psql','-h','127.0.0.1','-U','postgres','-d','postgres','-Atq','-v','ON_ERROR_STOP=1']);
     let stdout='',stderr=''; child.stdout.on('data',data=>stdout+=data); child.stderr.on('data',data=>stderr+=data);
     child.on('error',reject); child.on('close',code=>code===0 ? resolveQuery(stdout.trim()) : reject(Error(stderr)));
     child.stdin.end(sql);
@@ -54,7 +56,7 @@ if (process.env.PHONE_TEST_POSTGRES_IMAGE) {
   };
 } else db = new PGlite();
 const env = { PHONE_IDENTITY_ENABLED:'true', PHONE_ACCOUNT_MANAGEMENT_ENABLED:'true', PHONE_EMAIL_REAUTH_ENABLED:'true',
-  PHONE_NEW_REGISTRATION_ENABLED:'true', PHONE_SMS_PROVIDER:'relay', PHONE_REAUTH_EMAIL_API_KEY:'synthetic-email-key',
+  PHONE_NEW_REGISTRATION_ENABLED:'true', PHONE_SMS_PROVIDER:'aliyun', PHONE_REAUTH_EMAIL_API_KEY:'synthetic-email-key',
   PHONE_AUTH_HMAC_KEY:'synthetic-auth-hmac-key-32-characters', PHONE_IDENTITY_LOOKUP_KEY:'synthetic-lookup-key-32-characters',
   PHONE_IDENTITY_LOOKUP_KEY_ID:'v1', PHONE_IDENTITY_ENCRYPTION_KEY_ID:'v1',
   PHONE_IDENTITY_ENCRYPTION_KEYS:JSON.stringify({v1:Buffer.alloc(32,7).toString('base64url')}) };
@@ -216,7 +218,7 @@ try {
     await wait(()=>!el('Bind').hidden&&!el('Bind').disabled,'unlink');
     actual=await db.query("select count(*)::int as n from public.sunland_phone_identities where user_id='ui-user'");assert.equal(actual.rows[0].n,0);
   } finally {dom.window.close();}
-  console.log('PASS: actual settings DOM and browser client -> Worker routes -> real identity and email OTP SQL: bind, change, unbind; authentication, CAPTCHA, SMS and email simulated');
+  console.log('PASS: actual settings DOM and browser client -> Worker routes -> real identity and email OTP SQL in synthetic aliyun mode: bind, change, unbind; authentication, CAPTCHA, SMS and email simulated');
   // Exercise the real coordinator and relay adapter with outbound HTTP mocked;
   // identity mutations still run against the isolated PostgreSQL instance.
   const ledger = new Map(); let tail = Promise.resolve(); let relayCode;
@@ -230,7 +232,7 @@ try {
       const result = await fn(tx); ledger.clear(); for (const entry of copy) ledger.set(...entry); return result;
     } finally { release(); }
   }};
-  const doEnv = {...env, PHONE_SMS_ENABLED:'true', PHONE_RELEASE_MODE:'public',
+  const doEnv = {...env, PHONE_SMS_PROVIDER:'relay', PHONE_SMS_ENABLED:'true', PHONE_RELEASE_MODE:'public',
     SMS_RELAY_URL:'https://relay.invalid/send', SUNLAND_SMS_RELAY_KEY:'synthetic-relay-key',
     PHONE_AUTH_HMAC_KEY_ID:'v1', PHONE_AUTH_ADMIN_TOKEN:'synthetic-admin-token-32-characters',
     TURNSTILE_SECRET:'synthetic-turnstile', PHONE_TURNSTILE_HOSTNAME:'sunland.dev',
@@ -266,18 +268,13 @@ try {
     w.SunlandPhoneAuth={...original,createClient:opts=>original.createClient({...opts,captcha:async action=>`${action.slice(6)}:synthetic`,fetchImpl})};
     w.eval(settingsScript);
     const wait=async(predicate,label)=>{for(let i=0;i<300;i++){if(await predicate())return;await new Promise(r=>setTimeout(r,25));}throw Error(`Synthetic real coordinator UI timed out: ${label}; ${el('Message').textContent}`);};
-    await db.exec("update public.sunland_otp_challenges set next_send_at=now()-interval '1 second'");
     await wait(()=>!el('Bind').hidden&&!el('Bind').disabled&&typeof el('Bind').onclick==='function','initial status');
-    el('Bind').click(); const previous=messages.length; el('AuthSend').click();
-    await wait(()=>messages.length>previous&&!el('AuthNext').disabled,'email');
-    el('AuthCode').value=messages.at(-1); el('AuthNext').click(); await wait(()=>!el('Target').hidden,'proof');
-    el('NewPhone').value='13800000006'; relayCode=undefined; el('TargetSend').click();
-    await wait(()=>relayCode!==undefined&&!el('TargetConfirm').disabled,'relay send');
-    el('NewCode').value=relayCode; el('TargetConfirm').click();
-    await wait(()=>!el('Change').hidden&&!el('Change').disabled,'bind');
-    const actual=await db.query("select last4 from public.sunland_phone_identities where user_id='ui-user'");
-    assert.equal(actual.rows[0].last4,'0006');
+    el('Bind').click(); const previous=messages.length; relayCode=undefined; el('AuthSend').click();
+    await wait(()=>el('Message').textContent.length>0,'management rejection');
+    assert.equal(messages.length,previous); assert.equal(relayCode,undefined);
+    const actual=await db.query("select count(*)::int as n from public.sunland_phone_identities where user_id='ui-user'");
+    assert.equal(actual.rows[0].n,0);
   } finally { realDom.window.close(); }
-  console.log('PASS: settings DOM + client + Worker + real coordinator/relay + isolated PostgreSQL binding; external providers and authentication simulated');
+  console.log('PASS: relay account management remains closed even if its switches are enabled; no SMS or email requested');
   console.log(`PASS: synthetic routes + ${process.env.PHONE_TEST_POSTGRES_IMAGE ? 'isolated PostgreSQL 17' : 'PGlite'}: register, same-user login, email proof, bind, cross-account conflict, change, unbind, concurrent/replay/cross-action/expiry/attempt-limit rejection; simulated SMS and email`);
 } finally { await db.close(); }

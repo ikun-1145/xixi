@@ -1,5 +1,5 @@
 import { DypnsapiClient } from './dypnsapi.js';
-import { SmsRelayClient, smsProvider } from './relay.js';
+import { SmsRelayClient, smsProvider, requireRelayTemplatePurpose } from './relay.js';
 import { PhoneAuthError, requireSmsEnabled } from './errors.js';
 import { requestJson } from './http.js';
 import { releasePolicy, allowCanaryRecipient, requireAdmin } from './release-policy.js';
@@ -169,6 +169,9 @@ export class PhoneAuthCoordinator {
   }
 
   async send(input, context) {
+    // Reject unconfirmed template use before touching the ledger or Turnstile.
+    requireSmsEnabled(this.env);
+    if (smsProvider(this.env) === 'relay') requireRelayTemplatePurpose(this.env, input?.purpose);
     const prepared = await this.prepare(input, context, 'send');
     const { phone, ip, phoneHash, ipHash, principalHash, policy } = prepared;
     const provider = smsProvider(this.env);

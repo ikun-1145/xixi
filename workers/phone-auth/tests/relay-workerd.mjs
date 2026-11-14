@@ -94,9 +94,9 @@ try {
   await restart(); assert.equal((await check(phones[3], fourth.challenge_id, '123456')).status, 200); assert.equal(aliyunCalls, 2);
 
   const auth = { ...context, userId: 'user', sessionId: 'synthetic-session-1234', identityStatus: 'active', reauthentication: true };
-  const reauth = await (await send(phones[4], 'reauth', auth)).json();
-  assert.equal((await check(phones[4], reauth.challenge_id)).status, 400);
-  assert.equal((await check(phones[4], reauth.challenge_id, messages.get(phones[4]), 'reauth', auth)).status, 200);
+  assert.equal((await send(phones[4], 'reauth', auth)).status, 503);
+  const login = await (await send(phones[4])).json();
+  assert.equal((await check(phones[4], login.challenge_id)).status, 200);
 
   failure = true; assert.equal((await send(phones[5])).status, 503);
   const before = await (await post('status')).json(); assert.equal(before.total_micros, 42);
@@ -129,11 +129,8 @@ try {
   bindings.PHONE_ACCOUNT_MANAGEMENT_ENABLED = 'true'; await restart();
   const accountContext = { ...context, userId: 'synthetic-user', sessionId: 'synthetic-session-1234', identityStatus: 'active', reauthenticatedAt: Date.now() };
   const accountSend = await send(phones[8], 'bind', accountContext);
-  assert.equal(accountSend.status, 200);
-  const accountChallenge = await accountSend.json();
-  const wrongPurpose = await check(phones[8], accountChallenge.challenge_id, messages.get(phones[8]), 'change', accountContext);
-  assert.equal(wrongPurpose.status, 400); assert.equal((await wrongPurpose.json()).code, 'CHALLENGE_INVALID');
-  assert.equal((await check(phones[8], accountChallenge.challenge_id, messages.get(phones[8]), 'bind', accountContext)).status, 200);
+  assert.equal(accountSend.status, 503); assert.equal((await accountSend.json()).code, 'IDENTITY_DISABLED');
+  assert.equal(relayCalls, 7);
   bindings.PHONE_SMS_ENABLED = 'false'; await restart();
   assert.equal((await send(phones[9])).status, 503); assert.equal(unexpected, 0);
   console.log(JSON.stringify({ passed: true, runtime: 'local workerd + SQLite DO',

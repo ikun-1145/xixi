@@ -1,5 +1,6 @@
 import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 import { SmsRelayClient, smsProvider } from '../relay.js';
 import { PhoneAuthCoordinator, LEDGER_KEY } from '../coordinator.js';
 
@@ -63,16 +64,13 @@ async function fixture() {
   return h;
 }
 
-test('relay account-management challenges require the feature gate and remain purpose bound', async () => {
+test('relay blocks unapproved purposes before Turnstile and budget even when management is enabled', async () => {
   const h = await fixture();
   const auth = { ...context, userId: 'user', sessionId: 'synthetic-session-1234', identityStatus: 'active', reauthenticatedAt: START };
-  await assert.rejects(h.send(phone, 'bind', auth), {code:'INVALID_REQUEST'});
-  assert.equal(h.messages.length, 0);
   h.env.PHONE_ACCOUNT_MANAGEMENT_ENABLED = 'true';
-  const sent = await h.send(phone, 'bind', auth);
-  assert.equal(h.messages[0].scene, 'login');
-  await assert.rejects(h.check(sent, h.messages[0].code, 'change', auth), {code:'CHALLENGE_INVALID'});
-  assert.equal((await h.check(sent, h.messages[0].code, 'bind', auth)).verified, true);
+  for (const purpose of ['bind','change','reauth','unbind']) await assert.rejects(h.send(phone, purpose, auth), {code:'IDENTITY_DISABLED'});
+  assert.equal(h.messages.length, 0); assert.equal(h.calls.length, 0);
+  assert.equal(h.storage.data.get(LEDGER_KEY).totalMicros, 0);
 });
 
 test('Turnstile rejects wrong hostname, action and expiry before relay or budget reservation', async () => {
@@ -90,13 +88,13 @@ test('one Turnstile token cannot reserve twice across numbers, purposes or resta
   const auth = { ...context, userId:'user', sessionId:'synthetic-session-1234', identityStatus:'active', reauthentication:true };
   h.rebuild();
   await assert.rejects(h.send('13900000000', 'login', context, undefined, token), {code:'CAPTCHA_FAILED'});
-  await assert.rejects(h.send('13900000000', 'reauth', auth, undefined, token), {code:'CAPTCHA_FAILED'});
+  await assert.rejects(h.send('13900000000', 'reauth', auth, undefined, token), {code:'IDENTITY_DISABLED'});
   h.env.PHONE_SMS_PROVIDER = 'aliyun'; h.rebuild();
   await assert.rejects(h.send('13900000000', 'login', context, undefined, token), {code:'CAPTCHA_FAILED'});
   assert.equal(h.calls.filter(name => name === 'challenges.cloudflare.com').length, 1);
   assert.equal(h.messages.length, 1);
   assert.equal(h.storage.data.get(LEDGER_KEY).totalMicros, 7);
-  assert.equal(h.storage.data.get(LEDGER_KEY).minuteCount, 4);
+  assert.equal(h.storage.data.get(LEDGER_KEY).minuteCount, 3);
   assert.equal(JSON.stringify([...h.storage.data]).includes(token), false);
   const marker = [...h.storage.data].find(([key]) => key.startsWith('t:turnstile:'));
   assert.ok(marker); assert.equal(marker[1].deleteAfter, START + 340000);
@@ -237,6 +235,42 @@ test('relay sends exact JSON once, accepts only numeric ok=1 with HTTP 2xx, and 
   }
 });
 
+test('relay acceptance does not expose or persist supplier message and request ID', async () => {
+  const h = await fixture();
+  const requestId = 'sensitive-relay-request-id';
+  h.reply = () => Response.json({ ok: 1, request_id: requestId, msg: `private ${phone} ${h.messages[0].code}` });
+  const result = await h.send();
+  const exposed = JSON.stringify({ result, ledger: [...h.storage.data] });
+  for (const value of [requestId, phone, h.messages[0].code, h.env.SUNLAND_SMS_RELAY_KEY]) {
+    assert.equal(exposed.includes(JSON.stringify(value)), false);
+  }
+  assert.equal(h.calls.filter(name => name === 'relay.invalid').length, 1);
+  assert.deepEqual(Object.keys(result).sort(), ['challenge_id', 'expires_in', 'retry_after', 'success']);
+});
+
+test('relay uses login scene only and rejects account management and reauthentication', async () => {
+  const localEnv = { ...env(), PHONE_ACCOUNT_MANAGEMENT_ENABLED: 'true' };
+  for (const purpose of ['login', 'reauth', 'bind', 'change']) {
+    let requests = 0;
+    const client = new SmsRelayClient(localEnv, { fetchImpl: async (_url, options) => {
+      requests++; assert.equal(JSON.parse(options.body).scene, 'login');
+      return Response.json({ ok: 1, request_id: 'opaque-relay-id' });
+    } });
+    if (purpose === 'login') { assert.deepEqual(await client.send({ ...input, purpose }), { accepted: true }); assert.equal(requests, 1); }
+    else { await assert.rejects(client.send({ ...input, purpose }), {code:'IDENTITY_DISABLED'}); assert.equal(requests, 0); }
+  }
+});
+
+test('login template permits login whether registration is disabled or enabled', async () => {
+  for (const registration of ['false','true']) {
+    let calls=0;
+    const client=new SmsRelayClient({...env(),PHONE_NEW_REGISTRATION_ENABLED:registration},{fetchImpl:async (_url,options)=>{
+      calls++; assert.equal(JSON.parse(options.body).scene,'login'); return Response.json({ok:1});
+    }});
+    assert.deepEqual(await client.send(input),{accepted:true}); assert.equal(calls,1);
+  }
+});
+
 test('relay fixed eight-second deadline covers fetch and body, aborts once without retry', async t => {
   t.mock.timers.enable({ apis: ['setTimeout'] });
   for (const body of [false, true]) {
@@ -324,8 +358,11 @@ test('relay exhaustion, expiry, purpose/phone/session binding and storage failur
   await assert.rejects(expired.check(s), { code: 'CHALLENGE_EXPIRED' });
   const r = await fixture();
   const auth = { ...context, userId: 'user', sessionId: 'synthetic-session-1234', identityStatus: 'active', reauthentication: true };
-  const reauth = await r.send(phone, 'reauth', auth); const reauthCode = r.messages[0].code;
-  assert.equal(r.messages[0].scene, 'login');
+  const reauth = await r.send(phone, 'login', context); const reauthCode = r.messages[0].code;
+  // Simulate an existing challenge created before the template restriction.
+  const row = r.row(reauth.challenge_id), hash = (domain,value) => createHmac('sha256',r.env.PHONE_AUTH_HMAC_KEY).update(`${domain}\0${value}`).digest('hex');
+  row.purpose='reauth'; row.principalHash=hash('principal',JSON.stringify([auth.userId,auth.sessionId]));
+  row.otpMac=hash('sms-relay-otp:v1',JSON.stringify([reauth.challenge_id,row.phoneHash,'reauth',reauthCode]));
   await assert.rejects(r.check(reauth, reauthCode), { code: 'CHALLENGE_INVALID' });
   await assert.rejects(r.check(reauth, reauthCode, 'reauth', { ...auth, sessionId: 'another-session-1234' }), { code: 'CHALLENGE_INVALID' });
   await assert.rejects(r.check(reauth, reauthCode, 'reauth', auth, '13900000000'), { code: 'CHALLENGE_INVALID' });
@@ -343,7 +380,11 @@ test('MAC cannot be transplanted between challenge, phone or purpose', async () 
     const purpose = change === 'purpose' ? 'reauth' : 'login';
     const number = change === 'phone' ? '13900000000' : phone;
     const ctx = purpose === 'reauth' ? auth : context;
-    const second = await h.send(number, purpose, ctx);
+    const second = await h.send(number, 'login', context);
+    if (purpose === 'reauth') {
+      const row=h.row(second.challenge_id); row.purpose='reauth';
+      row.principalHash=createHmac('sha256',h.env.PHONE_AUTH_HMAC_KEY).update(`principal\0${JSON.stringify([auth.userId,auth.sessionId])}`).digest('hex');
+    }
     h.row(second.challenge_id).otpMac = mac;
     await assert.rejects(h.check(second, h.messages[0].code, purpose, ctx, number), { code: 'CODE_INVALID' });
   }

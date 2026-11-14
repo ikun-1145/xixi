@@ -90,6 +90,21 @@ test('standalone relay rejects legacy sends before SMS while preserving new and 
   assert.equal((await other.invoke('/v1/phone/send-code', body)).data.success, true);
 });
 
+test('relay keeps management and all reauthentication closed even if other gates are enabled', async () => {
+  const f=fixture({loginOnly:true}); Object.assign(f.env,{PHONE_SMS_PROVIDER:'relay',PHONE_ACCOUNT_MANAGEMENT_ENABLED:'true',PHONE_EMAIL_REAUTH_ENABLED:'true'});
+  for (const route of ['reauth/email/send','reauth/email','reauth/phone','bind','change','unbind']) {
+    const result=await f.invoke(`/v1/phone/${route}`,{});
+    assert.equal(result.data.code,'IDENTITY_DISABLED');
+  }
+  for (const purpose of ['bind','change','reauth','unbind']) {
+    const result=await f.invoke('/v1/phone/send-code',{phone:PHONE,purpose,turnstile_token:'captcha',challenge_id:UUID});
+    assert.equal(result.data.code,'IDENTITY_DISABLED');
+  }
+  assert.equal(f.calls.length,0);
+  const login=await f.invoke('/v1/phone/send-code',{phone:PHONE,purpose:'login',turnstile_token:'captcha',challenge_id:UUID});
+  assert.equal(login.data.success,true);
+});
+
 test('SMS check precedes identity login and signs only authoritative identity using existing JWT helper', async () => {
   const { invoke, calls } = fixture();
   const { data } = await invoke('/v1/phone/verify-code', { ...checkBody(), operation_id: UUID });

@@ -122,7 +122,7 @@ test('unknown sends and pending verification have clear translations without ret
  const h=harness();t.after(()=>h.dom.window.close());
  for(const lang of ['zh-Hant','en','ja','ko','es']){
   h.dom.window.SiteI18n={getLanguage:()=>lang,translate:s=>s};
-  assert.notEqual(h.api.errorText({code:'SEND_UNCERTAIN'}),'发送状态未知，请勿重复发送；如收到验证码，请继续验证');
+  assert.notEqual(h.api.errorText({code:'SEND_UNCERTAIN'}),'发送状态未知，请勿重复发送；收到验证码后可尝试验证，未必能通过');
   assert.notEqual(h.api.errorText({code:'CHALLENGE_PENDING'}),'发送仍在处理中，请稍后再验证');
  }
 });

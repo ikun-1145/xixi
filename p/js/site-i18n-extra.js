@@ -1151,6 +1151,11 @@
     "ko": "검증 코드 전송 (약 5 분 동안 유효)",
     "es": "Código de verificación enviado (válido por unos 5 minutos)"
   },
+  "验证码请求已受理，请留意短信（有效期约5分钟）": {
+    "zh-Hant": "驗證碼請求已受理，請留意簡訊（有效期約5分鐘）",
+    "ko": "인증번호 요청이 접수되었습니다. 문자 메시지를 확인해 주세요 (약 5분간 유효).",
+    "es": "Solicitud de código aceptada. Revisa tus mensajes (válido unos 5 minutos)."
+  },
   "网络连接失败（API不可达）": {
     "zh-Hant": "網路連線失敗（API不可達）",
     "ko": "네트워크 연결 실패 (API unavailable)",

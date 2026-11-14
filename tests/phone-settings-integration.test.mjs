@@ -35,7 +35,9 @@ test('settings bind, change and unbind through the actual client and Worker rout
       checkPhoneCode: async (_env, input) => { const expected = sms.get(input.challenge_id); assert.equal(expected.phone, input.phone); assert.equal(expected.purpose, input.purpose); assert.equal(input.code, '654321'); sms.delete(input.challenge_id); return { verified: true }; },
     },
   });
-  const env = { PHONE_IDENTITY_ENABLED: 'true', PHONE_ACCOUNT_MANAGEMENT_ENABLED: 'true', PHONE_EMAIL_REAUTH_ENABLED: 'true', PHONE_SMS_PROVIDER: 'relay' };
+  // Account-management UI remains covered for a future provider with an
+  // appropriate template; the current relay deliberately rejects it.
+  const env = { PHONE_IDENTITY_ENABLED: 'true', PHONE_ACCOUNT_MANAGEMENT_ENABLED: 'true', PHONE_EMAIL_REAUTH_ENABLED: 'true', PHONE_SMS_PROVIDER: 'aliyun' };
   const dom = new JSDOM(load('../ai_settings.html'), { url: 'https://sunland.dev/ai_settings.html', runScripts: 'outside-only' });
   t.after(() => dom.window.close());
   const w = dom.window, el = id => w.document.getElementById(`phoneSettings${id}`);

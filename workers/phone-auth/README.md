@@ -2,7 +2,11 @@
 
 本目录包含独立手机号认证 Worker 的源码、阿里云 PNVS 与短信 relay 适配器，默认关闭手机号认证、短信和新注册。部署涉及现有 Cloudflare 路由、密钥和 Durable Object，须先核实生产绑定与账本状态，并取得独立授权；不要重建或清空账本。
 
-Relay 使用 `PHONE_SMS_PROVIDER=relay`、HTTPS `SMS_RELAY_URL` 和 Secret `SUNLAND_SMS_RELAY_KEY`。验证码保存在 DO 的 HMAC 摘要中，发送后校验保持一次消费。注册、登录、手机号再验及启用账号管理后的绑定、换绑均向 relay 发送 `scene=login`，内部验证码用途仍彼此隔离；上线验收前须确认服务商模板支持所有这些用途及相应计费规则。其他必需配置包括三个 Key ID、`PHONE_AUTH_POLICY` 和 Canary 号码摘要白名单。不要将密钥、号码或白名单摘要提交到仓库。
+Relay 使用 `PHONE_SMS_PROVIDER=relay`、HTTPS `SMS_RELAY_URL` 和 Secret `SUNLAND_SMS_RELAY_KEY`。验证码保存在 DO 的 HMAC 摘要中，发送后校验保持一次消费。中转方已确认 `scene=login` 的模板仅用于注册和登录；手机号再验、绑定、换绑和解绑保持关闭，不能复用该模板。其他用途需要独立适用的审核模板及中转接口支持。其他必需配置包括三个 Key ID、`PHONE_AUTH_POLICY` 和 Canary 号码摘要白名单。不要将密钥、号码或白名单摘要提交到仓库。
+
+`scene` 是中转方参数，不是阿里云 `SendSms` 的参数。中转方的 HTTP 2xx 和数字 `ok=1` 只表示中转接口受理，不能证明运营商已送达；超时、异常响应和业务失败维持未知结果处理，保留预算与号码隔离，不自动重发。客户端响应丢失时可尝试原 challenge，但中转发送结果未知时服务端可能已拒绝该 challenge，不能保证验证码可用。中转响应的 `request_id` 尚未确认是阿里云 `BizId`，当前中转协议也没有已确认的回执查询接口，不得自行构造查询或将其当作送达凭据。真实回执应由中转方通过其已确认的接口或阿里云控制台核查；查询结果可能包含完整号码和短信内容，不得记录。
+
+阿里云官方说明国内短信按运营商回执计费：失败回执不计费，尚无回执可能先计费；超过 70 字的短信会拆分计费。同签名验证码的默认频率为每号码每分钟 1 条、每小时 5 条、每天 10 条，实际账户配置及号码维度上限仍可能更严格。参见[计费说明](https://help.aliyun.com/zh/sms/product-overview/billing-overview/)、[发送规则](https://help.aliyun.com/zh/sms/user-guide/message-rules)和[回执查询](https://help.aliyun.com/zh/sms/developer-reference/api-dysmsapi-2017-05-25-querysenddetails)。这些规则不能证明朋友的中转服务单价、拆分、超时和重复计费方式；项目的三次预留及 0.60 元内部预算也不是供应商实际收费上限。
 
 账号管理及邮箱近期验证分别由 `PHONE_ACCOUNT_MANAGEMENT_ENABLED`、`PHONE_EMAIL_REAUTH_ENABLED` 控制，默认均为 `false`。邮箱验证另需通过 Cloudflare Secret 安全配置 `PHONE_REAUTH_EMAIL_API_KEY`；此密钥应属于获准从 `no-reply@api-mail.sunland.dev` 发信的邮件服务账号，不能使用短信中转密钥。发送与校验复用已审查的 `sunland_otp` 数据库 RPC，邮箱地址、用户、会话及操作用途共同约束验证码；生产启用前必须确认该 RPC 与权限存在、独立发信密钥已配置，且实际投递和消费已获授权验收。切勿将密钥加入配置文件、命令参数或日志。
 

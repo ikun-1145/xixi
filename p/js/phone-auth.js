@@ -15,12 +15,12 @@
     RATE_LIMITED:'请求过于频繁，请稍后再试', PROVIDER_RATE_LIMITED:'请求过于频繁，请稍后再试',
     BUDGET_EXCEEDED:'短信服务暂时不可用，请稍后再试', TIMEOUT:'请求超时，请重新获取验证码或刷新状态',
     NETWORK:'网络连接失败，请检查网络后重试', SERVICE_UNAVAILABLE:'认证服务暂时不可用，请稍后再试',
-    SEND_UNCERTAIN:'发送状态未知，请勿重复发送；如收到验证码，请继续验证',
+    SEND_UNCERTAIN:'发送状态未知，请勿重复发送；收到验证码后可尝试验证，未必能通过',
     VERIFY_UNCERTAIN:'验证结果未知，请先检查登录状态，勿重复发送短信',
   };
   const text = source => global.SiteI18n?.translate?.(source) || source;
   const recoveryMessages = {
-    SEND_UNCERTAIN:{'zh-Hant':'傳送狀態未知，請勿重複傳送；如收到驗證碼，請繼續驗證',en:'Send status is unknown. Do not resend. If a code arrives, continue verification.',ja:'送信状況を確認できません。再送せず、コードが届いた場合は認証を続けてください。',ko:'전송 상태를 알 수 없습니다. 다시 보내지 말고 코드가 도착하면 인증을 계속하세요.',es:'El estado del envío es desconocido. No vuelvas a enviarlo; si recibes un código, continúa la verificación.'},
+    SEND_UNCERTAIN:{'zh-Hant':'傳送狀態未知，請勿重複傳送；收到驗證碼後可嘗試驗證，但不一定通過',en:'Send status is unknown. Do not resend. If a code arrives, you may try it, but it may not be accepted.',ja:'送信状況は不明です。再送しないでください。コードが届いた場合は試せますが、認証できない場合があります。',ko:'전송 상태를 알 수 없습니다. 다시 보내지 마세요. 코드가 도착하면 시도할 수 있지만 인증되지 않을 수 있습니다.',es:'El estado del envío es desconocido. No lo repitas. Puedes probar el código si llega, pero podría no aceptarse.'},
     VERIFY_UNCERTAIN:{'zh-Hant':'驗證結果未知，請先檢查登入狀態，勿重複傳送簡訊',en:'Verification status is unknown. Check your login status and do not resend.',ja:'認証結果を確認できません。ログイン状態を確認し、再送しないでください。',ko:'인증 결과를 알 수 없습니다. 로그인 상태를 확인하고 다시 보내지 마세요.',es:'El resultado de verificación es desconocido. Comprueba tu sesión y no vuelvas a enviar el mensaje.'},
     CHALLENGE_PENDING:{'zh-Hant':'傳送仍在處理中，請稍後再驗證',en:'The request is still processing. Try verification again later.',ja:'送信処理中です。しばらくしてから認証してください。',ko:'전송을 처리 중입니다. 잠시 후 다시 인증하세요.',es:'El envío sigue procesándose. Intenta verificarlo más tarde.'},
   };

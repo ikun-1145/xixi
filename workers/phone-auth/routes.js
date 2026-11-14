@@ -45,6 +45,11 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
       try {
         if (request.method !== 'POST') throw new PhoneAuthError('INVALID_REQUEST', 405);
         if (env?.PHONE_IDENTITY_ENABLED !== 'true') throw new PhoneAuthError('IDENTITY_DISABLED', 503);
+        // The configured relay template only covers registration and login.
+        // Keep account management and reauthentication closed even if a
+        // separate feature switch is accidentally enabled.
+        if (env?.PHONE_SMS_PROVIDER === 'relay' && ['reauth/email/send', 'reauth/email', 'reauth/phone', 'bind', 'change', 'unbind'].includes(route))
+          throw new PhoneAuthError('IDENTITY_DISABLED', 503);
         const managementEnabled = !loginOnly || env?.PHONE_ACCOUNT_MANAGEMENT_ENABLED === 'true';
         if (!managementEnabled && ['reauth/email/send', 'reauth/email', 'bind', 'change', 'unbind'].includes(route)) throw new PhoneAuthError('IDENTITY_DISABLED', 503);
         if (!request.headers.get('Content-Type')?.toLowerCase().startsWith('application/json')) invalid();
@@ -82,6 +87,7 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
         if (route === 'send-code') {
           fields(input, ['phone', 'purpose', 'turnstile_token'], ['reauth_token', 'challenge_id']);
           phone(input.phone);
+          if (env?.PHONE_SMS_PROVIDER === 'relay' && input.purpose !== 'login') throw new PhoneAuthError('IDENTITY_DISABLED', 503);
           // Relay sends must remain recoverable even from an old cached login page.
           if (loginOnly && env?.PHONE_SMS_PROVIDER === 'relay' && !Object.hasOwn(input, 'challenge_id')) invalid();
           if (Object.hasOwn(input, 'challenge_id')) operationId(input.challenge_id);
