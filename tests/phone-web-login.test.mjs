@@ -4,16 +4,27 @@ import {readFileSync} from 'node:fs';
 import {JSDOM} from 'jsdom';
 const html=readFileSync(new URL('../login.html',import.meta.url),'utf8');
 const client=readFileSync(new URL('../p/js/phone-auth.js',import.meta.url),'utf8');
-function harness({phoneEnabled=true}={}){
+function harness({phoneEnabled=true,phoneModule='present'}={}){
  const dom=new JSDOM(html,{url:'https://sunland.dev/login.html',runScripts:'outside-only'});const w=dom.window;const calls=[];w.document.querySelector('meta[name="sunland-phone-ui-enabled"]').content=String(phoneEnabled);
  w.AbortController=AbortController;w.crypto.randomUUID=crypto.randomUUID.bind(crypto);w.alert=()=>{};
  w.initGeetest4=(_opts,callback)=>callback({onReady(fn){fn();},onError(){},onSuccess(fn){w.__emailCaptchaSuccess=fn;},getValidate(){return {mock:true};},showCaptcha(){},appendTo(){}});
  w.fetch=async(url,init)=>{const body=JSON.parse(init.body);calls.push({url,body});return Response.json(url.endsWith('send-code')?{success:true,challenge_id:body.challenge_id,expires_in:300,retry_after:600}:{token:'mock-jwt',user:{id:'same-account',email:null},onboarding:{version:0,step:1},is_new_user:true});};
- w.SunlandLoginBanStatus={check:async()=>({isBanned:false})};w.eval(client);const real=w.SunlandPhoneAuth;w.SunlandPhoneAuth={...real,createClient:opts=>real.createClient({...opts,captcha:async()=>'mock'})};
+ w.SunlandLoginBanStatus={check:async()=>({isBanned:false})};
+ if(phoneModule!=='missing'){w.eval(client);const real=w.SunlandPhoneAuth;w.SunlandPhoneAuth={...real,createClient:phoneModule==='broken'?()=>{throw Error('synthetic');}:opts=>real.createClient({...opts,captcha:async()=>'mock'})};}
  for(const script of [...w.document.querySelectorAll('script:not([src])')])w.eval(script.textContent);
  return{dom,w,calls};
 }
 const flush=()=>new Promise(r=>setTimeout(r,0));
+for(const phoneModule of ['missing','broken'])test(`email login stays usable when phone module is ${phoneModule}`,async t=>{
+ const h=harness({phoneEnabled:true,phoneModule}),d=h.w.document;t.after(()=>h.dom.window.close());
+ assert.equal(d.querySelector('#phoneLoginTab').closest('.phone-tabs').hidden,true);
+ assert.equal(typeof d.querySelector('#sendCodeBtn').onclick,'function');
+ assert.equal(typeof d.querySelector('#loginBtn').onclick,'function');
+ d.querySelector('#emailInput').value='user@example.test';d.querySelector('#sendCodeBtn').click();await flush();
+ assert.equal(typeof h.w.__emailCaptchaSuccess,'function');
+ h.w.__emailCaptchaSuccess();await flush();await flush();
+ assert.equal(h.calls.length,1);assert.ok(h.calls[0].url.endsWith('/send-code'));
+});
 test('phone mode sends contract request, duplicate clicks suppressed, shared login persists same token/user format',async()=>{
  const h=harness(),d=h.w.document;
  assert.ok(d.querySelector('#phoneLoginTab'));d.querySelector('#phoneLoginTab').click();

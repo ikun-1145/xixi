@@ -540,10 +540,12 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
     const loginBtn = modal.querySelector("#loginBtn");
     const msg = modal.querySelector("#loginMsg");
     const agreeCheck = modal.querySelector("#agreeCheck");
-    const phoneUiEnabled = document.querySelector('meta[name="sunland-phone-ui-enabled"]')?.content === 'true';
-    modal.querySelector('#phoneLoginTab').closest('.phone-tabs').hidden = !phoneUiEnabled;
     const phoneAuth = window.SunlandPhoneAuth;
-    const phoneClient = phoneAuth.createClient();
+    let phoneClient = null;
+    try { if (typeof phoneAuth?.createClient === 'function' && typeof phoneAuth?.text === 'function' &&
+      typeof phoneAuth?.errorText === 'function' && typeof phoneAuth?.cooldown === 'function') phoneClient = phoneAuth.createClient(); } catch {}
+    const phoneUiEnabled = document.querySelector('meta[name="sunland-phone-ui-enabled"]')?.content === 'true' && !!phoneClient;
+    modal.querySelector('#phoneLoginTab').closest('.phone-tabs').hidden = !phoneUiEnabled;
     const phoneInput = modal.querySelector('#phoneInput');
     const phoneCodeInput = modal.querySelector('#phoneCodeInput');
     const phoneSend = modal.querySelector('#sendPhoneCodeBtn');
@@ -551,12 +553,13 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
     let loginMode = 'email', loginGeneration = 0, phonePending = false, challenge = null, phoneNotice = null;
     const captureLogin = () => ({ generation: loginGeneration, token: localStorage.getItem('token'), mode: loginMode });
     const currentLogin = attempt => attempt.generation === loginGeneration && attempt.token === localStorage.getItem('token') && attempt.mode === loginMode && modal.isConnected;
-    const tr = source => phoneAuth.text(source);
+    const tr = source => phoneAuth?.text?.(source) || window.SiteI18n?.translate?.(source) || source;
     function phoneMessage(source, error) {
       phoneNotice = { source, code: error?.code };
       msg.textContent = error ? phoneAuth.errorText(error) : tr(source);
     }
     function renderPhone() {
+      if (!phoneClient) return;
       if (loginMode === 'phone' && phoneNotice) msg.textContent = phoneNotice.code ? phoneAuth.errorText({code: phoneNotice.code}) : tr(phoneNotice.source);
       modal.querySelectorAll('[data-phone-copy]').forEach(el => { el.textContent = tr(el.dataset.phoneCopy); });
       phoneInput.setAttribute('aria-label', tr('中国大陆手机号'));
@@ -571,7 +574,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
     }
     function setLoginMode(mode) {
       if (mode === "phone" && !phoneUiEnabled) return;
-      loginGeneration++; phoneClient.cancel(); challenge = null; phonePending = false; loginPending = false;
+      loginGeneration++; phoneClient?.cancel(); challenge = null; phonePending = false; loginPending = false;
       phoneInput.value = ''; phoneCodeInput.value = ''; codeInput.value = ''; phoneNotice = null; msg.textContent = ''; loginMode = mode;
       modal.querySelector('#phoneLoginFields').hidden = mode !== 'phone';
       modal.querySelector('#emailLoginField').hidden = mode !== 'email';
@@ -586,6 +589,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
     modal.querySelector('#emailLoginTab').onclick = () => setLoginMode('email');
     modal.querySelector('#phoneLoginTab').onclick = () => setLoginMode('phone');
     phoneInput.addEventListener('input', () => {
+      if (!phoneClient) return;
       challenge = null; phoneCodeInput.value = '';
       try {
         const phone = phoneAuth.normalizePhone(phoneInput.value), pending = phoneClient.recovery('login');
@@ -606,7 +610,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
     };
     phoneCodeInput.addEventListener('keydown', event => { if (event.key === 'Enter') loginBtn.click(); });
     phoneSend.onclick = async () => {
-      if (phonePending || loginMode !== 'phone') return;
+      if (!phoneUiEnabled || phonePending || loginMode !== 'phone') return;
       const attempt = captureLogin(); phonePending = true; msg.classList.remove('ok'); renderPhone();
       let phone;
       try {
@@ -631,7 +635,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
     };
     let phoneTimer = setInterval(renderPhone, 1000);
     window.addEventListener('site-language-change', renderPhone);
-    function cancelLogin() { loginGeneration++; phoneClient.cancel(); challenge = null; phoneInput.value = ''; phoneCodeInput.value = ''; codeInput.value = ''; clearInterval(phoneTimer); clearInterval(timer); }
+    function cancelLogin() { loginGeneration++; phoneClient?.cancel(); challenge = null; phoneInput.value = ''; phoneCodeInput.value = ''; codeInput.value = ''; clearInterval(phoneTimer); clearInterval(timer); }
     window.addEventListener('pagehide', cancelLogin);
     window.addEventListener('pageshow', event => {
       if (!event.persisted) return;
