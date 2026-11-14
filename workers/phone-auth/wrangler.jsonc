@@ -1,0 +1,34 @@
+{
+  "$schema": "https://unpkg.com/wrangler/config-schema.json",
+  "name": "phone-auth",
+  "main": "../../build/phone-auth-standalone/worker.mjs",
+  "no_bundle": true,
+  "compatibility_date": "2026-03-21",
+  "workers_dev": false,
+  "preview_urls": false,
+  "keep_vars": true,
+  "routes": [{ "pattern": "api.sunland.dev/v1/phone/*", "zone_name": "sunland.dev" }],
+  "triggers": { "crons": [] },
+  "observability": { "enabled": false },
+  "vars": {
+    "ALLOWED_ORIGIN": "https://sunland.dev",
+    "SUPABASE_PROJECT_URL": "https://klyrasrqgxijwrxuoevj.supabase.co",
+    "PHONE_IDENTITY_ENABLED": "false",
+    "PHONE_SMS_ENABLED": "false",
+    "PHONE_NEW_REGISTRATION_ENABLED": "false",
+    "PHONE_ACCOUNT_MANAGEMENT_ENABLED": "false",
+    "PHONE_EMAIL_REAUTH_ENABLED": "false",
+    "PHONE_RELEASE_MODE": "canary",
+    "PHONE_SMS_PROVIDER": "relay",
+    "SMS_RELAY_URL": "https://xn--45tu69g.top/sms-api/v1/send",
+    "PHONE_API_TIMEOUT_MS": "5000",
+    "PHONE_TURNSTILE_HOSTNAME": "sunland.dev"
+  },
+  "secrets": { "required": [
+    "APP_JWT_LEGACY_SECRET", "SUPABASE_SECRET_KEY", "TURNSTILE_SECRET",
+    "PHONE_AUTH_HMAC_KEY", "PHONE_AUTH_ADMIN_TOKEN",
+    "PHONE_IDENTITY_LOOKUP_KEY", "PHONE_IDENTITY_ENCRYPTION_KEYS"
+  ] },
+  "durable_objects": { "bindings": [{ "name": "PHONE_AUTH_COORDINATOR", "class_name": "PhoneAuthCoordinator" }] },
+  "migrations": [{ "tag": "phone-auth-v1", "new_sqlite_classes": ["PhoneAuthCoordinator"] }]
+}
