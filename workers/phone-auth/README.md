@@ -2,7 +2,7 @@
 
 本目录包含独立手机号认证 Worker 的源码、阿里云 PNVS 与短信 relay 适配器，默认关闭手机号认证、短信和新注册。部署涉及现有 Cloudflare 路由、密钥和 Durable Object，须先核实生产绑定与账本状态，并取得独立授权；不要重建或清空账本。
 
-Relay 使用 `PHONE_SMS_PROVIDER=relay`、HTTPS `SMS_RELAY_URL` 和 Secret `SUNLAND_SMS_RELAY_KEY`。验证码保存在 DO 的 HMAC 摘要中，发送后校验保持一次消费。注册、登录和手机号再验均向 relay 发送 `scene=login`；上线验收前须确认服务商模板支持这些用途。其他必需配置包括三个 Key ID、`PHONE_AUTH_POLICY` 和 Canary 号码摘要白名单。不要将密钥、号码或白名单摘要提交到仓库。
+Relay 使用 `PHONE_SMS_PROVIDER=relay`、HTTPS `SMS_RELAY_URL` 和 Secret `SUNLAND_SMS_RELAY_KEY`。验证码保存在 DO 的 HMAC 摘要中，发送后校验保持一次消费。注册、登录、手机号再验及启用账号管理后的绑定、换绑均向 relay 发送 `scene=login`，内部验证码用途仍彼此隔离；上线验收前须确认服务商模板支持所有这些用途及相应计费规则。其他必需配置包括三个 Key ID、`PHONE_AUTH_POLICY` 和 Canary 号码摘要白名单。不要将密钥、号码或白名单摘要提交到仓库。
 
 账号管理及邮箱近期验证分别由 `PHONE_ACCOUNT_MANAGEMENT_ENABLED`、`PHONE_EMAIL_REAUTH_ENABLED` 控制，默认均为 `false`。邮箱验证另需通过 Cloudflare Secret 安全配置 `PHONE_REAUTH_EMAIL_API_KEY`；此密钥应属于获准从 `no-reply@api-mail.sunland.dev` 发信的邮件服务账号，不能使用短信中转密钥。发送与校验复用已审查的 `sunland_otp` 数据库 RPC，邮箱地址、用户、会话及操作用途共同约束验证码；生产启用前必须确认该 RPC 与权限存在、独立发信密钥已配置，且实际投递和消费已获授权验收。切勿将密钥加入配置文件、命令参数或日志。
 

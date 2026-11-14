@@ -38,7 +38,9 @@ def main():
     parser.add_argument('--admin-fd', required=True, type=int)
     parser.add_argument('--token-fd', required=True, type=int)
     parser.add_argument('--expect-replay', action='store_true')
+    parser.add_argument('--safe-details', action='store_true', help='report a fixed, non-sensitive failure category')
     args = parser.parse_args()
+    failure = 'invalid_response'
     try:
         if args.admin_fd < 0 or args.token_fd < 0 or args.admin_fd == args.token_fd:
             raise ValueError('invalid descriptors')
@@ -47,7 +49,8 @@ def main():
         if len(admin.encode('ascii')) < 32:
             raise ValueError('invalid admin')
         request = urllib.request.Request(URL, method='POST',
-            headers={'Authorization': 'Bearer ' + admin, 'Content-Type': 'application/json'},
+            headers={'Authorization': 'Bearer ' + admin, 'Content-Type': 'application/json',
+                     'User-Agent': 'sunland-phone-auth-probe/1.0'},
             data=json.dumps({'token': token}, separators=(',', ':')).encode('ascii'))
         del admin, token
         opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect(),
@@ -58,17 +61,30 @@ def main():
             response = exc
         with response:
             body = response.read(1025)
+            if response.status == 401:
+                failure = 'unauthorized'
+            elif response.status == 429:
+                failure = 'rate_limited'
+            elif 500 <= response.status <= 599:
+                failure = 'service_error'
             if len(body) > 1024:
                 raise ValueError('oversize response')
             value = json.loads(body)
             expected_status = 403 if args.expect_replay else 200
             expected_value = {'ok': not args.expect_replay}
-            if response.status != expected_status or value != expected_value:
+            cache_control = response.headers.get('Cache-Control', '')
+            no_store = 'no-store' in {part.strip().lower() for part in cache_control.split(',')}
+            if args.expect_replay and response.status == 200 and value == {'ok': True} and no_store:
+                failure = 'unexpected_acceptance'
+            if (response.status != expected_status or value != expected_value or
+                    not no_store):
                 raise ValueError('unexpected response')
         print('rejected' if args.expect_replay else 'verified')
         return 0
-    except Exception:
-        print('failed')
+    except Exception as error:
+        if isinstance(error, (urllib.error.URLError, TimeoutError)):
+            failure = 'transport_error'
+        print('failed:' + failure if args.safe_details else 'failed')
         return 1
 
 if __name__ == '__main__':

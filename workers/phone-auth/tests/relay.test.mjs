@@ -63,6 +63,18 @@ async function fixture() {
   return h;
 }
 
+test('relay account-management challenges require the feature gate and remain purpose bound', async () => {
+  const h = await fixture();
+  const auth = { ...context, userId: 'user', sessionId: 'synthetic-session-1234', identityStatus: 'active', reauthenticatedAt: START };
+  await assert.rejects(h.send(phone, 'bind', auth), {code:'INVALID_REQUEST'});
+  assert.equal(h.messages.length, 0);
+  h.env.PHONE_ACCOUNT_MANAGEMENT_ENABLED = 'true';
+  const sent = await h.send(phone, 'bind', auth);
+  assert.equal(h.messages[0].scene, 'login');
+  await assert.rejects(h.check(sent, h.messages[0].code, 'change', auth), {code:'CHALLENGE_INVALID'});
+  assert.equal((await h.check(sent, h.messages[0].code, 'bind', auth)).verified, true);
+});
+
 test('Turnstile rejects wrong hostname, action and expiry before relay or budget reservation', async () => {
   for (const response of [{hostname:'other.example'}, {action:'phone_reauth'},
     {challenge_ts:new Date(START - 301000).toISOString()}, {success:false}]) {

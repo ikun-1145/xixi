@@ -126,6 +126,14 @@ try {
   releaseRelay(); assert.equal((await sending).status, 200); holdRelay = undefined;
   await restart(); assert.equal((await check(phones[7], id)).status, 200);
   assert.equal((await check(phones[7], id)).status, 409);
+  bindings.PHONE_ACCOUNT_MANAGEMENT_ENABLED = 'true'; await restart();
+  const accountContext = { ...context, userId: 'synthetic-user', sessionId: 'synthetic-session-1234', identityStatus: 'active', reauthenticatedAt: Date.now() };
+  const accountSend = await send(phones[8], 'bind', accountContext);
+  assert.equal(accountSend.status, 200);
+  const accountChallenge = await accountSend.json();
+  const wrongPurpose = await check(phones[8], accountChallenge.challenge_id, messages.get(phones[8]), 'change', accountContext);
+  assert.equal(wrongPurpose.status, 400); assert.equal((await wrongPurpose.json()).code, 'CHALLENGE_INVALID');
+  assert.equal((await check(phones[8], accountChallenge.challenge_id, messages.get(phones[8]), 'bind', accountContext)).status, 200);
   bindings.PHONE_SMS_ENABLED = 'false'; await restart();
   assert.equal((await send(phones[9])).status, 503); assert.equal(unexpected, 0);
   console.log(JSON.stringify({ passed: true, runtime: 'local workerd + SQLite DO',

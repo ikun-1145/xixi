@@ -173,7 +173,8 @@ export class PhoneAuthCoordinator {
     const { phone, ip, phoneHash, ipHash, principalHash, policy } = prepared;
     const provider = smsProvider(this.env);
     const relay = provider === 'relay' ? new SmsRelayClient(this.env, { fetchImpl: this.fetchImpl }) : null;
-    if (relay && !['login', 'reauth'].includes(input.purpose)) fail('INVALID_REQUEST');
+    if (relay && !['login', 'reauth'].includes(input.purpose) &&
+        !(this.env.PHONE_ACCOUNT_MANAGEMENT_ENABLED === 'true' && ['bind', 'change'].includes(input.purpose))) fail('INVALID_REQUEST');
     const { status, data } = await requestJson('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST', cache:'no-store', headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ secret: this.env.TURNSTILE_SECRET, response: input.turnstile_token, remoteip: ip }),

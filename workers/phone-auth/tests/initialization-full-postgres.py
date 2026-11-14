@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Isolated Docker, actual phone migration, stub non-phone tables, synthetic data only.
 
-Set PHONE_IDENTITY_MIGRATION to the reviewed 20261024003756_phone_identity.sql.
+Set PHONE_IDENTITY_MIGRATION to the reviewed phone identity schema fixture.
+Optionally set PHONE_TRIGGER_FIXTURE to the reviewed related-trigger schema fixture.
 Requires psycopg 3, Docker, and a local postgres:16-alpine image.
 """
 import importlib.util
@@ -18,6 +19,7 @@ spec = importlib.util.spec_from_file_location('phone_init', root / 'operations/i
 op = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(op)
 migration = Path(os.environ['PHONE_IDENTITY_MIGRATION']).read_text()
+trigger_fixture = Path(os.environ['PHONE_TRIGGER_FIXTURE']).read_text() if os.environ.get('PHONE_TRIGGER_FIXTURE') else None
 assert 'create table public.sunland_phone_auth_config' in migration
 name = 'phone-full-schema-' + uuid.uuid4().hex[:12]
 image = os.environ.get('PHONE_TEST_POSTGRES_IMAGE', 'public.ecr.aws/docker/library/postgres:16-alpine')
@@ -41,7 +43,7 @@ try:
             time.sleep(.25)
     else: raise RuntimeError('isolated database unavailable')
     with conn:
-        conn.execute('create role anon; create role authenticated; create role service_role')
+        conn.execute('create role anon; create role authenticated; create role service_role bypassrls')
         # Columns and constraints match production catalog as of 2026-11-06;
         # unrelated triggers and their dependencies remain deliberately absent.
         conn.execute("create schema extensions; create extension pgcrypto with schema extensions")
@@ -63,8 +65,17 @@ try:
            identity_retired_at timestamptz, profile_sanitized_at timestamptz,
            check (status in ('pending','in_progress','completed')),
            check (user_id ~ '^[A-Za-z0-9][A-Za-z0-9@._+-]{0,127}$'))''')
+        conn.execute('alter table public.user_profiles enable row level security; alter table public.account_deletion_jobs enable row level security')
+        if trigger_fixture:
+            conn.execute(trigger_fixture)
         conn.commit()
         conn.execute(migration)
+        conn.commit()
+        # Exercise the exact pooler probe against two independent, synthetic sessions.
+        with connect() as first, connect() as second:
+            # Check the same real psycopg/libpq TLS attribute used by the pooler guard.
+            assert isinstance(first.pgconn.ssl_in_use, bool)
+            op.probe_session_locks(first, second)
         # Actual privilege configuration and phone schema, no customer profile schema assumed.
         assert conn.execute("select count(*) from pg_tables where schemaname='public' and tablename like 'sunland_phone_%' and rowsecurity").fetchone()[0] == 5
         conn.execute("insert into public.user_profiles(user_id) values ('synthetic')")
@@ -129,6 +140,32 @@ try:
         op.secure_logging(conn)
         assert conn.execute("select current_setting('log_parameter_max_length'), current_setting('log_parameter_max_length_on_error')").fetchone()==('0','0')
         conn.rollback()
+        if trigger_fixture:
+            # This reproduces the six directly relevant profile triggers and
+            # seven schema-only dependencies, not the full production database.
+            rows = conn.execute("SELECT count(*) FROM pg_trigger t JOIN pg_class c ON c.oid=t.tgrelid JOIN pg_namespace n ON n.oid=c.relnamespace WHERE n.nspname='public' AND c.relname='user_profiles' AND NOT t.tgisinternal").fetchone()
+            assert rows == (6,), rows
+            expected = {'ai_quota_cleanup_retired_account':'d11662e112e667afaca80d3e1e31c40c',
+              'sunland_history_cleanup_retired_account':'f16a533e0bc8f3c61222da01c451650d',
+              'capture_profile_source':'49d3fdc3b25e11f16c3580cafac6e902',
+              'set_updated_at':'a27bb088c067b7b77a9f0707b0048e40',
+              'sunland_phone_identity_lifecycle':'89e753458b07653b31091b43584e03f3'}
+            funcs=conn.execute("SELECT proname,md5(regexp_replace(prosrc,'\\s+',' ','g')) FROM pg_proc WHERE proname=ANY(%s)",(list(expected),)).fetchall()
+            assert len(funcs)==5 and dict(funcs)==expected, funcs
+            conn.execute('grant select,insert,update,delete on public.user_profiles to service_role')
+            conn.execute("set local role service_role; update public.user_profiles set pro=true where user_id='synthetic'; reset role;")
+            assert conn.execute("select count(*) from waffo_prod.entitlement_sources where user_id='synthetic' and active").fetchone()==(1,)
+            conn.execute("""insert into public.ai_quota_days(user_id,usage_date) values('synthetic',current_date);
+                insert into public.ai_quota_requests(user_id,request_id,payload_hash,usage_date) values('synthetic','synthetic-request',repeat('a',64),current_date);
+                insert into public.conversation_sync_receipts(user_id,operation_id,payload_hash) values('synthetic','synthetic-operation','synthetic-hash');
+                insert into public.sunland_phone_auth_state(user_id) values('synthetic') on conflict(user_id) do nothing;
+                insert into public.sunland_phone_auth_operations(operation_id,request_hash,user_id,action,result) values(gen_random_uuid(),repeat('b',64),'synthetic','login','{}');
+                set local role service_role; update public.user_profiles set identity_status='retired' where user_id='synthetic'; reset role;""")
+            for table in ('public.ai_quota_requests','public.ai_quota_days','public.conversation_sync_receipts','public.sunland_phone_auth_operations'):
+                assert conn.execute('select count(*) from '+table+' where user_id=%s',('synthetic',)).fetchone()==(0,), table
+            assert conn.execute("select version from public.sunland_phone_auth_state where user_id='synthetic'").fetchone()==(1,)
+            conn.commit()
+            print('PASS six related triggers and synthetic dependency tables under service role')
         # PostgreSQL forbids unprivileged settings: guard must stop before writes.
         conn.execute('create role unprivileged');conn.commit();conn.execute('set role unprivileged')
         try:

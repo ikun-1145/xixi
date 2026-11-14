@@ -23,9 +23,11 @@ export class SmsRelayClient {
 
   async send({ phone, code, purpose }) {
     requireSmsEnabled(this.env);
-    // Both first login/registration and phone reauthentication prove possession.
-    // The coordinator retains separate purpose-bound challenges for reauth.
-    if (!['login', 'reauth'].includes(purpose) || typeof phone !== 'string' || !/^1[3-9]\d{9}$/.test(phone) ||
+    // Account management stays separately gated; each purpose remains bound
+    // to its own challenge even though the relay uses the login template.
+    const allowed = ['login', 'reauth'].includes(purpose) ||
+      (this.env.PHONE_ACCOUNT_MANAGEMENT_ENABLED === 'true' && ['bind', 'change'].includes(purpose));
+    if (!allowed || typeof phone !== 'string' || !/^1[3-9]\d{9}$/.test(phone) ||
         typeof code !== 'string' || !/^\d{6}$/.test(code)) throw new PhoneAuthError('INVALID_REQUEST');
     const { status, data } = await requestJson(this.url, {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
