@@ -172,6 +172,8 @@ try {
   assert.equal((await call('send-code',{phone:fresh,purpose:'login',turnstile_token:'synthetic',challenge_id:freshId},null)).success,true);
   const registrations=await Promise.all([1,2].map(()=>call('verify-code',{phone:fresh,challenge_id:freshId,code:'123456',operation_id:randomUUID()},null)));
   assert.equal(registrations.filter(item=>item.is_new_user===true).length,1);
+  assert.notEqual(registrations.find(item=>item.is_new_user).user.id,'email-user');
+  assert.notEqual(registrations.find(item=>item.is_new_user).user.id,'other-user');
   assert.equal(registrations.find(item=>!item.is_new_user).code,'CODE_INVALID');
   const profiles=await db.query('select count(*)::int as n from public.user_profiles'); assert.equal(profiles.rows[0].n,3);
   assert.equal(deliveries,7);
