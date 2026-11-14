@@ -5,26 +5,25 @@ import vm from 'node:vm';
 
 const source = await readFile(new URL('../p/js/phone-turnstile-bridge.js', import.meta.url), 'utf8');
 function fixture({ action = 'phone_login', origin = 'https://sunland.dev', framed = false, token = 'synthetic-token' } = {}) {
-  const button = {}, status = {}, messages = [];
+  const button = {}, status = {};
   const window = { location: { origin, pathname: '/auth/phone-turnstile.html', search: `?action=${action}` },
     document: { getElementById: id => id === 'start' ? button : status },
-    PhoneTurnstile: { postMessage: value => messages.push(JSON.parse(value)) },
     SunlandPhoneAuth: { runTurnstile: async () => token } };
   window.self = window; window.top = framed ? {} : window;
   vm.runInNewContext(source, { window, URLSearchParams });
-  return { button, status, messages };
+  return { button, status, window };
 }
-test('approved origin sends a single action-bound token to native channel', async () => {
+test('approved origin exposes one action-bound token only once in the main frame', async () => {
   const f = fixture(); await Promise.all([f.button.onclick(), f.button.onclick()]);
-  assert.equal(f.messages.length, 1);
-  assert.deepEqual(f.messages[0], { type: 'token', action: 'phone_login', token: 'synthetic-token' });
+  assert.deepEqual(JSON.parse(JSON.stringify(f.window.__phoneTurnstileTakeResult())), { type: 'token', action: 'phone_login', token: 'synthetic-token' });
+  assert.equal(f.window.__phoneTurnstileTakeResult(), null);
 });
 for (const args of [{ action: 'phone_unbind' }, { origin: 'https://other.example' }, { framed: true }]) {
   test(`rejects invalid bridge context ${JSON.stringify(args)}`, () => {
-    const f = fixture(args); assert.equal(f.button.disabled, true); assert.equal(f.messages.length, 0);
+    const f = fixture(args); assert.equal(f.button.disabled, true); assert.equal(f.window.__phoneTurnstileTakeResult, undefined);
   });
 }
 test('invalid tokens produce an error without returning token data', async () => {
   const f = fixture({ token: '' }); await f.button.onclick();
-  assert.deepEqual(f.messages[0], { type: 'error', action: 'phone_login' });
+  assert.deepEqual(JSON.parse(JSON.stringify(f.window.__phoneTurnstileTakeResult())), { type: 'error', action: 'phone_login' });
 });

@@ -9,6 +9,7 @@ import { createHmac, randomUUID } from 'node:crypto';
 import { createPhoneAuthWorker } from '../routes.js';
 import { sendPhoneReauthEmail } from '../email-reauth.js';
 import { PhoneAuthError } from '../errors.js';
+import { PhoneAuthCoordinator } from '../coordinator.js';
 
 const { PHONE_PREFLIGHT_PACKAGE_ROOT: packages, PHONE_XIXI_SOURCE_ROOT: xixi, PHONE_SUNLAND_SOURCE_ROOT: app } = process.env;
 if (!packages || !xixi || !app) throw Error('Set local package and source roots');
@@ -216,5 +217,44 @@ try {
     actual=await db.query("select count(*)::int as n from public.sunland_phone_identities where user_id='ui-user'");assert.equal(actual.rows[0].n,0);
   } finally {dom.window.close();}
   console.log('PASS: actual settings DOM and browser client -> Worker routes -> real identity and email OTP SQL: bind, change, unbind; authentication, CAPTCHA, SMS and email simulated');
+  // Exercise the real coordinator and relay adapter with outbound HTTP mocked;
+  // identity mutations still run against the isolated PostgreSQL instance.
+  const ledger = new Map(); let tail = Promise.resolve(); let relayCode;
+  const storage = { async transaction(fn) {
+    const previous = tail; let release; tail = new Promise(r => { release = r; }); await previous;
+    try {
+      const copy = structuredClone(ledger);
+      const tx = {get: async k => structuredClone(copy.get(k)), put: async (k,v) => copy.set(k,structuredClone(v)),
+        delete: async k => copy.delete(k), list: async ({prefix='',startAfter='',limit=32}={}) =>
+          new Map([...copy].filter(([k]) => k.startsWith(prefix) && k > startAfter).sort().slice(0,limit))};
+      const result = await fn(tx); ledger.clear(); for (const entry of copy) ledger.set(...entry); return result;
+    } finally { release(); }
+  }};
+  const doEnv = {...env, PHONE_SMS_ENABLED:'true', PHONE_RELEASE_MODE:'public',
+    SMS_RELAY_URL:'https://relay.invalid/send', SUNLAND_SMS_RELAY_KEY:'synthetic-relay-key',
+    PHONE_AUTH_HMAC_KEY_ID:'v1', PHONE_AUTH_ADMIN_TOKEN:'synthetic-admin-token-32-characters',
+    TURNSTILE_SECRET:'synthetic-turnstile', PHONE_TURNSTILE_HOSTNAME:'sunland.dev',
+    PHONE_AUTH_POLICY: JSON.stringify({perPhoneDaily:10,perIpDaily:20,dailyLimit:20,unitCostMicros:7,
+      dailyBudgetMicros:140,totalBudgetMicros:140,ipRequestsPerMinute:100,globalRequestsPerMinute:200})};
+  const coordinator = new PhoneAuthCoordinator({storage},doEnv,{fetchImpl:async (url,init) => {
+    if (new URL(url).hostname === 'challenges.cloudflare.com') return Response.json({success:true,hostname:'sunland.dev',action:'phone_login',challenge_ts:new Date().toISOString()});
+    assert.equal(new URL(url).hostname,'relay.invalid'); const payload=JSON.parse(init.body);
+    assert.equal(payload.scene,'login'); relayCode=payload.code; return Response.json({ok:1});
+  }});
+  const initialized=await coordinator.fetch(new Request('https://internal/initialize',{method:'POST',headers:{Authorization:`Bearer ${doEnv.PHONE_AUTH_ADMIN_TOKEN}`},body:'{}'}));
+  assert.equal(initialized.status,200);
+  const liveSms={sendPhoneCode:(_env,input,ctx)=>coordinator.send(input,ctx),checkPhoneCode:(_env,input,ctx)=>coordinator.check(input,ctx)};
+  const realWorker=createPhoneAuthWorker({fetch:async()=>new Response(null,{status:404})},hooks,{sms:liveSms,loginOnly:true});
+  async function realCall(route,body) {
+    const response=await realWorker.fetch(new Request(`https://api.invalid/v1/phone/${route}`,{method:'POST',
+      headers:{'Content-Type':'application/json','CF-Connecting-IP':'192.0.2.1'},body:JSON.stringify(body)}),doEnv,{});
+    return {status:response.status,...await response.json()};
+  }
+  const actualPhone='13700000005', actualChallenge=randomUUID();
+  assert.equal((await realCall('send-code',{phone:actualPhone,purpose:'login',turnstile_token:'synthetic-turnstile',challenge_id:actualChallenge})).success,true);
+  const actualLogin=await realCall('verify-code',{phone:actualPhone,challenge_id:actualChallenge,code:relayCode,operation_id:randomUUID()});
+  assert.equal(actualLogin.is_new_user,true); assert.ok(actualLogin.user.id);
+  assert.notEqual((await realCall('verify-code',{phone:actualPhone,challenge_id:actualChallenge,code:relayCode,operation_id:randomUUID()})).status,200);
+  console.log('PASS: Worker routes + real coordinator + relay adapter + isolated identity SQL; outbound Turnstile and relay, JWT and account status simulated');
   console.log(`PASS: synthetic routes + ${process.env.PHONE_TEST_POSTGRES_IMAGE ? 'isolated PostgreSQL 17' : 'PGlite'}: register, same-user login, email proof, bind, cross-account conflict, change, unbind, concurrent/replay/cross-action/expiry/attempt-limit rejection; simulated SMS and email`);
 } finally { await db.close(); }
