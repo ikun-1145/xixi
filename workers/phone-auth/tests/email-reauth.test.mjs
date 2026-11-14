@@ -27,6 +27,19 @@ test('throttled and missing configuration reject before delivery', async () => {
   assert.deepEqual(f.events.map(x => x[0]), ['reserve']);
   await assert.rejects(sendPhoneReauthEmail({ env: {}, email }), { code: 'IDENTITY_CONFIG' });
 });
+test('a credential reused from another binding is rejected before reserve or delivery', async () => {
+  const f=fixture();
+  for (const name of ['SUNLAND_SMS_RELAY_KEY','PHONE_ALIYUN_ACCESS_KEY_SECRET','PHONE_AUTH_HMAC_KEY','PHONE_AUTH_ADMIN_TOKEN',
+    'PHONE_IDENTITY_LOOKUP_KEY','PHONE_IDENTITY_ENCRYPTION_KEYS','TURNSTILE_SECRET',
+    'APP_JWT_LEGACY_SECRET','APP_JWT_PRIMARY_SECRET','JWT_SECRET','SUPABASE_SECRET_KEY',
+    'SUPABASE_SERVICE_ROLE_KEY','RESEND_API_KEY']) {
+    await assert.rejects(sendPhoneReauthEmail({env:{...env,[name]:env.PHONE_REAUTH_EMAIL_API_KEY},email,
+      otp:{async reserve(){throw Error('must not reserve');},async delivery(){}},bindCode:String}),{code:'IDENTITY_CONFIG'});
+  }
+  await assert.rejects(sendPhoneReauthEmail({env:{...env,PHONE_IDENTITY_ENCRYPTION_KEYS:JSON.stringify({v1:env.PHONE_REAUTH_EMAIL_API_KEY})},email,
+    otp:{async reserve(){throw Error('must not reserve');},async delivery(){}},bindCode:String}),{code:'IDENTITY_CONFIG'});
+  assert.equal(f.events.length,0);
+});
 for (const [name, response, expected] of [
   ['provider rejection', () => Response.json({ error: 'synthetic' }, { status: 400 }), 'failed'],
   ['provider timeout-like failure', () => Response.json({ error: 'synthetic' }, { status: 429 }), 'unknown'],

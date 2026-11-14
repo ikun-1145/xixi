@@ -11,6 +11,7 @@
     newPhone:['新手机号','新手機號碼','New phone','新しい電話番号','새 전화번호','Nuevo teléfono'],
     code:['验证码','驗證碼','Verification code','認証コード','인증번호','Código de verificación'],
     send:['发送验证码','傳送驗證碼','Send code','コードを送信','인증번호 전송','Enviar código'],
+    resend:['秒后可重新发送','秒後可重新傳送','s until resend','秒後に再送可能','초 후 재전송','s para reenviar'],
     verify:['验证并继续','驗證並繼續','Verify and continue','認証して続行','확인 후 계속','Verificar y continuar'],
     confirm:['确认','確認','Confirm','確認','확인','Confirmar'],
     confirmUnbind:['确认解绑','確認解除綁定','Confirm unlink','解除を確認','연결 해제 확인','Confirmar desvinculación'],
@@ -23,6 +24,7 @@
     phoneHint:['先验证当前绑定的手机号。','先驗證目前綁定的手機號碼。','First verify the currently linked phone.','まず連携中の電話番号を認証してください。','먼저 연결된 전화번호를 인증하세요.','Primero verifica el teléfono vinculado.'],
     emailRequired:['解绑前需要验证已绑定的邮箱。','解除綁定前需要驗證已綁定的郵箱。','A linked email is required to unlink.','解除には連携済みメールの認証が必要です。','연결을 해제하려면 연결된 이메일 인증이 필요합니다.','Se necesita un correo vinculado para desvincular.'],
     codeSent:['验证码已请求，请查收。','驗證碼已要求，請查收。','Code requested. Check your messages.','コードを送信しました。','인증번호를 요청했습니다.','Código solicitado. Revisa tus mensajes.'],
+    emailUncertain:['邮件发送状态未知；如收到验证码，请继续验证。','郵件傳送狀態未知；如收到驗證碼，請繼續驗證。','Email delivery is unknown. If a code arrives, continue verification.','メールの送信状況は不明です。コードが届いたら認証を続けてください。','이메일 전송 상태를 알 수 없습니다. 코드가 도착하면 인증을 계속하세요.','Se desconoce el estado del correo. Si recibes un código, continúa la verificación.'],
     enterCode:['请输入六位验证码。','請輸入六位驗證碼。','Enter the six-digit code.','6桁のコードを入力してください。','6자리 인증번호를 입력하세요.','Introduce el código de seis dígitos.'],
     complete:['操作已完成。','操作已完成。','Done.','完了しました。','완료되었습니다.','Operación completada.'],
     uncertain:['结果未知，请先刷新并核对账号状态，避免重复操作。','結果未知，請先重新整理並核對帳號狀態，避免重複操作。','Result unknown. Refresh and check your account before repeating.','結果不明です。再操作する前に状態を確認してください。','결과를 알 수 없습니다. 다시 시도하기 전에 상태를 확인하세요.','Resultado desconocido. Comprueba tu cuenta antes de repetir.'],
@@ -32,6 +34,7 @@
   const langs=['zh-CN','zh-Hant','en','ja','ko','es'];
   const tr = key => copy[key]?.[Math.max(0,langs.indexOf(global.SiteI18n?.getLanguage?.() || 'zh-CN'))] || key;
   const operationKey='sunland.phone.mutation-uncertain.v1';
+  const emailCooldownKey='sunland.phone.email-reauth-cooldown.v1';
   const validCode = value => /^\d{6}$/.test(value);
 
   function mount() {
@@ -57,9 +60,18 @@
       el('ReauthHint').textContent=tr(status?.has_email ? 'emailHint' : 'phoneHint');
       for(const b of buttons) if(b && !['phoneSettingsBind','phoneSettingsChange','phoneSettingsUnbind'].includes(b.id))
         b.disabled=busy || (uncertain && !['phoneSettingsReview','phoneSettingsCancel'].includes(b.id));
+      let emailSeconds=0;
+      try { emailSeconds=Math.max(0,Math.ceil((Number(global.sessionStorage.getItem(emailCooldownKey)) - Date.now())/1000)); }
+      catch { emailSeconds=60; }
+      const authSeconds=status?.has_email ? emailSeconds : global.SunlandPhoneAuth.cooldown?.(authPhone) || 0;
+      const targetSeconds=global.SunlandPhoneAuth.cooldown?.(targetPhone) || 0;
+      el('AuthSend').disabled ||= Boolean(authChallenge)||authSeconds>0;
+      el('TargetSend').disabled ||= Boolean(targetChallenge)||targetSeconds>0;
+      el('AuthSend').textContent=authSeconds>0 ? `${authSeconds} ${tr('resend')}` : tr('send');
+      el('TargetSend').textContent=targetSeconds>0 ? `${targetSeconds} ${tr('resend')}` : tr('send');
       el('OldPhone').disabled=busy||Boolean(authChallenge); el('NewPhone').disabled=busy||Boolean(targetChallenge);
       let pending=null;
-      try { pending=action && client.recovery(status?.has_email ? action : (proof ? action : 'reauth')); }
+      try { pending=client.pendingRecovery(); }
       catch { uncertain=true; }
       el('Review').hidden=!uncertain && !(pending && Date.now()>=pending.review_after);
     }
@@ -89,7 +101,15 @@
     el('Cancel').onclick=()=>{reset();note('');render();};
     el('AuthSend').onclick=()=>run(async current=>{
       if(status.has_email) {
-        await client.emailReauthSend(action);if(!current())return;
+        // A timeout can still mean that the email was sent; retain the cooldown across reloads.
+        try { global.sessionStorage.setItem(emailCooldownKey,String(Date.now()+60000)); }
+        catch { throw Object.assign(new Error(),{code:'SERVICE_UNAVAILABLE'}); }
+        try { await client.emailReauthSend(action); }
+        catch(error) {
+          if(['TIMEOUT','NETWORK','SERVICE_UNAVAILABLE'].includes(error?.code)){if(current())note(tr('emailUncertain'));return;}
+          throw error;
+        }
+        if(!current())return;
       } else {
         const phone=global.SunlandPhoneAuth.normalizePhone(el('OldPhone').value), recovery=client.recovery('reauth');
         authPhone=phone;
@@ -130,9 +150,8 @@
     el('Review').onclick=()=>run(async current=>{
       if(!global.confirm(tr('reviewConfirm')))return;
       const fresh=await client.status();if(!current())return;
-      const purpose=status?.has_email ? action : (proof ? action : 'reauth');
-      const pending=purpose && client.recovery(purpose);
-      if(pending)client.acknowledgeReviewed(purpose,true);
+      const pending=client.pendingRecovery();
+      if(pending)client.acknowledgeReviewed(pending.purpose,true);
       try{global.sessionStorage.removeItem(operationKey);}catch{throw Object.assign(new Error(),{code:'SERVICE_UNAVAILABLE'});}
       uncertain=false;reset();status=fresh;note('');
     });

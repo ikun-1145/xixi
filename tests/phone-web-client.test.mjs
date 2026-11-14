@@ -66,7 +66,9 @@ test('lost send response keeps a reload-safe handle and never sends again automa
  const recovery=reloaded.client.recovery('login');assert.equal(recovery.challenge_id,id);assert.ok(recovery.expires_in>0);
  await assert.rejects(reloaded.client.send('13900000000','login'),{code:'SEND_UNCERTAIN'});assert.equal(sends,1);
  await reloaded.client.login('13800000000',recovery.challenge_id,'123456');
- assert.equal(verifies,1);assert.equal(reloaded.dom.window.sessionStorage.getItem('sunland.phone.pending.v1'),null);
+ assert.equal(verifies,1);assert.ok(reloaded.dom.window.sessionStorage.getItem('sunland.phone.pending.v1'));
+ reloaded.client.acknowledgeLoginSaved(recovery.challenge_id);
+ assert.equal(reloaded.dom.window.sessionStorage.getItem('sunland.phone.pending.v1'),null);
 });
 
 test('pending verification, session cancellation, and expired recovery never trigger a resend',async t=>{

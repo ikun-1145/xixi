@@ -6,6 +6,15 @@ export async function sendPhoneReauthEmail({ env, email, otp, bindCode, fetchImp
   const key = env?.PHONE_REAUTH_EMAIL_API_KEY;
   if (typeof key !== 'string' || !key.trim() || typeof bindCode !== 'function' ||
       !otp || typeof otp.reserve !== 'function' || typeof otp.delivery !== 'function') throw new PhoneAuthError('IDENTITY_CONFIG', 503);
+  // Fail before any request if an unrelated or shared credential was supplied.
+  let encryptionKeys = [];
+  try { encryptionKeys = Object.values(JSON.parse(env.PHONE_IDENTITY_ENCRYPTION_KEYS || '{}')); } catch { /* identity validation handles malformed keyrings */ }
+  if ([...encryptionKeys, env.SUNLAND_SMS_RELAY_KEY, env.PHONE_ALIYUN_ACCESS_KEY_SECRET, env.PHONE_AUTH_HMAC_KEY, env.PHONE_AUTH_ADMIN_TOKEN,
+       env.PHONE_IDENTITY_LOOKUP_KEY, env.PHONE_IDENTITY_ENCRYPTION_KEYS, env.TURNSTILE_SECRET,
+       env.APP_JWT_LEGACY_SECRET, env.APP_JWT_PRIMARY_SECRET, env.JWT_SECRET,
+       env.SUPABASE_SECRET_KEY, env.SUPABASE_SERVICE_ROLE_KEY, env.RESEND_API_KEY].includes(key)) {
+    throw new PhoneAuthError('IDENTITY_CONFIG', 503);
+  }
   const bytes = new Uint32Array(1);
   do { random.getRandomValues(bytes); } while (bytes[0] >= 4294000000);
   const code = String(bytes[0] % 1000000).padStart(6, '0');

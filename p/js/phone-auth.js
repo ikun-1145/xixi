@@ -117,6 +117,10 @@
       return {challenge_id:p.id,expires_in:Math.max(0,Math.floor((p.expiresAt-Date.now())/1000)),
         expired:p.expiresAt<=Date.now(),review_after:p.expiresAt+300000};
     }
+    function pendingRecovery() {
+      const p=pending();
+      return p ? { purpose:p.purpose, ...recovery(p.purpose) } : null;
+    }
     function acknowledgeReviewed(purpose,reviewed) {
       const p=pending();
       // Explicit human review is required; the server lock/quarantine remains authoritative.
@@ -167,7 +171,7 @@
         rememberCooldown(phone,r.retry_after);return r;
       }finally{sending=false;controllers.delete(controller);}
     }
-    return {capture,current,cancel,send,recovery,acknowledgeReviewed,
+    return {capture,current,cancel,send,recovery,pendingRecovery,acknowledgeReviewed,
       async status(){const r=await request('/v1/phone/status',{});
         if(typeof r.bound!=='boolean'||typeof r.has_email!=='boolean'||
           (r.bound ? typeof r.phone!=='string'||!/^\+86 \*{7}\d{4}$/.test(r.phone) : r.phone!==null))throw failure('SERVICE_UNAVAILABLE');
@@ -187,8 +191,8 @@
         if(r.ok!==true||typeof r.deletion_job_id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(r.deletion_job_id)||
           typeof r.deletion_token!=='string'||!/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(r.deletion_token)||r.expires_in!==600)throw failure('SERVICE_UNAVAILABLE');
         return r;},
-      async login(phone,challenge_id,code){let r;try{r=await request('/v1/phone/verify-code',{phone:normalizePhone(phone),challenge_id,code,operation_id:global.crypto.randomUUID()},{auth:false});}catch(error){if(['NETWORK','TIMEOUT','SERVICE_UNAVAILABLE'].includes(error.code))throw failure('VERIFY_UNCERTAIN');throw error;}
-        if(typeof r.token==='string'&&r.token&&typeof r.user?.id==='string'&&r.user.id)clearPending(challenge_id);return r;},
+      async login(phone,challenge_id,code){try{return await request('/v1/phone/verify-code',{phone:normalizePhone(phone),challenge_id,code,operation_id:global.crypto.randomUUID()},{auth:false});}catch(error){if(['NETWORK','TIMEOUT','SERVICE_UNAVAILABLE'].includes(error.code))throw failure('VERIFY_UNCERTAIN');throw error;}},
+      acknowledgeLoginSaved(challenge_id){clearPending(challenge_id);},
       async emailSend(email){if(typeof email!=='string'||!/^\S+@\S+\.\S+$/.test(email))throw failure('INVALID_REQUEST');
         const snapshot=capture(),controller=new global.AbortController();controllers.add(controller);
         try{const token=await emailCaptcha({signal:controller.signal});assert(snapshot);return await request('/send-code',{email,token},{auth:false,snapshot});}finally{controllers.delete(controller);}},

@@ -27,6 +27,14 @@ test('mode switch clears phone and code without persisting temporary state',asyn
  const h=harness(),d=h.w.document;assert.ok(d.querySelector('#phoneLoginTab'));d.querySelector('#phoneLoginTab').click();d.querySelector('#phoneInput').value='13800000000';d.querySelector('#phoneCodeInput').value='123456';d.querySelector('#emailLoginTab').click();assert.equal(d.querySelector('#phoneInput').value,'');assert.equal(d.querySelector('#phoneCodeInput').value,'');assert.equal(d.querySelector('#emailInput').hidden,false);h.dom.window.close();
 });
 
+test('phone verification retains recovery when account status cannot be confirmed',async t=>{
+ const h=harness(),d=h.w.document;t.after(()=>h.dom.window.close());
+ h.w.SunlandLoginBanStatus.check=async()=>{throw new Error('synthetic failure');};
+ d.querySelector('#phoneLoginTab').click();d.querySelector('#phoneInput').value='13800000000';d.querySelector('#sendPhoneCodeBtn').click();await flush();
+ d.querySelector('#phoneCodeInput').value='123456';d.querySelector('#agreeCheck').checked=true;d.querySelector('#agreeCheck').dispatchEvent(new h.w.Event('change'));d.querySelector('#loginBtn').click();await flush();await flush();
+ assert.equal(h.w.localStorage.getItem('token'),null);assert.ok(h.w.sessionStorage.getItem('sunland.phone.pending.v1'));assert.equal(d.querySelector('#sendPhoneCodeBtn').disabled,true);
+});
+
 test('switching modes during pending email captcha restores send button and discards its late result',async t=>{
  const h=harness(),d=h.w.document;t.after(()=>h.dom.window.close());d.querySelector('#emailInput').value='test@example.invalid';d.querySelector('#sendCodeBtn').click();await flush();assert.equal(d.querySelector('#sendCodeBtn').disabled,true);
  const finish=h.w.__emailCaptchaSuccess;assert.equal(typeof finish,'function');d.querySelector('#phoneLoginTab').click();d.querySelector('#emailLoginTab').click();finish();await flush();
@@ -75,7 +83,7 @@ test('real language catalog translates phone login labels and authentication err
 });
 
 test('phone client uses a recovery-specific cache key and stays disabled by default',()=>{
- assert.match(html,/p\/js\/phone-auth\.js\?v=20261106-recovery-1/);
+ assert.match(html,/p\/js\/phone-auth\.js\?v=20261114-phone-settings-1/);
  assert.match(html,/<meta name="sunland-phone-ui-enabled" content="false">/);
 });
 

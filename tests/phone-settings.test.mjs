@@ -10,7 +10,7 @@ const proof='A'.repeat(43);
 function harness({enabled=true,bound=false,hasEmail=true,mutate,send}={}) {
   const dom=new JSDOM(html,{url:'https://sunland.dev/ai_settings.html',runScripts:'outside-only'}),w=dom.window,calls=[];
   let currentToken='session-a';const status={bound,has_email:hasEmail,phone:bound?'+86 *******0000':null};
-  const c={capture:()=>currentToken,current:s=>s===currentToken,cancel(){},recovery:()=>null,acknowledgeReviewed(){},
+  const c={capture:()=>currentToken,current:s=>s===currentToken,cancel(){},recovery:()=>null,pendingRecovery:()=>null,acknowledgeReviewed(){},
     status:async()=>({...status}),emailReauthSend:async action=>{calls.push(['emailSend',action]);},
     emailProof:async(code,action)=>{calls.push(['emailProof',code,action]);return {reauth_token:proof};},
     send:send|| (async(phone,purpose)=>{calls.push(['send',phone,purpose]);return {challenge_id:'challenge'};}),
@@ -33,6 +33,13 @@ test('email reauthentication uses current session and requested action before bi
  h.el('NewPhone').value='13800001234';h.el('TargetSend').click();await tick();h.el('NewCode').value='654321';h.el('TargetConfirm').click();await tick();
  const mutation=h.calls.find(x=>x[0]==='mutate');assert.equal(mutation[1],'bind');assert.equal(mutation[2].reauth_token,proof);assert.equal(h.el('Value').textContent,'+86 *******1234');
 });
+test('email send timeout retains cooldown and cannot immediately send again',async t=>{
+ const h=harness();t.after(()=>h.dom.window.close());let sends=0;
+ h.c.emailReauthSend=async()=>{sends++;throw Object.assign(Error(),{code:'TIMEOUT'});};await start(h);
+ h.el('Bind').click();h.el('AuthSend').click();await tick();
+ assert.equal(sends,1);assert.equal(h.el('AuthSend').disabled,true);assert.match(h.el('AuthSend').textContent,/resend/);assert.match(h.el('Message').textContent,/unknown/);
+ h.el('AuthSend').click();await tick();assert.equal(sends,1);
+});
 test('phone-only account must verify its existing number and cannot unlink its last factor',async t=>{
  const h=harness({bound:true,hasEmail:false});t.after(()=>h.dom.window.close());await start(h);assert.equal(h.el('Unbind').disabled,true);
  h.el('Change').click();h.el('OldPhone').value='13800000000';h.el('AuthSend').click();await tick();h.el('AuthCode').value='123456';h.el('AuthNext').click();await tick();
@@ -43,6 +50,13 @@ test('uncertain mutation is not retried and requires an explicit account review'
  h.el('Bind').click();h.el('AuthCode').value='123456';h.el('AuthNext').click();await tick();h.el('NewPhone').value='13800001234';h.el('TargetSend').click();await tick();h.el('NewCode').value='654321';h.el('TargetConfirm').click();await tick();
  assert.equal(n,1);assert.equal(h.w.sessionStorage.getItem('sunland.phone.mutation-uncertain.v1'),'1');assert.equal(h.el('Review').hidden,false);
  h.el('TargetConfirm').click();await tick();assert.equal(n,1);h.el('Review').click();await tick();assert.equal(h.w.sessionStorage.getItem('sunland.phone.mutation-uncertain.v1'),null);
+});
+test('old pending bind can be reviewed after status changes and bind action disappears',async t=>{
+ const h=harness({bound:true});t.after(()=>h.dom.window.close());let reviewed;
+ h.c.pendingRecovery=()=>({purpose:'bind',review_after:Date.now()-1});
+ h.c.acknowledgeReviewed=(purpose,confirmed)=>{reviewed=[purpose,confirmed];};await start(h);
+ assert.equal(h.el('Bind').hidden,true);assert.equal(h.el('Review').hidden,false);
+ h.el('Review').click();await tick();assert.deepEqual(reviewed,['bind',true]);
 });
 test('session switch discards an in-flight proof',async t=>{
  let done;const h=harness();t.after(()=>h.dom.window.close());h.c.emailProof=()=>new Promise(r=>{done=r;});await start(h);
