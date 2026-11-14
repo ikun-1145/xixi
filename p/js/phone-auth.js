@@ -192,6 +192,7 @@
       async emailSend(email){if(typeof email!=='string'||!/^\S+@\S+\.\S+$/.test(email))throw failure('INVALID_REQUEST');
         const snapshot=capture(),controller=new global.AbortController();controllers.add(controller);
         try{const token=await emailCaptcha({signal:controller.signal});assert(snapshot);return await request('/send-code',{email,token},{auth:false,snapshot});}finally{controllers.delete(controller);}},
+      emailReauthSend:action=>request('/v1/phone/reauth/email/send',{action}),
       emailProof:(code,action)=>request('/v1/phone/reauth/email',{code,action}),
       async phoneProof(phone,challenge_id,code,action){const r=await request('/v1/phone/reauth/phone',{phone:normalizePhone(phone),challenge_id,code,action});if(typeof r.reauth_token==='string'&&r.reauth_token)clearPending(challenge_id);return r;},
       async mutate(action,data){if(!['bind','change','unbind'].includes(action))throw failure('INVALID_REQUEST');const r=await request('/v1/phone/'+action,{...data,...(data.phone?{phone:normalizePhone(data.phone)}:{}),operation_id:global.crypto.randomUUID()});if(r.ok===true&&data.challenge_id)clearPending(data.challenge_id);return r;},

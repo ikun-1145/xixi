@@ -15,6 +15,13 @@ export async function buildStandalonePhoneWorker({workerRoot=process.env.SUNLAND
   const files = {};
   const plugin = expose => ({name:'production-auth-helpers',setup(build) {
     build.onResolve({filter:/^sunland-production-auth-helpers$/},()=>({path:resolve(workerRoot,'src/index.js')}));
+    build.onResolve({filter:/^sunland-phone-email-otp$/},()=>({path:'email-otp',namespace:'phone-email'}));
+    build.onLoad({filter:/.*/,namespace:'phone-email'},()=>{
+      const contents=execFileSync('git',['-C',workerRoot,'show','3398d8801efe93a2063536b0a5d460974a8fc65f:worker/src/email-otp.js'],{encoding:'utf8'});
+      if(sha(contents)!=='5c983b0f9d7eb934cce35e18c1c19812993d76df30bc7e9b43ba3bc3927f5e4e')throw Error('Email OTP authority source changed');
+      files['src/email-otp.js']=sha(contents);
+      return {contents,loader:'js'};
+    });
     // The eight auth helpers are self-contained; AI-module initialization is
     // not part of their contract and must not enter the independent Worker.
     if (expose) build.onResolve({filter:/^\.\/.+\.js$/},args=>args.importer===resolve(workerRoot,'src/index.js') ?
@@ -34,7 +41,7 @@ export async function buildStandalonePhoneWorker({workerRoot=process.env.SUNLAND
   if (sha(normalized)!=='73217b53fa4f0424ee31634000ebbc74e046cb41408290fa8ce7897ab592d645') throw Error('Production baseline drift');
   const built = await esbuild.build({...options,entryPoints:[resolve(project,'workers/phone-auth/standalone-entry.js')],plugins:[plugin(true)]});
   const code = built.outputFiles[0].text;
-  for (const forbidden of ['sunland_otp','OTP_MAINTENANCE','CODE_STORE','api.deepseek.com']) if (code.includes(forbidden)) throw Error('Unrelated authentication or AI dependency in standalone bundle');
+  for (const forbidden of ['OTP_MAINTENANCE','CODE_STORE','api.deepseek.com']) if (code.includes(forbidden)) throw Error('Unrelated authentication or AI dependency in standalone bundle');
   return {code,baseline,manifest:{worker:'phone-auth',baselineCommit:ref,baselineNormalizedSha256:sha(normalized),helperSourceFiles:files,esbuildVersion:esbuild.version,bundleSha256:sha(code)}};
 }
 export async function prepareStandalonePhoneWorker(output) {

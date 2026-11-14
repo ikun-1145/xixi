@@ -4,9 +4,11 @@ import { createPhoneAuthWorker } from './routes.js';
 import { requireAdmin } from './release-policy.js';
 import { PhoneAuthError } from './errors.js';
 import { turnstileProbe } from './turnstile-probe.js';
+import { createEmailOtp } from 'sunland-phone-email-otp';
+import { sendPhoneReauthEmail } from './email-reauth.js';
 export { PhoneAuthCoordinator } from './coordinator.js';
 const hooks = { getUserFromRequest, getUserStatus, accountStatusRejection, applicationSigningSecret,
-  signJWT, callIdentityRpc, readJsonBodyWithLimit, json };
+  signJWT, callIdentityRpc, readJsonBodyWithLimit, json, createEmailOtp, sendPhoneReauthEmail };
 const worker = createPhoneAuthWorker({ fetch(request, env) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: json({}, 200, env).headers });
   return json({ error: 'Not found' }, 404, env);

@@ -29,6 +29,7 @@ function fixture(options = {}) {
     readJsonBodyWithLimit: async (request, max) => { const text = await request.text(); if (Buffer.byteLength(text) > max) return { error: 'too_large' }; try { return { value: JSON.parse(text) }; } catch { return { error: 'bad_json' }; } },
     json: (data, status = 200) => Response.json(data, { status, headers: { 'Access-Control-Allow-Origin': 'https://sunland.dev' } }),
     createEmailOtp: input => { calls.push(['otp', input]); return { consume: async code => { calls.push(['consume', code]); if (options.otpThrows) throw new Error('secret failure'); return { code: options.otpCode || 'OK' }; } }; },
+    sendPhoneReauthEmail: async input => { calls.push(['reauth-send', input]); return { success: true, retry_after: 60 }; },
   };
   const sms = {
     sendPhoneCode: async (...args) => { calls.push(['send', ...args]); return { success: true, challenge_id: UUID, expires_in: 300, retry_after: 600 }; },
@@ -115,6 +116,35 @@ test('email reauth consumes OTP for current DB email and session, ignores JWT st
   const grant = calls.find(x => x[0] === 'grant')[1];
   assert.deepEqual({ ...grant, sessionHash: 'session' }, { userId: 'existing-user', sessionHash: 'session', purpose: 'bind', method: 'email', subject: 'current@example.test' });
   assert.equal(calls.some(x => x[0] === 'login'), false);
+});
+
+test('standalone account management and email reauth remain closed by default', async () => {
+  const f = fixture({ loginOnly: true });
+  assert.equal((await f.invoke('/v1/phone/reauth/email/send', { action: 'bind' })).data.code, 'IDENTITY_DISABLED');
+  assert.equal((await f.invoke('/v1/phone/bind', {})).data.code, 'IDENTITY_DISABLED');
+  assert.equal(f.calls.some(x => x[0] === 'reauth-send'), false);
+  f.env.PHONE_ACCOUNT_MANAGEMENT_ENABLED = 'true';
+  assert.equal((await f.invoke('/v1/phone/reauth/email/send', { action: 'bind' })).data.code, 'IDENTITY_DISABLED');
+});
+
+test('standalone email reauth binds the current account, session and requested action', async () => {
+  const f = fixture({ loginOnly: true });
+  f.env.PHONE_ACCOUNT_MANAGEMENT_ENABLED = 'true'; f.env.PHONE_EMAIL_REAUTH_ENABLED = 'true';
+  assert.equal((await f.invoke('/v1/phone/reauth/email/send', { action: 'bind' })).data.success, true);
+  const send = f.calls.find(x => x[0] === 'reauth-send')[1];
+  assert.equal(send.email, 'current@example.test');
+  assert.deepEqual(JSON.parse(send.bindCode('123456')), ['123456', 'existing-user', 'session-hash'.repeat(5), 'bind']);
+  assert.equal(f.calls.some(x => x[0] === 'login'), false);
+  assert.equal((await f.invoke('/v1/phone/reauth/email', { code: '123456', action: 'bind' })).data.reauth_token, PROOF);
+  assert.deepEqual(JSON.parse(f.calls.find(x => x[0] === 'consume')[1]), ['123456', 'existing-user', 'session-hash'.repeat(5), 'bind']);
+});
+
+test('standalone email reauth refuses unauthenticated and absent-email requests', async () => {
+  for (const options of [{ unauthorized: true }, { current: { email: null } }]) {
+    const f = fixture({ loginOnly: true, ...options });f.env.PHONE_ACCOUNT_MANAGEMENT_ENABLED = 'true';f.env.PHONE_EMAIL_REAUTH_ENABLED = 'true';
+    const result = await f.invoke('/v1/phone/reauth/email/send', { action: 'bind' });
+    assert.ok([401, 403].includes(result.response.status));assert.equal(f.calls.some(x => x[0] === 'reauth-send'), false);
+  }
 });
 
 for (const code of ['INVALID', 'THROTTLED']) test(`email OTP ${code} cannot issue grant`, async () => {

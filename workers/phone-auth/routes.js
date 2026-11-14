@@ -3,7 +3,7 @@ import { createPhoneIdentity } from './identity.js';
 import { sendPhoneCode, checkPhoneCode } from './service.js';
 
 const PREFIX = '/v1/phone/';
-const ROUTES = new Set(['send-code', 'verify-code', 'status', 'reauth/email', 'reauth/phone', 'bind', 'change', 'unbind', 'delete-authorize']);
+const ROUTES = new Set(['send-code', 'verify-code', 'status', 'reauth/email/send', 'reauth/email', 'reauth/phone', 'bind', 'change', 'unbind', 'delete-authorize']);
 const ACTIONS = new Set(['bind', 'change', 'unbind', 'delete']);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const invalid = () => { throw new PhoneAuthError('INVALID_REQUEST'); };
@@ -45,7 +45,8 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
       try {
         if (request.method !== 'POST') throw new PhoneAuthError('INVALID_REQUEST', 405);
         if (env?.PHONE_IDENTITY_ENABLED !== 'true') throw new PhoneAuthError('IDENTITY_DISABLED', 503);
-        if (loginOnly && ['reauth/email', 'bind', 'change', 'unbind'].includes(route)) throw new PhoneAuthError('IDENTITY_DISABLED', 503);
+        const managementEnabled = !loginOnly || env?.PHONE_ACCOUNT_MANAGEMENT_ENABLED === 'true';
+        if (!managementEnabled && ['reauth/email/send', 'reauth/email', 'bind', 'change', 'unbind'].includes(route)) throw new PhoneAuthError('IDENTITY_DISABLED', 503);
         if (!request.headers.get('Content-Type')?.toLowerCase().startsWith('application/json')) invalid();
         const parsed = await hooks.readJsonBodyWithLimit(request, 8192);
         if (parsed?.error) throw new PhoneAuthError('INVALID_REQUEST', parsed.error === 'too_large' ? 413 : 400);
@@ -84,7 +85,7 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
           // Relay sends must remain recoverable even from an old cached login page.
           if (loginOnly && env?.PHONE_SMS_PROVIDER === 'relay' && !Object.hasOwn(input, 'challenge_id')) invalid();
           if (Object.hasOwn(input, 'challenge_id')) operationId(input.challenge_id);
-          if (loginOnly && !['login', 'reauth'].includes(input.purpose)) throw new PhoneAuthError('IDENTITY_DISABLED', 503);
+          if (!managementEnabled && !['login', 'reauth'].includes(input.purpose)) throw new PhoneAuthError('IDENTITY_DISABLED', 503);
           if (!['login', 'bind', 'change', 'unbind', 'reauth'].includes(input.purpose) ||
               typeof input.turnstile_token !== 'string' || !input.turnstile_token.length || input.turnstile_token.length > 2048) invalid();
           let trusted = { ip: ingressIp(request) };
@@ -124,11 +125,21 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
           const current = await identity.status(auth.userId);
           return respond({ bound: Boolean(current.phone_hash), phone: current.masked_phone, has_email: typeof current.email === 'string' && Boolean(current.email.trim()) });
         }
+        if (route === 'reauth/email/send') {
+          if (!loginOnly || env?.PHONE_EMAIL_REAUTH_ENABLED !== 'true' || typeof hooks.sendPhoneReauthEmail !== 'function' || typeof hooks.createEmailOtp !== 'function') throw new PhoneAuthError('IDENTITY_DISABLED', 503);
+          fields(input, ['action']); action(input.action);
+          const auth = await authenticated(input.action === 'delete' ? 'account_delete' : 'protected');
+          const current = await identity.status(auth.userId);
+          if (typeof current.email !== 'string' || !/^\S+@\S+\.\S+$/.test(current.email.trim()) || current.email.trim().length > 254) throw new PhoneAuthError('ALTERNATIVE_LOGIN_REQUIRED', 403);
+          const email = current.email.trim().toLowerCase();
+          const otp = hooks.createEmailOtp({ secret: signingSecret(), email: `phone-reauth:v1\0${email}`, ip: ingressIp(request), rpc });
+          return respond(await hooks.sendPhoneReauthEmail({ env, email, otp, bindCode: value => JSON.stringify([value, auth.userId, auth.sessionHash, input.action]) }));
+        }
         if (route === 'reauth/email' || route === 'reauth/phone') {
           const email = route === 'reauth/email';
           fields(input, email ? ['code', 'action'] : ['phone', 'challenge_id', 'code', 'action']);
           code(input.code); action(input.action);
-          if (loginOnly && input.action !== 'delete') throw new PhoneAuthError('IDENTITY_DISABLED', 503);
+          if (!managementEnabled && input.action !== 'delete') throw new PhoneAuthError('IDENTITY_DISABLED', 503);
           if (!email) challenge(input);
           const auth = await authenticated(input.action === 'delete' ? 'account_delete' : 'protected');
           let subject;
@@ -136,8 +147,9 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
             const current = await identity.status(auth.userId);
             if (typeof current.email !== 'string' || !current.email.trim()) throw new PhoneAuthError('ALTERNATIVE_LOGIN_REQUIRED', 403);
             subject = current.email;
-            const otp = hooks.createEmailOtp({ secret: signingSecret(), email: subject, ip: ingressIp(request), rpc });
-            const result = await otp.consume(input.code);
+            if (loginOnly && env?.PHONE_EMAIL_REAUTH_ENABLED !== 'true') throw new PhoneAuthError('IDENTITY_DISABLED', 503);
+            const otp = hooks.createEmailOtp({ secret: signingSecret(), email: loginOnly ? `phone-reauth:v1\0${subject.trim().toLowerCase()}` : subject, ip: ingressIp(request), rpc });
+            const result = await otp.consume(loginOnly ? JSON.stringify([input.code, auth.userId, auth.sessionHash, input.action]) : input.code);
             if (result?.code !== 'OK') throw new PhoneAuthError(result?.code === 'THROTTLED' ? 'RATE_LIMITED' : 'CODE_INVALID', result?.code === 'THROTTLED' ? 429 : 400);
           } else {
             if (input.action === 'unbind') throw new PhoneAuthError('ALTERNATIVE_LOGIN_REQUIRED', 403);
