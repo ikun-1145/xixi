@@ -542,8 +542,14 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
     const agreeCheck = modal.querySelector("#agreeCheck");
     const phoneAuth = window.SunlandPhoneAuth;
     let phoneClient = null;
-    try { if (typeof phoneAuth?.createClient === 'function' && typeof phoneAuth?.text === 'function' &&
-      typeof phoneAuth?.errorText === 'function' && typeof phoneAuth?.cooldown === 'function') phoneClient = phoneAuth.createClient(); } catch {}
+    try {
+      if (typeof phoneAuth?.createClient === 'function' && typeof phoneAuth?.text === 'function' &&
+          typeof phoneAuth?.errorText === 'function' && typeof phoneAuth?.cooldown === 'function') {
+        const candidate = phoneAuth.createClient();
+        if (candidate && ['cancel', 'recovery', 'send', 'login', 'acknowledgeLoginSaved', 'acknowledgeReviewed']
+          .every(name => typeof candidate[name] === 'function')) phoneClient = candidate;
+      }
+    } catch {}
     const phoneUiEnabled = document.querySelector('meta[name="sunland-phone-ui-enabled"]')?.content === 'true' && !!phoneClient;
     modal.querySelector('#phoneLoginTab').closest('.phone-tabs').hidden = !phoneUiEnabled;
     const phoneInput = modal.querySelector('#phoneInput');

@@ -10,12 +10,12 @@ function harness({phoneEnabled=true,phoneModule='present'}={}){
  w.initGeetest4=(_opts,callback)=>callback({onReady(fn){fn();},onError(){},onSuccess(fn){w.__emailCaptchaSuccess=fn;},getValidate(){return {mock:true};},showCaptcha(){},appendTo(){}});
  w.fetch=async(url,init)=>{const body=JSON.parse(init.body);calls.push({url,body});return Response.json(url.endsWith('send-code')?{success:true,challenge_id:body.challenge_id,expires_in:300,retry_after:600}:{token:'mock-jwt',user:{id:'same-account',email:null},onboarding:{version:0,step:1},is_new_user:true});};
  w.SunlandLoginBanStatus={check:async()=>({isBanned:false})};
- if(phoneModule!=='missing'){w.eval(client);const real=w.SunlandPhoneAuth;w.SunlandPhoneAuth={...real,createClient:phoneModule==='broken'?()=>{throw Error('synthetic');}:opts=>real.createClient({...opts,captcha:async()=>'mock'})};}
+ if(phoneModule!=='missing'){w.eval(client);const real=w.SunlandPhoneAuth;w.SunlandPhoneAuth={...real,createClient:phoneModule==='broken'?()=>{throw Error('synthetic');}:phoneModule==='incomplete'?()=>({}):opts=>real.createClient({...opts,captcha:async()=>'mock'})};}
  for(const script of [...w.document.querySelectorAll('script:not([src])')])w.eval(script.textContent);
  return{dom,w,calls};
 }
 const flush=()=>new Promise(r=>setTimeout(r,0));
-for(const phoneModule of ['missing','broken'])test(`email login stays usable when phone module is ${phoneModule}`,async t=>{
+for(const phoneModule of ['missing','broken','incomplete'])test(`email login stays usable when phone module is ${phoneModule}`,async t=>{
  const h=harness({phoneEnabled:true,phoneModule}),d=h.w.document;t.after(()=>h.dom.window.close());
  assert.equal(d.querySelector('#phoneLoginTab').closest('.phone-tabs').hidden,true);
  assert.equal(typeof d.querySelector('#sendCodeBtn').onclick,'function');
