@@ -237,7 +237,7 @@ try {
     PHONE_AUTH_POLICY: JSON.stringify({perPhoneDaily:10,perIpDaily:20,dailyLimit:20,unitCostMicros:7,
       dailyBudgetMicros:140,totalBudgetMicros:140,ipRequestsPerMinute:100,globalRequestsPerMinute:200})};
   const coordinator = new PhoneAuthCoordinator({storage},doEnv,{fetchImpl:async (url,init) => {
-    if (new URL(url).hostname === 'challenges.cloudflare.com') return Response.json({success:true,hostname:'sunland.dev',action:'phone_login',challenge_ts:new Date().toISOString()});
+    if (new URL(url).hostname === 'challenges.cloudflare.com') return Response.json({success:true,hostname:'sunland.dev',action:`phone_${JSON.parse(init.body).response.split(':')[0]}`,challenge_ts:new Date().toISOString()});
     assert.equal(new URL(url).hostname,'relay.invalid'); const payload=JSON.parse(init.body);
     assert.equal(payload.scene,'login'); relayCode=payload.code; return Response.json({ok:1});
   }});
@@ -251,10 +251,33 @@ try {
     return {status:response.status,...await response.json()};
   }
   const actualPhone='13700000005', actualChallenge=randomUUID();
-  assert.equal((await realCall('send-code',{phone:actualPhone,purpose:'login',turnstile_token:'synthetic-turnstile',challenge_id:actualChallenge})).success,true);
+  assert.equal((await realCall('send-code',{phone:actualPhone,purpose:'login',turnstile_token:'login:synthetic',challenge_id:actualChallenge})).success,true);
   const actualLogin=await realCall('verify-code',{phone:actualPhone,challenge_id:actualChallenge,code:relayCode,operation_id:randomUUID()});
   assert.equal(actualLogin.is_new_user,true); assert.ok(actualLogin.user.id);
   assert.notEqual((await realCall('verify-code',{phone:actualPhone,challenge_id:actualChallenge,code:relayCode,operation_id:randomUUID()})).status,200);
   console.log('PASS: Worker routes + real coordinator + relay adapter + isolated identity SQL; outbound Turnstile and relay, JWT and account status simulated');
+  const realDom=new JSDOM(page,{url:'https://sunland.dev/ai_settings.html',runScripts:'outside-only'});
+  try {
+    const w=realDom.window, el=id=>w.document.getElementById(`phoneSettings${id}`);
+    w.AbortController=AbortController; w.crypto.randomUUID=randomUUID; w.localStorage.setItem('token','synthetic-ui-session');
+    w.document.querySelector('meta[name="sunland-phone-settings-enabled"]').content='true'; w.eval(clientScript);
+    const original=w.SunlandPhoneAuth;
+    const fetchImpl=(url,init)=>realWorker.fetch(new Request(url,{...init,headers:{...init.headers,'CF-Connecting-IP':'192.0.2.1'}}),doEnv,{});
+    w.SunlandPhoneAuth={...original,createClient:opts=>original.createClient({...opts,captcha:async action=>`${action.slice(6)}:synthetic`,fetchImpl})};
+    w.eval(settingsScript);
+    const wait=async(predicate,label)=>{for(let i=0;i<300;i++){if(await predicate())return;await new Promise(r=>setTimeout(r,25));}throw Error(`Synthetic real coordinator UI timed out: ${label}; ${el('Message').textContent}`);};
+    await db.exec("update public.sunland_otp_challenges set next_send_at=now()-interval '1 second'");
+    await wait(()=>!el('Bind').hidden&&!el('Bind').disabled&&typeof el('Bind').onclick==='function','initial status');
+    el('Bind').click(); const previous=messages.length; el('AuthSend').click();
+    await wait(()=>messages.length>previous&&!el('AuthNext').disabled,'email');
+    el('AuthCode').value=messages.at(-1); el('AuthNext').click(); await wait(()=>!el('Target').hidden,'proof');
+    el('NewPhone').value='13800000006'; relayCode=undefined; el('TargetSend').click();
+    await wait(()=>relayCode!==undefined&&!el('TargetConfirm').disabled,'relay send');
+    el('NewCode').value=relayCode; el('TargetConfirm').click();
+    await wait(()=>!el('Change').hidden&&!el('Change').disabled,'bind');
+    const actual=await db.query("select last4 from public.sunland_phone_identities where user_id='ui-user'");
+    assert.equal(actual.rows[0].last4,'0006');
+  } finally { realDom.window.close(); }
+  console.log('PASS: settings DOM + client + Worker + real coordinator/relay + isolated PostgreSQL binding; external providers and authentication simulated');
   console.log(`PASS: synthetic routes + ${process.env.PHONE_TEST_POSTGRES_IMAGE ? 'isolated PostgreSQL 17' : 'PGlite'}: register, same-user login, email proof, bind, cross-account conflict, change, unbind, concurrent/replay/cross-action/expiry/attempt-limit rejection; simulated SMS and email`);
 } finally { await db.close(); }
