@@ -83,6 +83,15 @@ try:
         assert sorted(outcomes) == ['committed','rejected']
         saved = conn.execute('select lookup_key_id,lookup_check from public.sunland_phone_auth_config').fetchone()
         assert saved[0] == 'v1' and saved[1] in ('a'*64,'b'*64)
+        assert op.initialize(conn, saved[1]) == 'already_initialized'
+        assert conn.execute('select lookup_key_id,lookup_check from public.sunland_phone_auth_config').fetchone() == saved
+        conn.rollback()
+        # Concurrent identical initialization must be a read-only no-op for both.
+        barrier = threading.Barrier(2); outcomes.clear(); failures.clear()
+        a = threading.Thread(target=do_init,args=(saved[1][0],)); b = threading.Thread(target=do_init,args=(saved[1][0],))
+        a.start(); b.start(); a.join(25); b.join(25)
+        assert not a.is_alive() and not b.is_alive() and not failures, failures
+        assert outcomes == ['already_initialized','already_initialized']
         assert op.initialize(conn, 'c'*64) == 'rejected'
         assert conn.execute('select lookup_key_id,lookup_check from public.sunland_phone_auth_config').fetchone() == saved
         conn.rollback()

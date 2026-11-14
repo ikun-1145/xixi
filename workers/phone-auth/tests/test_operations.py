@@ -60,6 +60,23 @@ class OperationsTests(unittest.TestCase):
         conn = Connection([(True,)], fail_commit=True)
         with self.assertRaises(RuntimeError): db.initialize(conn, 'a' * 64)
         self.assertEqual(conn.commits, 1)
+    def test_database_existing_configuration_is_read_only_idempotent(self):
+        class Existing(Connection):
+            def __init__(self, match):
+                super().__init__([])
+                self.match = match
+            def execute(self, query, params=None):
+                super().execute(query, params)
+                self.rows = self.match if query.startswith('SELECT lookup_key_id = ') else []
+                return self
+        for match, expected in [([(True,)], 'already_initialized'), ([(False,)], 'rejected'),
+                                ([(None,)], 'rejected'), ([], 'rejected')]:
+            conn = Existing(match)
+            self.assertEqual(db.initialize(conn, 'a' * 64), expected)
+            self.assertEqual(conn.rollbacks, 1)
+            self.assertEqual(conn.commits, 0)
+            self.assertIn('FOR UPDATE', conn.executed[-1][0])
+            self.assertEqual(conn.executed[-1][1], ('v1', 'a' * 64))
     def test_documented_sql_matches_parameterized_sql(self):
         import re
         text = (ROOT / 'PREFLIGHT.md').read_text()

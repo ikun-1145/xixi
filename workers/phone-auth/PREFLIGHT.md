@@ -14,6 +14,10 @@ Secret 名称、Key ID 或白名单格式存在不证明 Secret 值正确、白�
 
 ## 数据库初始化方案（未执行）
 
+本地准备的脚本支持显式 Session Pooler 和只读探测；正式执行仍须单独核实现有密钥与生产配置一致，并满足备份恢复和日志保护条件。初始化持有原有 advisory 锁及四张表锁：空配置且身份表为空才写入；配置与输入密钥匹配时返回 `already_initialized` 并回滚只读事务；不同配置、残留或异常均拒绝。提交结果未知时禁止盲目重试。
+
+回滚边界：关闭手机号入口并保留全部身份记录、配置及备份；**不要**清空 lookup 配置、重置身份表或以新密钥覆盖现有索引。已产生身份数据后的恢复必须使用对应原始密钥与已验证的备份，并另行审查数据一致性；脚本不提供自动回滚生产数据的命令。
+
 1. 保持 `PHONE_IDENTITY_ENABLED`、`PHONE_SMS_ENABLED`、`PHONE_NEW_REGISTRATION_ENABLED` 均为 `false`。确认对应项目、维护窗口和回滚责任人；确保无其他手机号身份写入方。独立只读复查 singleton 存在且两个 lookup 字段为 NULL、身份/状态/授权/操作四张表均无记录、函数/约束/权限与已审查版本一致。任何条件变化即停。
 2. 在安全环境使用现有 `PHONE_IDENTITY_LOOKUP_KEY` 的 UTF-8 字节计算 `HMAC-SHA256(key, UTF8("sunland-phone-index-canary:v1" + NUL))` 的小写十六进制。参数 `key_id` 须与生产 `PHONE_IDENTITY_LOOKUP_KEY_ID` 一致，当前为 `v1`；不在命令行参数、终端、日志或聊天中展示密钥和 HMAC 值。使用参数化数据库客户端并关闭参数日志。仅有 Secret 名称不能完成密钥匹配证明。
 3. 以已明确授权的特权数据库会话执行单事务：获取与身份 RPC 相同的 advisory transaction lock `(20261024, 2)`，然后对 `public.sunland_phone_identities`、`public.sunland_phone_auth_state`、`public.sunland_phone_auth_grants`、`public.sunland_phone_auth_operations` 按此顺序获取 `SHARE ROW EXCLUSIVE` 表锁，防止初始化检查与并发身份写入交错。持锁后再次检查状态，再执行以下参数化语句；`$1` 是 key ID，`$2` 是上一步摘要：
