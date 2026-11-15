@@ -1,0 +1,91 @@
+#!/usr/bin/env python3
+"""Call the no-SMS admin diagnostic once; read both sensitive inputs from FDs.
+
+--expect-replay checks a second, separately invoked call with the same token.
+A failed replay is meaningful only after a confirmed successful first call and
+while the three feature switches remain false. Never retry an uncertain call.
+"""
+import argparse
+import json
+import os
+import ssl
+import urllib.error
+import urllib.request
+
+URL = 'https://api.sunland.dev/v1/phone/_admin/turnstile-probe'
+
+class NoRedirect(urllib.request.HTTPRedirectHandler):
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def read_fd(fd, maximum):
+    parts, size = [], 0
+    while size <= maximum:
+        part = os.read(fd, maximum + 1 - size)
+        if not part:
+            break
+        parts.append(part)
+        size += len(part)
+    data = b''.join(parts)
+    if not data or len(data) > maximum or any(byte < 33 or byte > 126 for byte in data):
+        raise ValueError('invalid input')
+    return data.decode('ascii')
+
+
+def main():
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument('--admin-fd', required=True, type=int)
+    parser.add_argument('--token-fd', required=True, type=int)
+    parser.add_argument('--expect-replay', action='store_true')
+    parser.add_argument('--safe-details', action='store_true', help='report a fixed, non-sensitive failure category')
+    args = parser.parse_args()
+    failure = 'invalid_response'
+    try:
+        if args.admin_fd < 0 or args.token_fd < 0 or args.admin_fd == args.token_fd:
+            raise ValueError('invalid descriptors')
+        admin = read_fd(args.admin_fd, 512)
+        token = read_fd(args.token_fd, 2048)
+        if len(admin.encode('ascii')) < 32:
+            raise ValueError('invalid admin')
+        request = urllib.request.Request(URL, method='POST',
+            headers={'Authorization': 'Bearer ' + admin, 'Content-Type': 'application/json',
+                     'User-Agent': 'sunland-phone-auth-probe/1.0'},
+            data=json.dumps({'token': token}, separators=(',', ':')).encode('ascii'))
+        del admin, token
+        opener = urllib.request.build_opener(urllib.request.ProxyHandler({}), NoRedirect(),
+                                             urllib.request.HTTPSHandler(context=ssl.create_default_context()))
+        try:
+            response = opener.open(request, timeout=10)
+        except urllib.error.HTTPError as exc:
+            response = exc
+        with response:
+            body = response.read(1025)
+            if response.status == 401:
+                failure = 'unauthorized'
+            elif response.status == 429:
+                failure = 'rate_limited'
+            elif 500 <= response.status <= 599:
+                failure = 'service_error'
+            if len(body) > 1024:
+                raise ValueError('oversize response')
+            value = json.loads(body)
+            expected_status = 403 if args.expect_replay else 200
+            expected_value = {'ok': not args.expect_replay}
+            cache_control = response.headers.get('Cache-Control', '')
+            no_store = 'no-store' in {part.strip().lower() for part in cache_control.split(',')}
+            if args.expect_replay and response.status == 200 and value == {'ok': True} and no_store:
+                failure = 'unexpected_acceptance'
+            if (response.status != expected_status or value != expected_value or
+                    not no_store):
+                raise ValueError('unexpected response')
+        print('rejected' if args.expect_replay else 'verified')
+        return 0
+    except Exception as error:
+        if isinstance(error, (urllib.error.URLError, TimeoutError)):
+            failure = 'transport_error'
+        print('failed:' + failure if args.safe_details else 'failed')
+        return 1
+
+if __name__ == '__main__':
+    raise SystemExit(main())

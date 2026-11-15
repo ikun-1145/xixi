@@ -273,6 +273,7 @@
     ["发送中...", "Sending...", "送信中..."],
     ["服务器异常", "Server error", "サーバーエラー"],
     ["验证码已发送（有效期约5分钟）", "Verification code sent (valid for about 5 minutes)", "認証コードを送信しました（有効時間は約5分です）"],
+    ["验证码请求已受理，请留意短信（有效期约5分钟）", "Code request accepted. Check your messages (valid for about 5 minutes).", "コードのリクエストを受け付けました。SMSをご確認ください（有効時間は約5分です）。"],
     ["网络连接失败（API不可达）", "Network connection failed (API unavailable)", "ネットワーク接続に失敗しました（APIに接続できません）"],
     ["发送验证码失败", "Unable to send the verification code", "認証コードを送信できませんでした"],
     ["请先同意用户协议", "Agree to the Terms of Service first", "先に利用規約へ同意してください"],
