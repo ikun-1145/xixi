@@ -1,0 +1,45 @@
+{
+  "audited_at_utc": "2026-11-03",
+  "project_context": "Live Supabase PostgreSQL 17.4 read-only pg_get_functiondef; compared to PGlite migration",
+  "schema": "public",
+  "functions": [
+    {
+      "name": "sunland_waffo_apply_event",
+      "args": "p_event jsonb",
+      "definition_md5": "b428ca174cf1953f87e250714477bf72",
+      "security_definer": true,
+      "anon_execute": false,
+      "authenticated_execute": false,
+      "service_role_execute": true
+    },
+    {
+      "name": "sunland_waffo_register_intent",
+      "args": "p_intent jsonb",
+      "definition_md5": "f42494137eba61ef55379218eb32b47d",
+      "security_definer": true,
+      "anon_execute": false,
+      "authenticated_execute": false,
+      "service_role_execute": true
+    },
+    {
+      "name": "sunland_waffo_status",
+      "args": "p_user_id text, p_request_key uuid",
+      "definition_md5": "9f754815ff2ef3c48d84b8d55e4fb9db",
+      "security_definer": true,
+      "anon_execute": false,
+      "authenticated_execute": false,
+      "service_role_execute": true
+    }
+  ],
+  "private_schema": "waffo_prod",
+  "private_tables": [
+    "entitlement_sources",
+    "events",
+    "orders",
+    "payment_intents",
+    "projection_context"
+  ],
+  "private_table_rls": true,
+  "client_select_access": false,
+  "service_role_direct_select": false
+}

@@ -39,7 +39,18 @@ const DEFAULT_ALLOWED_ORIGINS = ["https://sunland.dev", "https://www.sunland.dev
 export default {
   async scheduled(controller, env, ctx) {
     const production = await import('./production.js');
-    ctx.waitUntil(production.reconcileProductionOutbox(env).catch(() =>
+    ctx.waitUntil(production.reconcileProductionOutbox(env).then(summary => {
+      // A resolved waitUntil is not necessarily a successful business cycle.
+      // Log only bounded counts and the explicit state from the outbox runner.
+      console.log(JSON.stringify({
+        event: 'waffo_production_outbox_cycle',
+        status: summary.status,
+        due: summary.due,
+        processed: summary.processed,
+        failed: summary.failed,
+        unbound: summary.unbound,
+      }));
+    }).catch(() =>
       console.error(JSON.stringify({event:'waffo_production_outbox_unavailable'}))));
   },
   async fetch(request, env) {

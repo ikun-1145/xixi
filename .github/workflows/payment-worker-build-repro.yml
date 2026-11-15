@@ -1,0 +1,88 @@
+name: Payment Worker Reproducible Build Audit
+
+on:
+  pull_request:
+    paths:
+      - "workers/afdianpay/**"
+      - "workers/waffopay/**"
+      - "scripts/reliability/compare-payment-worker-builds.mjs"
+      - "scripts/reliability/compare-payment-worker-builds.test.mjs"
+      - "docs/reliability/payment-worker-production-baseline-2026-11-03.json"
+      - ".github/workflows/payment-worker-build-repro.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  offline-build-reproduction:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      CI: "true"
+      WRANGLER_SEND_METRICS: "false"
+      CLOUDFLARE_API_TOKEN: ""
+    steps:
+      - name: Checkout candidate PR (no persistent git credentials)
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Checkout exact PR base commit (baseline only)
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.base.sha }}
+          path: _verified-base
+          persist-credentials: false
+
+      - name: Node.js 22
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install historically recorded Wrangler compiler
+        run: npm install --global wrangler@4.103.0 --no-audit --no-fund
+
+      - name: Verify Wrangler pinned version and standalone harness
+        run: |
+          set -euo pipefail
+          wrangler --version
+          node --check scripts/reliability/compare-payment-worker-builds.mjs
+          node --test scripts/reliability/compare-payment-worker-builds.test.mjs
+
+      - name: Offline dry-run builds of unchanged base and candidate twice
+        shell: bash
+        run: |
+          set -euo pipefail
+          for kind in baseline candidate-a candidate-b; do
+            if [[ "$kind" == "baseline" ]]; then
+              source_root="$GITHUB_WORKSPACE/_verified-base/workers"
+            else
+              source_root="$GITHUB_WORKSPACE/workers"
+            fi
+            for worker in afdianpay waffopay; do
+              outdir="$RUNNER_TEMP/payment-builds/$kind/$worker"
+              mkdir -p "$outdir"
+              # Only --dry-run is allowed. No API token, secrets or deploy commands.
+              if ! (
+                cd "$source_root/$worker"
+                wrangler deploy --dry-run --outdir "$outdir"
+              ) > "$RUNNER_TEMP/payment-worker-build.log" 2>&1; then
+                echo "::error::BLOCKED: offline Wrangler dry-run failed for $worker ($kind)"
+                exit 1
+              fi
+              test -s "$outdir/worker.js" || {
+                echo "::error::BLOCKED: missing output worker.js for $worker ($kind)"
+                exit 1
+              }
+            done
+          done
+
+      - name: Require reproducible deployed baseline and deterministic candidate
+        shell: bash
+        run: |
+          set -euo pipefail
+          node scripts/reliability/compare-payment-worker-builds.mjs             "$RUNNER_TEMP/payment-builds/baseline"             "$RUNNER_TEMP/payment-builds/candidate-a"             "$RUNNER_TEMP/payment-builds/candidate-b"
+
+      - name: Do not upload compiled Workers or logs
+        if: always()
+        run: echo "Offline build outputs remain ephemeral. No compiled Workers or logs are uploaded."

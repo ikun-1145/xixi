@@ -188,19 +188,54 @@ async function processProductionEvent(env,event,intent){
   }
 }
 
+// A poisoned/unbound row must not permanently monopolize the ten-item batch.
+// Keep the record pending for manual audit/retry, but move its retry timestamp.
+// Only static reason codes are stored; do not persist raw exception details.
+async function deferUnprocessableOutboxRow(db,row,reason){
+  await db.prepare(`UPDATE production_outbox SET last_error=?,attempt_count=attempt_count+1,updated_at=?
+    WHERE store_id=? AND event_type=? AND event_id=? AND state='pending'`)
+    .bind(reason,Date.now(),row.store_id,row.event_type,row.event_id).run();
+}
+
 export async function reconcileProductionOutbox(env){
-  if(!configured(env))return;
+  // Return only aggregate outcome metadata. Never expose order IDs, identity,
+  // provider responses, raw payloads or D1 error strings in Cron health logs.
+  if(!configured(env))return { status:'disabled', due:0, processed:0, failed:0, unbound:0 };
   const db=env.WAFFO_PRODUCTION_LEDGER;
-  const pending=await db.prepare(`SELECT payload FROM production_outbox WHERE state='pending' AND updated_at<?
-    ORDER BY updated_at LIMIT 10`).bind(Date.now()-60000).all();
+  const pending=await db.prepare(`SELECT store_id,event_type,event_id,payload FROM production_outbox
+    WHERE state='pending' AND updated_at<? ORDER BY updated_at LIMIT 10`)
+    .bind(Date.now()-60000).all();
+  let due=0,processed=0,failed=0,unbound=0;
   for(const row of pending.results||[]){
+    due++;
+    let passedToHandler=false,alreadyDeferred=false;
     try{
       const event=JSON.parse(row.payload);
       const intent=await db.prepare('SELECT * FROM payment_intents WHERE payment_reference=?').bind(event.order.reference).first();
-      if(!intent)continue;
+      if(!intent){
+        unbound++;
+        alreadyDeferred=true;
+        await deferUnprocessableOutboxRow(db,row,'intent_unbound');
+        continue;
+      }
+      passedToHandler=true;
       await processProductionEvent(env,event,intent);
-    }catch(error){productionFailure(error);}
+      processed++;
+    }catch(error){
+      failed++;
+      productionFailure(error);
+      // processProductionEvent already updates its own retry metadata; do not
+      // double-increment that path. Malformed JSON and intent-read failures
+      // instead need a timestamp bump to prevent starvation.
+      if(!passedToHandler&&!alreadyDeferred){
+        await deferUnprocessableOutboxRow(db,row,'outbox_entry_failed');
+      }
+    }
   }
+  return {
+    status:failed||unbound?'incomplete':'completed',
+    due,processed,failed,unbound,
+  };
 }
 
 export async function handleProductionReturnStatus(request,env){
