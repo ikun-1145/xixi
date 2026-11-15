@@ -123,12 +123,16 @@ test('storage failures do not create or reset a ledger and can recover safely',a
   assert.deepEqual(h.storage.data,before);h.storage.transaction=transaction;
   assert.equal((await (await h.admin('status')).json()).state,'ready');
 });
-test('new registration policy is a trusted strict server boolean and known denial remains classified',async()=>{
+test('registration is strictly gated and uses a new fail-closed RPC while login never creates',async()=>{
   for(const value of [undefined,false,true,'false','true']) {
-    let data; const env={PHONE_IDENTITY_ENABLED:'true',PHONE_NEW_REGISTRATION_ENABLED:value,PHONE_IDENTITY_LOOKUP_KEY:secret,PHONE_IDENTITY_LOOKUP_KEY_ID:'v1',
+    const calls=[]; const env={PHONE_IDENTITY_ENABLED:'true',PHONE_NEW_REGISTRATION_ENABLED:value,PHONE_IDENTITY_LOOKUP_KEY:secret,PHONE_IDENTITY_LOOKUP_KEY_ID:'v1',
       PHONE_IDENTITY_ENCRYPTION_KEYS:JSON.stringify({v1:Buffer.alloc(32,7).toString('base64url')}),PHONE_IDENTITY_ENCRYPTION_KEY_ID:'v1',PHONE_AUTH_HMAC_KEY:secret};
-    const identity=createPhoneIdentity(env,{rpc:async(_,{p_data})=>{data=p_data;return{ok:true,payload:{code:'REGISTRATION_DISABLED'}};}});
-    await assert.rejects(identity.login({phone:phones[0],operationId:crypto.randomUUID(),allow_create:true}),{code:'REGISTRATION_DISABLED'});
-    assert.equal(data.allow_create,value==='true');
+    const identity=createPhoneIdentity(env,{rpc:async(name,{p_data})=>{calls.push({name,data:p_data});return{ok:true,payload:{code:'REGISTRATION_DISABLED'}};}});
+    await assert.rejects(identity.login({phone:phones[0],operationId:crypto.randomUUID()}),{code:'REGISTRATION_DISABLED'});
+    assert.equal(calls[0].name,'sunland_phone_identity'); assert.equal(calls[0].data.allow_create,false);
+    calls.length=0;
+    await assert.rejects(identity.login({phone:phones[0],email:'test@example.test',operationId:crypto.randomUUID()}),{code:'REGISTRATION_DISABLED'});
+    assert.equal(calls.length,value==='true'?1:0);
+    if (calls.length) assert.equal(calls[0].name,'sunland_phone_register');
   }
 });

@@ -31,6 +31,7 @@ const MESSAGES = Object.freeze({
   ACCOUNT_BANNED: '当前账号不可用',
   PHONE_KEY_MISMATCH: '手机号身份密钥配置不一致',
   PHONE_CONFLICT: '该手机号已绑定其他账号',
+  EMAIL_CONFLICT: '该邮箱已注册',
   PHONE_ALREADY_BOUND: '账号已绑定手机号',
   PHONE_NOT_BOUND: '账号尚未绑定手机号',
   REAUTH_INVALID: '近期身份验证已失效，请重新验证',

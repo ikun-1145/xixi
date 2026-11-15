@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <script defer src="p/js/site-i18n-extra.js?v=20261114-relay-1"></script>
+  <script defer src="p/js/site-i18n-extra.js?v=20261115-register-1"></script>
   <script defer src="p/js/site-i18n.js?v=20261114-relay-1"></script>
 
 <title>登录 Sunland AI · Beta</title>
@@ -183,6 +183,8 @@ body::before {
   position: relative;
   width: 100%;
   max-width: 420px;
+  max-height: calc(100dvh - 32px);
+  overflow-y: auto;
   padding: var(--space-8) var(--space-8) var(--space-6);
   border-radius: var(--r-lg);
   text-align: center;
@@ -359,7 +361,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
 
 <script src="ai/database-token-client.js"></script>
 <script src="ai/login-ban-status.js"></script>
-<script src="p/js/phone-auth.js?v=20261114-relay-1"></script>
+<script src="p/js/phone-auth.js?v=20261115-register-1"></script>
 <script>
 (function () {
   // ====== 占位函数：保持与原 app.js 调用接口一致，避免登录逻辑报错 ======
@@ -397,15 +399,22 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       <div class="phone-auth phone-tabs" role="group" aria-label="登录方式">
         <button id="emailLoginTab" type="button" aria-pressed="true">邮箱登录</button>
         <button id="phoneLoginTab" type="button" aria-pressed="false">手机号登录</button>
+        <button id="phoneRegisterTab" type="button" aria-pressed="false" data-phone-copy="手机号注册"></button>
       </div>
       <div id="phoneLoginFields" class="phone-auth" hidden data-site-i18n-ignore>
         <div class="field">
           <label for="phoneInput" data-phone-copy="中国大陆手机号"></label>
           <div class="phone-row"><span aria-hidden="true">+86</span><input id="phoneInput" type="tel" inputmode="tel" autocomplete="tel-national" maxlength="14" aria-label="中国大陆手机号"></div>
         </div>
+        <div id="phoneRegisterEmailField" class="field" hidden>
+          <label for="phoneRegisterEmail" data-phone-copy="注册邮箱"></label><input id="phoneRegisterEmail" type="email" autocomplete="email" maxlength="254">
+        </div>
         <div class="field">
           <label for="phoneCodeInput" data-phone-copy="短信验证码"></label>
           <div class="code-row"><input id="phoneCodeInput" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" aria-label="短信验证码"><button id="sendPhoneCodeBtn" type="button"></button></div>
+        </div>
+        <div id="phoneRegisterFields" hidden>
+          <div class="field"><label for="phoneEmailCode" data-phone-copy="邮箱验证码"></label><input id="phoneEmailCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></div>
         </div>
         <button id="reviewPhoneSendBtn" type="button" hidden data-phone-copy="检查后继续"></button>
       </div>
@@ -546,7 +555,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       if (typeof phoneAuth?.createClient === 'function' && typeof phoneAuth?.text === 'function' &&
           typeof phoneAuth?.errorText === 'function' && typeof phoneAuth?.cooldown === 'function') {
         const candidate = phoneAuth.createClient();
-        if (candidate && ['cancel', 'recovery', 'send', 'login', 'acknowledgeLoginSaved', 'acknowledgeReviewed']
+        if (candidate && ['cancel', 'recovery', 'send', 'login', 'register', 'acknowledgeLoginSaved', 'acknowledgeReviewed']
           .every(name => typeof candidate[name] === 'function')) phoneClient = candidate;
       }
     } catch {}
@@ -556,6 +565,8 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
     const phoneCodeInput = modal.querySelector('#phoneCodeInput');
     const phoneSend = modal.querySelector('#sendPhoneCodeBtn');
     const phoneReview = modal.querySelector('#reviewPhoneSendBtn');
+    const registerEmail = modal.querySelector('#phoneRegisterEmail');
+    const registerEmailCode = modal.querySelector('#phoneEmailCode');
     let loginMode = 'email', loginGeneration = 0, phonePending = false, challenge = null, phoneNotice = null;
     const captureLogin = () => ({ generation: loginGeneration, token: localStorage.getItem('token'), mode: loginMode });
     const currentLogin = attempt => attempt.generation === loginGeneration && attempt.token === localStorage.getItem('token') && attempt.mode === loginMode && modal.isConnected;
@@ -566,7 +577,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
     }
     function renderPhone() {
       if (!phoneClient) return;
-      if (loginMode === 'phone' && phoneNotice) msg.textContent = phoneNotice.code ? phoneAuth.errorText({code: phoneNotice.code}) : tr(phoneNotice.source);
+      if (loginMode !== 'email' && phoneNotice) msg.textContent = phoneNotice.code ? phoneAuth.errorText({code: phoneNotice.code}) : tr(phoneNotice.source);
       modal.querySelectorAll('[data-phone-copy]').forEach(el => { el.textContent = tr(el.dataset.phoneCopy); });
       phoneInput.setAttribute('aria-label', tr('中国大陆手机号'));
       phoneCodeInput.setAttribute('aria-label', tr('短信验证码'));
@@ -576,32 +587,36 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       phoneReview.hidden = !pending || !pending.expired || Date.now() < pending.review_after || phonePending;
       phoneSend.disabled = phonePending || seconds > 0 || hasPending;
       phoneSend.textContent = phonePending ? tr('正在处理…') : seconds > 0 ? `${seconds}${tr('秒后重新发送')}` : tr('发送验证码');
-      if (loginMode === 'phone') loginBtn.textContent = tr('登录或注册');
+      if (loginMode !== 'email') loginBtn.textContent = tr(loginMode === 'register' ? '手机号注册' : '登录');
     }
     function setLoginMode(mode) {
-      if (mode === "phone" && !phoneUiEnabled) return;
+      if (mode !== "email" && !phoneUiEnabled) return;
       loginGeneration++; phoneClient?.cancel(); challenge = null; phonePending = false; loginPending = false;
-      phoneInput.value = ''; phoneCodeInput.value = ''; codeInput.value = ''; phoneNotice = null; msg.textContent = ''; loginMode = mode;
-      modal.querySelector('#phoneLoginFields').hidden = mode !== 'phone';
+      phoneInput.value = ''; phoneCodeInput.value = ''; registerEmail.value = ''; registerEmailCode.value = ''; codeInput.value = ''; phoneNotice = null; msg.textContent = ''; loginMode = mode;
+      modal.querySelector('#phoneLoginFields').hidden = mode === 'email';
+      modal.querySelector('#phoneRegisterFields').hidden = mode !== 'register';
+      modal.querySelector('#phoneRegisterEmailField').hidden = mode !== 'register';
       modal.querySelector('#emailLoginField').hidden = mode !== 'email';
       modal.querySelector('#emailCodeField').hidden = mode !== 'email';
       modal.querySelector('#emailLoginTab').setAttribute('aria-pressed', String(mode === 'email'));
       modal.querySelector('#phoneLoginTab').setAttribute('aria-pressed', String(mode === 'phone'));
+      modal.querySelector('#phoneRegisterTab').setAttribute('aria-pressed', String(mode === 'register'));
       renderEmailCooldown();
-      loginBtn.disabled = !agreeCheck.checked; loginBtn.textContent = tr(mode === 'phone' ? '登录或注册' : '登录');
-      modal.querySelector('.subtitle').textContent = tr(mode === 'phone' ? '首次验证手机号将自动注册，不会合并邮箱账号' : '输入邮箱获取验证码，无需注册');
-      renderPhone(); (mode === 'phone' ? phoneInput : emailInput).focus();
+      loginBtn.disabled = !agreeCheck.checked; loginBtn.textContent = tr(mode === 'register' ? '手机号注册' : '登录');
+      modal.querySelector('.subtitle').textContent = tr(mode === 'register' ? '注册需同时验证手机号和邮箱，已有账号不会合并' : mode === 'phone' ? '使用已注册手机号登录' : '输入邮箱获取验证码，无需注册');
+      renderPhone(); (mode !== 'email' ? phoneInput : emailInput).focus();
     }
     modal.querySelector('#emailLoginTab').onclick = () => setLoginMode('email');
     modal.querySelector('#phoneLoginTab').onclick = () => setLoginMode('phone');
+    modal.querySelector('#phoneRegisterTab').onclick = () => setLoginMode('register');
     phoneInput.addEventListener('input', () => {
       if (!phoneClient) return;
       challenge = null; phoneCodeInput.value = '';
       try {
         const phone = phoneAuth.normalizePhone(phoneInput.value), pending = phoneClient.recovery('login');
-        if (pending && !pending.expired) {
-          challenge = { phone, id: pending.challenge_id, expiresAt: Date.now() + pending.expires_in * 1000 };
-          phoneMessage('', {code:'SEND_UNCERTAIN'});
+        if (pending && !pending.expired && (loginMode === 'register') === !!pending.operation_id) {
+          challenge = { phone, id: pending.challenge_id, expiresAt: Date.now() + pending.expires_in * 1000, operationId: pending.operation_id };
+          phoneMessage('', {code:pending.verification_started ? 'VERIFY_UNCERTAIN' : 'SEND_UNCERTAIN'});
         }
       } catch {} // An incomplete number or unavailable storage must not unlock sending.
       renderPhone();
@@ -616,22 +631,24 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
     };
     phoneCodeInput.addEventListener('keydown', event => { if (event.key === 'Enter') loginBtn.click(); });
     phoneSend.onclick = async () => {
-      if (!phoneUiEnabled || phonePending || loginMode !== 'phone') return;
+      if (!phoneUiEnabled || phonePending || loginMode === 'email') return;
       const attempt = captureLogin(); phonePending = true; msg.classList.remove('ok'); renderPhone();
       let phone;
       try {
         phone = phoneAuth.normalizePhone(phoneInput.value);
-        const result = await phoneClient.send(phone, 'login');
+        const email = registerEmail.value.trim().toLowerCase();
+        const registration = loginMode === 'register' ? {email, operation_id: crypto.randomUUID()} : null;
+        const result = await phoneClient.send(phone, 'login', undefined, registration);
         if (!currentLogin(attempt) || phoneAuth.normalizePhone(phoneInput.value) !== phone) return;
-        challenge = { phone, id: result.challenge_id, expiresAt: Date.now() + result.expires_in * 1000 };
-        phoneMessage('验证码请求已受理，请留意短信（有效期约5分钟）'); msg.classList.add('ok'); phoneCodeInput.focus();
+        challenge = { phone, id: result.challenge_id, expiresAt: Date.now() + result.expires_in * 1000, operationId: registration?.operation_id, email: registration?.email };
+        phoneMessage(registration ? '验证码请求已受理，请留意短信和邮箱' : '验证码请求已受理，请留意短信（有效期约5分钟）'); msg.classList.add('ok'); phoneCodeInput.focus();
       } catch (error) {
         if (currentLogin(attempt)) {
           if (error.code === 'SEND_UNCERTAIN' && phone) {
             try {
               const pending = phoneClient.recovery('login');
-              if (pending && !pending.expired && phoneAuth.normalizePhone(phoneInput.value) === phone)
-                challenge = { phone, id: pending.challenge_id, expiresAt: Date.now() + pending.expires_in * 1000 };
+              if (pending && !pending.expired && (loginMode === 'register') === !!pending.operation_id && phoneAuth.normalizePhone(phoneInput.value) === phone)
+                challenge = { phone, id: pending.challenge_id, expiresAt: Date.now() + pending.expires_in * 1000, operationId: pending.operation_id };
             } catch {}
           }
           phoneMessage('', error);
@@ -817,7 +834,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
     // ===== 登录 =====
     loginBtn.onclick = async () => {
       if (loginPending) return;
-      if (loginMode === 'phone') { await submitPhoneLogin(); return; }
+      if (loginMode !== 'email') { await submitPhoneLogin(); return; }
       const attempt = captureLogin();
       msg.classList.remove("ok"); // 复位为错误色，成功时再标记
       if (!agreeCheck.checked) {
@@ -919,17 +936,22 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       if (!agreeCheck.checked) { phoneMessage('请先同意用户协议'); return; }
       const attempt = captureLogin();
       if (!challenge || challenge.expiresAt <= Date.now()) { phoneMessage('', {code:'SEND_UNCERTAIN'}); return; }
-      if (!/^\d{6}$/.test(phoneCodeInput.value)) { phoneMessage('请输入6位验证码'); return; }
+      if (!/^\d{6}$/.test(phoneCodeInput.value) || (loginMode === 'register' && !/^\d{6}$/.test(registerEmailCode.value))) { phoneMessage('请输入6位验证码'); return; }
+      const registrationEmail = registerEmail.value.trim().toLowerCase();
+      if (loginMode === 'register' && (!/^\S+@\S+\.\S+$/.test(registrationEmail) || (challenge.email && registrationEmail !== challenge.email))) { phoneMessage('请使用发送验证码时填写的邮箱'); return; }
       phoneNotice = null; msg.classList.remove('ok');
       loginPending = true; loginBtn.disabled = true; let completed = false;
       try {
-        const result = await phoneClient.login(challenge.phone, challenge.id, phoneCodeInput.value);
+        const result = loginMode === 'register'
+          ? await phoneClient.register(challenge.phone, challenge.id, phoneCodeInput.value, registrationEmail, registerEmailCode.value, challenge.operationId)
+          : await phoneClient.login(challenge.phone, challenge.id, phoneCodeInput.value);
         if (!currentLogin(attempt)) return;
         completed = await completeLogin(result, '', attempt) === true;
         if (completed) phoneClient.acknowledgeLoginSaved(challenge.id);
       } catch (error) {
         if (currentLogin(attempt)) {
-          phoneMessage('', error);
+          phoneMessage(error.code === 'PHONE_CONFLICT' && loginMode === 'register' ? '该手机号已注册，请登录' : loginMode === 'register' ? '验证未完成，请检查登录状态后再操作' : '', loginMode === 'register' && !['EMAIL_CONFLICT','CODE_INVALID'].includes(error.code) ? null : error);
+          if (loginMode === 'register') { challenge = null; phoneCodeInput.value = ''; registerEmailCode.value = ''; }
           if (!['CODE_INVALID','CHALLENGE_PENDING','VERIFY_UNCERTAIN'].includes(error.code)) { challenge = null; phoneCodeInput.value = ''; }
         }
       } finally { if (!completed && currentLogin(attempt)) { loginPending = false; loginBtn.disabled = !agreeCheck.checked; } }

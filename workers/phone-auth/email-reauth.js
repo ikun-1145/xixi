@@ -2,10 +2,9 @@ import { PhoneAuthError } from './errors.js';
 import { requestJson } from './http.js';
 
 // This sender is separate from login email OTPs and never retries a delivery.
-export async function sendPhoneReauthEmail({ env, email, otp, bindCode, fetchImpl, random = crypto }) {
+export function validatePhoneEmailConfig(env) {
   const key = env?.PHONE_REAUTH_EMAIL_API_KEY;
-  if (typeof key !== 'string' || !key.trim() || typeof bindCode !== 'function' ||
-      !otp || typeof otp.reserve !== 'function' || typeof otp.delivery !== 'function') throw new PhoneAuthError('IDENTITY_CONFIG', 503);
+  if (typeof key !== 'string' || !key.trim()) throw new PhoneAuthError('IDENTITY_CONFIG', 503);
   // Fail before any request if an unrelated or shared credential was supplied.
   let encryptionKeys = [];
   try { encryptionKeys = Object.values(JSON.parse(env.PHONE_IDENTITY_ENCRYPTION_KEYS || '{}')); } catch { /* identity validation handles malformed keyrings */ }
@@ -15,6 +14,12 @@ export async function sendPhoneReauthEmail({ env, email, otp, bindCode, fetchImp
        env.SUPABASE_SECRET_KEY, env.SUPABASE_SERVICE_ROLE_KEY, env.RESEND_API_KEY].includes(key)) {
     throw new PhoneAuthError('IDENTITY_CONFIG', 503);
   }
+  return key;
+}
+
+export async function sendPhoneReauthEmail({ env, email, otp, bindCode, fetchImpl, random = crypto }) {
+  const key = validatePhoneEmailConfig(env);
+  if (typeof bindCode !== 'function' || !otp || typeof otp.reserve !== 'function' || typeof otp.delivery !== 'function') throw new PhoneAuthError('IDENTITY_CONFIG', 503);
   const bytes = new Uint32Array(1);
   do { random.getRandomValues(bytes); } while (bytes[0] >= 4294000000);
   const code = String(bytes[0] % 1000000).padStart(6, '0');

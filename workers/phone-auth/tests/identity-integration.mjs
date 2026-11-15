@@ -2,13 +2,16 @@
 // in in-memory PGlite, simulated SMS and email. No production connections.
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
-import { readFile } from 'node:fs/promises';
+import { readFile, writeFile, mkdir, mkdtemp, rm, symlink } from 'node:fs/promises';
+import { tmpdir } from 'node:os';
+import { pathToFileURL } from 'node:url';
 import { execFileSync, spawn } from 'node:child_process';
 import { resolve } from 'node:path';
 import { createHmac, randomUUID } from 'node:crypto';
 import { createPhoneAuthWorker } from '../routes.js';
 import { sendPhoneReauthEmail } from '../email-reauth.js';
 import { PhoneAuthError } from '../errors.js';
+import { createPhoneIdentity } from '../identity.js';
 import { PhoneAuthCoordinator } from '../coordinator.js';
 
 const { PHONE_PREFLIGHT_PACKAGE_ROOT: packages, PHONE_XIXI_SOURCE_ROOT: xixi, PHONE_SUNLAND_SOURCE_ROOT: app } = process.env;
@@ -19,6 +22,7 @@ const { JSDOM } = require('jsdom');
 const otpSource = execFileSync('git', ['-C', app, 'show', '3398d8801efe93a2063536b0a5d460974a8fc65f:worker/src/email-otp.js'], { encoding: 'utf8' });
 const { createEmailOtp } = await import(`data:text/javascript;base64,${Buffer.from(otpSource).toString('base64')}`);
 const phoneSql = await readFile(resolve(xixi, 'supabase/migrations/20261024003756_phone_identity.sql'), 'utf8');
+const registerSql = await readFile(new URL('../../../supabase/migrations/20261115003339_phone_registration_verified_email.sql', import.meta.url), 'utf8');
 const otpSql = await readFile(resolve(app, 'supabase/migrations/20261021010000_atomic_email_otp.sql'), 'utf8');
 const initFixture = await readFile(new URL('./initialization-full-postgres.py', import.meta.url), 'utf8');
 const baseSchema = initFixture.match(/conn\.execute\('''(create table public\.user_profiles[\s\S]*?)'''\)/)?.[1];
@@ -65,10 +69,12 @@ const check = createHmac('sha256', env.PHONE_IDENTITY_LOOKUP_KEY).update('sunlan
 const messages = [];
 const challenges = new Map();
 let deliveries = 0;
+let registeredUserId;
 const rpc = async (_env, name, args) => {
   try {
     let result;
     if (name === 'sunland_phone_identity') result = await db.query('select public.sunland_phone_identity($1,$2::jsonb) as payload', [args.p_action, JSON.stringify(args.p_data)]);
+    else if (name === 'sunland_phone_register') result = await db.query('select public.sunland_phone_register($1::jsonb) as payload', [JSON.stringify(args.p_data)]);
     else if (name === 'sunland_otp') result = await db.query('select public.sunland_otp($1,$2,$3,$4::uuid,$5,$6) as payload',
       [args.p_action,args.p_subject,args.p_ip,args.p_request_id ?? null,args.p_code_hash ?? null,args.p_delivery ?? null]);
     else throw Error('Unexpected RPC');
@@ -76,7 +82,7 @@ const rpc = async (_env, name, args) => {
   } catch (e) { console.error('Synthetic RPC failed:', name, e.message); return {ok:false}; }
 };
 const hooks = {
-  getUserFromRequest: async req => ({'Bearer synthetic-session':{id:'email-user'},'Bearer synthetic-other-session':{id:'other-user'},'Bearer synthetic-ui-session':{id:'ui-user'}})[req.headers.get('Authorization')] ?? null,
+  getUserFromRequest: async req => ({'Bearer synthetic-session':{id:'email-user'},'Bearer synthetic-other-session':{id:'other-user'},'Bearer synthetic-ui-session':{id:'ui-user'},'Bearer synthetic-registered-session':{id:registeredUserId}})[req.headers.get('Authorization')] ?? null,
   getUserStatus: async (_env,id) => (await db.query('select is_banned,identity_status from public.user_profiles where user_id=$1',[id])).rows[0] && {identityStatus:'active',isBanned:false},
   accountStatusRejection: state => state ? null : {error:'unavailable',status:503},
   applicationSigningSecret: () => jwtSecret,
@@ -128,7 +134,35 @@ async function mutate(action,phone,proof) {
 try {
   await db.exec("create role anon;create role authenticated;create role service_role bypassrls;create schema extensions;create function extensions.gen_random_uuid() returns uuid language sql volatile as $$ select pg_catalog.gen_random_uuid() $$;"+baseSchema);
   await db.exec(phoneSql); await db.exec(otpSql);
+  await assert.rejects(db.exec(registerSql));
+  await db.exec('rollback');
+  await db.exec("create unique index user_profiles_email_unique_idx on public.user_profiles (lower(email)) where email is not null and identity_status is distinct from 'retired' and is_banned=false");
+  await assert.rejects(db.exec(registerSql));
+  await db.exec('rollback');
+  await db.exec('drop index public.user_profiles_email_unique_idx');
+  await db.exec("create unique index user_profiles_email_unique_idx on public.user_profiles (lower(email)) where email is not null and identity_status is distinct from 'retired'");
+  // A new Worker against an old database cannot fall back to the old create path.
   await db.query('update public.sunland_phone_auth_config set lookup_key_id=$1,lookup_check=$2',['v1',check]);
+  const oldDbIdentity=createPhoneIdentity(env,{rpc:(name,args)=>rpc(env,name,args)});
+  await assert.rejects(oldDbIdentity.login({phone:'13900000998',email:'old-db@example.test',operationId:randomUUID()}),{code:'IDENTITY_UNAVAILABLE'});
+  assert.equal((await db.query("select count(*)::int n from public.user_profiles where email='old-db@example.test'")).rows[0].n,0);
+  await db.exec(registerSql);
+  for (const role of ['anon','authenticated','service_role']) {
+    const privilege=await db.query('select has_function_privilege($1,$2,$3) as allowed',[role,'public.sunland_phone_register(jsonb)','EXECUTE']);
+    assert.equal(privilege.rows[0].allowed,role==='service_role');
+  }
+  await db.query('update public.sunland_phone_auth_config set lookup_key_id=$1,lookup_check=$2',['v1',check]);
+  // An old Worker may still ask the old RPC to create a phone-only user. The
+  // trigger must abort its entire RPC transaction, including profile/state.
+  const legacyPhone='13900000999';
+  const legacyHash=createHmac('sha256',env.PHONE_IDENTITY_LOOKUP_KEY).update('sunland-phone-index:v1\0+86'+legacyPhone).digest('hex');
+  const legacyId=randomUUID();
+  const legacyArgs={phone_hash:legacyHash,last4:'0999',encrypted_phone:'synthetic-cipher',candidate_id:legacyId,
+    operation_id:randomUUID(),request_hash:'a'.repeat(64),allow_create:true,lookup_key_id:'v1',lookup_check:check};
+  await assert.rejects(db.query('select public.sunland_phone_identity($1,$2::jsonb) as payload',['login',JSON.stringify(legacyArgs)]));
+  const orphanCheck=await db.query('select count(*)::int n from public.user_profiles where user_id=$1',[legacyId]);
+  assert.equal(orphanCheck.rows[0].n,0);
+
   await db.query("insert into public.user_profiles(user_id,email,onboarding_version,onboarding_step) values ('email-user',$1,1,3)",['synthetic@example.test']);
   await db.query("insert into public.user_profiles(user_id,email,onboarding_version,onboarding_step) values ('other-user',$1,1,3)",['other@example.test']);
   const phone='13800000001', changed='13800000002';
@@ -164,19 +198,135 @@ try {
   const correct=messages.at(-1), wrong=correct==='000000'?'000001':'000000';
   for(let i=0;i<5;i++) assert.equal((await call('reauth/email',{action:'bind',code:wrong})).code,'CODE_INVALID');
   assert.equal((await call('reauth/email',{action:'bind',code:correct})).code,'RATE_LIMITED');
-  const fresh='13900000001'; env.PHONE_NEW_REGISTRATION_ENABLED='false';
+  const fresh='13900000001', newEmail='new@example.test'; env.PHONE_NEW_REGISTRATION_ENABLED='false';
   let freshId=randomUUID();
   assert.equal((await call('send-code',{phone:fresh,purpose:'login',turnstile_token:'synthetic',challenge_id:freshId},null)).success,true);
   assert.equal((await call('verify-code',{phone:fresh,challenge_id:freshId,code:'123456',operation_id:randomUUID()},null)).code,'REGISTRATION_DISABLED');
   env.PHONE_NEW_REGISTRATION_ENABLED='true'; freshId=randomUUID();
-  assert.equal((await call('send-code',{phone:fresh,purpose:'login',turnstile_token:'synthetic',challenge_id:freshId},null)).success,true);
-  const registrations=await Promise.all([1,2].map(()=>call('verify-code',{phone:fresh,challenge_id:freshId,code:'123456',operation_id:randomUUID()},null)));
+  const op=randomUUID();
+  assert.equal((await call('send-code',{phone:fresh,purpose:'login',turnstile_token:'synthetic',challenge_id:freshId,operation_id:op,email:newEmail},null)).success,true);
+  const emailCode=messages.at(-1);
+  const regBody={phone:fresh,challenge_id:freshId,code:'123456',email:newEmail,email_code:emailCode,operation_id:op};
+  // A code cannot be moved between phone numbers, challenges or operations.
+  for (const change of [{phone:'13900000008'},{challenge_id:randomUUID()},{operation_id:randomUUID()},{email:'other-address@example.test'}]) {
+    assert.equal((await call('verify-code',{...regBody,...change},null)).code,'CODE_INVALID');
+  }
+  const beforeRegistration=await db.query("select count(*)::int n from public.user_profiles where email=$1",[newEmail]);
+  assert.equal(beforeRegistration.rows[0].n,0);
+  const registrations=await Promise.all([call('verify-code',regBody,null),call('verify-code',regBody,null)]);
   assert.equal(registrations.filter(item=>item.is_new_user===true).length,1);
-  assert.notEqual(registrations.find(item=>item.is_new_user).user.id,'email-user');
-  assert.notEqual(registrations.find(item=>item.is_new_user).user.id,'other-user');
+  const registered=registrations.find(item=>item.is_new_user);
+  assert.equal(registered.user.email,newEmail);
+  registeredUserId=registered.user.id;
+  const loginAgainId=randomUUID();
+  assert.equal((await call('send-code',{phone:fresh,purpose:'login',turnstile_token:'synthetic',challenge_id:loginAgainId},null)).success,true);
+  const loginAgain=await call('verify-code',{phone:fresh,challenge_id:loginAgainId,code:'123456',operation_id:randomUUID()},null);
+  assert.equal(loginAgain.user.id,registeredUserId); assert.equal(loginAgain.user.email,newEmail); assert.equal(loginAgain.is_new_user,false);
+  // Existing email gateway's lookup and deletion proof both resolve this profile.
+  const emailLookup=await db.query("select user_id from public.user_profiles where email=$1 and identity_status='active'",[newEmail]);
+  assert.equal(emailLookup.rows[0].user_id,registeredUserId);
+  // Run the pinned existing email gateway, including its real OTP authority and
+  // getOrCreateLoginUser, against this disposable PostgreSQL. External CAPTCHA
+  // and email delivery remain simulated. No live API or user data is accessed.
+  const gatewayDir=await mkdtemp(resolve(tmpdir(),'phone-gateway-'));
+  const previousFetch=globalThis.fetch;
+  try {
+    const revision='3398d8801efe93a2063536b0a5d460974a8fc65f';
+    const paths=execFileSync('git',['-C',app,'ls-tree','-r','--name-only',revision,'worker/src'],{encoding:'utf8'}).trim().split('\n');
+    for (const file of paths) {
+      const out=resolve(gatewayDir,file.slice('worker/'.length));
+      await mkdir(resolve(out,'..'),{recursive:true});
+      await writeFile(out,execFileSync('git',['-C',app,'show',`${revision}:${file}`]));
+    }
+    await writeFile(resolve(gatewayDir,'package.json'),'{"type":"module"}');
+    await symlink(resolve(app,'worker/node_modules'),resolve(gatewayDir,'node_modules'),'dir');
+    const gateway=(await import(pathToFileURL(resolve(gatewayDir,'src/index.js')).href)).default;
+    let mailCode;
+    globalThis.fetch=async (url,opts={}) => {
+      const u=new URL(url);
+      if(u.hostname==='gcaptcha4.geetest.com') return Response.json({result:'success'});
+      if(u.hostname==='api.resend.com') { mailCode=JSON.parse(opts.body).html.match(/>\s*(\d{6})\s*</)?.[1]; assert.ok(mailCode); return Response.json({id:'synthetic'}); }
+      if(u.hostname==='database.invalid' && u.pathname==='/rest/v1/rpc/sunland_otp') {
+        const args=JSON.parse(opts.body); const value=await rpc(null,'sunland_otp',args); return Response.json(value.payload,{status:value.ok?200:503});
+      }
+      if(u.hostname==='database.invalid' && u.pathname==='/rest/v1/user_profiles') {
+        assert.notEqual(opts.method,'POST','email login must not create a duplicate profile');
+        const email=u.searchParams.get('email').slice(3);
+        const result=await db.query("select user_id,onboarding_version,onboarding_step from public.user_profiles where email=$1 and identity_status='active' limit 1",[email]);
+        return Response.json(result.rows);
+      }
+      throw Error('Unexpected synthetic gateway request');
+    };
+    const gatewayEnv={APP_JWT_LEGACY_SECRET:jwtSecret,SUPABASE_PROJECT_URL:'https://database.invalid',SUPABASE_SECRET_KEY:'synthetic-key',
+      GEETEST_SERVER_KEY:'synthetic-geetest',GEETEST_ID:'synthetic-id',RESEND_API_KEY:'synthetic-mail-key',ALLOWED_ORIGIN:'https://sunland.dev'};
+    const req=(path,body)=>new Request(`https://api.invalid${path}`,{method:'POST',headers:{'Content-Type':'application/json','CF-Connecting-IP':'192.0.2.1'},body:JSON.stringify(body)});
+    const captcha=JSON.stringify({lot_number:'synthetic',captcha_output:'synthetic',pass_token:'synthetic',gen_time:'synthetic'});
+    const sentEmail=await gateway.fetch(req('/send-code',{email:newEmail,token:captcha}),gatewayEnv,{});
+    assert.equal(sentEmail.status,200);
+    const verifiedEmail=await gateway.fetch(req('/verify-code',{email:newEmail,code:mailCode}),gatewayEnv,{});
+    assert.equal(verifiedEmail.status,200);
+    const verifiedUser=await verifiedEmail.json();
+    assert.equal(verifiedUser.user.id,registeredUserId); assert.equal(verifiedUser.is_new_user,false);
+  } finally { globalThis.fetch=previousFetch; await rm(gatewayDir,{recursive:true,force:true}); }
+
+  assert.equal((await call('reauth/email/send',{action:'delete'},'synthetic-registered-session')).success,true);
+  const deleteProof=await call('reauth/email',{action:'delete',code:messages.at(-1)},'synthetic-registered-session');
+  assert.equal(deleteProof.status,200);
+
   assert.equal(registrations.find(item=>!item.is_new_user).code,'CODE_INVALID');
+  assert.equal((await call('verify-code',regBody,null)).code,'CODE_INVALID');
   const profiles=await db.query('select count(*)::int as n from public.user_profiles'); assert.equal(profiles.rows[0].n,3);
-  assert.equal(deliveries,7);
+  const rows2=await db.query('select user_id,email from public.user_profiles where email=$1',[newEmail]);
+  assert.equal(rows2.rows[0].user_id,registered.user.id);
+  assert.equal(deliveries,9);
+  // Deterministic configuration errors must not spend an SMS attempt.
+  const noMailId=randomUUID(), savedMailKey=env.PHONE_REAUTH_EMAIL_API_KEY;
+  delete env.PHONE_REAUTH_EMAIL_API_KEY;
+  assert.equal((await call('send-code',{phone:'13900000009',purpose:'login',turnstile_token:'synthetic',challenge_id:noMailId,operation_id:randomUUID(),email:'config@example.test'},null)).code,'IDENTITY_CONFIG');
+  assert.equal(challenges.has(noMailId),false); env.PHONE_REAUTH_EMAIL_API_KEY=savedMailKey;
+  async function registerAttempt(phone,email) {
+    const id=randomUUID(), operation_id=randomUUID();
+    assert.equal((await call('send-code',{phone,purpose:'login',turnstile_token:'synthetic',challenge_id:id,operation_id,email},null)).success,true);
+    return {phone,email,challenge_id:id,operation_id,code:'123456',email_code:messages.at(-1)};
+  }
+  const wrongRegistration=await registerAttempt('13900000010','wrong@example.test');
+  assert.equal((await call('verify-code',{...wrongRegistration,email_code:wrongRegistration.email_code==='000000'?'000001':'000000'},null)).code,'CODE_INVALID');
+  const emailExpired=await registerAttempt('13900000011','expired@example.test');
+  await db.exec("update public.sunland_otp_challenges set expires_at=now()-interval '1 second'");
+  assert.equal((await call('verify-code',emailExpired,null)).code,'CODE_INVALID');
+  const phoneExpired=await registerAttempt('13900000012','sms-expired@example.test');
+  challenges.get(phoneExpired.challenge_id).used=true;
+  assert.equal((await call('verify-code',phoneExpired,null)).code,'CODE_INVALID');
+  assert.equal((await call('verify-code',phoneExpired,null)).code,'CODE_INVALID');
+  const noPartial=await db.query("select count(*)::int n from public.user_profiles where email in ('wrong@example.test','expired@example.test','sms-expired@example.test')");
+  assert.equal(noPartial.rows[0].n,0);
+
+  // Exercise the actual RPC races, bypassing only transport-level proofs. Two
+  // different numbers cannot claim one email; two emails cannot claim one number.
+  const identity=createPhoneIdentity(env,{rpc:(name,args)=>rpc(env,name,args)});
+  const race = await Promise.allSettled([
+    identity.login({phone:'13900000002',email:'race@example.test',operationId:randomUUID()}),
+    identity.login({phone:'13900000003',email:'race@example.test',operationId:randomUUID()})]);
+  assert.equal(race.filter(x=>x.status==='fulfilled').length,1);
+  assert.equal(race.find(x=>x.status==='rejected').reason.code,'EMAIL_CONFLICT');
+  const phoneRace = await Promise.allSettled([
+    identity.login({phone:'13900000004',email:'race1@example.test',operationId:randomUUID()}),
+    identity.login({phone:'13900000004',email:'race2@example.test',operationId:randomUUID()})]);
+  assert.equal(phoneRace.filter(x=>x.status==='fulfilled').length,1);
+  assert.equal(phoneRace.find(x=>x.status==='rejected').reason.code,'PHONE_CONFLICT');
+  const conflictRows=await db.query("select count(*)::int n from public.user_profiles where email in ('race1@example.test','race2@example.test')");
+  assert.equal(conflictRows.rows[0].n,1);
+  const existingEmail=await Promise.allSettled([identity.login({phone:'13900000006',email:'synthetic@example.test',operationId:randomUUID()})]);
+  assert.equal(existingEmail[0].reason.code,'EMAIL_CONFLICT');
+  const existingPhone=await Promise.allSettled([identity.login({phone:fresh,email:'another@example.test',operationId:randomUUID()})]);
+  assert.equal(existingPhone[0].reason.code,'PHONE_CONFLICT');
+  const raceWithEmail = await Promise.allSettled([
+    identity.login({phone:'13900000007',email:'email-race@example.test',operationId:randomUUID()}),
+    db.query("insert into public.user_profiles(user_id,email,onboarding_version,onboarding_step) values ('email-racer','email-race@example.test',0,1)")]);
+  assert.equal(raceWithEmail.filter(x=>x.status==='fulfilled').length,1);
+  const emailRaces=await db.query("select count(*)::int n from public.user_profiles where email='email-race@example.test'");
+  assert.equal(emailRaces.rows[0].n,1);
+
   // Use the actual settings page and browser client against the same real routes
   // and SQL. Only CAPTCHA, SMS, email and identity authentication are fake.
   await db.query("insert into public.user_profiles(user_id,email,onboarding_version,onboarding_step) values ('ui-user',$1,1,3)",['ui@example.test']);
@@ -254,9 +404,9 @@ try {
       headers:{'Content-Type':'application/json','CF-Connecting-IP':'192.0.2.1'},body:JSON.stringify(body)}),doEnv,{});
     return {status:response.status,...await response.json()};
   }
-  const actualPhone='13700000005', actualChallenge=randomUUID();
-  assert.equal((await realCall('send-code',{phone:actualPhone,purpose:'login',turnstile_token:'login:synthetic',challenge_id:actualChallenge})).success,true);
-  const actualLogin=await realCall('verify-code',{phone:actualPhone,challenge_id:actualChallenge,code:relayCode,operation_id:randomUUID()});
+  const actualPhone='13700000005', actualChallenge=randomUUID(), actualOperation=randomUUID(), actualEmail='relay@example.test';
+  assert.equal((await realCall('send-code',{phone:actualPhone,purpose:'login',turnstile_token:'login:synthetic',challenge_id:actualChallenge,operation_id:actualOperation,email:actualEmail})).success,true);
+  const actualLogin=await realCall('verify-code',{phone:actualPhone,challenge_id:actualChallenge,code:relayCode,operation_id:actualOperation,email:actualEmail,email_code:messages.at(-1)});
   assert.equal(actualLogin.is_new_user,true); assert.ok(actualLogin.user.id);
   assert.notEqual((await realCall('verify-code',{phone:actualPhone,challenge_id:actualChallenge,code:relayCode,operation_id:randomUUID()})).status,200);
   console.log('PASS: Worker routes + real coordinator + relay adapter + isolated identity SQL; outbound Turnstile and relay, JWT and account status simulated');

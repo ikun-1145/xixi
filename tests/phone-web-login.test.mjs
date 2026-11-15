@@ -79,7 +79,7 @@ test('real language catalog translates phone login labels and authentication err
  h.w.eval(readFileSync(new URL('../p/js/site-i18n-extra.js',import.meta.url),'utf8'));
  h.w.eval(readFileSync(new URL('../p/js/site-i18n.js',import.meta.url),'utf8'));
  const errors=[...client.matchAll(/\b[A-Z_]+:'([^']+)'/g)].map(m=>m[1]);
- const labels=['中国大陆手机号','短信验证码','登录或注册','首次验证手机号将自动注册，不会合并邮箱账号','手机号登录','邮箱登录','请输入6位验证码'];
+ const labels=['中国大陆手机号','短信验证码','手机号注册','注册邮箱','邮箱验证码','注册需同时验证手机号和邮箱，已有账号不会合并','使用已注册手机号登录','验证码请求已受理，请留意短信和邮箱','请使用发送验证码时填写的邮箱','验证未完成，请检查登录状态后再操作','手机号登录','邮箱登录','请输入6位验证码'];
  for(const lang of ['en','ja','ko','es','zh-Hant']){
   for(const source of [...errors,...labels]){
    const translated=h.w.SiteI18n.translate(source,lang);
@@ -89,13 +89,13 @@ test('real language catalog translates phone login labels and authentication err
  }
  h.w.SiteI18n.setLanguage('en',{persist:false});h.w.document.querySelector('#phoneLoginTab').click();
  assert.equal(h.w.document.querySelector('label[for="phoneInput"]').textContent,'Mainland China mobile number');
- assert.equal(h.w.document.querySelector('#loginBtn').textContent,'Sign in or register');
- assert.match(h.w.document.querySelector('.subtitle').textContent,/account/i);
+ assert.equal(h.w.document.querySelector('#loginBtn').textContent,'Sign in');
+ assert.match(h.w.document.querySelector('.subtitle').textContent,/registered phone/i);
  assert.notEqual(h.w.SunlandPhoneAuth.errorText({code:'CODE_INVALID'}),'验证码错误或已过期，请重新获取');
 });
 
 test('phone client uses a recovery-specific cache key and stays disabled by default',()=>{
- assert.match(html,/p\/js\/phone-auth\.js\?v=20261114-relay-1/);
+ assert.match(html,/p\/js\/phone-auth\.js\?v=20261115-register-1/);
  assert.match(html,/<meta name="sunland-phone-ui-enabled" content="false">/);
 });
 
@@ -109,4 +109,28 @@ test('expired phone send requires waiting and explicit review before local recov
  d.querySelector('#emailLoginTab').click();d.querySelector('#phoneLoginTab').click();assert.equal(button.hidden,false);
  h.w.confirm=()=>false;button.click();assert.ok(h.w.sessionStorage.getItem(key));assert.equal(send.disabled,true);
  h.w.confirm=()=>true;button.click();assert.equal(h.w.sessionStorage.getItem(key),null);assert.equal(send.disabled,false);assert.equal(h.calls.length,0);
+});
+
+test('registration requires both codes and uses one operation id for both requests',async t=>{
+ const h=harness(),d=h.w.document;t.after(()=>h.dom.window.close());
+ d.querySelector('#phoneRegisterTab').click();d.querySelector('#phoneInput').value='13800000000';d.querySelector('#phoneRegisterEmail').value='NEW@example.test';
+ d.querySelector('#sendPhoneCodeBtn').click();await flush();assert.equal(h.calls.length,1);
+ const sent=h.calls[0].body;assert.equal(sent.purpose,'login');assert.equal(sent.email,'new@example.test');assert.match(sent.operation_id,/^[0-9a-f-]{36}$/);
+ d.querySelector('#phoneCodeInput').value='123456';d.querySelector('#agreeCheck').checked=true;d.querySelector('#agreeCheck').dispatchEvent(new h.w.Event('change'));d.querySelector('#loginBtn').click();await flush();assert.equal(h.calls.length,1);
+ d.querySelector('#phoneEmailCode').value='654321';d.querySelector('#loginBtn').click();await flush();await flush();
+ assert.equal(h.calls.length,2);assert.equal(h.calls[1].body.operation_id,sent.operation_id);assert.equal(h.calls[1].body.challenge_id,sent.challenge_id);assert.equal(h.calls[1].body.email,sent.email);assert.equal(h.calls[1].body.email_code,'654321');
+ assert.equal(h.w.localStorage.getItem('token'),'mock-jwt');
+});
+test('registration failure consumes the attempt and reload recovery never submits twice',async t=>{
+ const h=harness(),d=h.w.document;t.after(()=>h.dom.window.close());let attempts=0;
+ h.w.fetch=async(url,init)=>{const body=JSON.parse(init.body);h.calls.push({url,body});if(url.endsWith('/send-code'))return Response.json({success:true,challenge_id:body.challenge_id,expires_in:300,retry_after:60});attempts++;return Response.json({code:'CODE_INVALID'},{status:400});};
+ d.querySelector('#phoneRegisterTab').click();d.querySelector('#phoneInput').value='13800000000';d.querySelector('#phoneRegisterEmail').value='new@example.test';d.querySelector('#sendPhoneCodeBtn').click();await flush();
+ d.querySelector('#phoneCodeInput').value='123456';d.querySelector('#phoneEmailCode').value='654321';d.querySelector('#agreeCheck').checked=true;d.querySelector('#agreeCheck').dispatchEvent(new h.w.Event('change'));d.querySelector('#loginBtn').click();await flush();
+ const saved=JSON.parse(h.w.sessionStorage.getItem('sunland.phone.pending.v1'));assert.equal(saved.verificationStarted,true);assert.equal(attempts,1);
+ d.querySelector('#phoneInput').dispatchEvent(new h.w.Event('input'));d.querySelector('#phoneCodeInput').value='123456';d.querySelector('#phoneEmailCode').value='654321';d.querySelector('#loginBtn').click();await flush();assert.equal(attempts,1);
+});
+test('registration send failure keeps recovery and never sends again automatically',async t=>{
+ const h=harness(),d=h.w.document;t.after(()=>h.dom.window.close());let calls=0;h.w.fetch=async()=>{calls++;throw Error('lost');};
+ d.querySelector('#phoneRegisterTab').click();d.querySelector('#phoneInput').value='13800000000';d.querySelector('#phoneRegisterEmail').value='new@example.test';d.querySelector('#sendPhoneCodeBtn').click();await flush();
+ assert.equal(calls,1);assert.equal(d.querySelector('#sendPhoneCodeBtn').disabled,true);assert.ok(JSON.parse(h.w.sessionStorage.getItem('sunland.phone.pending.v1')).operationId);assert.match(d.querySelector('#loginMsg').textContent,/未知/);
 });
