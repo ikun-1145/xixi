@@ -584,6 +584,8 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       const seconds = phoneAuth.cooldown(phoneInput.value);
       let hasPending = true, pending = null;
       try { pending = phoneClient.recovery('login'); hasPending = !!pending; } catch {}
+      if (loginMode !== 'email' && pending && !challenge && !phonePending && !phoneNotice)
+        phoneMessage('', {code: pending.verification_started ? 'VERIFY_UNCERTAIN' : 'SEND_UNCERTAIN'});
       phoneReview.hidden = !pending || !pending.expired || Date.now() < pending.review_after || phonePending;
       phoneSend.disabled = phonePending || seconds > 0 || hasPending;
       phoneSend.textContent = phonePending ? tr('正在处理…') : seconds > 0 ? `${seconds}${tr('秒后重新发送')}` : tr('发送验证码');

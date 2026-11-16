@@ -56,7 +56,7 @@ test('BFCache return preserves uncertain SMS and blocks another send',async t=>{
  const h=harness(),d=h.w.document;t.after(()=>h.dom.window.close());let finish;
  h.w.fetch=()=>new Promise(r=>finish=r);d.querySelector('#phoneLoginTab').click();d.querySelector('#phoneInput').value='13800000000';d.querySelector('#sendPhoneCodeBtn').click();await flush();assert.equal(d.querySelector('#sendPhoneCodeBtn').disabled,true);
  h.w.dispatchEvent(new h.w.PageTransitionEvent('pagehide',{persisted:true}));h.w.dispatchEvent(new h.w.PageTransitionEvent('pageshow',{persisted:true}));
- assert.equal(d.querySelector('#sendPhoneCodeBtn').disabled,true);assert.equal(d.querySelector('#phoneCodeInput').value,'');finish(Response.json({success:true,challenge_id:'old',expires_in:300,retry_after:600}));await flush();assert.equal(d.querySelector('#loginMsg').textContent,'');
+ assert.equal(d.querySelector('#sendPhoneCodeBtn').disabled,true);assert.equal(d.querySelector('#phoneCodeInput').value,'');finish(Response.json({success:true,challenge_id:'old',expires_in:300,retry_after:600}));await flush();assert.match(d.querySelector('#loginMsg').textContent,/未知/);
 });
 
 test('phone entry release flag defaults closed and cannot switch away from email',t=>{
@@ -109,6 +109,15 @@ test('expired phone send requires waiting and explicit review before local recov
  d.querySelector('#emailLoginTab').click();d.querySelector('#phoneLoginTab').click();assert.equal(button.hidden,false);
  h.w.confirm=()=>false;button.click();assert.ok(h.w.sessionStorage.getItem(key));assert.equal(send.disabled,true);
  h.w.confirm=()=>true;button.click();assert.equal(h.w.sessionStorage.getItem(key),null);assert.equal(send.disabled,false);assert.equal(h.calls.length,0);
+});
+
+test('switching to registration explains an existing pending login send without sending again', t=>{
+ const h=harness(),d=h.w.document;t.after(()=>h.dom.window.close());
+ h.w.sessionStorage.setItem('sunland.phone.pending.v1',JSON.stringify({version:1,id:crypto.randomUUID(),purpose:'login',expiresAt:Date.now()-1000}));
+ d.querySelector('#phoneRegisterTab').click();
+ assert.equal(d.querySelector('#sendPhoneCodeBtn').disabled,true);
+ assert.match(d.querySelector('#loginMsg').textContent,/未知/);
+ assert.equal(h.calls.length,0);
 });
 
 test('registration requires both codes and uses one operation id for both requests',async t=>{
