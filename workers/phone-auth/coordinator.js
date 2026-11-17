@@ -6,6 +6,7 @@ import { releasePolicy, allowCanaryRecipient, requireAdmin } from './release-pol
 
 export const SINGLETON_NAME = 'sunland-phone-auth-v1';
 export const LEDGER_KEY = 'account';
+const EXTRA_LOGIN_KEY = 'canary:login-extra:v1';
 const DAY = 86400000;
 const TTL = 300000;
 const LOCK = 600000;
@@ -73,6 +74,10 @@ async function digest(secret, domain, value) {
   return [...new Uint8Array(bytes)].map(n => n.toString(16).padStart(2, '0')).join('');
 }
 
+const ledgerFingerprint = (env, policy, release) => digest(env.PHONE_AUTH_HMAC_KEY, 'ledger-config:v1', JSON.stringify([
+  env.PHONE_AUTH_HMAC_KEY_ID, release.mode, [...release.hashes].sort(), policyFields.map(k => policy[k])
+]));
+
 function randomCode() {
   const bytes = new Uint32Array(1);
   // Rejection sampling avoids modulo bias while retaining leading zeroes.
@@ -138,7 +143,7 @@ export class PhoneAuthCoordinator {
     await tx.put('cleanup-cursor', records.size === 32 ? [...records.keys()].at(-1) : '');
   }
 
-  async prepare(input, context, operation) {
+  async prepare(input, context, operation, extraFingerprint) {
     const policy = settings(this.env);
     const now = this.now();
     const normalized = validate(input, context, operation, now);
@@ -152,6 +157,8 @@ export class PhoneAuthCoordinator {
     const claimed = await this.transaction(async tx => {
       const now = this.now();
       const account = await this.account(tx, now);
+      if (extraFingerprint !== undefined && (account.testReserved !== 3 || account.initConfig !== extraFingerprint))
+        fail('RELEASE_CONFIG', 503);
       const key = `t:requests:${ipHash}`;
       const previous = await tx.get(key);
       if (previous && (!nonnegative(previous.count) || !nonnegative(previous.minute))) fail('SERVICE_UNAVAILABLE', 503);
@@ -172,7 +179,19 @@ export class PhoneAuthCoordinator {
     // Reject unconfirmed template use before touching the ledger or Turnstile.
     requireSmsEnabled(this.env);
     if (smsProvider(this.env) === 'relay') requireRelayTemplatePurpose(this.env, input?.purpose);
-    const prepared = await this.prepare(input, context, 'send');
+    let extraFingerprint;
+    if (this.env.PHONE_LOGIN_EXTRA_CANARY_ENABLED === 'true') {
+      const policy = settings(this.env), release = releasePolicy(this.env);
+      if (release.mode !== 'canary' || release.hashes.length !== 1 || input?.purpose !== 'login' ||
+          this.env.PHONE_SMS_PROVIDER !== 'relay' || this.env.PHONE_IDENTITY_ENABLED !== 'true' ||
+          ['PHONE_NEW_REGISTRATION_ENABLED','PHONE_ACCOUNT_MANAGEMENT_ENABLED','PHONE_EMAIL_REAUTH_ENABLED',
+            'PHONE_TURNSTILE_DIAGNOSTICS_ENABLED'].some(k => this.env[k] !== 'false') ||
+          policy.perPhoneDaily !== 3 || policy.perIpDaily !== 3 || policy.dailyLimit !== 3 ||
+          policy.unitCostMicros !== 200000 || policy.dailyBudgetMicros !== 600000 || policy.totalBudgetMicros !== 600000)
+        fail('RELEASE_CONFIG', 503);
+      extraFingerprint = await ledgerFingerprint(this.env, policy, release);
+    }
+    const prepared = await this.prepare(input, context, 'send', extraFingerprint);
     const { phone, ip, phoneHash, ipHash, principalHash, policy } = prepared;
     const provider = smsProvider(this.env);
     const relay = provider === 'relay' ? new SmsRelayClient(this.env, { fetchImpl: this.fetchImpl }) : null;
@@ -204,7 +223,17 @@ export class PhoneAuthCoordinator {
       const release = releasePolicy(this.env);
       allowCanaryRecipient(release, phoneHash);
       if (await tx.get(challengeKey)) fail('OPERATION_CONFLICT', 409);
-      if (release.mode === 'canary' && account.testReserved >= 3) fail('CANARY_LIMITED', 429);
+      const extra = extraFingerprint !== undefined;
+      if (extra) {
+        if (account.testReserved !== 3 || account.initConfig !== extraFingerprint)
+          fail('RELEASE_CONFIG', 503);
+        const used = await tx.get(EXTRA_LOGIN_KEY);
+        if (used !== undefined) {
+          if (!used || used.schema !== 1 || used.used !== 1 || Object.keys(used).length !== 2) fail('SERVICE_UNAVAILABLE', 503);
+          fail('CANARY_LIMITED', 429);
+        }
+        if (account.totalMicros !== 600000) fail('RELEASE_CONFIG', 503);
+      } else if (release.mode === 'canary' && account.testReserved >= 3) fail('CANARY_LIMITED', 429);
       const p = await tx.get(phoneKey);
       const i = await tx.get(ipKey);
       for (const value of [p, i]) {
@@ -215,11 +244,12 @@ export class PhoneAuthCoordinator {
       if (p?.lockUntil > now) fail('RATE_LIMITED', 429);
       const phoneCount = p?.day === account.day ? p.count : 0;
       const ipCount = i?.day === account.day ? i.count : 0;
-      if (phoneCount >= policy.perPhoneDaily || ipCount >= policy.perIpDaily) fail('RATE_LIMITED', 429);
-      if (account.dayCount >= policy.dailyLimit || account.totalMicros > policy.totalBudgetMicros - policy.unitCostMicros ||
-          account.dayMicros > policy.dailyBudgetMicros - policy.unitCostMicros) fail('BUDGET_EXCEEDED', 429);
+      if (phoneCount >= policy.perPhoneDaily + Number(extra) || ipCount >= policy.perIpDaily + Number(extra)) fail('RATE_LIMITED', 429);
+      if (account.dayCount >= policy.dailyLimit + Number(extra) || account.totalMicros > policy.totalBudgetMicros + Number(extra) * policy.unitCostMicros - policy.unitCostMicros ||
+          account.dayMicros > policy.dailyBudgetMicros + Number(extra) * policy.unitCostMicros - policy.unitCostMicros) fail('BUDGET_EXCEEDED', 429);
       account.dayCount++; account.dayMicros += policy.unitCostMicros; account.totalMicros += policy.unitCostMicros;
-      if (release.mode === 'canary') account.testReserved++;
+      if (extra) await tx.put(EXTRA_LOGIN_KEY, {schema:1,used:1});
+      else if (release.mode === 'canary') account.testReserved++;
       await tx.put(LEDGER_KEY, account);
       await tx.put(phoneKey, { day: account.day, count: phoneCount + 1, lockUntil: now + LOCK,
         challengeId: id, quarantined: true });
@@ -336,9 +366,7 @@ export class PhoneAuthCoordinator {
         let config;
         try { config = JSON.parse(this.env.PHONE_AUTH_POLICY); } catch { fail('RELEASE_CONFIG', 503); }
         if (!config || policyFields.some(k => !positive(config[k])) || config.dailyLimit > 10000) fail('RELEASE_CONFIG', 503);
-        const fingerprint = await digest(this.env.PHONE_AUTH_HMAC_KEY, 'ledger-config:v1', JSON.stringify([
-          this.env.PHONE_AUTH_HMAC_KEY_ID, policy.mode, [...policy.hashes].sort(), policyFields.map(k => config[k])
-        ]));
+        const fingerprint = await ledgerFingerprint(this.env, config, policy);
         const output = await this.transaction(async tx => {
           const stored = await tx.get(LEDGER_KEY);
           const any = (await tx.list({ limit: 1 })).size > 0;

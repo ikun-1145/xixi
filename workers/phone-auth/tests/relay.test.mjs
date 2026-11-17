@@ -33,8 +33,8 @@ class Storage {
     } finally { release(); }
   }
 }
-async function fixture() {
-  const h = { env: env(), storage: new Storage(), now: START, calls: [], messages: [] };
+async function fixture(overrides = {}) {
+  const h = { env: { ...env(), ...overrides }, storage: new Storage(), now: START, calls: [], messages: [] };
   const fetchImpl = async (url, options) => {
     h.calls.push(new URL(url).hostname);
     if (new URL(url).hostname === 'challenges.cloudflare.com') {
@@ -327,6 +327,65 @@ test('relay shares existing budget and canary caps without new ledgers', async (
   const denied = sent.findIndex(r => r.status === 'rejected');
   await assert.rejects(c.send(numbers[denied]), { code: 'CANARY_LIMITED' });
   assert.equal(c.storage.data.get(LEDGER_KEY).totalMicros, 21);
+});
+
+async function extraCanaryFixture() {
+  const key = 'synthetic-hmac-key-at-least-32-characters';
+  const hash = (domain,value) => createHmac('sha256',key).update(`${domain}\0${value}`).digest('hex');
+  const policy = { perPhoneDaily:3, perIpDaily:3, dailyLimit:3, unitCostMicros:200000,
+    dailyBudgetMicros:600000, totalBudgetMicros:600000, ipRequestsPerMinute:10, globalRequestsPerMinute:20 };
+  const h = await fixture({PHONE_AUTH_POLICY:JSON.stringify(policy), PHONE_RELEASE_MODE:'canary',
+    PHONE_SMS_CANARY_PHONE_HASHES:JSON.stringify([hash('phone',phone)]), PHONE_IDENTITY_ENABLED:'true',
+    PHONE_NEW_REGISTRATION_ENABLED:'false', PHONE_ACCOUNT_MANAGEMENT_ENABLED:'false',
+    PHONE_EMAIL_REAUTH_ENABLED:'false', PHONE_TURNSTILE_DIAGNOSTICS_ENABLED:'false',
+    PHONE_LOGIN_EXTRA_CANARY_ENABLED:'true'});
+  const account = h.storage.data.get(LEDGER_KEY);
+  Object.assign(account,{testReserved:3,totalMicros:600000,dayCount:3,dayMicros:600000});
+  h.storage.data.set('t:phone:'+hash('phone',phone),{day:account.day,count:3,lockUntil:START-1,quarantined:false});
+  h.storage.data.set('t:ip:'+hash('ip',context.ip),{day:account.day,count:3,deleteAfter:START+86400000});
+  return h;
+}
+
+test('one additional canary login reservation is atomic, preserves the original ledger and survives restart', async () => {
+  const h=await extraCanaryFixture(), before=structuredClone(h.storage.data.get(LEDGER_KEY));
+  const results=await Promise.allSettled([h.send(),h.send()]);
+  assert.equal(results.filter(r=>r.status==='fulfilled').length,1);
+  assert.equal(results.filter(r=>r.status==='rejected' && r.reason.code==='CANARY_LIMITED').length,1);
+  const after=h.storage.data.get(LEDGER_KEY);
+  assert.equal(after.testReserved,3);assert.equal(after.initConfig,before.initConfig);
+  assert.equal(after.totalMicros,800000);assert.equal(after.dayMicros,800000);assert.equal(after.dayCount,4);
+  assert.equal(h.messages.length,1);h.rebuild();h.now+=600000;
+  await assert.rejects(h.send(),{code:'CANARY_LIMITED'});assert.equal(h.messages.length,1);
+  h.env.PHONE_LOGIN_EXTRA_CANARY_ENABLED='false';h.rebuild();
+  await assert.rejects(h.send(),{code:'CANARY_LIMITED'});assert.equal(h.storage.data.get(LEDGER_KEY).totalMicros,800000);
+});
+
+test('additional canary fails closed on configuration drift, incompatible data and unknown relay outcome', async () => {
+  for (const change of [h=>{h.env.PHONE_NEW_REGISTRATION_ENABLED='true';},
+    h=>{h.env.PHONE_ACCOUNT_MANAGEMENT_ENABLED='true';},h=>{h.env.PHONE_TURNSTILE_DIAGNOSTICS_ENABLED='true';},
+    h=>{h.env.PHONE_RELEASE_MODE='public';},h=>{h.storage.data.get(LEDGER_KEY).initConfig='f'.repeat(64);},
+    h=>{h.storage.data.set('canary:login-extra:v1',{schema:1,used:2});}]) {
+    const h=await extraCanaryFixture();change(h);await assert.rejects(h.send());
+    assert.equal(h.messages.length,0);assert.equal(h.storage.data.get(LEDGER_KEY).totalMicros,600000);
+  }
+  const h=await extraCanaryFixture();h.reply=()=>Response.json({ok:0});
+  await assert.rejects(h.send(),{code:'PROVIDER_UNAVAILABLE'});h.now+=86400000;h.rebuild();
+  await assert.rejects(h.send());assert.equal(h.messages.length,1);
+  assert.equal(h.storage.data.get(LEDGER_KEY).testReserved,3);assert.equal(h.storage.data.get(LEDGER_KEY).totalMicros,800000);
+});
+
+test('extra canary configuration drift leaves all stored state unchanged and never calls Siteverify', async () => {
+  for (const change of [
+    h => { h.storage.data.get(LEDGER_KEY).initConfig = 'f'.repeat(64); },
+    h => { h.storage.data.get(LEDGER_KEY).testReserved = 2; },
+    h => { const policy = JSON.parse(h.env.PHONE_AUTH_POLICY); policy.ipRequestsPerMinute++; h.env.PHONE_AUTH_POLICY = JSON.stringify(policy); },
+  ]) {
+    const h = await extraCanaryFixture(); change(h); h.now += 60000;
+    const before = structuredClone(h.storage.data);
+    await assert.rejects(h.send(), { code:'RELEASE_CONFIG' });
+    assert.deepEqual(h.storage.data, before);
+    assert.equal(h.calls.length, 0);
+  }
 });
 
 test('relay DO persists only bound MAC, survives restart, consumes once under concurrency', async () => {
