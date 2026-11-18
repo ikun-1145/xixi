@@ -7,7 +7,9 @@ import { releasePolicy, allowCanaryRecipient, requireAdmin } from './release-pol
 export const SINGLETON_NAME = 'sunland-phone-auth-v1';
 export const LEDGER_KEY = 'account';
 const EXTRA_LOGIN_KEY = 'canary:login-extra:v1';
+const V1_BACKUP_KEY = 'account:v1:backup';
 const DAY = 86400000;
+const dayNumber = (now, schema) => Math.floor((now + (schema === 2 ? 8 * 3600000 : 0)) / DAY);
 const TTL = 300000;
 const LOCK = 600000;
 const PURPOSES = Object.freeze({ login: 'sl-login-v1', bind: 'sl-bind-v1', change: 'sl-change-v1',
@@ -77,6 +79,14 @@ async function digest(secret, domain, value) {
 const ledgerFingerprint = (env, policy, release) => digest(env.PHONE_AUTH_HMAC_KEY, 'ledger-config:v1', JSON.stringify([
   env.PHONE_AUTH_HMAC_KEY_ID, release.mode, [...release.hashes].sort(), policyFields.map(k => policy[k])
 ]));
+const structureFingerprint = env => digest(env.PHONE_AUTH_HMAC_KEY, 'ledger-structure:v2', JSON.stringify([2, env.PHONE_AUTH_HMAC_KEY_ID, SINGLETON_NAME]));
+const operationFingerprint = (env, policy) => digest(env.PHONE_AUTH_HMAC_KEY, 'ledger-operation:v2', JSON.stringify(policyFields.map(k => policy[k])));
+function v2Policy(env, name) {
+  let policy;
+  try { policy = JSON.parse(env[name]); } catch { fail('RELEASE_CONFIG', 503); }
+  if (!policy || policyFields.some(k => !positive(policy[k])) || policy.dailyLimit !== 100) fail('RELEASE_CONFIG', 503);
+  return policy;
+}
 
 function randomCode() {
   const bytes = new Uint32Array(1);
@@ -115,13 +125,16 @@ export class PhoneAuthCoordinator {
   async account(tx, now) {
     const account = await tx.get(LEDGER_KEY);
     // No automatic initialization: an evicted/missing ledger cannot reset cost.
-    if (!account || account.schema !== 1 || account.enabled !== true || account.keyId !== this.env.PHONE_AUTH_HMAC_KEY_ID ||
+    if (!account || ![1, 2].includes(account.schema) || account.enabled !== true || account.keyId !== this.env.PHONE_AUTH_HMAC_KEY_ID ||
         !['testReserved', 'totalMicros', 'day', 'dayCount', 'dayMicros', 'minute', 'minuteCount', 'lastNow'].every(k => nonnegative(account[k])) ||
         account.testReserved > 3 ||
         !nonnegative(now) || now < account.lastNow) fail('SERVICE_UNAVAILABLE', 503);
+    if (account.schema === 2 && (account.dayCount > 100 || account.structureConfig !== await structureFingerprint(this.env) ||
+        typeof account.operationConfig !== 'string' || !/^[0-9a-f]{64}$/.test(account.operationConfig))) fail('SERVICE_UNAVAILABLE', 503);
     account.lastNow = now;
-    if (account.day !== Math.floor(now / DAY)) {
-      account.day = Math.floor(now / DAY); account.dayCount = 0; account.dayMicros = 0;
+    if (account.day !== dayNumber(now, account.schema)) {
+      if (account.day > dayNumber(now, account.schema)) fail('SERVICE_UNAVAILABLE', 503);
+      account.day = dayNumber(now, account.schema); account.dayCount = 0; account.dayMicros = 0;
     }
     if (account.minute !== Math.floor(now / 60000)) {
       account.minute = Math.floor(now / 60000); account.minuteCount = 0;
@@ -157,6 +170,10 @@ export class PhoneAuthCoordinator {
     const claimed = await this.transaction(async tx => {
       const now = this.now();
       const account = await this.account(tx, now);
+      if (releasePolicy(this.env).mode === 'public' && account.schema !== 2) fail('RELEASE_CONFIG', 503);
+      if (account.schema === 2 && (releasePolicy(this.env).mode !== 'public' ||
+          this.env.PHONE_LOGIN_EXTRA_CANARY_ENABLED !== 'false' || policy.dailyLimit !== 100 ||
+          account.operationConfig !== await operationFingerprint(this.env, policy))) fail('RELEASE_CONFIG', 503);
       if (extraFingerprint !== undefined && (account.testReserved !== 3 || account.initConfig !== extraFingerprint))
         fail('RELEASE_CONFIG', 503);
       const key = `t:requests:${ipHash}`;
@@ -221,6 +238,9 @@ export class PhoneAuthCoordinator {
       validate(input, context, 'send', now);
       const account = await this.account(tx, now);
       const release = releasePolicy(this.env);
+      if (release.mode === 'public' && account.schema !== 2) fail('RELEASE_CONFIG', 503);
+      if (account.schema === 2 && (release.mode !== 'public' || this.env.PHONE_LOGIN_EXTRA_CANARY_ENABLED !== 'false' ||
+          policy.dailyLimit !== 100 || account.operationConfig !== await operationFingerprint(this.env, policy))) fail('RELEASE_CONFIG', 503);
       allowCanaryRecipient(release, phoneHash);
       if (await tx.get(challengeKey)) fail('OPERATION_CONFLICT', 409);
       const extra = extraFingerprint !== undefined;
@@ -245,8 +265,10 @@ export class PhoneAuthCoordinator {
       const phoneCount = p?.day === account.day ? p.count : 0;
       const ipCount = i?.day === account.day ? i.count : 0;
       if (phoneCount >= policy.perPhoneDaily + Number(extra) || ipCount >= policy.perIpDaily + Number(extra)) fail('RATE_LIMITED', 429);
-      if (account.dayCount >= policy.dailyLimit + Number(extra) || account.totalMicros > policy.totalBudgetMicros + Number(extra) * policy.unitCostMicros - policy.unitCostMicros ||
-          account.dayMicros > policy.dailyBudgetMicros + Number(extra) * policy.unitCostMicros - policy.unitCostMicros) fail('BUDGET_EXCEEDED', 429);
+      if (account.dayCount >= policy.dailyLimit + Number(extra) || (account.schema === 1 &&
+          (account.totalMicros > policy.totalBudgetMicros + Number(extra) * policy.unitCostMicros - policy.unitCostMicros ||
+          account.dayMicros > policy.dailyBudgetMicros + Number(extra) * policy.unitCostMicros - policy.unitCostMicros))) fail('BUDGET_EXCEEDED', 429);
+      if (!Number.isSafeInteger(account.totalMicros + policy.unitCostMicros) || !Number.isSafeInteger(account.dayMicros + policy.unitCostMicros)) fail('SERVICE_UNAVAILABLE', 503);
       account.dayCount++; account.dayMicros += policy.unitCostMicros; account.totalMicros += policy.unitCostMicros;
       if (extra) await tx.put(EXTRA_LOGIN_KEY, {schema:1,used:1});
       else if (release.mode === 'canary') account.testReserved++;
@@ -357,6 +379,44 @@ export class PhoneAuthCoordinator {
   async fetch(request) {
     try {
       const path = new URL(request.url).pathname;
+      if (request.method === 'POST' && path === '/migrate-v2') {
+        await requireAdmin(this.env, request);
+        if (['PHONE_IDENTITY_ENABLED', 'PHONE_SMS_ENABLED', 'PHONE_NEW_REGISTRATION_ENABLED',
+          'PHONE_ACCOUNT_MANAGEMENT_ENABLED', 'PHONE_EMAIL_REAUTH_ENABLED', 'PHONE_TURNSTILE_DIAGNOSTICS_ENABLED',
+          'PHONE_LOGIN_EXTRA_CANARY_ENABLED'].some(k => this.env[k] !== 'false')) fail('RELEASE_CONFIG', 503);
+        const release = releasePolicy(this.env);
+        if (release.mode !== 'canary') fail('RELEASE_CONFIG', 503);
+        let oldPolicy;
+        try { oldPolicy = JSON.parse(this.env.PHONE_AUTH_POLICY); } catch { fail('RELEASE_CONFIG', 503); }
+        if (!oldPolicy || policyFields.some(k => !positive(oldPolicy[k]))) fail('RELEASE_CONFIG', 503);
+        const oldFingerprint = await ledgerFingerprint(this.env, oldPolicy, release);
+        const target = v2Policy(this.env, 'PHONE_AUTH_V2_POLICY');
+        const structure = await structureFingerprint(this.env), operation = await operationFingerprint(this.env, target);
+        const result = await this.transaction(async tx => {
+          const storedAccount = await tx.get(LEDGER_KEY);
+          const original = storedAccount && structuredClone(storedAccount);
+          const backup = await tx.get(V1_BACKUP_KEY);
+          if (!original) fail('SERVICE_UNAVAILABLE', 503);
+          if (original.schema === 2) {
+            if (!backup || backup.schema !== 1 || original.structureConfig !== structure || original.operationConfig !== operation ||
+                backup.initConfig !== oldFingerprint) fail('OPERATION_CONFLICT', 409);
+            const current = await this.account(tx, this.now());
+            return {success:true, state:'ready', migrated:false, schema:2, day_count:current.dayCount, total_micros:current.totalMicros};
+          }
+          if (original.schema !== 1 || backup !== undefined || original.initConfig !== oldFingerprint) fail('OPERATION_CONFLICT', 409);
+          // Validate v1 without writing normalized counters back; preserve its complete original bytes as a separate record.
+          await this.account(tx, this.now());
+          // V1 did not pin operational policy on every send and lacks exact UTC+8
+          // timestamps. Preserve all records and conservatively block this day.
+          const carriedCount = 100;
+          const upgraded = {...original, schema:2, structureConfig:structure, operationConfig:operation,
+            day:dayNumber(this.now(), 2), dayCount:carriedCount, dayMicros:0, lastNow:this.now()};
+          await tx.put(V1_BACKUP_KEY, original);
+          await tx.put(LEDGER_KEY, upgraded);
+          return {success:true, state:'ready', migrated:true, schema:2, day_count:carriedCount, total_micros:upgraded.totalMicros};
+        });
+        return Response.json(result, {headers:{'Cache-Control':'no-store'}});
+      }
       if (request.method === 'POST' && ['/initialize', '/status'].includes(path)) {
         await requireAdmin(this.env, request);
         const policy = releasePolicy(this.env);
@@ -371,7 +431,7 @@ export class PhoneAuthCoordinator {
           const stored = await tx.get(LEDGER_KEY);
           const any = (await tx.list({ limit: 1 })).size > 0;
           let state = !stored ? (any ? 'abnormal' : 'uninitialized') :
-            stored.schema !== 1 ? 'incompatible' : 'ready';
+            ![1, 2].includes(stored.schema) ? 'incompatible' : 'ready';
           let account;
           if (state === 'ready') {
             if (stored.keyId !== this.env.PHONE_AUTH_HMAC_KEY_ID) state = 'incompatible';
@@ -379,7 +439,12 @@ export class PhoneAuthCoordinator {
           if (state === 'ready') {
             try { account = await this.account(tx, now); }
             catch (error) { if (!(error instanceof PhoneAuthError)) throw error; state = 'abnormal'; }
-            if (state === 'ready' && stored.initConfig === undefined) state = 'unverified';
+            if (state === 'ready' && stored.schema === 2) {
+              let expected;
+              try { expected = policy.mode === 'public' ? v2Policy(this.env, 'PHONE_AUTH_POLICY') : v2Policy(this.env, 'PHONE_AUTH_V2_POLICY'); }
+              catch { state = 'incompatible'; }
+              if (state === 'ready' && stored.operationConfig !== await operationFingerprint(this.env, expected)) state = 'incompatible';
+            } else if (state === 'ready' && stored.initConfig === undefined) state = 'unverified';
             else if (state === 'ready' && (typeof stored.initConfig !== 'string' || !/^[0-9a-f]{64}$/.test(stored.initConfig))) state = 'abnormal';
             else if (state === 'ready' && stored.initConfig !== fingerprint) state = 'incompatible';
           }
@@ -389,7 +454,7 @@ export class PhoneAuthCoordinator {
               testReserved: 0, totalMicros: 0, day: Math.floor(now / DAY), dayCount: 0, dayMicros: 0,
               minute: Math.floor(now / 60000), minuteCount: 0, lastNow: now });
             account = await this.account(tx, now);
-          } else if (path === '/initialize' && (state !== 'ready' || stored.initConfig !== fingerprint)) {
+          } else if (path === '/initialize' && (state !== 'ready' || stored.schema !== 1 || stored.initConfig !== fingerprint)) {
             fail('OPERATION_CONFLICT', 409);
           }
           return { success: true, state: 'ready', schema: account.schema, enabled: account.enabled, mode: policy.mode,

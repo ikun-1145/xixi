@@ -1,6 +1,7 @@
 import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { createHmac } from 'node:crypto';
 import { JSDOM } from 'jsdom';
 import { PhoneAuthCoordinator } from '../workers/phone-auth/coordinator.js';
 import { createPhoneAuthWorker } from '../workers/phone-auth/routes.js';
@@ -21,8 +22,11 @@ class Storage {
 }
 
 test('lost HTTP response retains client handle for one-time verification through route and DO',async t=>{
-  const storage=new Storage(), now=Date.now();let relayCalls=0,code;
-  const env={PHONE_SMS_ENABLED:'true',PHONE_IDENTITY_ENABLED:'true',PHONE_RELEASE_MODE:'public',PHONE_SMS_PROVIDER:'relay',
+  const storage=new Storage();let now=Date.now(),relayCalls=0,code;
+  const env={PHONE_SMS_ENABLED:'false',PHONE_IDENTITY_ENABLED:'false',PHONE_RELEASE_MODE:'canary',PHONE_SMS_PROVIDER:'relay',
+    PHONE_NEW_REGISTRATION_ENABLED:'false',PHONE_ACCOUNT_MANAGEMENT_ENABLED:'false',PHONE_EMAIL_REAUTH_ENABLED:'false',
+    PHONE_TURNSTILE_DIAGNOSTICS_ENABLED:'false',PHONE_LOGIN_EXTRA_CANARY_ENABLED:'false',
+    PHONE_SMS_CANARY_PHONE_HASHES:JSON.stringify([createHmac('sha256','synthetic-hmac-secret-at-least-32-characters').update('phone\0'+'13800000000').digest('hex')]),
     PHONE_AUTH_HMAC_KEY:'synthetic-hmac-secret-at-least-32-characters',PHONE_AUTH_HMAC_KEY_ID:'v1',
     PHONE_AUTH_ADMIN_TOKEN:'synthetic-admin-token-at-least-32-characters',SMS_RELAY_URL:'https://relay.invalid/send',
     SUNLAND_SMS_RELAY_KEY:'synthetic-relay-key',TURNSTILE_SECRET:'synthetic-turnstile',PHONE_TURNSTILE_HOSTNAME:'sunland.dev',
@@ -34,6 +38,12 @@ test('lost HTTP response retains client handle for one-time verification through
   }});
   const init=await coordinator.fetch(new Request('https://internal/initialize',{method:'POST',headers:{Authorization:'Bearer '+env.PHONE_AUTH_ADMIN_TOKEN},body:'{}'}));
   assert.equal(init.status,200);
+  const publicPolicy={...JSON.parse(env.PHONE_AUTH_POLICY),dailyLimit:100};
+  env.PHONE_AUTH_V2_POLICY=JSON.stringify(publicPolicy);
+  const migration=await coordinator.fetch(new Request('https://internal/migrate-v2',{method:'POST',headers:{Authorization:'Bearer '+env.PHONE_AUTH_ADMIN_TOKEN},body:'{}'}));
+  assert.equal(migration.status,200);
+  now+=86400000;env.PHONE_RELEASE_MODE='public';env.PHONE_AUTH_POLICY=JSON.stringify(publicPolicy);
+  env.PHONE_SMS_ENABLED='true';env.PHONE_IDENTITY_ENABLED='true';
   env.PHONE_AUTH_COORDINATOR={getByName:()=>({fetch:r=>coordinator.fetch(r)})};
   const hooks={readJsonBodyWithLimit:async r=>({value:await r.json()}),json:(v,status)=>Response.json(v,{status}),
     applicationSigningSecret:()=> 'synthetic-signing-key',getUserStatus:async()=>({}),accountStatusRejection:()=>null,

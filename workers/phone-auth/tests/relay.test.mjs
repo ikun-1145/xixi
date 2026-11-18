@@ -35,6 +35,12 @@ class Storage {
 }
 async function fixture(overrides = {}) {
   const h = { env: { ...env(), ...overrides }, storage: new Storage(), now: START, calls: [], messages: [] };
+  const publicV2 = h.env.PHONE_RELEASE_MODE === 'public';
+  const publicEnv = { ...h.env };
+  if (publicV2) {
+    h.env.PHONE_RELEASE_MODE = 'canary';
+    h.env.PHONE_SMS_CANARY_PHONE_HASHES = JSON.stringify([createHmac('sha256',h.env.PHONE_AUTH_HMAC_KEY).update(`phone\0${phone}`).digest('hex')]);
+  }
   const fetchImpl = async (url, options) => {
     h.calls.push(new URL(url).hostname);
     if (new URL(url).hostname === 'challenges.cloudflare.com') {
@@ -55,6 +61,19 @@ async function fixture(overrides = {}) {
   const initialized = await h.coordinator.fetch(new Request('https://internal/initialize', {
     method: 'POST', headers: { Authorization: 'Bearer ' + h.env.PHONE_AUTH_ADMIN_TOKEN }, body: '{}' }));
   assert.equal(initialized.status, 200);
+  if (publicV2) {
+    const policy = {...JSON.parse(publicEnv.PHONE_AUTH_POLICY),dailyLimit:100};
+    Object.assign(h.env,{PHONE_IDENTITY_ENABLED:'false',PHONE_SMS_ENABLED:'false',PHONE_NEW_REGISTRATION_ENABLED:'false',
+      PHONE_ACCOUNT_MANAGEMENT_ENABLED:'false',PHONE_EMAIL_REAUTH_ENABLED:'false',PHONE_TURNSTILE_DIAGNOSTICS_ENABLED:'false',
+      PHONE_LOGIN_EXTRA_CANARY_ENABLED:'false',PHONE_AUTH_V2_POLICY:JSON.stringify(policy)});
+    const migrated = await h.coordinator.fetch(new Request('https://internal/migrate-v2',{method:'POST',
+      headers:{Authorization:'Bearer '+h.env.PHONE_AUTH_ADMIN_TOKEN},body:'{}'}));
+    assert.equal(migrated.status,200);
+    // Isolated fixture starts in the first full UTC+8 day after migration.
+    h.storage.data.get(LEDGER_KEY).dayCount = 0;
+    Object.assign(h.env,publicEnv,{PHONE_AUTH_POLICY:JSON.stringify(policy),PHONE_LOGIN_EXTRA_CANARY_ENABLED:'false'});
+    h.rebuild();
+  }
   let tokenSequence = 0;
   h.send = (number = phone, purpose = 'login', ctx = context, challengeId, token = `${purpose}:${++tokenSequence}`) => h.coordinator.send({ phone: number, purpose, turnstile_token: token,
     ...(challengeId !== undefined ? { challenge_id: challengeId } : {}) }, ctx);
@@ -311,16 +330,13 @@ test('relay randomness rejects biased tail and preserves six-digit leading zeroe
   await h.check(sent, '000007');
 });
 
-test('relay shares existing budget and canary caps without new ledgers', async () => {
+test('v2 rejects budget drift and legacy canary retains its three-send cap', async () => {
   const h = await fixture(); const policy = JSON.parse(h.env.PHONE_AUTH_POLICY);
   h.env.PHONE_AUTH_POLICY = JSON.stringify({ ...policy, totalBudgetMicros: 7 });
-  await h.send(); h.now += 86400000; h.rebuild();
-  await assert.rejects(h.send('13900000000'), { code: 'BUDGET_EXCEEDED' }); assert.equal(h.messages.length, 1);
-  const c = await fixture(); c.env.PHONE_RELEASE_MODE = 'canary';
+  await assert.rejects(h.send(), {code:'RELEASE_CONFIG'}); assert.equal(h.messages.length,0);
   const numbers = ['13800000000', '13800000001', '13800000002', '13800000003'];
-  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(c.env.PHONE_AUTH_HMAC_KEY), { name: 'HMAC', hash: 'SHA-256' }, false, ['sign']);
-  c.env.PHONE_SMS_CANARY_PHONE_HASHES = JSON.stringify(await Promise.all(numbers.map(async number =>
-    Buffer.from(await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(`phone\0${number}`))).toString('hex'))));
+  const hashes = numbers.map(number=>createHmac('sha256',env().PHONE_AUTH_HMAC_KEY).update(`phone\0${number}`).digest('hex'));
+  const c = await fixture({PHONE_RELEASE_MODE:'canary',PHONE_SMS_CANARY_PHONE_HASHES:JSON.stringify(hashes)});
   const sent = await Promise.allSettled(numbers.map(number => c.send(number)));
   assert.equal(sent.filter(r => r.status === 'fulfilled').length, 3); assert.equal(c.messages.length, 3);
   c.now += 86400000; c.rebuild();
@@ -386,6 +402,109 @@ test('extra canary configuration drift leaves all stored state unchanged and nev
     assert.deepEqual(h.storage.data, before);
     assert.equal(h.calls.length, 0);
   }
+});
+
+// The v2 release tests run against the serialized in-memory DO transaction
+// implementation above. All upstream requests are handled by fetchImpl.
+async function migratedPublicFixture({knownHistory=false} = {}) {
+  const h = await extraCanaryFixture();
+  Object.assign(h.env, { PHONE_IDENTITY_ENABLED:'false', PHONE_SMS_ENABLED:'false',
+    PHONE_LOGIN_EXTRA_CANARY_ENABLED:'false', PHONE_NEW_REGISTRATION_ENABLED:'false',
+    PHONE_ACCOUNT_MANAGEMENT_ENABLED:'false', PHONE_EMAIL_REAUTH_ENABLED:'false',
+    PHONE_TURNSTILE_DIAGNOSTICS_ENABLED:'false' });
+  const before = h.storage.data.get(LEDGER_KEY);
+  Object.assign(before, { totalMicros:800000, dayMicros:800000, dayCount:knownHistory ? 4 : 5 });
+  h.storage.data.set('canary:login-extra:v1', {schema:1,used:1});
+  h.storage.data.set('t:turnstile:synthetic-prior', {deleteAfter:START + 340000});
+  const policy = { perPhoneDaily:3, perIpDaily:3, dailyLimit:100, unitCostMicros:200000,
+    dailyBudgetMicros:20000000, totalBudgetMicros:600000, ipRequestsPerMinute:1000, globalRequestsPerMinute:1000 };
+  h.env.PHONE_AUTH_V2_POLICY = JSON.stringify(policy);
+  h.migrate = () => h.coordinator.fetch(new Request('https://internal/migrate-v2', {
+    method:'POST', headers:{Authorization:'Bearer ' + h.env.PHONE_AUTH_ADMIN_TOKEN}, body:'{}' }));
+  h.activate = () => { Object.assign(h.env, {PHONE_RELEASE_MODE:'public', PHONE_AUTH_POLICY:JSON.stringify(policy),
+    PHONE_IDENTITY_ENABLED:'true', PHONE_SMS_ENABLED:'true'}); h.rebuild(); };
+  h.legacySnapshot = structuredClone(h.storage.data);
+  return h;
+}
+
+test('v2 migration preserves four legacy reservations and conservatively fills the uncertain UTC+8 day', async () => {
+  const h=await migratedPublicFixture({knownHistory:true});
+  assert.equal((await h.migrate()).status,200);
+  assert.equal(h.storage.data.get(LEDGER_KEY).dayCount,100);
+  assert.equal(h.storage.data.get(LEDGER_KEY).totalMicros,800000);
+  assert.deepEqual(h.storage.data.get('account:v1:backup'),h.legacySnapshot.get(LEDGER_KEY));
+  h.activate(); await assert.rejects(h.send('13900000150','login',{ip:'198.51.100.150'}),{code:'BUDGET_EXCEEDED'});
+  assert.equal(h.storage.data.get(LEDGER_KEY).dayCount,100);
+});
+
+test('v2 migration is idempotent, preserves the legacy account and replay records, and never refills the migration day', async () => {
+  const h = await migratedPublicFixture();
+  assert.equal((await h.migrate()).status, 200);
+  const after = structuredClone(h.storage.data);
+  assert.deepEqual(after.get('account:v1:backup'), h.legacySnapshot.get(LEDGER_KEY));
+  assert.equal(after.get(LEDGER_KEY).totalMicros, 800000);
+  assert.equal(after.get(LEDGER_KEY).dayCount, 100);
+  assert.deepEqual(after.get('t:turnstile:synthetic-prior'),h.legacySnapshot.get('t:turnstile:synthetic-prior'));
+  assert.deepEqual(after.get('canary:login-extra:v1'),h.legacySnapshot.get('canary:login-extra:v1'));
+  assert.equal((await h.migrate()).status, 200);
+  assert.deepEqual(h.storage.data, after);
+  h.activate();
+  await assert.rejects(h.send('13900000000','login',{ip:'198.51.100.1'}), {code:'BUDGET_EXCEEDED'});
+  assert.equal(h.messages.length,0);
+});
+
+test('concurrent v2 migrations are idempotent and invalid legacy fingerprint is rejected without mutation', async () => {
+  const h = await migratedPublicFixture();
+  const responses = await Promise.all([h.migrate(),h.migrate()]);
+  assert.deepEqual(responses.map(r=>r.status),[200,200]);
+  assert.deepEqual(h.storage.data.get('account:v1:backup'),h.legacySnapshot.get(LEDGER_KEY));
+  const bad = await migratedPublicFixture(); bad.storage.data.get(LEDGER_KEY).initConfig = 'f'.repeat(64);
+  const before = structuredClone(bad.storage.data);
+  assert.notEqual((await bad.migrate()).status,200);
+  assert.deepEqual(bad.storage.data,before);
+});
+
+test('v2 concurrent competition for the final daily reservation admits exactly one', async () => {
+  const h = await migratedPublicFixture(); assert.equal((await h.migrate()).status,200);
+  h.activate(); h.now = Math.floor((h.now + 8*3600000)/86400000)*86400000 - 8*3600000 + 86400000;
+  // Start the new day through a legitimate reservation, then model 98 prior
+  // successful reservations in the protected isolated test ledger.
+  await h.send('13900000200','login',{ip:'198.51.100.200'});
+  h.storage.data.get(LEDGER_KEY).dayCount = 99;
+  const results = await Promise.allSettled([
+    h.send('13900000201','login',{ip:'198.51.100.201'}),
+    h.send('13900000202','login',{ip:'198.51.100.202'})]);
+  assert.equal(results.filter(x=>x.status==='fulfilled').length,1);
+  assert.equal(results.filter(x=>x.status==='rejected' && x.reason.code==='BUDGET_EXCEEDED').length,1);
+  assert.equal(h.storage.data.get(LEDGER_KEY).dayCount,100);
+});
+
+test('v2 global UTC+8 quota is atomic under contention and resets at midnight', async () => {
+  const h = await migratedPublicFixture(); assert.equal((await h.migrate()).status,200);
+  h.activate(); h.now = Math.floor((h.now + 8*3600000)/86400000)*86400000 - 8*3600000 + 86400000;
+  const attempts = await Promise.allSettled(Array.from({length:105},(_,i) =>
+    h.send('139'+String(i).padStart(8,'0'),'login',{ip:`198.51.100.${i+1}`})));
+  assert.equal(attempts.filter(x=>x.status==='fulfilled').length,100);
+  assert.equal(attempts.filter(x=>x.status==='rejected' && x.reason.code==='BUDGET_EXCEEDED').length,5);
+  assert.equal(h.messages.length,100); assert.equal(h.storage.data.get(LEDGER_KEY).dayCount,100);
+  h.now += 86400000; h.rebuild(); await h.send('13900000108','login',{ip:'198.51.100.200'});
+  assert.equal(h.storage.data.get(LEDGER_KEY).dayCount,1);
+});
+
+test('v2 unknown provider result consumes quota; configuration drift and emergency close fail closed', async () => {
+  const h = await migratedPublicFixture(); assert.equal((await h.migrate()).status,200); h.activate();
+  h.now = Math.floor((h.now + 8*3600000)/86400000)*86400000 - 8*3600000 + 86400000;
+  h.reply = () => { throw Error('synthetic unknown delivery'); };
+  await assert.rejects(h.send('13900000110','login',{ip:'198.51.100.10'}));
+  assert.equal(h.messages.length,1); assert.equal(h.storage.data.get(LEDGER_KEY).dayCount,1);
+  h.now += 600000; h.rebuild(); await assert.rejects(h.send('13900000110','login',{ip:'198.51.100.10'}));
+  assert.equal(h.messages.length,1);
+  const original = h.env.PHONE_AUTH_POLICY, p = JSON.parse(original); p.dailyLimit = 101;
+  h.env.PHONE_AUTH_POLICY = JSON.stringify(p); h.rebuild();
+  await assert.rejects(h.send('13900000111','login',{ip:'198.51.100.11'}));
+  h.env.PHONE_AUTH_POLICY = original; h.env.PHONE_SMS_ENABLED = 'false'; h.rebuild();
+  await assert.rejects(h.send('13900000112','login',{ip:'198.51.100.12'}));
+  assert.equal(h.messages.length,1);
 });
 
 test('relay DO persists only bound MAC, survives restart, consumes once under concurrency', async () => {
