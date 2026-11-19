@@ -52,11 +52,18 @@ async function setup(overrides={}) {
   const accounts=new Map([[OLD_PHONE,'existing-account']]),operations=new Map(),log=[];
   const identity={
     phoneHash:async p=>phoneHash(p.replace('+86','')),
-    login:async({phone,operationId,email,unifiedOtp})=>{
-      const local=phone.replace('+86','');log.push({phone:local,operationId,email,unifiedOtp:!!unifiedOtp});
+    login:async({phone,operationId,email,unifiedOtp,phoneOnly})=>{
+      const local=phone.replace('+86','');log.push({phone:local,operationId,email,unifiedOtp:!!unifiedOtp,phoneOnly:!!phoneOnly});
+      if(phoneOnly){
+        assert.equal(email,undefined);
+        const cached=operations.get(operationId);if(cached)return cached;
+        if(accounts.has(local))return {user_id:accounts.get(local),email:'old@example.test',onboarding:{version:1,step:3},is_new_user:false};
+        const r={user_id:'phone-'+operationId,email:null,onboarding:{version:0,step:1},is_new_user:true};
+        accounts.set(local,r.user_id);operations.set(operationId,r);return r;
+      }
       if(email===undefined){
         if(!accounts.has(local))throw new PhoneAuthError('REGISTRATION_DISABLED',403);
-        return {user_id:accounts.get(local),email:'old@example.test',onboarding:{version:1,step:3},is_new_user:false};
+        return {user_id:accounts.get(local),email:accounts.get(local).startsWith('phone-')?null:'old@example.test',onboarding:{version:1,step:3},is_new_user:false};
       }
       assert.ok(unifiedOtp);
       const cached=operations.get(operationId);
@@ -78,9 +85,9 @@ async function setup(overrides={}) {
       headers:{'Content-Type':'application/json','CF-Connecting-IP':'192.0.2.1'},body:JSON.stringify(body)}),env,{});
     return {status:response.status,data:await response.json()};
   };
-  const sendSms=async phone=>{
+  const sendSms=async (phone,turnstile_token='synthetic')=>{
     const challenge_id=crypto.randomUUID();
-    const r=await call('send-code',{phone,purpose:'login',turnstile_token:'synthetic',challenge_id});
+    const r=await call('send-code',{phone,purpose:'login',turnstile_token,challenge_id});
     assert.equal(r.status,200,JSON.stringify(r.data));return {challenge_id,code:codes.at(-1)};
   };
   return {env,call,sendSms,log,mails,accounts,codes,advance:ms=>{now+=ms;}};
@@ -194,4 +201,61 @@ test('deploy config never declares release switches that would overwrite product
   const config=JSON.parse(await readFile(new URL('../workers/phone-auth/wrangler.jsonc',import.meta.url),'utf8'));
   assert.equal(config.keep_vars,true);
   assert.deepEqual(Object.keys(config.vars).filter(k=>/_ENABLED$|^PHONE_RELEASE_MODE$|_POLICY$/.test(k)),[]);
+});
+
+test('phone-only registration needs its own switch, a registration proof, and is idempotent',async()=>{
+  const s=await setup({PHONE_ONLY_REGISTRATION_ENABLED:'true'});const {challenge_id,code}=await s.sendSms(NEW_PHONE);
+  const base={phone:'+86'+NEW_PHONE,challenge_id,operation_id:crypto.randomUUID(),proof:proof()};
+  // Without a prior registration_required verdict the proof does not exist yet.
+  assert.equal((await s.call('unified/register-phone',base)).status,403);
+  const v=await s.call('unified/verify',{...base,code});
+  assert.equal(v.data.status,'registration_required');assert.equal(v.data.phone_only,true);
+  assert.equal((await s.call('unified/register-phone',{...base,proof:proof()})).status,403);
+  assert.equal((await s.call('unified/register-phone',{...base,operation_id:crypto.randomUUID()})).status,403);
+  assert.equal((await s.call('unified/register-phone',{...base,email:'x@example.test'})).status,400);
+  const first=await s.call('unified/register-phone',base);
+  assert.equal(first.status,200,JSON.stringify(first.data));assert.equal(first.data.status,'authenticated');
+  assert.equal(first.data.user.email,null);assert.equal(first.data.is_new_user,true);
+  assert.ok(!JSON.stringify(first.data).includes(NEW_PHONE));
+  const again=await s.call('unified/register-phone',base);
+  assert.equal(again.data.user.id,first.data.user.id);
+  assert.equal(s.log.filter(x=>x.phoneOnly).length,2);assert.equal(s.codes.length,1);
+  s.advance(601000);
+  assert.equal((await s.call('unified/register-phone',base)).data.code,'CHALLENGE_INVALID');
+});
+
+test('existing phone proof cannot drive phone-only registration',async()=>{
+  const s=await setup({PHONE_ONLY_REGISTRATION_ENABLED:'true'});const {challenge_id,code}=await s.sendSms(OLD_PHONE);
+  const base={phone:'+86'+OLD_PHONE,challenge_id,operation_id:crypto.randomUUID(),proof:proof()};
+  assert.equal((await s.call('unified/verify',{...base,code})).data.status,'authenticated');
+  assert.equal((await s.call('unified/register-phone',base)).status,403);
+  assert.equal(s.log.filter(x=>x.phoneOnly).length,0);
+});
+
+test('phone-only registration stays closed unless every registration switch is on',async()=>{
+  for(const overrides of [{},{PHONE_ONLY_REGISTRATION_ENABLED:'false'}]){
+    const s=await setup(overrides);const {challenge_id,code}=await s.sendSms(NEW_PHONE);
+    const base={phone:'+86'+NEW_PHONE,challenge_id,operation_id:crypto.randomUUID(),proof:proof()};
+    const v=await s.call('unified/verify',{...base,code});
+    assert.equal(v.data.status,'registration_required');assert.equal(v.data.phone_only,false);
+    const r=await s.call('unified/register-phone',base);
+    assert.equal(r.status,403);assert.equal(r.data.code,'REGISTRATION_DISABLED');
+    assert.equal(s.log.filter(x=>x.phoneOnly).length,0);
+  }
+  const off=await setup({PHONE_ONLY_REGISTRATION_ENABLED:'true',PHONE_NEW_REGISTRATION_ENABLED:'false'});
+  const sms=await off.sendSms(NEW_PHONE);
+  const r=await off.call('unified/register-phone',{phone:'+86'+NEW_PHONE,challenge_id:sms.challenge_id,operation_id:crypto.randomUUID(),proof:proof()});
+  assert.equal(r.status,403);assert.equal(r.data.code,'REGISTRATION_DISABLED');
+});
+
+test('phone-only accounts keep signing in after every registration switch is turned off',async()=>{
+  const s=await setup({PHONE_ONLY_REGISTRATION_ENABLED:'true'});const first=await s.sendSms(NEW_PHONE);
+  const base={phone:'+86'+NEW_PHONE,challenge_id:first.challenge_id,operation_id:crypto.randomUUID(),proof:proof()};
+  assert.equal((await s.call('unified/verify',{...base,code:first.code})).data.status,'registration_required');
+  const created=await s.call('unified/register-phone',base);assert.equal(created.data.user.email,null);
+  Object.assign(s.env,{PHONE_ONLY_REGISTRATION_ENABLED:'false',PHONE_NEW_REGISTRATION_ENABLED:'false'});
+  s.advance(601000);const again=await s.sendSms(NEW_PHONE,'synthetic-2');
+  const login=await s.call('unified/verify',{phone:'+86'+NEW_PHONE,challenge_id:again.challenge_id,code:again.code,operation_id:crypto.randomUUID(),proof:proof()});
+  assert.equal(login.data.status,'authenticated');assert.equal(login.data.user.id,created.data.user.id);assert.equal(login.data.user.email,null);
+  assert.ok(!JSON.stringify(login.data).includes(NEW_PHONE));
 });

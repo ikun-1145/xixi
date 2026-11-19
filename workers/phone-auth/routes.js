@@ -4,7 +4,7 @@ import { sendPhoneCode, checkPhoneCode, checkUnifiedPhoneCode, requireUnifiedPho
 import { validatePhoneEmailConfig } from './email-reauth.js';
 
 const PREFIX = '/v1/phone/';
-const ROUTES = new Set(['send-code', 'verify-code', 'unified/verify', 'unified/email/send', 'unified/register', 'status', 'reauth/email/send', 'reauth/email', 'reauth/phone', 'bind', 'change', 'unbind', 'delete-authorize']);
+const ROUTES = new Set(['send-code', 'verify-code', 'unified/verify', 'unified/email/send', 'unified/register', 'unified/register-phone', 'status', 'reauth/email/send', 'reauth/email', 'reauth/phone', 'bind', 'change', 'unbind', 'delete-authorize']);
 const ACTIONS = new Set(['bind', 'change', 'unbind', 'delete']);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const invalid = () => { throw new PhoneAuthError('INVALID_REQUEST'); };
@@ -94,7 +94,7 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
         if (route.startsWith('unified/')) {
           if (env?.PHONE_UNIFIED_LOGIN_ENABLED !== 'true') throw new PhoneAuthError('IDENTITY_DISABLED', 503);
           const common = ['phone','challenge_id','operation_id','proof'];
-          fields(input, [...common, ...(route === 'unified/verify' ? ['code'] : ['email']),
+          fields(input, [...common, ...(route === 'unified/verify' ? ['code'] : route === 'unified/register-phone' ? [] : ['email']),
             ...(route === 'unified/register' ? ['email_code'] : [])]);
           phone(input.phone); operationId(input.challenge_id); operationId(input.operation_id); proof(input.proof);
           const context = {ip:ingressIp(request)}, proofHash = await sha256(input.proof);
@@ -115,10 +115,17 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
               if (!(error instanceof PhoneAuthError) || error.code !== 'REGISTRATION_DISABLED') throw error;
               if (env.PHONE_NEW_REGISTRATION_ENABLED !== 'true') throw error;
               const verified = await sms.requireUnifiedPhoneProof(env,{...proofInput,action:'mark-registration'},context);
-              return respond({status:'registration_required',expires_in:verified.expires_in});
+              return respond({status:'registration_required',expires_in:verified.expires_in,
+                phone_only:env.PHONE_ONLY_REGISTRATION_ENABLED === 'true'});
             }
           }
           if (env.PHONE_NEW_REGISTRATION_ENABLED !== 'true') throw new PhoneAuthError('REGISTRATION_DISABLED',403);
+          if (route === 'unified/register-phone') {
+            if (env.PHONE_ONLY_REGISTRATION_ENABLED !== 'true') throw new PhoneAuthError('REGISTRATION_DISABLED',403);
+            await sms.requireUnifiedPhoneProof(env,{...proofInput,action:'register-phone'},context);
+            const result = await identity.login({phone:input.phone,operationId:input.operation_id,phoneOnly:true});
+            return respond({status:'authenticated',...await issueSession(result)});
+          }
           email(input.email);
           if (route === 'unified/email/send') {
             if (typeof hooks.sendPhoneReauthEmail !== 'function' || typeof hooks.createEmailOtp !== 'function') throw new PhoneAuthError('IDENTITY_CONFIG',503);

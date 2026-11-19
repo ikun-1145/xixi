@@ -10,13 +10,13 @@
       location.replace("login.html?return=ai.html");
     }
   </script>
-  <script defer src="p/js/site-i18n-extra.js?v=20261010-phase6a"></script>
+  <script defer src="p/js/site-i18n-extra.js?v=20261120-phone-only-1"></script>
   <script defer src="p/js/site-i18n.js?v=20261001-review-1"></script>
   <title>设置 - Sunland AI · Beta</title>
   <meta name="sunland-phone-settings-enabled" content="false">
   <meta name="sunland-turnstile-sitekey" content="0x4AAAAAAC_W2Wj2YdkrQiMf">
   <link rel="stylesheet" href="p/css/phone-auth.css">
-  <script defer src="p/js/phone-auth.js?v=20261114-relay-1"></script>
+  <script defer src="p/js/phone-auth.js?v=20261120-phone-only-1"></script>
   <script defer src="p/js/phone-settings.js?v=20261114-1"></script>
   <link rel="stylesheet" href="p/css/icons.css?v=20260829-1">
   <style>
@@ -1074,6 +1074,15 @@ body.dark .usage-hint {
     .account-delete-status.success {
       color: #059669;
     }
+    .account-delete-manual {
+      padding: 0 16px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--subtext);
+    }
+    .account-delete-manual p { margin: 0 0 4px; }
+    .account-delete-manual a { color: #ef4444; font-weight: 500; word-break: break-all; }
     body.dark .account-delete-dialog {
       background: #0f172a;
       border-color: var(--border-dark);
@@ -1218,6 +1227,11 @@ body.dark .usage-hint {
           <div class="row-label">删除账号<small>永久删除账号及关联数据，无法恢复</small></div>
         </div>
         <button id="openAccountDeleteBtn" class="data-action-btn" type="button">删除账号</button>
+      </div>
+      <div id="accountDeleteManual" class="account-delete-manual" role="note" hidden>
+        <p data-delete-note="phone" hidden>当前账号未绑定邮箱，暂不支持自助删除。人工核验身份后可申请注销，请发送邮件至：</p>
+        <p data-delete-note="unknown" hidden>暂时无法确认账号验证方式，请刷新后重试。未绑定邮箱的账号可在人工核验身份后申请注销，请发送邮件至：</p>
+        <a href="mailto:support@sunland.dev">support@sunland.dev</a>
       </div>
     </div>
 
@@ -1516,7 +1530,7 @@ body.dark .usage-hint {
       try { display = JSON.parse(localStorage.getItem("user") || "{}"); } catch { /* Display cache only. */ }
       const claims = decodeJwtPayload(settingsCredential);
       return { ...(display?.id === userId ? display : {}), id: userId,
-        email: claims?.email || (display?.id === userId ? display.email : null) || userId };
+        email: claims?.email || (display?.id === userId ? display.email : null) || "" };
     }
     async function ensureSettingsIdentity() {
       const payment = window.SunlandProPayment;
@@ -1755,7 +1769,7 @@ async function editNickname() {
         ringEl.classList.add("uploading");
 
         const profile = await uploadAvatar(user, file);
-        setAvatarImage(profile.avatar_url, (user.email || "?")[0].toUpperCase());
+        setAvatarImage(profile.avatar_url, (user.email || "U")[0].toUpperCase());
         await saveProfileToCloud(user, profile);
         cacheProfile(user.id, profile);
         syncLocalUserProfile(profile);
@@ -1874,8 +1888,9 @@ async function editNickname() {
       }
 
       // 基础信息
-      const email = user.email || "未知";
-      const letter = (email[0] || "?").toUpperCase();
+      // Phone-only accounts have no email; show the sign-in method instead.
+      const email = user.email || "手机号登录 · 未绑定邮箱";
+      const letter = (user.email?.[0] || "U").toUpperCase();
 
       document.getElementById("userEmail").innerText = email;
       const userIdEl = document.getElementById("userId");

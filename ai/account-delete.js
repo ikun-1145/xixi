@@ -42,7 +42,7 @@ function getCurrentUser() {
   try {
     const user = JSON.parse(localStorage.getItem("user") || "null");
     if (user && (user.id || user.email)) {
-      return { id: String(user.id || user.email), email: String(user.email || user.id) };
+      return { id: String(user.id || user.email), email: typeof user.email === "string" ? user.email : "" };
     }
   } catch {}
 
@@ -52,7 +52,7 @@ function getCurrentUser() {
       const payload = decodeJwtPayload(token);
       const id = payload?.sub || payload?.id || payload?.user_id || payload?.email;
       const email = payload?.email || payload?.user_email || payload?.mail || "";
-      if (id) return { id: String(id), email: String(email || id) };
+      if (id) return { id: String(id), email: typeof email === "string" ? email : "" };
     }
   } catch {}
 
@@ -476,8 +476,38 @@ async function executeDeletion() {
   }
 }
 
+// Self-service deletion verifies by email. Whether the account has one comes
+// from the server-issued database token, never from the cached display user.
+// Phone-only accounts get the manual support channel instead; if the state
+// can't be confirmed the original email flow stays available with a notice.
+let deleteMethod = "unknown";
+async function resolveDeleteMethod() {
+  const claims = decodeJwtPayload(getAppToken());
+  const userId = claims?.id || claims?.sub;
+  if (!userId) return "unknown";
+  try {
+    const db = decodeJwtPayload(await globalThis.SunlandDatabaseToken?.get?.());
+    const current = decodeJwtPayload(getAppToken());
+    if (!db || db.id !== userId || (current?.id || current?.sub) !== userId) return "unknown";
+    if (typeof db.email === "string" && db.email.includes("@")) return "email";
+    if (db.email === null) return "phone";
+  } catch {}
+  return "unknown";
+}
+
+function renderDeleteEntry(method) {
+  deleteMethod = method;
+  const manual = document.getElementById("accountDeleteManual");
+  if (openBtn) openBtn.hidden = method === "phone";
+  if (!manual) return;
+  manual.hidden = method === "email";
+  for (const note of manual.querySelectorAll("[data-delete-note]")) {
+    note.hidden = note.dataset.deleteNote !== method;
+  }
+}
+
 function openDialog() {
-  if (!dialog) return;
+  if (!dialog || deleteMethod === "phone") return;
   stopCooldown();
   deletionJobId = "";
   deletionToken = "";
@@ -513,6 +543,8 @@ export function initAccountDelete() {
   dialog.addEventListener("cancel", (event) => {
     if (busy) event.preventDefault();
   });
+  renderDeleteEntry("email");
+  if (getAppToken()) void resolveDeleteMethod().then(renderDeleteEntry);
 }
 
 if (typeof document !== "undefined") {

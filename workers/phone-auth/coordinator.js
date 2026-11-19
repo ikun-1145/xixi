@@ -433,10 +433,11 @@ export class PhoneAuthCoordinator {
 
   async unifiedProof(input, context) {
     if (this.env.PHONE_UNIFIED_LOGIN_ENABLED !== 'true' || !input ||
-        !['mark-registration', 'verify', 'send-email'].includes(input.action) ||
+        !['mark-registration', 'verify', 'send-email', 'register-phone'].includes(input.action) ||
         !/^[0-9a-f]{64}$/.test(input.proofHash || '') ||
         !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(input.operationId || '') ||
-        (input.action !== 'mark-registration' && !/^[0-9a-f]{64}$/.test(input.emailHash || ''))) fail('INVALID_REQUEST');
+        (input.action === 'register-phone' && this.env.PHONE_ONLY_REGISTRATION_ENABLED !== 'true') ||
+        (!['mark-registration', 'register-phone'].includes(input.action) && !/^[0-9a-f]{64}$/.test(input.emailHash || ''))) fail('INVALID_REQUEST');
     const candidate = {phone:input.phone, purpose:'login', challenge_id:input.challengeId, code:'000000'};
     const now = this.now();
     const normalized = validate(candidate, context, 'check', now);

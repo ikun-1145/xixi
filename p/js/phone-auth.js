@@ -206,6 +206,10 @@
         try{return await request('/v1/phone/unified/register',{phone:'+86'+normalizePhone(phone),challenge_id,operation_id,proof,email,email_code},{auth:false});}
         catch(error){if(['NETWORK','TIMEOUT','SERVICE_UNAVAILABLE'].includes(error.code))throw failure('VERIFY_UNCERTAIN');throw error;}
       },
+      async unifiedRegisterPhone(phone,challenge_id,operation_id,proof){
+        try{return await request('/v1/phone/unified/register-phone',{phone:'+86'+normalizePhone(phone),challenge_id,operation_id,proof},{auth:false});}
+        catch(error){if(['NETWORK','TIMEOUT','SERVICE_UNAVAILABLE'].includes(error.code))throw failure('VERIFY_UNCERTAIN');throw error;}
+      },
       async register(phone,challenge_id,code,email,email_code,operation_id){
         const p=pending();
         if(!p||p.id!==challenge_id||p.operationId!==operation_id||p.verificationStarted)throw failure('VERIFY_UNCERTAIN');

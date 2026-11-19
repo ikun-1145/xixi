@@ -136,3 +136,23 @@ test('registration is strictly gated and uses a new fail-closed RPC while login 
     if (calls.length) assert.equal(calls[0].name,'sunland_phone_register');
   }
 });
+test('phone-only registration needs both registration switches and calls only its dedicated RPC',async()=>{
+  for(const [reg,only] of [['false','true'],['true','false'],['true',undefined],['true','true']]) {
+    const calls=[]; const env={PHONE_IDENTITY_ENABLED:'true',PHONE_NEW_REGISTRATION_ENABLED:reg,PHONE_ONLY_REGISTRATION_ENABLED:only,PHONE_IDENTITY_LOOKUP_KEY:secret,PHONE_IDENTITY_LOOKUP_KEY_ID:'v1',
+      PHONE_IDENTITY_ENCRYPTION_KEYS:JSON.stringify({v1:Buffer.alloc(32,7).toString('base64url')}),PHONE_IDENTITY_ENCRYPTION_KEY_ID:'v1',PHONE_AUTH_HMAC_KEY:secret};
+    const identity=createPhoneIdentity(env,{rpc:async(name,args)=>{calls.push({name,args});
+      return{ok:true,payload:{code:'OK',user_id:args.p_data.candidate_id,email:null,onboarding:{version:0,step:1},is_new_user:true}};}});
+    const op=crypto.randomUUID(); const run=()=>identity.login({phone:phones[0],operationId:op,phoneOnly:true});
+    await assert.rejects(identity.login({phone:phones[0],operationId:op,phoneOnly:true,email:'x@example.test'}),{code:'REGISTRATION_DISABLED'});
+    if(reg!=='true'||only!=='true'){await assert.rejects(run(),{code:'REGISTRATION_DISABLED'});assert.equal(calls.length,0);continue;}
+    const r=await run(); assert.equal(r.email,null);
+    assert.equal(calls.length,1); assert.equal(calls[0].name,'sunland_phone_register_phone_only');
+    assert.equal(Object.hasOwn(calls[0].args,'p_action'),false);
+    const data=calls[0].args.p_data;
+    for(const k of ['email','allow_create']) assert.equal(Object.hasOwn(data,k),false);
+    assert.ok(!JSON.stringify(data).includes(phones[0]));
+    // The request hash equals a plain login of the same operation, so retries recover through unified/verify.
+    await identity.login({phone:phones[0],operationId:op,phoneOnly:true});
+    assert.equal(calls[1].args.p_data.request_hash,data.request_hash);
+  }
+});

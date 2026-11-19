@@ -707,3 +707,10 @@ test('relay DO timeout retains budget, closes challenge and never retries after 
   h.now += 86400000; h.rebuild(); await assert.rejects(h.send(), { code: 'SERVICE_UNAVAILABLE' });
   assert.equal(h.messages.length, 1);
 });
+
+test('relay template stays login-only: deletion reauthentication SMS is never sent', async () => {
+  const h = await fixture({ PHONE_RELAY_DELETE_REAUTH_ENABLED: 'true' });
+  const auth = { ...context, userId: 'user', sessionId: 'synthetic-session-1234', identityStatus: 'active', reauthentication: true };
+  for (const purpose of ['reauth', 'bind', 'change', 'unbind']) await assert.rejects(h.send(phone, purpose, auth), { code: 'IDENTITY_DISABLED' });
+  assert.equal(h.messages.length, 0);
+});

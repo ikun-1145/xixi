@@ -105,6 +105,15 @@ test('relay keeps management and all reauthentication closed even if other gates
   assert.equal(login.data.success,true);
 });
 
+test('relay never sends or proves deletion SMS, even if an unapproved switch is set', async () => {
+  const f=fixture({loginOnly:true}); Object.assign(f.env,{PHONE_SMS_PROVIDER:'relay',PHONE_RELAY_DELETE_REAUTH_ENABLED:'true',PHONE_ACCOUNT_MANAGEMENT_ENABLED:'true'});
+  for (const purpose of ['reauth','bind','change','unbind'])
+    assert.equal((await f.invoke('/v1/phone/send-code',{phone:PHONE,purpose,turnstile_token:'captcha',challenge_id:UUID})).data.code,'IDENTITY_DISABLED');
+  for (const action of ['delete','bind'])
+    assert.equal((await f.invoke('/v1/phone/reauth/phone',{...checkBody(),action})).data.code,'IDENTITY_DISABLED');
+  assert.equal(f.calls.some(x => ['send','check','grant'].includes(x[0])),false);
+});
+
 test('SMS check precedes identity login and signs only authoritative identity using existing JWT helper', async () => {
   const { invoke, calls } = fixture();
   const { data } = await invoke('/v1/phone/verify-code', { ...checkBody(), operation_id: UUID });

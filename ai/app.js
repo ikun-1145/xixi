@@ -2219,7 +2219,7 @@ if (!sessionReady) return; // ⭐ 防止初始化乱刷
 
   const user = session.user;
   // ===== 邮箱 =====
-  emailEl.innerText = user.email || "未知用户";
+  emailEl.innerText = user.email || "手机号用户";
 
   // ===== 头像 =====
   const avatarUrl = getAvatarUrl(user);

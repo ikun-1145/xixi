@@ -55,8 +55,9 @@ export function createPhoneIdentity(env, { rpc } = {}) {
   const lookupCheck = hmac(env.PHONE_IDENTITY_LOOKUP_KEY, 'sunland-phone-index-canary:v1', '');
   async function call(action, data) {
     try {
-      const r = await rpc('sunland_phone_identity', { p_action:action, p_data:{...data,
-        lookup_key_id:env.PHONE_IDENTITY_LOOKUP_KEY_ID, lookup_check:await lookupCheck} });
+      const p_data = {...data, lookup_key_id:env.PHONE_IDENTITY_LOOKUP_KEY_ID, lookup_check:await lookupCheck};
+      const r = await (action === 'register_phone_only' ? rpc('sunland_phone_register_phone_only', { p_data }) :
+        rpc('sunland_phone_identity', { p_action:action, p_data }));
       if (!r?.ok || !r.payload || typeof r.payload !== 'object' || Array.isArray(r.payload)) fail('IDENTITY_UNAVAILABLE', 503);
       if (r.payload.code !== 'OK') {
         if (Object.hasOwn(ERROR_STATUS,r.payload.code)) fail(r.payload.code,ERROR_STATUS[r.payload.code]);
@@ -120,10 +121,14 @@ export function createPhoneIdentity(env, { rpc } = {}) {
       if (!Number.isSafeInteger(r.issued_at) || !Number.isSafeInteger(r.version) || !['email','phone'].includes(r.method)) fail('IDENTITY_UNAVAILABLE',503);
       return {issued_at:r.issued_at,version:r.version,method:r.method};
     },
-    async login({phone,operationId,email,unifiedOtp}) {
+    async login({phone,operationId,email,unifiedOtp,phoneOnly}) {
       const candidate = crypto.randomUUID(); const data = await target(phone,candidate);
       let r;
-      if (email !== undefined) {
+      if (phoneOnly === true) {
+        if (email !== undefined || env.PHONE_NEW_REGISTRATION_ENABLED !== 'true' || env.PHONE_ONLY_REGISTRATION_ENABLED !== 'true') fail('REGISTRATION_DISABLED',403);
+        // Same operation semantics as plain login: a retried call returns the cached account.
+        r = await call('register_phone_only',{...data,candidate_id:candidate,...await operation('login',operationId,[data.phone_hash])});
+      } else if (email !== undefined) {
         if (env.PHONE_NEW_REGISTRATION_ENABLED !== 'true') fail('REGISTRATION_DISABLED',403);
         const args = {...data,candidate_id:candidate,email,lookup_key_id:env.PHONE_IDENTITY_LOOKUP_KEY_ID,lookup_check:await lookupCheck,
           ...await operation('register',operationId,[data.phone_hash,email])};
