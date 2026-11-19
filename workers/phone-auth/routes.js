@@ -123,13 +123,13 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
           if (route === 'unified/email/send') {
             if (typeof hooks.sendPhoneReauthEmail !== 'function' || typeof hooks.createEmailOtp !== 'function') throw new PhoneAuthError('IDENTITY_CONFIG',503);
             validatePhoneEmailConfig(env);
-            await sms.requireUnifiedPhoneProof(env,{...proofInput,action:'send-email'},context);
+            await sms.requireUnifiedPhoneProof(env,{...proofInput,action:'send-email',emailHash:await sha256(input.email)},context);
             const otp = hooks.createEmailOtp({secret:signingSecret(),email:`phone-register:v1\0${input.email}`,ip:context.ip,rpc});
             const hash = await identity.phoneHash(input.phone);
             return respond(await hooks.sendPhoneReauthEmail({env,email:input.email,otp,bindCode:value=>JSON.stringify([value,hash,input.challenge_id,input.operation_id])}));
           }
           code(input.email_code);
-          await sms.requireUnifiedPhoneProof(env,{...proofInput,action:'verify'},context);
+          await sms.requireUnifiedPhoneProof(env,{...proofInput,action:'verify',emailHash:await sha256(input.email)},context);
           const secret = signingSecret(), subjectEmail = `phone-register:v1\0${input.email}`;
           const subject = await otpDigest(secret,'mail',subjectEmail), ip = await otpDigest(secret,'ip',context.ip);
           const c = await rpc('sunland_otp',{p_action:'challenge',p_subject:subject,p_ip:ip});

@@ -297,7 +297,12 @@ body::before {
   border-radius: var(--r-md); background: var(--surface); color: var(--brand-strong);
   font: inherit; cursor: pointer;
 }
-#unifiedBack { display: block; margin: 0 0 var(--space-4); }
+.code-row > input { flex: 1; min-width: 0; }
+#sendPhoneCodeBtn, #unifiedEmailSendBtn { flex: 0 0 auto; white-space: nowrap; }
+#unifiedBack {
+  display: block; max-width: 100%; min-height: 36px; margin: 0 0 var(--space-4); text-align: left;
+  padding: 0 12px; font-size: var(--text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
 #unifiedBack[hidden], #unifiedEmailSendBtn[hidden] { display: none; }
 #unifiedBack:focus-visible, #unifiedEmailSendBtn:focus-visible { outline: 3px solid var(--brand-soft); outline-offset: 2px; }
 #unifiedEmailSendBtn:disabled { opacity: .6; cursor: not-allowed; }
@@ -430,8 +435,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
           <div class="code-row"><input id="phoneCodeInput" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" aria-label="短信验证码"><button id="sendPhoneCodeBtn" type="button"></button></div>
         </div>
         <div id="phoneRegisterFields" hidden>
-          <div class="field"><label for="phoneEmailCode" data-phone-copy="邮箱验证码"></label><input id="phoneEmailCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></div>
-          <button id="unifiedEmailSendBtn" type="button" hidden>发送邮箱验证码</button>
+          <div class="field"><label for="phoneEmailCode" data-phone-copy="邮箱验证码"></label><div class="code-row"><input id="phoneEmailCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6"><button id="unifiedEmailSendBtn" type="button" hidden>发送邮箱验证码</button></div></div>
         </div>
         <button id="reviewPhoneSendBtn" type="button" hidden data-phone-copy="检查后继续"></button>
       </div>
@@ -1008,6 +1012,8 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       function showStep(next) {
         step = next; tabs.hidden = true;
         identityField.hidden = next !== 'identity'; back.hidden = next === 'identity';
+        // Shows which identity the code goes to; clicking it returns to edit.
+        if (next !== 'identity') { back.textContent = '‹ ' + identity.value.trim(); back.title = tr('返回修改'); back.setAttribute('aria-label', back.title + ' ' + identity.value.trim()); }
         emailField.hidden = true;
         emailCodeField.hidden = next !== 'email';
         modal.querySelector('#phoneLoginFields').hidden = !['phone', 'registration'].includes(next);

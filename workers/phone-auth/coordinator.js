@@ -16,6 +16,8 @@ const DAY = 86400000;
 const dayNumber = (now, schema) => Math.floor((now + (schema === 2 ? 8 * 3600000 : 0)) / DAY);
 const TTL = 300000;
 const LOCK = 600000;
+// The SMS code still expires after TTL; only the post-verification proof lasts longer.
+const PROOF_TTL = 600000;
 const PURPOSES = Object.freeze({ login: 'sl-login-v1', bind: 'sl-bind-v1', change: 'sl-change-v1',
   unbind: 'sl-unbind-v1', reauth: 'sl-reauth-v1' });
 const positive = n => Number.isSafeInteger(n) && n > 0;
@@ -419,7 +421,7 @@ export class PhoneAuthCoordinator {
       if (!expired && !providerError && unified) {
         if (await tx.get(proofKey) !== undefined) fail('OPERATION_CONFLICT', 409);
         await tx.put(proofKey, {schema:1, phoneHash, challengeId:input.challenge_id,
-          operationId:unified.operationId, expiresAt:now + TTL, deleteAfter:now + TTL + LOCK});
+          operationId:unified.operationId, expiresAt:now + PROOF_TTL, deleteAfter:now + PROOF_TTL + LOCK});
       }
       await tx.put(key, c);
       return expired;
@@ -433,7 +435,8 @@ export class PhoneAuthCoordinator {
     if (this.env.PHONE_UNIFIED_LOGIN_ENABLED !== 'true' || !input ||
         !['mark-registration', 'verify', 'send-email'].includes(input.action) ||
         !/^[0-9a-f]{64}$/.test(input.proofHash || '') ||
-        !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(input.operationId || '')) fail('INVALID_REQUEST');
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(input.operationId || '') ||
+        (input.action !== 'mark-registration' && !/^[0-9a-f]{64}$/.test(input.emailHash || ''))) fail('INVALID_REQUEST');
     const candidate = {phone:input.phone, purpose:'login', challenge_id:input.challengeId, code:'000000'};
     const now = this.now();
     const normalized = validate(candidate, context, 'check', now);
@@ -454,9 +457,9 @@ export class PhoneAuthCoordinator {
         const sends = item.emailSends ?? 0, next = item.nextEmailAt ?? 0;
         if (!nonnegative(sends) || !nonnegative(next)) fail('SERVICE_UNAVAILABLE', 503);
         if (sends >= 5 || next > now) fail('RATE_LIMITED', 429);
-        item.emailSends = sends + 1; item.nextEmailAt = now + 60000;
+        item.emailSends = sends + 1; item.nextEmailAt = now + 60000; item.emailHash = input.emailHash;
         await tx.put(key, item);
-      }
+      } else if (input.action === 'verify' && item.emailHash !== input.emailHash) fail('CHALLENGE_INVALID', 403);
       return {success:true, expires_in:Math.floor((item.expiresAt - now) / 1000)};
     });
   }

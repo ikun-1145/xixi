@@ -48,6 +48,10 @@ export async function prepareStandalonePhoneWorker(output) {
   if (!output?.startsWith('/')) throw Error('New absolute output directory required');
   const result = await buildStandalonePhoneWorker();
   const config = JSON.parse(await readFile(resolve(project,'workers/phone-auth/wrangler.jsonc'),'utf8'));
+  // Release switches live only in the deployed environment (kept by keep_vars);
+  // declaring them here would silently overwrite production on deploy.
+  const managed = Object.keys(config.vars || {}).filter(name => /_ENABLED$|^PHONE_RELEASE_MODE$|_POLICY$/.test(name));
+  if (config.keep_vars !== true || managed.length) throw Error('Deploy config must not override release switches: ' + managed.join(','));
   config.main = 'worker.mjs';
   await mkdir(output,{mode:0o700});
   const files = {'worker.mjs':result.code,'wrangler.json':JSON.stringify(config,null,2)+'\n','manifest.json':JSON.stringify(result.manifest,null,2)+'\n'};

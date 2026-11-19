@@ -115,7 +115,7 @@ test('unified new phone verifies once, requires email, and recovers a lost regis
   const base={phone:'+86'+NEW_PHONE,challenge_id,operation_id:crypto.randomUUID(),proof:proof()};
   const verified=await s.call('unified/verify',{...base,code});
   assert.equal(verified.status,200);assert.equal(verified.data.status,'registration_required');
-  assert.ok(verified.data.expires_in>0&&verified.data.expires_in<=300);
+  assert.ok(verified.data.expires_in>300&&verified.data.expires_in<=600);
   // Retry of a lost registration_required response is recovered, not re-consumed.
   assert.equal((await s.call('unified/verify',{...base,code})).data.status,'registration_required');
   const stranger=await s.call('unified/email/send',{...base,proof:proof(),email:'new@example.test'});
@@ -132,13 +132,35 @@ test('unified new phone verifies once, requires email, and recovers a lost regis
   assert.equal(s.accounts.get(NEW_PHONE),first.data.user.id);assert.equal(s.codes.length,1);
 });
 
-test('unified registration proof expires with the SMS challenge window',async()=>{
+test('unified registration proof outlives the 5-minute SMS code but expires after 10 minutes',async()=>{
+  const s=await setup();const {challenge_id,code}=await s.sendSms(NEW_PHONE);
+  const base={phone:'+86'+NEW_PHONE,challenge_id,operation_id:crypto.randomUUID(),proof:proof()};
+  const v=await s.call('unified/verify',{...base,code});
+  assert.equal(v.data.status,'registration_required');assert.ok(v.data.expires_in>300&&v.data.expires_in<=600);
+  s.advance(301000);
+  // The SMS code itself is still bound to its original 5-minute lifetime.
+  const reuse=await s.call('unified/verify',{...base,proof:proof(),operation_id:crypto.randomUUID(),code});
+  assert.notEqual(reuse.status,200);
+  assert.equal((await s.call('unified/email/send',{...base,email:'new@example.test'})).status,200);
+  assert.equal((await s.call('unified/register',{...base,email:'new@example.test',email_code:'654321'})).status,200);
+  const s2=await setup();const sms=await s2.sendSms(NEW_PHONE);
+  const b2={phone:'+86'+NEW_PHONE,challenge_id:sms.challenge_id,operation_id:crypto.randomUUID(),proof:proof()};
+  assert.equal((await s2.call('unified/verify',{...b2,code:sms.code})).data.status,'registration_required');
+  s2.advance(601000);
+  const late=await s2.call('unified/register',{...b2,email:'new@example.test',email_code:'654321'});
+  assert.equal(late.status,403);assert.equal(late.data.code,'CHALLENGE_INVALID');
+});
+
+test('unified registration is bound to the email that received the code',async()=>{
   const s=await setup();const {challenge_id,code}=await s.sendSms(NEW_PHONE);
   const base={phone:'+86'+NEW_PHONE,challenge_id,operation_id:crypto.randomUUID(),proof:proof()};
   assert.equal((await s.call('unified/verify',{...base,code})).data.status,'registration_required');
-  s.advance(301000);
-  const late=await s.call('unified/register',{...base,email:'new@example.test',email_code:'654321'});
-  assert.equal(late.status,403);assert.equal(late.data.code,'CHALLENGE_INVALID');
+  const unsent=await s.call('unified/register',{...base,email:'new@example.test',email_code:'654321'});
+  assert.equal(unsent.status,403);
+  assert.equal((await s.call('unified/email/send',{...base,email:'new@example.test'})).status,200);
+  const swapped=await s.call('unified/register',{...base,email:'other@example.test',email_code:'654321'});
+  assert.equal(swapped.status,403);assert.equal(s.log.filter(x=>x.email).length,0);
+  assert.equal((await s.call('unified/register',{...base,email:'new@example.test',email_code:'654321'})).status,200);
 });
 
 test('unified routes stay closed behind the emergency switch and registration switch',async()=>{
@@ -157,4 +179,19 @@ test('wrong SMS code never reaches identity and leaves the challenge usable',asy
   const wrong=await s.call('unified/verify',{...base,code:code==='000000'?'111111':'000000'});
   assert.equal(wrong.status,400);assert.equal(s.log.length,0);
   assert.equal((await s.call('unified/verify',{...base,code})).data.status,'registration_required');
+});
+
+test('legacy verify-code login keeps working whether the unified switch is on or off',async()=>{
+  for(const flag of ['false','true']){
+    const s=await setup({PHONE_UNIFIED_LOGIN_ENABLED:flag});const {challenge_id,code}=await s.sendSms(OLD_PHONE);
+    const r=await s.call('verify-code',{phone:'+86'+OLD_PHONE,challenge_id,code,operation_id:crypto.randomUUID()});
+    assert.equal(r.status,200,flag+JSON.stringify(r.data));assert.equal(r.data.user.id,'existing-account');
+  }
+});
+
+test('deploy config never declares release switches that would overwrite production',async()=>{
+  const {readFile}=await import('node:fs/promises');
+  const config=JSON.parse(await readFile(new URL('../workers/phone-auth/wrangler.jsonc',import.meta.url),'utf8'));
+  assert.equal(config.keep_vars,true);
+  assert.deepEqual(Object.keys(config.vars).filter(k=>/_ENABLED$|^PHONE_RELEASE_MODE$|_POLICY$/.test(k)),[]);
 });

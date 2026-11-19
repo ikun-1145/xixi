@@ -13,7 +13,7 @@ async function call(env, operation, input, context, unified) {
     if (output?.success !== true || (['check','unified-check'].includes(operation) && output.verified !== true)) throw new PhoneAuthError('SERVICE_UNAVAILABLE', 503);
     if (['check','unified-check'].includes(operation)) return { success: true, verified: true };
     if (operation === 'unified-proof') {
-      if (!Number.isInteger(output.expires_in) || output.expires_in < 0 || output.expires_in > 300) throw new PhoneAuthError('SERVICE_UNAVAILABLE', 503);
+      if (!Number.isInteger(output.expires_in) || output.expires_in < 0 || output.expires_in > 600) throw new PhoneAuthError('SERVICE_UNAVAILABLE', 503);
       return { success:true, expires_in:output.expires_in };
     }
     if (typeof output.challenge_id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(output.challenge_id) ||
