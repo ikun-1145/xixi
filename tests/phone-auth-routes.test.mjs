@@ -105,6 +105,32 @@ test('relay keeps management and all reauthentication closed even if other gates
   assert.equal(login.data.success,true);
 });
 
+test('relay delete reauthentication opens only behind its own switch and only for deletion', async () => {
+  const f=fixture({loginOnly:true}); Object.assign(f.env,{PHONE_SMS_PROVIDER:'relay',PHONE_RELAY_DELETE_REAUTH_ENABLED:'true'});
+  for (const route of ['reauth/email/send','reauth/email','bind','change','unbind'])
+    assert.equal((await f.invoke(`/v1/phone/${route}`,{})).data.code,'IDENTITY_DISABLED');
+  for (const purpose of ['bind','change','unbind'])
+    assert.equal((await f.invoke('/v1/phone/send-code',{phone:PHONE,purpose,turnstile_token:'captcha',challenge_id:UUID})).data.code,'IDENTITY_DISABLED');
+  for (const action of ['bind','change','unbind'])
+    assert.equal((await f.invoke('/v1/phone/reauth/phone',{...checkBody(),action})).data.code,'IDENTITY_DISABLED');
+  assert.equal(f.calls.some(x => ['send','check','grant'].includes(x[0])),false);
+  // Deletion SMS must target the caller's own bound phone.
+  const other=await f.invoke('/v1/phone/send-code',{phone:'13900139000',purpose:'reauth',turnstile_token:'captcha',challenge_id:UUID});
+  assert.notEqual(other.response.status,200); assert.equal(f.calls.some(x => x[0]==='send'),false);
+  const sent=await f.invoke('/v1/phone/send-code',{phone:PHONE,purpose:'reauth',turnstile_token:'captcha',challenge_id:UUID});
+  assert.equal(sent.data.success,true);
+  const send=f.calls.find(x => x[0]==='send');
+  assert.equal(send[2].purpose,'reauth'); assert.equal(send[3].userId,'existing-user'); assert.equal(send[3].reauthentication,true);
+  const proved=await f.invoke('/v1/phone/reauth/phone',{...checkBody(),action:'delete'});
+  assert.equal(proved.data.reauth_token,PROOF);
+  assert.equal(f.calls.find(x => x[0]==='check')[2].purpose,'reauth');
+  assert.deepEqual([f.calls.find(x => x[0]==='grant')[1].purpose,f.calls.find(x => x[0]==='grant')[1].method],['delete','phone']);
+  assert.equal((await f.invoke('/v1/phone/delete-authorize',proofBody())).data.deletion_job_id,UUID);
+  const closed=fixture({loginOnly:true}); Object.assign(closed.env,{PHONE_SMS_PROVIDER:'relay',PHONE_RELAY_DELETE_REAUTH_ENABLED:'false'});
+  assert.equal((await closed.invoke('/v1/phone/reauth/phone',{...checkBody(),action:'delete'})).data.code,'IDENTITY_DISABLED');
+  assert.equal((await closed.invoke('/v1/phone/send-code',{phone:PHONE,purpose:'reauth',turnstile_token:'captcha',challenge_id:UUID})).data.code,'IDENTITY_DISABLED');
+});
+
 test('SMS check precedes identity login and signs only authoritative identity using existing JWT helper', async () => {
   const { invoke, calls } = fixture();
   const { data } = await invoke('/v1/phone/verify-code', { ...checkBody(), operation_id: UUID });

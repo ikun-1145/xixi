@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <script defer src="p/js/site-i18n-extra.js?v=20261119-unified-1"></script>
+  <script defer src="p/js/site-i18n-extra.js?v=20261120-phone-only-1"></script>
   <script defer src="p/js/site-i18n.js?v=20261114-relay-1"></script>
 
 <title>登录 Sunland AI · Beta</title>
@@ -376,7 +376,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
 
 <script src="ai/database-token-client.js"></script>
 <script src="ai/login-ban-status.js"></script>
-<script src="p/js/phone-auth.js?v=20261119-unified-1"></script>
+<script src="p/js/phone-auth.js?v=20261120-phone-only-1"></script>
 <script>
 (function () {
   // ====== 占位函数：保持与原 app.js 调用接口一致，避免登录逻辑报错 ======
@@ -608,7 +608,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       phoneReview.hidden = !pending || !pending.expired || Date.now() < pending.review_after || phonePending;
       phoneSend.disabled = phonePending || seconds > 0 || hasPending;
       phoneSend.textContent = phonePending ? tr('正在处理…') : seconds > 0 ? `${seconds}${tr('秒后重新发送')}` : tr('发送验证码');
-      if (loginMode !== 'email') loginBtn.textContent = tr(!modal.querySelector('#unifiedEmailSendBtn').hidden ? '完成注册' : loginMode === 'register' ? '手机号注册' : '登录');
+      if (loginMode !== 'email') loginBtn.textContent = tr(!modal.querySelector('#unifiedEmailSendBtn').hidden ? (loginBtn.dataset.registrationLabel || '完成注册') : loginMode === 'register' ? '手机号注册' : '登录');
     }
     function setLoginMode(mode) {
       if (mode !== "email" && !phoneUiEnabled) return;
@@ -1001,14 +1001,20 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       let proofChallenge = null, emailTimer = null, emailSeconds = 0;
       // The modal is excluded from automatic page translation, so copy is
       // rendered here and again whenever the site language changes.
+      // Phone-only registration: email stays an optional, explicitly verified add-on.
+      const directRegistration = () => step === 'registration' && verified?.phoneOnly === true && !emailSent;
       function renderCopy() {
+        const phoneOnly = step === 'registration' && verified?.phoneOnly === true;
+        loginBtn.dataset.registrationLabel = directRegistration() ? '直接注册' : '完成注册';
+        registerEmailField.querySelector('label').dataset.phoneCopy = phoneOnly ? '邮箱（可选）' : '注册邮箱';
+        registerEmailField.querySelector('label').textContent = tr(registerEmailField.querySelector('label').dataset.phoneCopy);
         modal.querySelector('.title').textContent = tr('欢迎使用 Sunland AI');
         identityField.querySelector('label').textContent = tr('邮箱或手机号');
         identity.placeholder = tr('输入邮箱或中国大陆手机号');
         back.title = tr('返回修改');
         back.setAttribute('aria-label', back.title + ' ' + identity.value.trim());
-        loginBtn.textContent = tr(step === 'identity' ? '下一步' : step === 'registration' ? '完成注册' : '登录');
-        modal.querySelector('.subtitle').textContent = tr(step === 'identity' ? '使用邮箱或手机号继续' : step === 'registration' ? '请验证邮箱以完成注册，已有邮箱账号不会自动合并' : '请输入验证码继续');
+        loginBtn.textContent = tr(step === 'identity' ? '下一步' : step === 'registration' ? loginBtn.dataset.registrationLabel : '登录');
+        modal.querySelector('.subtitle').textContent = tr(step === 'identity' ? '使用邮箱或手机号继续' : phoneOnly ? '新手机号可直接注册；绑定邮箱为可选项，已有邮箱账号不会自动合并' : step === 'registration' ? '请验证邮箱以完成注册，已有邮箱账号不会自动合并' : '请输入验证码继续');
         if (step === 'registration') renderEmailSend(emailSeconds);
         if (phoneNotice) msg.textContent = phoneNotice.code ? phoneAuth.errorText({code: phoneNotice.code}) : tr(phoneNotice.source);
       }
@@ -1062,7 +1068,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
           await phoneClient.unifiedEmailSend(verified.phone, verified.id, operationId, proof, email);
           if (!currentLogin(attempt)) return;
           sent = true; verified.email = email; registerEmail.readOnly = true; emailSent = true;
-          phoneMessage('邮箱验证码已发送'); msg.classList.add('ok'); registerEmailCode.focus();
+          renderCopy(); phoneMessage('邮箱验证码已发送'); msg.classList.add('ok'); registerEmailCode.focus();
         } catch (error) {
           if (currentLogin(attempt)) phoneMessage('', error);
         } finally {
@@ -1093,6 +1099,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
           // reuse it so a lost response is recovered instead of re-consuming SMS.
           if (proofChallenge !== challenge.id) { proof = randomProof(); operationId = crypto.randomUUID(); proofChallenge = challenge.id; }
         } else if (!verified || verified.expiresAt <= Date.now()) { phoneMessage('', {code:'CHALLENGE_EXPIRED'}); return; }
+        else if (directRegistration()) { if (registerEmail.value.trim()) { phoneMessage('请先发送邮箱验证码，或清空邮箱后直接注册'); return; } }
         else if (!emailSent || !/^\d{6}$/.test(registerEmailCode.value)) { phoneMessage('请先完成邮箱验证码验证'); return; }
         loginPending = true; loginBtn.disabled = true; msg.classList.remove('ok');
         let completed = false;
@@ -1100,11 +1107,13 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
         try {
           const result = step === 'phone'
             ? await phoneClient.unifiedVerify(challenge.phone, challenge.id, phoneCodeInput.value, operationId, proof)
+            : directRegistration() ? await phoneClient.unifiedRegisterPhone(verified.phone, verified.id, operationId, proof)
             : await phoneClient.unifiedRegister(verified.phone, verified.id, operationId, proof, verified.email, registerEmailCode.value);
           if (!currentLogin(attempt)) return;
           if (step === 'phone' && result?.status === 'registration_required' && Number.isInteger(result.expires_in) && result.expires_in > 0) {
-            verified = {phone:challenge.phone, id:challenge.id, expiresAt:Date.now()+result.expires_in*1000};
-            msg.textContent = ''; phoneNotice = null; showStep('registration'); registerEmail.focus(); return;
+            verified = {phone:challenge.phone, id:challenge.id, expiresAt:Date.now()+result.expires_in*1000,
+              phoneOnly:result.phone_only === true && typeof phoneClient.unifiedRegisterPhone === 'function'};
+            msg.textContent = ''; phoneNotice = null; showStep('registration'); (verified.phoneOnly ? loginBtn : registerEmail).focus(); return;
           }
           if (result?.status !== 'authenticated') throw new Error('Invalid response');
           completed = await completeLogin(result, '', attempt) === true;

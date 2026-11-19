@@ -96,7 +96,7 @@ test('real language catalog translates phone login labels and authentication err
 });
 
 test('phone client uses a recovery-specific cache key and keeps the released phone entry enabled',()=>{
- assert.match(html,/p\/js\/phone-auth\.js\?v=20261119-unified-1/);
+ assert.match(html,/p\/js\/phone-auth\.js\?v=20261120-phone-only-1/);
  assert.match(html,/<meta name="sunland-phone-ui-enabled" content="true">/);
 });
 
@@ -172,6 +172,41 @@ test('unified new phone requires verified email and reuses the original SMS proo
  assert.equal(email.proof,verify.proof);assert.equal(register.proof,verify.proof);
  assert.equal(email.operation_id,verify.operation_id);assert.equal(register.operation_id,verify.operation_id);
  assert.equal(register.email_code,'654321');assert.equal(JSON.parse(h.w.localStorage.getItem('user')).id,'new-account');
+});
+
+test('unified new phone can register directly without email when the server offers it',async t=>{
+ const h=harness({unified:true});h.w.fetch=async(url,init)=>{const body=JSON.parse(init.body);h.calls.push({url,body});
+  if(url.endsWith('/send-code'))return Response.json({success:true,challenge_id:body.challenge_id,expires_in:300,retry_after:600});
+  if(url.endsWith('/unified/verify'))return Response.json({status:'registration_required',expires_in:300,phone_only:true});
+  if(url.endsWith('/unified/register-phone'))return Response.json({status:'authenticated',token:'new-jwt',user:{id:'phone-account',email:null},is_new_user:true});
+  throw Error('unexpected endpoint');
+ };
+ const d=await startUnifiedPhone(h,t);d.querySelector('#loginBtn').click();await flush();await flush();
+ assert.equal(d.querySelector('#loginBtn').textContent,'直接注册');
+ assert.match(d.querySelector('#phoneRegisterEmailField label').textContent,/可选/);
+ // A typed but unverified email is never silently dropped.
+ d.querySelector('#phoneRegisterEmail').value='new@example.test';d.querySelector('#loginBtn').click();await flush();
+ assert.equal(h.calls.filter(c=>c.url.endsWith('/unified/register-phone')).length,0);
+ d.querySelector('#phoneRegisterEmail').value='';d.querySelector('#loginBtn').click();await flush();await flush();
+ const verify=h.calls.find(c=>c.url.endsWith('/unified/verify')).body;
+ const register=h.calls.find(c=>c.url.endsWith('/unified/register-phone')).body;
+ assert.deepEqual(Object.keys(register).sort(),['challenge_id','operation_id','phone','proof']);
+ assert.equal(register.proof,verify.proof);assert.equal(register.operation_id,verify.operation_id);
+ assert.equal(h.calls.filter(c=>c.url.endsWith('/send-code')).length,1);
+ const user=JSON.parse(h.w.localStorage.getItem('user'));
+ assert.equal(user.id,'phone-account');assert.equal(user.email??null,null);
+});
+
+test('unified registration keeps requiring email when the server does not offer phone-only',async t=>{
+ const h=harness({unified:true});h.w.fetch=async(url,init)=>{const body=JSON.parse(init.body);h.calls.push({url,body});
+  if(url.endsWith('/send-code'))return Response.json({success:true,challenge_id:body.challenge_id,expires_in:300,retry_after:600});
+  if(url.endsWith('/unified/verify'))return Response.json({status:'registration_required',expires_in:300,phone_only:false});
+  throw Error('unexpected endpoint');
+ };
+ const d=await startUnifiedPhone(h,t);d.querySelector('#loginBtn').click();await flush();await flush();
+ assert.equal(d.querySelector('#loginBtn').textContent,'完成注册');
+ d.querySelector('#loginBtn').click();await flush();
+ assert.equal(h.calls.filter(c=>/unified\/register/.test(c.url)).length,0);
 });
 
 for(const email of ['existing@example.test','new@example.test'])test(`unified email flow preserves existing endpoint behavior for ${email}`,async t=>{

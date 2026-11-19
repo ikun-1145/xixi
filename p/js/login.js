@@ -43,7 +43,7 @@ async function checkAuthStatus() {
     // 已登录
     if (loginBtn) loginBtn.style.display = 'none';
     if (userInfo) userInfo.style.display = 'block';
-    if (userEmail) userEmail.textContent = session.user.email;
+    if (userEmail) userEmail.textContent = session.user.email || '手机号用户';
 
     if (logoutBtn) logoutBtn.addEventListener('click', signOut);
   } else {

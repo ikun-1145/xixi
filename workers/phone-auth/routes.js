@@ -4,7 +4,7 @@ import { sendPhoneCode, checkPhoneCode, checkUnifiedPhoneCode, requireUnifiedPho
 import { validatePhoneEmailConfig } from './email-reauth.js';
 
 const PREFIX = '/v1/phone/';
-const ROUTES = new Set(['send-code', 'verify-code', 'unified/verify', 'unified/email/send', 'unified/register', 'status', 'reauth/email/send', 'reauth/email', 'reauth/phone', 'bind', 'change', 'unbind', 'delete-authorize']);
+const ROUTES = new Set(['send-code', 'verify-code', 'unified/verify', 'unified/email/send', 'unified/register', 'unified/register-phone', 'status', 'reauth/email/send', 'reauth/email', 'reauth/phone', 'bind', 'change', 'unbind', 'delete-authorize']);
 const ACTIONS = new Set(['bind', 'change', 'unbind', 'delete']);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const invalid = () => { throw new PhoneAuthError('INVALID_REQUEST'); };
@@ -55,7 +55,11 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
         // The configured relay template only covers registration and login.
         // Keep account management and reauthentication closed even if a
         // separate feature switch is accidentally enabled.
-        if (env?.PHONE_SMS_PROVIDER === 'relay' && ['reauth/email/send', 'reauth/email', 'reauth/phone', 'bind', 'change', 'unbind'].includes(route))
+        // Separately gated exception: SMS reauthentication solely for account deletion.
+        const relayDeleteReauth = env?.PHONE_SMS_PROVIDER === 'relay' && env?.PHONE_RELAY_DELETE_REAUTH_ENABLED === 'true';
+        if (env?.PHONE_SMS_PROVIDER === 'relay' && ['reauth/email/send', 'reauth/email', 'bind', 'change', 'unbind'].includes(route))
+          throw new PhoneAuthError('IDENTITY_DISABLED', 503);
+        if (env?.PHONE_SMS_PROVIDER === 'relay' && route === 'reauth/phone' && !relayDeleteReauth)
           throw new PhoneAuthError('IDENTITY_DISABLED', 503);
         const managementEnabled = !loginOnly || env?.PHONE_ACCOUNT_MANAGEMENT_ENABLED === 'true';
         if (!managementEnabled && ['reauth/email/send', 'reauth/email', 'bind', 'change', 'unbind'].includes(route)) throw new PhoneAuthError('IDENTITY_DISABLED', 503);
@@ -94,7 +98,7 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
         if (route.startsWith('unified/')) {
           if (env?.PHONE_UNIFIED_LOGIN_ENABLED !== 'true') throw new PhoneAuthError('IDENTITY_DISABLED', 503);
           const common = ['phone','challenge_id','operation_id','proof'];
-          fields(input, [...common, ...(route === 'unified/verify' ? ['code'] : ['email']),
+          fields(input, [...common, ...(route === 'unified/verify' ? ['code'] : route === 'unified/register-phone' ? [] : ['email']),
             ...(route === 'unified/register' ? ['email_code'] : [])]);
           phone(input.phone); operationId(input.challenge_id); operationId(input.operation_id); proof(input.proof);
           const context = {ip:ingressIp(request)}, proofHash = await sha256(input.proof);
@@ -115,10 +119,17 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
               if (!(error instanceof PhoneAuthError) || error.code !== 'REGISTRATION_DISABLED') throw error;
               if (env.PHONE_NEW_REGISTRATION_ENABLED !== 'true') throw error;
               const verified = await sms.requireUnifiedPhoneProof(env,{...proofInput,action:'mark-registration'},context);
-              return respond({status:'registration_required',expires_in:verified.expires_in});
+              return respond({status:'registration_required',expires_in:verified.expires_in,
+                phone_only:env.PHONE_ONLY_REGISTRATION_ENABLED === 'true'});
             }
           }
           if (env.PHONE_NEW_REGISTRATION_ENABLED !== 'true') throw new PhoneAuthError('REGISTRATION_DISABLED',403);
+          if (route === 'unified/register-phone') {
+            if (env.PHONE_ONLY_REGISTRATION_ENABLED !== 'true') throw new PhoneAuthError('REGISTRATION_DISABLED',403);
+            await sms.requireUnifiedPhoneProof(env,{...proofInput,action:'register-phone'},context);
+            const result = await identity.login({phone:input.phone,operationId:input.operation_id,phoneOnly:true});
+            return respond({status:'authenticated',...await issueSession(result)});
+          }
           email(input.email);
           if (route === 'unified/email/send') {
             if (typeof hooks.sendPhoneReauthEmail !== 'function' || typeof hooks.createEmailOtp !== 'function') throw new PhoneAuthError('IDENTITY_CONFIG',503);
@@ -156,7 +167,7 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
             registrationPhoneHash = await identity.phoneHash(input.phone);
           }
           phone(input.phone);
-          if (env?.PHONE_SMS_PROVIDER === 'relay' && input.purpose !== 'login') throw new PhoneAuthError('IDENTITY_DISABLED', 503);
+          if (env?.PHONE_SMS_PROVIDER === 'relay' && input.purpose !== 'login' && !(relayDeleteReauth && input.purpose === 'reauth')) throw new PhoneAuthError('IDENTITY_DISABLED', 503);
           // Relay sends must remain recoverable even from an old cached login page.
           if (loginOnly && env?.PHONE_SMS_PROVIDER === 'relay' && !Object.hasOwn(input, 'challenge_id')) invalid();
           if (Object.hasOwn(input, 'challenge_id')) operationId(input.challenge_id);
@@ -230,6 +241,7 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
           code(input.code); action(input.action);
           if (!managementEnabled && input.action !== 'delete') throw new PhoneAuthError('IDENTITY_DISABLED', 503);
           if (!email) challenge(input);
+          if (!email && env?.PHONE_SMS_PROVIDER === 'relay' && input.action !== 'delete') throw new PhoneAuthError('IDENTITY_DISABLED', 503);
           const auth = await authenticated(input.action === 'delete' ? 'account_delete' : 'protected');
           let subject;
           if (email) {

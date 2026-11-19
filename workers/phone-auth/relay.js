@@ -8,7 +8,9 @@ export function smsProvider(env) {
 }
 
 // The relay's current template is approved solely for registration and login.
+// Deletion reauthentication reuses it only behind its own explicit switch.
 export function requireRelayTemplatePurpose(env, purpose) {
+  if (purpose === 'reauth' && env?.PHONE_RELAY_DELETE_REAUTH_ENABLED === 'true') return;
   if (purpose !== 'login') throw new PhoneAuthError('IDENTITY_DISABLED', 503);
 }
 
