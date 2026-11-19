@@ -47,7 +47,7 @@ test('canary persistent reservation cap survives concurrency, next day, restart 
   assert.equal(sends.filter(r=>r.reason?.code==='CANARY_LIMITED').length,1);
   assert.equal(h.calls.filter(c=>c==='supplier').length,3);
   h.advance(86400000); h.rebuild(); await assert.rejects(h.send(phones[3]),{code:'CANARY_LIMITED'});
-  h.env.PHONE_RELEASE_MODE='public'; await h.send(phones[3]);
+  h.env.PHONE_RELEASE_MODE='public'; await assert.rejects(h.send(phones[3]),{code:'RELEASE_CONFIG'});
   h.env.PHONE_RELEASE_MODE='canary'; h.advance(86400000);h.rebuild();await assert.rejects(h.send(phones[3]),{code:'CANARY_LIMITED'});
   assert.equal(h.storage.data.get(LEDGER_KEY).testReserved,3);
 });
@@ -101,7 +101,7 @@ test('status is storage-read-only and distinguishes empty, foreign, version and 
   await h.admin('initialize');const before=structuredClone(h.storage.data);h.advance(86400000);
   assert.equal((await (await h.admin('status')).json()).state,'ready');assert.deepEqual(h.storage.data,before);
   assert.equal((await h.admin('initialize')).status,200);assert.deepEqual(h.storage.data,before);
-  h.storage.data.get(LEDGER_KEY).schema=2;assert.equal((await (await h.admin('status')).json()).state,'incompatible');
+  h.storage.data.get(LEDGER_KEY).schema=3;assert.equal((await (await h.admin('status')).json()).state,'incompatible');
   assert.equal((await h.admin('initialize')).status,409);h.storage.data=structuredClone(before);
   h.env.PHONE_AUTH_POLICY=JSON.stringify({...JSON.parse(h.env.PHONE_AUTH_POLICY),dailyLimit:19});
   assert.equal((await (await h.admin('status')).json()).state,'incompatible');assert.equal((await h.admin('initialize')).status,409);

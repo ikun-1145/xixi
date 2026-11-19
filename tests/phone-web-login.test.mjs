@@ -4,8 +4,9 @@ import {readFileSync} from 'node:fs';
 import {JSDOM} from 'jsdom';
 const html=readFileSync(new URL('../login.html',import.meta.url),'utf8');
 const client=readFileSync(new URL('../p/js/phone-auth.js',import.meta.url),'utf8');
-function harness({phoneEnabled=true,phoneModule='present'}={}){
+function harness({phoneEnabled=true,phoneModule='present',unified=false}={}){
  const dom=new JSDOM(html,{url:'https://sunland.dev/login.html',runScripts:'outside-only'});const w=dom.window;const calls=[];w.document.querySelector('meta[name="sunland-phone-ui-enabled"]').content=String(phoneEnabled);
+ w.document.querySelector('meta[name="sunland-unified-auth-enabled"]').content=String(unified);
  w.AbortController=AbortController;w.crypto.randomUUID=crypto.randomUUID.bind(crypto);w.alert=()=>{};
  w.initGeetest4=(_opts,callback)=>callback({onReady(fn){fn();},onError(){},onSuccess(fn){w.__emailCaptchaSuccess=fn;},getValidate(){return {mock:true};},showCaptcha(){},appendTo(){}});
  w.fetch=async(url,init)=>{const body=JSON.parse(init.body);calls.push({url,body});return Response.json(url.endsWith('send-code')?{success:true,challenge_id:body.challenge_id,expires_in:300,retry_after:600}:{token:'mock-jwt',user:{id:'same-account',email:null},onboarding:{version:0,step:1},is_new_user:true});};
@@ -94,9 +95,181 @@ test('real language catalog translates phone login labels and authentication err
  assert.notEqual(h.w.SunlandPhoneAuth.errorText({code:'CODE_INVALID'}),'验证码错误或已过期，请重新获取');
 });
 
-test('phone client uses a recovery-specific cache key and stays disabled by default',()=>{
- assert.match(html,/p\/js\/phone-auth\.js\?v=20261115-register-1/);
- assert.match(html,/<meta name="sunland-phone-ui-enabled" content="false">/);
+test('phone client uses a recovery-specific cache key and keeps the released phone entry enabled',()=>{
+ assert.match(html,/p\/js\/phone-auth\.js\?v=20261119-unified-1/);
+ assert.match(html,/<meta name="sunland-phone-ui-enabled" content="true">/);
+});
+
+test('unified authentication remains disabled until its server protocol is released', t=>{
+ const h=harness();t.after(()=>h.dom.window.close());const d=h.w.document;
+ assert.equal(d.querySelector('meta[name="sunland-unified-auth-enabled"]').content,'false');
+ assert.equal(d.querySelector('#unifiedIdentityField').hidden,true);
+ assert.equal(d.querySelector('#phoneLoginTab').closest('.phone-tabs').hidden,false);
+});
+
+test('unified entry starts with only identity input and selects email without network access',async t=>{
+ const h=harness({unified:true}),d=h.w.document;t.after(()=>h.dom.window.close());
+ assert.equal(d.querySelector('#unifiedIdentityField').hidden,false);
+ assert.equal(d.querySelector('#phoneLoginTab').closest('.phone-tabs').hidden,true);
+ assert.equal(d.querySelector('#emailLoginField').hidden,true);
+ assert.equal(d.querySelector('#phoneLoginFields').hidden,true);
+ d.querySelector('#unifiedIdentity').value='USER@example.test';
+ d.querySelector('#agreeCheck').checked=true;d.querySelector('#agreeCheck').dispatchEvent(new h.w.Event('change'));
+ d.querySelector('#loginBtn').click();await flush();
+ assert.equal(d.querySelector('#emailCodeField').hidden,false);
+ assert.equal(d.querySelector('#emailInput').value.toLowerCase(),'user@example.test');
+ assert.equal(h.calls.length,0);
+});
+
+test('unified entry selects phone and rejects malformed identity without sending SMS',async t=>{
+ const h=harness({unified:true}),d=h.w.document;t.after(()=>h.dom.window.close());
+ d.querySelector('#agreeCheck').checked=true;d.querySelector('#agreeCheck').dispatchEvent(new h.w.Event('change'));
+ const identity=d.querySelector('#unifiedIdentity');identity.value='not-a-valid-identity';
+ d.querySelector('#loginBtn').click();await flush();assert.equal(h.calls.length,0);assert.equal(d.querySelector('#phoneLoginFields').hidden,true);
+ identity.value='13800000000';d.querySelector('#loginBtn').click();await flush();
+ assert.equal(d.querySelector('#phoneLoginFields').hidden,false);
+ assert.equal(h.w.SunlandPhoneAuth.normalizePhone(d.querySelector('#phoneInput').value),'13800000000');
+ assert.equal(h.calls.length,0);
+});
+
+async function startUnifiedPhone(h, t) {
+ const d=h.w.document;t.after(()=>h.dom.window.close());
+ d.querySelector('#unifiedIdentity').value='13800000000';d.querySelector('#loginBtn').click();await flush();
+ d.querySelector('#sendPhoneCodeBtn').click();await flush();await flush();
+ d.querySelector('#agreeCheck').checked=true;d.querySelector('#agreeCheck').dispatchEvent(new h.w.Event('change'));
+ d.querySelector('#phoneCodeInput').value='123456';return d;
+}
+
+test('unified existing phone verifies once and keeps its established account',async t=>{
+ const h=harness({unified:true});
+ h.w.fetch=async(url,init)=>{const body=JSON.parse(init.body);h.calls.push({url,body});
+  if(url.endsWith('/send-code'))return Response.json({success:true,challenge_id:body.challenge_id,expires_in:300,retry_after:600});
+  assert.ok(url.endsWith('/unified/verify'));return Response.json({status:'authenticated',token:'mock-jwt',user:{id:'existing-account'}});
+ };
+ const d=await startUnifiedPhone(h,t);d.querySelector('#loginBtn').click();d.querySelector('#loginBtn').click();await flush();await flush();
+ assert.equal(h.calls.filter(c=>c.url.endsWith('/send-code')).length,1);
+ assert.equal(h.calls.filter(c=>c.url.endsWith('/unified/verify')).length,1);
+ assert.equal(JSON.parse(h.w.localStorage.getItem('user')).id,'existing-account');
+});
+
+test('unified new phone requires verified email and reuses the original SMS proof',async t=>{
+ const h=harness({unified:true});h.w.fetch=async(url,init)=>{const body=JSON.parse(init.body);h.calls.push({url,body});
+  if(url.endsWith('/send-code'))return Response.json({success:true,challenge_id:body.challenge_id,expires_in:300,retry_after:600});
+  if(url.endsWith('/unified/verify'))return Response.json({status:'registration_required',expires_in:300});
+  if(url.endsWith('/unified/email/send'))return Response.json({success:true});
+  if(url.endsWith('/unified/register'))return Response.json({status:'authenticated',token:'new-jwt',user:{id:'new-account'}});
+  throw Error('unexpected endpoint');
+ };
+ const d=await startUnifiedPhone(h,t);d.querySelector('#loginBtn').click();await flush();await flush();
+ assert.equal(d.querySelector('#phoneRegisterEmailField').hidden,false);
+ d.querySelector('#loginBtn').click();await flush();assert.equal(h.calls.filter(c=>c.url.endsWith('/unified/register')).length,0);
+ d.querySelector('#phoneRegisterEmail').value='new@example.test';d.querySelector('#unifiedEmailSendBtn').click();await flush();await flush();
+ d.querySelector('#phoneEmailCode').value='654321';d.querySelector('#loginBtn').click();await flush();await flush();
+ const verify=h.calls.find(c=>c.url.endsWith('/unified/verify')).body;
+ const email=h.calls.find(c=>c.url.endsWith('/unified/email/send')).body;
+ const register=h.calls.find(c=>c.url.endsWith('/unified/register')).body;
+ assert.equal(h.calls.filter(c=>c.url.endsWith('/send-code')).length,1);
+ assert.equal(email.proof,verify.proof);assert.equal(register.proof,verify.proof);
+ assert.equal(email.operation_id,verify.operation_id);assert.equal(register.operation_id,verify.operation_id);
+ assert.equal(register.email_code,'654321');assert.equal(JSON.parse(h.w.localStorage.getItem('user')).id,'new-account');
+});
+
+for(const email of ['existing@example.test','new@example.test'])test(`unified email flow preserves existing endpoint behavior for ${email}`,async t=>{
+ const h=harness({unified:true}),d=h.w.document;t.after(()=>h.dom.window.close());
+ h.w.fetch=async(url,init)=>{const body=JSON.parse(init.body);h.calls.push({url,body});
+  if(url.endsWith('/send-code'))return Response.json({success:true});
+  if(url.endsWith('/verify-code'))return Response.json({token:'email-jwt',user:{id:'email-account',email}});
+  throw Error('unexpected endpoint');
+ };
+ d.querySelector('#unifiedIdentity').value=email;d.querySelector('#loginBtn').click();await flush();
+ d.querySelector('#sendCodeBtn').click();await flush();assert.equal(typeof h.w.__emailCaptchaSuccess,'function');
+ h.w.__emailCaptchaSuccess();await flush();await flush();
+ d.querySelector('#codeInput').value='123456';d.querySelector('#agreeCheck').checked=true;d.querySelector('#agreeCheck').dispatchEvent(new h.w.Event('change'));
+ d.querySelector('#loginBtn').click();await flush();await flush();
+ assert.equal(h.calls.filter(c=>c.url.endsWith('/send-code')).length,1);
+ assert.equal(h.calls.filter(c=>c.url.endsWith('/verify-code')).length,1);
+ assert.equal(JSON.parse(h.w.localStorage.getItem('user')).id,'email-account');
+});
+
+test('unified registration conflict never creates a session or retries SMS',async t=>{
+ const h=harness({unified:true});h.w.fetch=async(url,init)=>{const body=JSON.parse(init.body);h.calls.push({url,body});
+  if(url.endsWith('/send-code'))return Response.json({success:true,challenge_id:body.challenge_id,expires_in:300,retry_after:600});
+  if(url.endsWith('/unified/verify'))return Response.json({status:'registration_required',expires_in:300});
+  if(url.endsWith('/unified/email/send'))return Response.json({success:true});
+  if(url.endsWith('/unified/register'))return Response.json({code:'EMAIL_CONFLICT'},{status:409});
+  throw Error('unexpected endpoint');
+ };
+ const d=await startUnifiedPhone(h,t);d.querySelector('#loginBtn').click();await flush();await flush();
+ d.querySelector('#phoneRegisterEmail').value='existing@example.test';d.querySelector('#unifiedEmailSendBtn').click();await flush();await flush();
+ d.querySelector('#phoneEmailCode').value='654321';d.querySelector('#loginBtn').click();await flush();await flush();
+ assert.equal(h.w.localStorage.getItem('token'),null);assert.match(d.querySelector('#loginMsg').textContent,/邮箱已注册/);
+ assert.equal(h.calls.filter(c=>c.url.endsWith('/send-code')).length,1);
+});
+
+test('unified expired SMS challenge cannot be submitted or resent automatically',async t=>{
+ const h=harness({unified:true});const d=await startUnifiedPhone(h,t);
+ h.w.Date.now=()=>Date.now()+301000;d.querySelector('#loginBtn').click();await flush();
+ assert.equal(h.calls.filter(c=>c.url.endsWith('/unified/verify')).length,0);
+ assert.equal(h.calls.filter(c=>c.url.endsWith('/send-code')).length,1);
+});
+
+test('unified verification with unknown result never retries automatically and manual retry reuses the proof',async t=>{
+ const h=harness({unified:true});let lost=true;h.w.fetch=async(url,init)=>{const body=JSON.parse(init.body);h.calls.push({url,body});
+  if(url.endsWith('/send-code'))return Response.json({success:true,challenge_id:body.challenge_id,expires_in:300,retry_after:600});
+  if(lost){lost=false;throw Error('response lost');}
+  return Response.json({status:'authenticated',token:'recovered-jwt',user:{id:'existing-account'}});
+ };
+ const d=await startUnifiedPhone(h,t);d.querySelector('#loginBtn').click();await flush();await flush();
+ assert.equal(h.calls.filter(c=>c.url.endsWith('/unified/verify')).length,1);assert.equal(h.w.localStorage.getItem('token'),null);
+ d.querySelector('#sendPhoneCodeBtn').click();await flush();
+ assert.equal(h.calls.filter(c=>c.url.endsWith('/send-code')).length,1);
+ d.querySelector('#loginBtn').click();await flush();await flush();
+ const verifications=h.calls.filter(c=>c.url.endsWith('/unified/verify'));
+ assert.equal(verifications.length,2);assert.equal(verifications[0].body.proof,verifications[1].body.proof);
+ assert.equal(verifications[0].body.operation_id,verifications[1].body.operation_id);
+ assert.equal(h.w.localStorage.getItem('token'),'recovered-jwt');
+});
+
+test('unified lost registration response is retried with the same proof, operation and email code',async t=>{
+ const h=harness({unified:true});let lost=true;h.w.fetch=async(url,init)=>{const body=JSON.parse(init.body);h.calls.push({url,body});
+  if(url.endsWith('/send-code'))return Response.json({success:true,challenge_id:body.challenge_id,expires_in:300,retry_after:600});
+  if(url.endsWith('/unified/verify'))return Response.json({status:'registration_required',expires_in:300});
+  if(url.endsWith('/unified/email/send'))return Response.json({success:true});
+  if(url.endsWith('/unified/register')){if(lost){lost=false;throw Error('response lost');}return Response.json({status:'authenticated',token:'new-jwt',user:{id:'new-account'}});}
+  throw Error('unexpected endpoint');
+ };
+ const d=await startUnifiedPhone(h,t);d.querySelector('#loginBtn').click();await flush();await flush();
+ d.querySelector('#phoneRegisterEmail').value='new@example.test';d.querySelector('#unifiedEmailSendBtn').click();await flush();await flush();
+ assert.equal(d.querySelector('#unifiedEmailSendBtn').disabled,true);
+ d.querySelector('#phoneEmailCode').value='654321';d.querySelector('#loginBtn').click();await flush();await flush();
+ assert.equal(h.w.localStorage.getItem('token'),null);
+ d.querySelector('#loginBtn').click();await flush();await flush();
+ const regs=h.calls.filter(c=>c.url.endsWith('/unified/register')).map(c=>c.body);
+ assert.equal(regs.length,2);assert.deepEqual(regs[0],regs[1]);
+ assert.equal(h.calls.filter(c=>c.url.endsWith('/unified/email/send')).length,1);
+ assert.equal(h.w.localStorage.getItem('token'),'new-jwt');
+});
+
+test('unified copy is translated through the shared catalog',async t=>{
+ const h=harness({unified:true});t.after(()=>h.dom.window.close());
+ const catalog=readFileSync(new URL('../p/js/site-i18n-extra.js',import.meta.url),'utf8');
+ for(const key of ['欢迎使用 Sunland AI','邮箱或手机号','下一步','完成注册','发送邮箱验证码','该邮箱已注册，请使用原邮箱账号登录'])assert.ok(catalog.includes(`"${key}":`),key);
+});
+
+test('unified invalid code can be corrected without sending another SMS',async t=>{
+ const h=harness({unified:true});let attempts=0;
+ h.w.fetch=async(url,init)=>{const body=JSON.parse(init.body);h.calls.push({url,body});
+  if(url.endsWith('/send-code'))return Response.json({success:true,challenge_id:body.challenge_id,expires_in:300,retry_after:600});
+  if(url.endsWith('/unified/verify'))return ++attempts===1?Response.json({code:'CODE_INVALID'},{status:400}):Response.json({status:'authenticated',token:'retry-jwt',user:{id:'same-account'}});
+  throw Error('unexpected endpoint');
+ };
+ const d=await startUnifiedPhone(h,t);d.querySelector('#loginBtn').click();await flush();await flush();
+ d.querySelector('#phoneCodeInput').value='654321';d.querySelector('#loginBtn').click();await flush();await flush();
+ const verifications=h.calls.filter(c=>c.url.endsWith('/unified/verify'));
+ assert.equal(verifications.length,2);assert.equal(verifications[0].body.proof,verifications[1].body.proof);
+ assert.equal(verifications[0].body.operation_id,verifications[1].body.operation_id);
+ assert.equal(h.calls.filter(c=>c.url.endsWith('/send-code')).length,1);
+ assert.equal(h.w.localStorage.getItem('token'),'retry-jwt');
 });
 
 test('expired phone send requires waiting and explicit review before local recovery is cleared', t=>{

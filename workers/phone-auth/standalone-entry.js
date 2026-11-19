@@ -19,7 +19,7 @@ export default { async fetch(request, env, ctx) {
   if (path.startsWith('/v1/phone/_admin/')) {
     if (path === '/v1/phone/_admin/turnstile-probe') return turnstileProbe(request, env, { readBody: readJsonBodyWithLimit });
     try {
-      if (request.method !== 'POST' || !['/v1/phone/_admin/initialize', '/v1/phone/_admin/status'].includes(path)) return json({ error: 'Not found' }, 404, env);
+      if (request.method !== 'POST' || !['/v1/phone/_admin/initialize', '/v1/phone/_admin/status', '/v1/phone/_admin/migrate-v2', '/v1/phone/_admin/export-ledger'].includes(path)) return json({ error: 'Not found' }, 404, env);
       await requireAdmin(env, request);
       const parsed = await readJsonBodyWithLimit(request, 4096);
       if (parsed.error) return json({ error: 'Invalid request' }, 400, env);

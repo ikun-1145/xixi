@@ -1,10 +1,10 @@
 import { PhoneAuthError } from './errors.js';
 import { createPhoneIdentity } from './identity.js';
-import { sendPhoneCode, checkPhoneCode } from './service.js';
+import { sendPhoneCode, checkPhoneCode, checkUnifiedPhoneCode, requireUnifiedPhoneProof } from './service.js';
 import { validatePhoneEmailConfig } from './email-reauth.js';
 
 const PREFIX = '/v1/phone/';
-const ROUTES = new Set(['send-code', 'verify-code', 'status', 'reauth/email/send', 'reauth/email', 'reauth/phone', 'bind', 'change', 'unbind', 'delete-authorize']);
+const ROUTES = new Set(['send-code', 'verify-code', 'unified/verify', 'unified/email/send', 'unified/register', 'status', 'reauth/email/send', 'reauth/email', 'reauth/phone', 'bind', 'change', 'unbind', 'delete-authorize']);
 const ACTIONS = new Set(['bind', 'change', 'unbind', 'delete']);
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/;
 const invalid = () => { throw new PhoneAuthError('INVALID_REQUEST'); };
@@ -19,6 +19,11 @@ function code(value) { if (typeof value !== 'string' || !/^\d{6}$/.test(value)) 
 function uuid(value) { if (typeof value !== 'string' || !UUID.test(value)) invalid(); }
 function operationId(value) { if (typeof value !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(value)) invalid(); }
 function proof(value) { if (typeof value !== 'string' || !/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(value)) invalid(); }
+async function sha256(value) { return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(value)))].map(x=>x.toString(16).padStart(2,'0')).join(''); }
+async function otpDigest(secret, purpose, value) {
+  const enc = new TextEncoder(); const key = await crypto.subtle.importKey('raw',enc.encode(secret),{name:'HMAC',hash:'SHA-256'},false,['sign']);
+  return [...new Uint8Array(await crypto.subtle.sign('HMAC',key,enc.encode(`sunland-otp-v1:${purpose}:${value}`)))].map(x=>x.toString(16).padStart(2,'0')).join('');
+}
 function action(value) { if (!ACTIONS.has(value)) invalid(); }
 function challenge(input) { phone(input.phone); code(input.code); uuid(input.challenge_id); }
 function sensitive(input) { proof(input.reauth_token); operationId(input.operation_id); }
@@ -35,7 +40,7 @@ function ingressIp(request) {
 // authority; unrelated requests are forwarded before the body is touched.
 export function createPhoneAuthWorker(existingWorker, hooks, {
   identityFactory = createPhoneIdentity,
-  sms = { sendPhoneCode, checkPhoneCode },
+  sms = { sendPhoneCode, checkPhoneCode, checkUnifiedPhoneCode, requireUnifiedPhoneProof },
   loginOnly = false,
 } = {}) {
   return {
@@ -84,6 +89,58 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
         }
         async function recent(auth, purpose) {
           return identity.proof({ ...auth, purpose, reauthToken: input.reauth_token });
+        }
+
+        if (route.startsWith('unified/')) {
+          if (env?.PHONE_UNIFIED_LOGIN_ENABLED !== 'true') throw new PhoneAuthError('IDENTITY_DISABLED', 503);
+          const common = ['phone','challenge_id','operation_id','proof'];
+          fields(input, [...common, ...(route === 'unified/verify' ? ['code'] : ['email']),
+            ...(route === 'unified/register' ? ['email_code'] : [])]);
+          phone(input.phone); operationId(input.challenge_id); operationId(input.operation_id); proof(input.proof);
+          const context = {ip:ingressIp(request)}, proofHash = await sha256(input.proof);
+          const proofInput = {phone:input.phone, challengeId:input.challenge_id, operationId:input.operation_id, proofHash};
+          async function issueSession(result) {
+            const state = await hooks.getUserStatus(env,result.user_id);
+            const rejection = hooks.accountStatusRejection(state);
+            if (rejection) throw new PhoneAuthError(['ACCOUNT_NOT_ACTIVE','ACCOUNT_BANNED'].includes(rejection.error) ? rejection.error : 'IDENTITY_UNAVAILABLE',rejection.status);
+            const user = {id:result.user_id,email:result.email};
+            return {token:await hooks.signJWT(user,signingSecret()),user,onboarding:result.onboarding,is_new_user:result.is_new_user};
+          }
+          if (route === 'unified/verify') {
+            code(input.code);
+            await sms.checkUnifiedPhoneCode(env,{phone:input.phone,purpose:'login',challenge_id:input.challenge_id,code:input.code},context,
+              {proofHash,operationId:input.operation_id});
+            try { return respond({status:'authenticated',...await issueSession(await identity.login({phone:input.phone,operationId:input.operation_id}))}); }
+            catch (error) {
+              if (!(error instanceof PhoneAuthError) || error.code !== 'REGISTRATION_DISABLED') throw error;
+              if (env.PHONE_NEW_REGISTRATION_ENABLED !== 'true') throw error;
+              const verified = await sms.requireUnifiedPhoneProof(env,{...proofInput,action:'mark-registration'},context);
+              return respond({status:'registration_required',expires_in:verified.expires_in});
+            }
+          }
+          if (env.PHONE_NEW_REGISTRATION_ENABLED !== 'true') throw new PhoneAuthError('REGISTRATION_DISABLED',403);
+          email(input.email);
+          if (route === 'unified/email/send') {
+            if (typeof hooks.sendPhoneReauthEmail !== 'function' || typeof hooks.createEmailOtp !== 'function') throw new PhoneAuthError('IDENTITY_CONFIG',503);
+            validatePhoneEmailConfig(env);
+            await sms.requireUnifiedPhoneProof(env,{...proofInput,action:'send-email',emailHash:await sha256(input.email)},context);
+            const otp = hooks.createEmailOtp({secret:signingSecret(),email:`phone-register:v1\0${input.email}`,ip:context.ip,rpc});
+            const hash = await identity.phoneHash(input.phone);
+            return respond(await hooks.sendPhoneReauthEmail({env,email:input.email,otp,bindCode:value=>JSON.stringify([value,hash,input.challenge_id,input.operation_id])}));
+          }
+          code(input.email_code);
+          await sms.requireUnifiedPhoneProof(env,{...proofInput,action:'verify',emailHash:await sha256(input.email)},context);
+          const secret = signingSecret(), subjectEmail = `phone-register:v1\0${input.email}`;
+          const subject = await otpDigest(secret,'mail',subjectEmail), ip = await otpDigest(secret,'ip',context.ip);
+          const c = await rpc('sunland_otp',{p_action:'challenge',p_subject:subject,p_ip:ip});
+          if (c?.ok && c.payload?.code === 'THROTTLED') throw new PhoneAuthError('RATE_LIMITED',429);
+          if (!c?.ok || !c.payload || c.payload.code !== 'OK' || !UUID.test(c.payload.request_id || '')) throw new PhoneAuthError('IDENTITY_UNAVAILABLE',503);
+          const hash = await identity.phoneHash(input.phone);
+          const bound = JSON.stringify([input.email_code,hash,input.challenge_id,input.operation_id]);
+          const codeHash = await otpDigest(secret,'code',`${subjectEmail}:${c.payload.request_id}:${bound}`);
+          const result = await identity.login({phone:input.phone,email:input.email,operationId:input.operation_id,
+            unifiedOtp:{p_subject:subject,p_ip:ip,p_request_id:c.payload.request_id,p_code_hash:codeHash}});
+          return respond({status:'authenticated',...await issueSession(result)});
         }
 
         if (route === 'send-code') {

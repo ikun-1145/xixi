@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { createHmac } from 'node:crypto';
 import { PhoneAuthCoordinator, LEDGER_KEY } from '../coordinator.js';
 import { turnstileProbe } from '../turnstile-probe.js';
 
@@ -22,7 +23,8 @@ async function fixture(initialized=true) {
   const storage=new Storage(), calls=[];let clock=timestamp;
   const env={PHONE_AUTH_ADMIN_TOKEN:admin,PHONE_AUTH_HMAC_KEY:'synthetic-hmac-token-at-least-32-characters', PHONE_AUTH_HMAC_KEY_ID:'v1',
     TURNSTILE_SECRET:'synthetic-secret',PHONE_TURNSTILE_HOSTNAME:'sunland.dev',PHONE_TURNSTILE_DIAGNOSTICS_ENABLED:'true',
-    PHONE_IDENTITY_ENABLED:'false',PHONE_SMS_ENABLED:'false',PHONE_NEW_REGISTRATION_ENABLED:'false',PHONE_RELEASE_MODE:'public',
+    PHONE_IDENTITY_ENABLED:'false',PHONE_SMS_ENABLED:'false',PHONE_NEW_REGISTRATION_ENABLED:'false',PHONE_RELEASE_MODE:'canary',
+    PHONE_SMS_CANARY_PHONE_HASHES:JSON.stringify([createHmac('sha256','synthetic-hmac-token-at-least-32-characters').update('phone\0'+'13800000000').digest('hex')]),
     PHONE_SMS_PROVIDER:'relay',SMS_RELAY_URL:'https://relay.invalid/send',SUNLAND_SMS_RELAY_KEY:'synthetic-relay-key',
     PHONE_AUTH_POLICY:JSON.stringify({perPhoneDaily:10,perIpDaily:10,dailyLimit:10,unitCostMicros:1,dailyBudgetMicros:10,totalBudgetMicros:10,ipRequestsPerMinute:20,globalRequestsPerMinute:20})};
   const fetchImpl=async(url,init)=>{const host=new URL(url).hostname;calls.push(host);if(host==='challenges.cloudflare.com'){assert.equal(init.cache,'no-store');return Response.json(good);}

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <script defer src="p/js/site-i18n-extra.js?v=20261115-register-1"></script>
+  <script defer src="p/js/site-i18n-extra.js?v=20261119-unified-1"></script>
   <script defer src="p/js/site-i18n.js?v=20261114-relay-1"></script>
 
 <title>登录 Sunland AI · Beta</title>
@@ -140,6 +140,7 @@ function normalizeLoginUser(data, fallbackEmail) {
 <link rel="stylesheet" href="p/css/phone-auth.css">
 <meta name="sunland-turnstile-sitekey" content="0x4AAAAAAC_W2Wj2YdkrQiMf">
 <meta name="sunland-phone-ui-enabled" content="true">
+<meta name="sunland-unified-auth-enabled" content="false">
 <style>
 /* ===== 登录页（依赖 tokens.css / base.css，登录逻辑不变） ===== */
 html, body { height: 100%; margin: 0; }
@@ -265,8 +266,8 @@ body::before {
   outline: none;
   transition: border-color var(--dur-fast) ease, box-shadow var(--dur-fast) ease;
 }
-#emailInput::placeholder, #codeInput::placeholder { color: var(--text-3); }
-#emailInput:focus, #codeInput:focus {
+#emailInput::placeholder, #codeInput::placeholder, #unifiedIdentity::placeholder { color: var(--text-3); }
+#emailInput:focus, #codeInput:focus, #unifiedIdentity:focus {
   border-color: var(--brand);
   box-shadow: 0 0 0 3px var(--brand-soft);
 }
@@ -291,6 +292,20 @@ body::before {
 }
 #sendCodeBtn:hover { border-color: var(--brand); background: var(--brand-soft); }
 #sendCodeBtn:disabled { opacity: .6; cursor: not-allowed; }
+#unifiedBack, #unifiedEmailSendBtn {
+  min-height: 44px; padding: 0 14px; border: 1px solid var(--border-strong);
+  border-radius: var(--r-md); background: var(--surface); color: var(--brand-strong);
+  font: inherit; cursor: pointer;
+}
+.code-row > input { flex: 1; min-width: 0; }
+#sendPhoneCodeBtn, #unifiedEmailSendBtn { flex: 0 0 auto; white-space: nowrap; }
+#unifiedBack {
+  display: block; max-width: 100%; min-height: 36px; margin: 0 0 var(--space-4); text-align: left;
+  padding: 0 12px; font-size: var(--text-sm); overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+#unifiedBack[hidden], #unifiedEmailSendBtn[hidden] { display: none; }
+#unifiedBack:focus-visible, #unifiedEmailSendBtn:focus-visible { outline: 3px solid var(--brand-soft); outline-offset: 2px; }
+#unifiedEmailSendBtn:disabled { opacity: .6; cursor: not-allowed; }
 
 /* 同意条款 */
 .agree {
@@ -361,7 +376,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
 
 <script src="ai/database-token-client.js"></script>
 <script src="ai/login-ban-status.js"></script>
-<script src="p/js/phone-auth.js?v=20261115-register-1"></script>
+<script src="p/js/phone-auth.js?v=20261119-unified-1"></script>
 <script>
 (function () {
   // ====== 占位函数：保持与原 app.js 调用接口一致，避免登录逻辑报错 ======
@@ -396,6 +411,12 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       <h2 class="title">登录 Sunland AI · Beta</h2>
       <p class="subtitle">输入邮箱获取验证码，无需注册</p>
 
+      <div id="unifiedIdentityField" class="field" hidden data-site-i18n-ignore>
+        <label for="unifiedIdentity">邮箱或手机号</label>
+        <input id="unifiedIdentity" type="text" autocomplete="username" placeholder="输入邮箱或中国大陆手机号">
+      </div>
+      <button id="unifiedBack" type="button" hidden>返回修改</button>
+
       <div class="phone-auth phone-tabs" role="group" aria-label="登录方式">
         <button id="emailLoginTab" type="button" aria-pressed="true">邮箱登录</button>
         <button id="phoneLoginTab" type="button" aria-pressed="false">手机号登录</button>
@@ -414,7 +435,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
           <div class="code-row"><input id="phoneCodeInput" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" aria-label="短信验证码"><button id="sendPhoneCodeBtn" type="button"></button></div>
         </div>
         <div id="phoneRegisterFields" hidden>
-          <div class="field"><label for="phoneEmailCode" data-phone-copy="邮箱验证码"></label><input id="phoneEmailCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></div>
+          <div class="field"><label for="phoneEmailCode" data-phone-copy="邮箱验证码"></label><div class="code-row"><input id="phoneEmailCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6"><button id="unifiedEmailSendBtn" type="button" hidden>发送邮箱验证码</button></div></div>
         </div>
         <button id="reviewPhoneSendBtn" type="button" hidden data-phone-copy="检查后继续"></button>
       </div>
@@ -587,7 +608,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       phoneReview.hidden = !pending || !pending.expired || Date.now() < pending.review_after || phonePending;
       phoneSend.disabled = phonePending || seconds > 0 || hasPending;
       phoneSend.textContent = phonePending ? tr('正在处理…') : seconds > 0 ? `${seconds}${tr('秒后重新发送')}` : tr('发送验证码');
-      if (loginMode !== 'email') loginBtn.textContent = tr(loginMode === 'register' ? '手机号注册' : '登录');
+      if (loginMode !== 'email') loginBtn.textContent = tr(!modal.querySelector('#unifiedEmailSendBtn').hidden ? '完成注册' : loginMode === 'register' ? '手机号注册' : '登录');
     }
     function setLoginMode(mode) {
       if (mode !== "email" && !phoneUiEnabled) return;
@@ -955,6 +976,135 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
           if (!['CODE_INVALID','CHALLENGE_PENDING','VERIFY_UNCERTAIN'].includes(error.code)) { challenge = null; phoneCodeInput.value = ''; }
         }
       } finally { if (!completed && currentLogin(attempt)) { loginPending = false; loginBtn.disabled = !agreeCheck.checked; } }
+    }
+
+    // The unified protocol is opt-in until the corresponding Worker is deployed.
+    // Existing email and phone flows remain the fallback when it is unavailable.
+    if (document.querySelector('meta[name="sunland-unified-auth-enabled"]')?.content === 'true' &&
+        phoneUiEnabled && ['unifiedVerify', 'unifiedEmailSend', 'unifiedRegister'].every(k => typeof phoneClient?.[k] === 'function')) {
+      const identityField = modal.querySelector('#unifiedIdentityField');
+      const identity = modal.querySelector('#unifiedIdentity');
+      const back = modal.querySelector('#unifiedBack');
+      const tabs = modal.querySelector('.phone-tabs');
+      const phoneNumberField = phoneInput.closest('.field');
+      const emailField = modal.querySelector('#emailLoginField');
+      const emailCodeField = modal.querySelector('#emailCodeField');
+      const registerEmailField = modal.querySelector('#phoneRegisterEmailField');
+      const registerFields = modal.querySelector('#phoneRegisterFields');
+      const emailSend = modal.querySelector('#unifiedEmailSendBtn');
+      const agree = modal.querySelector('.agree');
+      const originalLogin = loginBtn.onclick;
+      let step = 'identity', proof = null, operationId = null, verified = null, emailSent = false;
+
+      let proofChallenge = null, emailTimer = null;
+      modal.querySelector('.title').textContent = tr('欢迎使用 Sunland AI');
+      identityField.querySelector('label').textContent = tr('邮箱或手机号');
+      identity.placeholder = tr('输入邮箱或中国大陆手机号');
+      back.textContent = tr('返回修改');
+      function renderEmailSend(seconds = 0) {
+        emailSend.disabled = phonePending || seconds > 0;
+        emailSend.textContent = seconds > 0 ? `${seconds}${tr('秒后重新发送')}` : tr('发送邮箱验证码');
+      }
+      function startEmailCooldown() {
+        clearInterval(emailTimer); let seconds = 60; renderEmailSend(seconds);
+        emailTimer = setInterval(() => { seconds--; renderEmailSend(seconds); if (seconds <= 0) clearInterval(emailTimer); }, 1000);
+      }
+      function showStep(next) {
+        step = next; tabs.hidden = true;
+        identityField.hidden = next !== 'identity'; back.hidden = next === 'identity';
+        // Shows which identity the code goes to; clicking it returns to edit.
+        if (next !== 'identity') { back.textContent = '‹ ' + identity.value.trim(); back.title = tr('返回修改'); back.setAttribute('aria-label', back.title + ' ' + identity.value.trim()); }
+        emailField.hidden = true;
+        emailCodeField.hidden = next !== 'email';
+        modal.querySelector('#phoneLoginFields').hidden = !['phone', 'registration'].includes(next);
+        phoneNumberField.hidden = true;
+        phoneCodeInput.closest('.field').hidden = next !== 'phone';
+        registerEmailField.hidden = next !== 'registration';
+        registerFields.hidden = next !== 'registration';
+        emailSend.hidden = next !== 'registration';
+        agree.hidden = next === 'identity';
+        loginBtn.disabled = next !== 'identity' && !agreeCheck.checked;
+        loginBtn.style.opacity = loginBtn.disabled ? '0.6' : '1';
+        loginBtn.textContent = tr(next === 'identity' ? '下一步' : next === 'registration' ? '完成注册' : '登录');
+        modal.querySelector('.subtitle').textContent = tr(next === 'identity' ? '使用邮箱或手机号继续' : next === 'registration' ? '请验证邮箱以完成注册，已有邮箱账号不会自动合并' : '请输入验证码继续');
+        if (next === 'registration') renderEmailSend();
+      }
+      function randomProof() {
+        const bytes = new Uint8Array(32); crypto.getRandomValues(bytes);
+        return btoa(String.fromCharCode(...bytes)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+      }
+      back.onclick = () => {
+        setLoginMode('email'); proof = operationId = proofChallenge = verified = null; emailSent = false;
+        clearInterval(emailTimer); registerEmail.readOnly = false;
+        msg.textContent = ''; showStep('identity'); identity.focus();
+      };
+      identity.addEventListener('keydown', event => { if (event.key === 'Enter') loginBtn.click(); });
+      // Sends are rate-limited by the server; resending replaces the earlier code.
+      emailSend.onclick = async () => {
+        if (step !== 'registration' || phonePending || emailSend.disabled) return;
+        if (!verified || verified.expiresAt <= Date.now()) { phoneMessage('', {code:'CHALLENGE_EXPIRED'}); return; }
+        const email = registerEmail.value.trim().toLowerCase();
+        if (!/^\S+@\S+\.\S+$/.test(email) || email.length > 254) { phoneMessage('请输入有效邮箱'); return; }
+        const attempt = captureLogin(); phonePending = true; msg.classList.remove('ok'); renderEmailSend();
+        let sent = false;
+        try {
+          await phoneClient.unifiedEmailSend(verified.phone, verified.id, operationId, proof, email);
+          if (!currentLogin(attempt)) return;
+          sent = true; verified.email = email; registerEmail.readOnly = true; emailSent = true;
+          phoneMessage('邮箱验证码已发送'); msg.classList.add('ok'); registerEmailCode.focus();
+        } catch (error) {
+          if (currentLogin(attempt)) phoneMessage('', error);
+        } finally {
+          if (currentLogin(attempt)) { phonePending = false; if (sent) startEmailCooldown(); else renderEmailSend(); }
+        }
+      };
+      loginBtn.onclick = async () => {
+        if (step === 'identity') {
+          const value = identity.value.trim();
+          if (/^\S+@\S+\.\S+$/.test(value) && value.length <= 254) {
+            setLoginMode('email'); emailInput.value = value; showStep('email'); codeInput.focus(); return;
+          }
+          try {
+            const number = phoneAuth.normalizePhone(value); setLoginMode('phone'); phoneInput.value = number;
+            showStep('phone'); renderPhone(); phoneSend.focus();
+          } catch { msg.textContent = tr('请输入有效邮箱或中国大陆手机号'); }
+          return;
+        }
+        if (step === 'email') { await originalLogin(); return; }
+        if (loginPending || phonePending) return;
+        if (!agreeCheck.checked) { phoneMessage('请先同意用户协议'); return; }
+        const attempt = captureLogin();
+        if (step === 'phone') {
+          if (!challenge || challenge.expiresAt <= Date.now()) { phoneMessage('', {code:'CHALLENGE_EXPIRED'}); return; }
+          if (!/^\d{6}$/.test(phoneCodeInput.value)) { phoneMessage('请输入6位验证码'); return; }
+          // The proof is bound to one SMS challenge; retries of the same challenge
+          // reuse it so a lost response is recovered instead of re-consuming SMS.
+          if (proofChallenge !== challenge.id) { proof = randomProof(); operationId = crypto.randomUUID(); proofChallenge = challenge.id; }
+        } else if (!verified || verified.expiresAt <= Date.now()) { phoneMessage('', {code:'CHALLENGE_EXPIRED'}); return; }
+        else if (!emailSent || !/^\d{6}$/.test(registerEmailCode.value)) { phoneMessage('请先完成邮箱验证码验证'); return; }
+        loginPending = true; loginBtn.disabled = true; msg.classList.remove('ok');
+        let completed = false;
+        const challengeId = step === 'phone' ? challenge.id : verified.id;
+        try {
+          const result = step === 'phone'
+            ? await phoneClient.unifiedVerify(challenge.phone, challenge.id, phoneCodeInput.value, operationId, proof)
+            : await phoneClient.unifiedRegister(verified.phone, verified.id, operationId, proof, verified.email, registerEmailCode.value);
+          if (!currentLogin(attempt)) return;
+          if (step === 'phone' && result?.status === 'registration_required' && Number.isInteger(result.expires_in) && result.expires_in > 0) {
+            verified = {phone:challenge.phone, id:challenge.id, expiresAt:Date.now()+result.expires_in*1000};
+            msg.textContent = ''; phoneNotice = null; showStep('registration'); registerEmail.focus(); return;
+          }
+          if (result?.status !== 'authenticated') throw new Error('Invalid response');
+          completed = await completeLogin(result, '', attempt) === true;
+          if (completed) phoneClient.acknowledgeLoginSaved(challengeId);
+        } catch (error) {
+          if (currentLogin(attempt)) {
+            if (error?.code === 'EMAIL_CONFLICT') { phoneNotice = null; msg.textContent = tr('该邮箱已注册，请使用原邮箱账号登录'); }
+            else phoneMessage('', error);
+          }
+        } finally { if (!completed && currentLogin(attempt)) { loginPending = false; loginBtn.disabled = !agreeCheck.checked; } }
+      };
+      showStep('identity'); identity.focus();
     }
 
     function closeModal() {

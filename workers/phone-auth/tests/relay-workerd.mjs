@@ -5,23 +5,34 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
+import { createHmac } from 'node:crypto';
 import { buildStandalonePhoneWorker } from '../../../scripts/build-phone-auth-worker.mjs';
-import { SINGLETON_NAME } from '../coordinator.js';
+import { SINGLETON_NAME, LEDGER_KEY } from '../coordinator.js';
 const project = fileURLToPath(new URL('../../../', import.meta.url));
 const require = createRequire(resolve(process.env.SUNLAND_AUTH_WORKER_ROOT || resolve(project, '../../sunland_ai_app/worker'), 'package.json'));
 const { Miniflare, Log, LogLevel, convertV4MiniflareOptions } = require('miniflare');
-const { code: script } = await buildStandalonePhoneWorker();
+const { code: builtScript } = await buildStandalonePhoneWorker();
+// Inject only the coordinator clock in the isolated bundle so UTC+8 midnight
+// can be exercised without waiting until tomorrow; never used in production.
+const script = builtScript.replace('constructor(state, env, { now = Date.now, fetchImpl',
+  'constructor(state, env, { now = () => Number(env.PHONE_TEST_NOW), fetchImpl');
+assert.notEqual(script, builtScript);
 const root = await mkdtemp(join(tmpdir(), 'phone-relay-workerd-'));
 const secret = 'synthetic-runtime-hmac-key-at-least-32';
 const admin = 'synthetic-runtime-admin-token-at-least-32';
 const phones = Array.from({ length: 10 }, (_, i) => `1380000000${i}`);
-const bindings = { PHONE_SMS_ENABLED: 'true', PHONE_IDENTITY_ENABLED: 'false', PHONE_NEW_REGISTRATION_ENABLED: 'false',
+const now = Date.now();
+const bindings = { PHONE_SMS_ENABLED: 'false', PHONE_IDENTITY_ENABLED: 'false', PHONE_NEW_REGISTRATION_ENABLED: 'false',
+  PHONE_ACCOUNT_MANAGEMENT_ENABLED:'false',PHONE_EMAIL_REAUTH_ENABLED:'false',PHONE_TURNSTILE_DIAGNOSTICS_ENABLED:'false', PHONE_LOGIN_EXTRA_CANARY_ENABLED:'false',
+  PHONE_TEST_NOW:String(now),
   PHONE_SMS_PROVIDER: 'relay', SMS_RELAY_URL: 'https://relay.invalid/send', SUNLAND_SMS_RELAY_KEY: 'synthetic-runtime-relay-key',
-  PHONE_RELEASE_MODE: 'public', PHONE_AUTH_HMAC_KEY: secret, PHONE_AUTH_HMAC_KEY_ID: 'v1', PHONE_AUTH_ADMIN_TOKEN: admin,
+  PHONE_RELEASE_MODE: 'canary', PHONE_SMS_CANARY_PHONE_HASHES:JSON.stringify(phones.map(p=>createHmac('sha256',secret).update(`phone\0${p}`).digest('hex'))), PHONE_AUTH_HMAC_KEY: secret, PHONE_AUTH_HMAC_KEY_ID: 'v1', PHONE_AUTH_ADMIN_TOKEN: admin,
   TURNSTILE_SECRET: 'synthetic', PHONE_TURNSTILE_HOSTNAME: 'sunland.dev',
   PHONE_ALIYUN_ACCESS_KEY_ID: 'synthetic', PHONE_ALIYUN_ACCESS_KEY_SECRET: 'synthetic', PHONE_SMS_SIGN_NAME: 'synthetic', PHONE_SMS_TEMPLATE_CODE: 'synthetic',
   PHONE_AUTH_POLICY: JSON.stringify({ perPhoneDaily: 10, perIpDaily: 20, dailyLimit: 20,
     unitCostMicros: 7, dailyBudgetMicros: 140, totalBudgetMicros: 140, ipRequestsPerMinute: 100, globalRequestsPerMinute: 200 }) };
+const publicPolicy={...JSON.parse(bindings.PHONE_AUTH_POLICY),dailyLimit:100,ipRequestsPerMinute:500,globalRequestsPerMinute:500};
+bindings.PHONE_AUTH_V2_POLICY=JSON.stringify(publicPolicy);
 let runtime, stub, relayCalls = 0, aliyunCalls = 0, unexpected = 0, failure = false, timeout = false, holdRelay;
 const messages = new Map();
 const options = { name: 'phone-auth', script, modules: true, compatibilityDate: '2026-03-21',
@@ -31,7 +42,7 @@ const options = { name: 'phone-auth', script, modules: true, compatibilityDate: 
     const url = new URL(request.url);
     if (url.hostname === 'challenges.cloudflare.com') {
       const body = await request.json();
-      return Response.json({ success: true, hostname: 'sunland.dev', action: `phone_${body.response.split(':')[0]}`, challenge_ts: new Date().toISOString() });
+      return Response.json({ success: true, hostname: 'sunland.dev', action: `phone_${body.response.split(':')[0]}`, challenge_ts: new Date(Number(bindings.PHONE_TEST_NOW)).toISOString() });
     }
     if (url.hostname === 'relay.invalid') {
       relayCalls++; const body = await request.json();
@@ -65,6 +76,23 @@ try {
   const inits = await Promise.all([post('initialize'), post('initialize')]);
   assert.deepEqual(inits.map(r => r.status).sort(), [200, 200]);
   assert.equal((await (await post('status')).json()).state, 'ready');
+  // An actual SQLite-backed DO exercises transactional full-KV export.
+  bindings.PHONE_LEDGER_EXPORT_ENABLED='true';
+  await restart();
+  const exported = await post('export-ledger');
+  assert.equal(exported.status,200);
+  const exportedData = await exported.json();
+  assert.ok(exportedData.records.some(([key])=>key===LEDGER_KEY));
+  assert.equal(exportedData.alarm,null);
+  const migrations=await Promise.all([post('migrate-v2'),post('migrate-v2')]);
+  assert.deepEqual(migrations.map(r=>r.status).sort(),[200,200]);
+  const migrated=await (await post('status')).json();
+  assert.equal(migrated.schema,2);assert.equal(migrated.day_count,100);assert.equal(migrated.total_micros,0);
+  bindings.PHONE_RELEASE_MODE='public';bindings.PHONE_AUTH_POLICY=JSON.stringify(publicPolicy);bindings.PHONE_SMS_ENABLED='true';
+  await restart();
+  const denied=await send(phones[9]);assert.equal(denied.status,429);assert.equal(relayCalls,0);
+  bindings.PHONE_TEST_NOW=String(Math.floor((now+8*3600000)/86400000)*86400000-8*3600000+86400000);
+  await restart();
   const replayToken = 'login:synthetic-replay';
   const sends = await Promise.all([send(phones[0], 'login', context, undefined, replayToken), send(phones[0])]);
   assert.equal(sends.filter(r => r.status === 200).length, 1);
@@ -73,7 +101,7 @@ try {
   assert.ok(sends.some(r => [429, 503].includes(r.status))); assert.equal(relayCalls, 1);
   const first = await sends.find(r => r.status === 200).json();
   await restart(); const savedBudget = await (await post('status')).json();
-  assert.equal((await post('initialize')).status, 200);
+  assert.equal((await post('initialize')).status, 409);
   assert.deepEqual(await (await post('status')).json(), savedBudget);
   const replay = await send(phones[9], 'login', context, undefined, replayToken);
   assert.equal(replay.status, 403); assert.equal((await replay.json()).code, 'CAPTCHA_FAILED'); assert.equal(relayCalls, 1);
@@ -131,12 +159,53 @@ try {
   const accountSend = await send(phones[8], 'bind', accountContext);
   assert.equal(accountSend.status, 503); assert.equal((await accountSend.json()).code, 'IDENTITY_DISABLED');
   assert.equal(relayCalls, 7);
+  const dayBefore = (await (await post('status')).json()).day_count;
+  const capacity = 100 - dayBefore;
+  const contests = await Promise.all(Array.from({length:capacity+5},(_,i)=>
+    send('139'+String(i).padStart(8,'0'),'login',{ip:`198.51.100.${i+1}`})));
+  assert.equal(contests.filter(r=>r.status===200).length,capacity);
+  assert.equal(contests.filter(r=>r.status===429).length,5);
+  assert.equal((await (await post('status')).json()).day_count,100);
+  await restart();assert.equal((await (await post('status')).json()).day_count,100);
+  bindings.PHONE_TEST_NOW=String(Number(bindings.PHONE_TEST_NOW)+86400000);await restart();
+  assert.equal((await send('13900000999','login',{ip:'198.51.100.250'})).status,200);
+  assert.equal((await (await post('status')).json()).day_count,1);
   bindings.PHONE_SMS_ENABLED = 'false'; await restart();
   assert.equal((await send(phones[9])).status, 503); assert.equal(unexpected, 0);
+  // A second SQLite-backed DO models the one-time migration-day grant.
+  await runtime.dispose(); runtime=undefined;
+  options.resourcePersistencePath=join(root,'temporary-grant');
+  Object.assign(bindings,{PHONE_TEST_NOW:String(Date.parse('2026-11-19T04:00:00Z')),
+    PHONE_RELEASE_MODE:'canary', PHONE_AUTH_POLICY:JSON.stringify({perPhoneDaily:10,perIpDaily:20,dailyLimit:20,
+      unitCostMicros:7,dailyBudgetMicros:140,totalBudgetMicros:140,ipRequestsPerMinute:100,globalRequestsPerMinute:200}),
+    PHONE_IDENTITY_ENABLED:'false',PHONE_SMS_ENABLED:'false',PHONE_NEW_REGISTRATION_ENABLED:'false',
+    PHONE_ACCOUNT_MANAGEMENT_ENABLED:'false',PHONE_EMAIL_REAUTH_ENABLED:'false',PHONE_TURNSTILE_DIAGNOSTICS_ENABLED:'false',
+    PHONE_LOGIN_EXTRA_CANARY_ENABLED:'false',PHONE_LEDGER_EXPORT_ENABLED:'false'});
+  await start(); assert.equal((await post('initialize')).status,200);
+  assert.equal((await post('migrate-v2')).status,200);
+  Object.assign(bindings,{PHONE_RELEASE_MODE:'public',PHONE_AUTH_POLICY:JSON.stringify(publicPolicy),
+    PHONE_SMS_ENABLED:'true',PHONE_IDENTITY_ENABLED:'true',PHONE_TEMPORARY_SMS_20261119_ENABLED:'true'});
+  await restart();
+  const beforeTemporary=relayCalls;
+  const temporaryResults=await Promise.all(Array.from({length:25},(_,i)=>
+    send('137'+String(i).padStart(8,'0'),'login',{ip:`203.0.113.${i+1}`})));
+  assert.equal(temporaryResults.filter(r=>r.status===200).length,20);
+  assert.equal(temporaryResults.filter(r=>r.status===429).length,5);
+  assert.equal(relayCalls-beforeTemporary,20);
+  let temporaryStatus=await (await post('status')).json();
+  assert.equal(temporaryStatus.day_count,100); assert.equal(temporaryStatus.temporary_used,20);
+  await restart();
+  assert.equal((await send('13700000999','login',{ip:'203.0.113.200'})).status,429);
+  assert.equal((await (await post('status')).json()).temporary_used,20);
+  bindings.PHONE_TEST_NOW=String(Date.parse('2026-11-19T16:00:00Z')); await restart();
+  assert.equal((await send('13700000998','login',{ip:'203.0.113.201'})).status,200);
+  temporaryStatus=await (await post('status')).json(); assert.equal(temporaryStatus.day_count,1);
+  bindings.PHONE_SMS_ENABLED='false'; await restart();
+  assert.equal((await send('13700000997','login',{ip:'203.0.113.202'})).status,503);
   console.log(JSON.stringify({ passed: true, runtime: 'local workerd + SQLite DO',
-    concurrent_send: true, concurrent_consume: true, five_attempt_limit: true, restart: true,
+    concurrent_send: true, concurrent_consume: true, v2_migration:true, v2_concurrent_daily_limit:true, utc8_midnight:true, five_attempt_limit: true, restart: true,
     provider_switch_and_rollback: true, reauth_isolation: true, retained_budget: true,
-    quarantine: true, missing_config: true, eight_second_body_timeout: true, client_id_recovery: true, turnstile_replay: true, emergency_off: true, real_network_calls: 0 }));
+    quarantine: true, missing_config: true, eight_second_body_timeout: true, client_id_recovery: true, turnstile_replay: true, emergency_off: true, temporary_grant_concurrency:true, temporary_grant_restart:true, temporary_grant_midnight:true, real_network_calls: 0 }));
 } finally {
   if (runtime) await runtime.dispose();
   await rm(root, { recursive: true, force: true });
