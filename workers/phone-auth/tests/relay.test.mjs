@@ -20,6 +20,8 @@ const env = () => ({ PHONE_SMS_ENABLED: 'true', PHONE_SMS_PROVIDER: 'relay',
 const input = { phone, code: '012345', purpose: 'login' };
 class Storage {
   data = new Map(); tail = Promise.resolve();
+  sql = { exec: () => ({ toArray: () => [{ name:'_cf_KV' }] }) };
+  async getCurrentBookmark() { return 'synthetic-bookmark'; }
   async transaction(fn) {
     const previous = this.tail; let release;
     this.tail = new Promise(r => { release = r; }); await previous;
@@ -27,7 +29,7 @@ class Storage {
       if (this.fail) throw Error('synthetic private storage failure');
       const data = structuredClone(this.data);
       const tx = { get: async k => structuredClone(data.get(k)), put: async (k, v) => data.set(k, structuredClone(v)),
-        delete: async k => data.delete(k), list: async ({ prefix = '', startAfter = '', limit = 32 } = {}) =>
+        delete: async k => data.delete(k), getAlarm: async () => null, list: async ({ prefix = '', startAfter = '', limit = 32 } = {}) =>
           new Map([...data].filter(([k]) => k.startsWith(prefix) && k > startAfter).sort().slice(0, limit)) };
       const result = await fn(tx); this.data = data; return result;
     } finally { release(); }
@@ -82,6 +84,29 @@ async function fixture(overrides = {}) {
   h.row = id => h.storage.data.get('t:challenge:' + id);
   return h;
 }
+
+test('protected export captures all KV records without changing data and fails closed', async () => {
+  const h = await fixture({PHONE_RELEASE_MODE:'canary', PHONE_SMS_CANARY_PHONE_HASHES:JSON.stringify(['a'.repeat(64)])});
+  Object.assign(h.env, {PHONE_LEDGER_EXPORT_ENABLED:'true', PHONE_IDENTITY_ENABLED:'false', PHONE_SMS_ENABLED:'false',
+    PHONE_NEW_REGISTRATION_ENABLED:'false', PHONE_ACCOUNT_MANAGEMENT_ENABLED:'false', PHONE_EMAIL_REAUTH_ENABLED:'false',
+    PHONE_TURNSTILE_DIAGNOSTICS_ENABLED:'false', PHONE_LOGIN_EXTRA_CANARY_ENABLED:'false'});
+  for (let i = 0; i < 300; i++) h.storage.data.set('t:test:' + String(i).padStart(4, '0'), {deleteAfter:i});
+  const before = structuredClone(h.storage.data);
+  const call = token => h.coordinator.fetch(new Request('https://internal/export-ledger', {method:'POST', headers:{Authorization:'Bearer '+token}, body:'{}'}));
+  assert.equal((await call('wrong-token')).status,401);
+  const response = await call(h.env.PHONE_AUTH_ADMIN_TOKEN);
+  assert.equal(response.status,200);
+  const data = await response.json();
+  assert.equal(data.bookmark,'synthetic-bookmark'); assert.equal(data.alarm,null);
+  assert.deepEqual(new Map(data.records), before); assert.deepEqual(h.storage.data,before);
+  h.env.PHONE_SMS_ENABLED='true'; assert.equal((await call(h.env.PHONE_AUTH_ADMIN_TOKEN)).status,503);
+  h.env.PHONE_SMS_ENABLED='false'; h.storage.sql.exec=()=>({toArray:()=>[{name:'unexpected_table'}]});
+  assert.equal((await call(h.env.PHONE_AUTH_ADMIN_TOKEN)).status,503);
+  h.storage.sql.exec=()=>({toArray:()=>[{name:'_cf_KV'},{name:'_cf_unexpected'}]});
+  assert.equal((await call(h.env.PHONE_AUTH_ADMIN_TOKEN)).status,503);
+  h.storage.sql.exec=()=>({toArray:()=>[{name:'_cf_KV'}]}); h.storage.data.set('unsupported',new Uint8Array([1]));
+  assert.equal((await call(h.env.PHONE_AUTH_ADMIN_TOKEN)).status,503);
+});
 
 test('relay blocks unapproved purposes before Turnstile and budget even when management is enabled', async () => {
   const h = await fixture();

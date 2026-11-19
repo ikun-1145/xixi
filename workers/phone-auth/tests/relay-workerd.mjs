@@ -7,7 +7,7 @@ import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 import { createHmac } from 'node:crypto';
 import { buildStandalonePhoneWorker } from '../../../scripts/build-phone-auth-worker.mjs';
-import { SINGLETON_NAME } from '../coordinator.js';
+import { SINGLETON_NAME, LEDGER_KEY } from '../coordinator.js';
 const project = fileURLToPath(new URL('../../../', import.meta.url));
 const require = createRequire(resolve(process.env.SUNLAND_AUTH_WORKER_ROOT || resolve(project, '../../sunland_ai_app/worker'), 'package.json'));
 const { Miniflare, Log, LogLevel, convertV4MiniflareOptions } = require('miniflare');
@@ -76,6 +76,14 @@ try {
   const inits = await Promise.all([post('initialize'), post('initialize')]);
   assert.deepEqual(inits.map(r => r.status).sort(), [200, 200]);
   assert.equal((await (await post('status')).json()).state, 'ready');
+  // An actual SQLite-backed DO exercises transactional full-KV export.
+  bindings.PHONE_LEDGER_EXPORT_ENABLED='true';
+  await restart();
+  const exported = await post('export-ledger');
+  assert.equal(exported.status,200);
+  const exportedData = await exported.json();
+  assert.ok(exportedData.records.some(([key])=>key===LEDGER_KEY));
+  assert.equal(exportedData.alarm,null);
   const migrations=await Promise.all([post('migrate-v2'),post('migrate-v2')]);
   assert.deepEqual(migrations.map(r=>r.status).sort(),[200,200]);
   const migrated=await (await post('status')).json();

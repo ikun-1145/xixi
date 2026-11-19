@@ -17,6 +17,11 @@ const PURPOSES = Object.freeze({ login: 'sl-login-v1', bind: 'sl-bind-v1', chang
 const positive = n => Number.isSafeInteger(n) && n > 0;
 const nonnegative = n => Number.isSafeInteger(n) && n >= 0;
 const fail = (code, status = 400) => { throw new PhoneAuthError(code, status); };
+const jsonValue = value => value === null || typeof value === 'string' || typeof value === 'boolean' ||
+  (typeof value === 'number' && Number.isFinite(value)) ||
+  (Array.isArray(value) && value.every(jsonValue)) ||
+  (typeof value === 'object' && value !== null && Object.getPrototypeOf(value) === Object.prototype &&
+    Object.values(value).every(jsonValue));
 const policyFields = ['perPhoneDaily', 'perIpDaily', 'dailyLimit', 'unitCostMicros', 'dailyBudgetMicros',
   'totalBudgetMicros', 'ipRequestsPerMinute', 'globalRequestsPerMinute'];
 
@@ -379,6 +384,52 @@ export class PhoneAuthCoordinator {
   async fetch(request) {
     try {
       const path = new URL(request.url).pathname;
+      if (request.method === 'POST' && path === '/export-ledger') {
+        await requireAdmin(this.env, request);
+        if (this.env.PHONE_LEDGER_EXPORT_ENABLED !== 'true' ||
+            ['PHONE_IDENTITY_ENABLED', 'PHONE_SMS_ENABLED', 'PHONE_NEW_REGISTRATION_ENABLED',
+              'PHONE_ACCOUNT_MANAGEMENT_ENABLED', 'PHONE_EMAIL_REAUTH_ENABLED', 'PHONE_TURNSTILE_DIAGNOSTICS_ENABLED',
+              'PHONE_LOGIN_EXTRA_CANARY_ENABLED'].some(k => this.env[k] !== 'false')) fail('RELEASE_CONFIG', 503);
+        // This exporter understands KV records only. Refuse rather than omit
+        // independently created SQL tables or a non-SQLite storage backend.
+        if (!this.storage.sql || typeof this.storage.getCurrentBookmark !== 'function') fail('SERVICE_UNAVAILABLE', 503);
+        const tables = this.storage.sql.exec("SELECT name FROM sqlite_master WHERE type = 'table'").toArray();
+        if (tables.some(row => row.name !== '_cf_KV'))
+          fail('SERVICE_UNAVAILABLE', 503);
+        const bookmark = await this.storage.getCurrentBookmark();
+        if (typeof bookmark !== 'string' || !bookmark.length) fail('SERVICE_UNAVAILABLE', 503);
+        const release = releasePolicy(this.env);
+        let config;
+        try { config = JSON.parse(this.env.PHONE_AUTH_POLICY); } catch { fail('RELEASE_CONFIG', 503); }
+        if (!config || policyFields.some(k => !positive(config[k]))) fail('RELEASE_CONFIG', 503);
+        const policy = Object.fromEntries(policyFields.map(k => [k, config[k]]));
+        const snapshot = await this.transaction(async tx => {
+          const records = []; let startAfter, bytes = 0;
+          for (;;) {
+            const page = await tx.list({ ...(startAfter === undefined ? {} : { startAfter }), limit: 128 });
+            if (!page.size) break;
+            for (const [key, value] of page) {
+              // All application values must round-trip through JSON. A new
+              // unsupported type must fail closed instead of silently changing.
+              const encoded = JSON.stringify(value);
+              if (typeof key !== 'string' || !jsonValue(value) || typeof encoded !== 'string' ||
+                  JSON.stringify(structuredClone(value)) !== encoded || JSON.stringify(JSON.parse(encoded)) !== encoded)
+                fail('SERVICE_UNAVAILABLE', 503);
+              bytes += new TextEncoder().encode(key).length + new TextEncoder().encode(encoded).length;
+              if (bytes > 2097152 || records.length >= 10000) fail('SERVICE_UNAVAILABLE', 503);
+              records.push([key, value]); startAfter = key;
+            }
+            if (page.size < 128) break;
+          }
+          const alarm = await tx.getAlarm();
+          if (alarm !== null && (!nonnegative(alarm))) fail('SERVICE_UNAVAILABLE', 503);
+          if (!records.some(([key]) => key === LEDGER_KEY)) fail('SERVICE_UNAVAILABLE', 503);
+          return { records, alarm };
+        });
+        return Response.json({format:'sunland-phone-ledger-v1', ...snapshot, bookmark,
+          keyId:this.env.PHONE_AUTH_HMAC_KEY_ID, policy, release},
+          {headers:{'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff'}});
+      }
       if (request.method === 'POST' && path === '/migrate-v2') {
         await requireAdmin(this.env, request);
         if (['PHONE_IDENTITY_ENABLED', 'PHONE_SMS_ENABLED', 'PHONE_NEW_REGISTRATION_ENABLED',
