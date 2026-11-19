@@ -100,7 +100,7 @@ test('phone client uses a recovery-specific cache key and keeps the released pho
  assert.match(html,/<meta name="sunland-phone-ui-enabled" content="true">/);
 });
 
-test('unified authentication remains disabled until its server protocol is released', t=>{
+test('unified authentication switched off falls back to the three-tab entry', t=>{
  const h=harness();t.after(()=>h.dom.window.close());const d=h.w.document;
  assert.equal(d.querySelector('meta[name="sunland-unified-auth-enabled"]').content,'false');
  assert.equal(d.querySelector('#unifiedIdentityField').hidden,true);
