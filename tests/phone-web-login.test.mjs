@@ -307,3 +307,52 @@ test('registration send failure keeps recovery and never sends again automatical
  d.querySelector('#phoneRegisterTab').click();d.querySelector('#phoneInput').value='13800000000';d.querySelector('#phoneRegisterEmail').value='new@example.test';d.querySelector('#sendPhoneCodeBtn').click();await flush();
  assert.equal(calls,1);assert.equal(d.querySelector('#sendPhoneCodeBtn').disabled,true);assert.ok(JSON.parse(h.w.sessionStorage.getItem('sunland.phone.pending.v1')).operationId);assert.match(d.querySelector('#loginMsg').textContent,/未知/);
 });
+
+test('unified phone identity accepts common pasted separators',async t=>{
+ const h=harness({unified:true}),d=h.w.document;t.after(()=>h.dom.window.close());
+ for(const value of [' 138 0000 0000 ','138-0000-0000','+86 138 0000 0000']){
+  d.querySelector('#unifiedIdentity').value=value;d.querySelector('#loginBtn').click();await flush();
+  assert.equal(d.querySelector('#phoneLoginFields').hidden,false,value);
+  assert.equal(d.querySelector('#phoneInput').value,'13800000000');
+  d.querySelector('#unifiedBack').click();
+ }
+ assert.equal(h.calls.length,0);
+});
+
+test('unified return to the same phone recovers the sent SMS challenge instead of locking the step',async t=>{
+ const h=harness({unified:true});
+ h.w.fetch=async(url,init)=>{const body=JSON.parse(init.body);h.calls.push({url,body});
+  if(url.endsWith('/send-code'))return Response.json({success:true,challenge_id:body.challenge_id,expires_in:300,retry_after:60});
+  return Response.json({status:'authenticated',token:'mock-jwt',user:{id:'existing-account'}});
+ };
+ const d=await startUnifiedPhone(h,t);const sent=h.calls[0].body.challenge_id;
+ d.querySelector('#unifiedBack').click();
+ d.querySelector('#unifiedIdentity').value='13800000000';d.querySelector('#loginBtn').click();await flush();
+ assert.equal(d.querySelector('#sendPhoneCodeBtn').disabled,true);
+ d.querySelector('#agreeCheck').checked=true;d.querySelector('#agreeCheck').dispatchEvent(new h.w.Event('change'));
+ d.querySelector('#phoneCodeInput').value='123456';d.querySelector('#loginBtn').click();await flush();await flush();
+ const verify=h.calls.filter(c=>c.url.endsWith('/unified/verify'));
+ assert.equal(verify.length,1);assert.equal(verify[0].body.challenge_id,sent);
+ assert.equal(h.calls.filter(c=>c.url.endsWith('/send-code')).length,1);
+});
+
+test('unified copy follows later site language changes',async t=>{
+ const h=harness({unified:true}),d=h.w.document;t.after(()=>h.dom.window.close());
+ const en={'邮箱或手机号':'Email or phone number','请输入验证码继续':'Enter the code to continue','返回修改':'Back','登录':'Sign in'};
+ d.querySelector('#unifiedIdentity').value='13800000000';d.querySelector('#loginBtn').click();await flush();
+ h.w.SiteI18n={translate:s=>en[s]||s};h.w.dispatchEvent(new h.w.CustomEvent('site-language-change'));
+ assert.equal(d.querySelector('#unifiedIdentityField label').textContent,'Email or phone number');
+ assert.equal(d.querySelector('.subtitle').textContent,'Enter the code to continue');
+ assert.equal(d.querySelector('#unifiedBack').title,'Back');
+ h.w.SiteI18n={translate:s=>s};h.w.dispatchEvent(new h.w.CustomEvent('site-language-change'));
+ assert.equal(d.querySelector('.subtitle').textContent,'请输入验证码继续');
+ assert.equal(d.querySelector('#unifiedBack').textContent,'‹ 13800000000');
+});
+
+test('pasted verification codes keep only six digits',t=>{
+ const h=harness({unified:true}),d=h.w.document;t.after(()=>h.dom.window.close());
+ for(const id of ['#codeInput','#phoneCodeInput','#phoneEmailCode']){
+  const input=d.querySelector(id);input.value='验证码：123 456，5分钟内有效';input.dispatchEvent(new h.w.Event('input'));
+  assert.equal(input.value,'123456',id);
+ }
+});
