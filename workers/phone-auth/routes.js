@@ -55,11 +55,7 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
         // The configured relay template only covers registration and login.
         // Keep account management and reauthentication closed even if a
         // separate feature switch is accidentally enabled.
-        // Separately gated exception: SMS reauthentication solely for account deletion.
-        const relayDeleteReauth = env?.PHONE_SMS_PROVIDER === 'relay' && env?.PHONE_RELAY_DELETE_REAUTH_ENABLED === 'true';
-        if (env?.PHONE_SMS_PROVIDER === 'relay' && ['reauth/email/send', 'reauth/email', 'bind', 'change', 'unbind'].includes(route))
-          throw new PhoneAuthError('IDENTITY_DISABLED', 503);
-        if (env?.PHONE_SMS_PROVIDER === 'relay' && route === 'reauth/phone' && !relayDeleteReauth)
+        if (env?.PHONE_SMS_PROVIDER === 'relay' && ['reauth/email/send', 'reauth/email', 'reauth/phone', 'bind', 'change', 'unbind'].includes(route))
           throw new PhoneAuthError('IDENTITY_DISABLED', 503);
         const managementEnabled = !loginOnly || env?.PHONE_ACCOUNT_MANAGEMENT_ENABLED === 'true';
         if (!managementEnabled && ['reauth/email/send', 'reauth/email', 'bind', 'change', 'unbind'].includes(route)) throw new PhoneAuthError('IDENTITY_DISABLED', 503);
@@ -167,7 +163,7 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
             registrationPhoneHash = await identity.phoneHash(input.phone);
           }
           phone(input.phone);
-          if (env?.PHONE_SMS_PROVIDER === 'relay' && input.purpose !== 'login' && !(relayDeleteReauth && input.purpose === 'reauth')) throw new PhoneAuthError('IDENTITY_DISABLED', 503);
+          if (env?.PHONE_SMS_PROVIDER === 'relay' && input.purpose !== 'login') throw new PhoneAuthError('IDENTITY_DISABLED', 503);
           // Relay sends must remain recoverable even from an old cached login page.
           if (loginOnly && env?.PHONE_SMS_PROVIDER === 'relay' && !Object.hasOwn(input, 'challenge_id')) invalid();
           if (Object.hasOwn(input, 'challenge_id')) operationId(input.challenge_id);
@@ -241,7 +237,6 @@ export function createPhoneAuthWorker(existingWorker, hooks, {
           code(input.code); action(input.action);
           if (!managementEnabled && input.action !== 'delete') throw new PhoneAuthError('IDENTITY_DISABLED', 503);
           if (!email) challenge(input);
-          if (!email && env?.PHONE_SMS_PROVIDER === 'relay' && input.action !== 'delete') throw new PhoneAuthError('IDENTITY_DISABLED', 503);
           const auth = await authenticated(input.action === 'delete' ? 'account_delete' : 'protected');
           let subject;
           if (email) {

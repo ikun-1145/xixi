@@ -63,7 +63,7 @@ async function setup(overrides={}) {
       }
       if(email===undefined){
         if(!accounts.has(local))throw new PhoneAuthError('REGISTRATION_DISABLED',403);
-        return {user_id:accounts.get(local),email:'old@example.test',onboarding:{version:1,step:3},is_new_user:false};
+        return {user_id:accounts.get(local),email:accounts.get(local).startsWith('phone-')?null:'old@example.test',onboarding:{version:1,step:3},is_new_user:false};
       }
       assert.ok(unifiedOtp);
       const cached=operations.get(operationId);
@@ -85,9 +85,9 @@ async function setup(overrides={}) {
       headers:{'Content-Type':'application/json','CF-Connecting-IP':'192.0.2.1'},body:JSON.stringify(body)}),env,{});
     return {status:response.status,data:await response.json()};
   };
-  const sendSms=async phone=>{
+  const sendSms=async (phone,turnstile_token='synthetic')=>{
     const challenge_id=crypto.randomUUID();
-    const r=await call('send-code',{phone,purpose:'login',turnstile_token:'synthetic',challenge_id});
+    const r=await call('send-code',{phone,purpose:'login',turnstile_token,challenge_id});
     assert.equal(r.status,200,JSON.stringify(r.data));return {challenge_id,code:codes.at(-1)};
   };
   return {env,call,sendSms,log,mails,accounts,codes,advance:ms=>{now+=ms;}};
@@ -246,4 +246,16 @@ test('phone-only registration stays closed unless every registration switch is o
   const sms=await off.sendSms(NEW_PHONE);
   const r=await off.call('unified/register-phone',{phone:'+86'+NEW_PHONE,challenge_id:sms.challenge_id,operation_id:crypto.randomUUID(),proof:proof()});
   assert.equal(r.status,403);assert.equal(r.data.code,'REGISTRATION_DISABLED');
+});
+
+test('phone-only accounts keep signing in after every registration switch is turned off',async()=>{
+  const s=await setup({PHONE_ONLY_REGISTRATION_ENABLED:'true'});const first=await s.sendSms(NEW_PHONE);
+  const base={phone:'+86'+NEW_PHONE,challenge_id:first.challenge_id,operation_id:crypto.randomUUID(),proof:proof()};
+  assert.equal((await s.call('unified/verify',{...base,code:first.code})).data.status,'registration_required');
+  const created=await s.call('unified/register-phone',base);assert.equal(created.data.user.email,null);
+  Object.assign(s.env,{PHONE_ONLY_REGISTRATION_ENABLED:'false',PHONE_NEW_REGISTRATION_ENABLED:'false'});
+  s.advance(601000);const again=await s.sendSms(NEW_PHONE,'synthetic-2');
+  const login=await s.call('unified/verify',{phone:'+86'+NEW_PHONE,challenge_id:again.challenge_id,code:again.code,operation_id:crypto.randomUUID(),proof:proof()});
+  assert.equal(login.data.status,'authenticated');assert.equal(login.data.user.id,created.data.user.id);assert.equal(login.data.user.email,null);
+  assert.ok(!JSON.stringify(login.data).includes(NEW_PHONE));
 });

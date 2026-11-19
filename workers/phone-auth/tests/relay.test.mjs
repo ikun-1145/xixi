@@ -708,23 +708,9 @@ test('relay DO timeout retains budget, closes challenge and never retries after 
   assert.equal(h.messages.length, 1);
 });
 
-test('deletion reauthentication over relay is a separate, principal-bound switch', async () => {
+test('relay template stays login-only: deletion reauthentication SMS is never sent', async () => {
   const h = await fixture({ PHONE_RELAY_DELETE_REAUTH_ENABLED: 'true' });
   const auth = { ...context, userId: 'user', sessionId: 'synthetic-session-1234', identityStatus: 'active', reauthentication: true };
-  h.env.PHONE_ACCOUNT_MANAGEMENT_ENABLED = 'false';
-  for (const purpose of ['bind', 'change', 'unbind']) await assert.rejects(h.send(phone, purpose, auth), { code: 'IDENTITY_DISABLED' });
-  const login = await h.send('13900000000', 'login', context); const loginCode = h.messages.at(-1).code;
-  const sent = await h.send(phone, 'reauth', auth); const code = h.messages.at(-1).code;
-  assert.equal(h.messages.length, 2);
-  // A login code never satisfies deletion reauthentication, and vice versa.
-  await assert.rejects(h.check(login, loginCode, 'reauth', auth, '13900000000'), { code: 'CHALLENGE_INVALID' });
-  await assert.rejects(h.check(sent, code, 'login', context), { code: 'CHALLENGE_INVALID' });
-  await assert.rejects(h.check(sent, code, 'reauth', { ...auth, sessionId: 'another-session-1234' }), { code: 'CHALLENGE_INVALID' });
-  await assert.rejects(h.check(sent, code, 'reauth', { ...auth, userId: 'victim' }), { code: 'CHALLENGE_INVALID' });
-  await h.check(sent, code, 'reauth', auth);
-  await assert.rejects(h.check(sent, code, 'reauth', auth));
-  const client = new SmsRelayClient({ ...env(), PHONE_RELAY_DELETE_REAUTH_ENABLED: 'true' }, { fetchImpl: async (_url, options) => {
-    assert.equal(JSON.parse(options.body).scene, 'login'); return Response.json({ ok: 1 });
-  } });
-  assert.deepEqual(await client.send({ ...input, purpose: 'reauth' }), { accepted: true });
+  for (const purpose of ['reauth', 'bind', 'change', 'unbind']) await assert.rejects(h.send(phone, purpose, auth), { code: 'IDENTITY_DISABLED' });
+  assert.equal(h.messages.length, 0);
 });

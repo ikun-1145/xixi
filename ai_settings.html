@@ -1074,6 +1074,15 @@ body.dark .usage-hint {
     .account-delete-status.success {
       color: #059669;
     }
+    .account-delete-manual {
+      padding: 0 16px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--subtext);
+    }
+    .account-delete-manual p { margin: 0 0 4px; }
+    .account-delete-manual a { color: #ef4444; font-weight: 500; word-break: break-all; }
     body.dark .account-delete-dialog {
       background: #0f172a;
       border-color: var(--border-dark);
@@ -1218,6 +1227,11 @@ body.dark .usage-hint {
           <div class="row-label">删除账号<small>永久删除账号及关联数据，无法恢复</small></div>
         </div>
         <button id="openAccountDeleteBtn" class="data-action-btn" type="button">删除账号</button>
+      </div>
+      <div id="accountDeleteManual" class="account-delete-manual" role="note" hidden>
+        <p data-delete-note="phone" hidden>当前账号未绑定邮箱，暂不支持自助删除。人工核验身份后可申请注销，请发送邮件至：</p>
+        <p data-delete-note="unknown" hidden>暂时无法确认账号验证方式，请刷新后重试。未绑定邮箱的账号可在人工核验身份后申请注销，请发送邮件至：</p>
+        <a href="mailto:support@sunland.dev">support@sunland.dev</a>
       </div>
     </div>
 
