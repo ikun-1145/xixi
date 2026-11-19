@@ -413,7 +413,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
 
       <div id="unifiedIdentityField" class="field" hidden data-site-i18n-ignore>
         <label for="unifiedIdentity">邮箱或手机号</label>
-        <input id="unifiedIdentity" type="text" autocomplete="username" placeholder="输入邮箱或中国大陆手机号">
+        <input id="unifiedIdentity" type="text" autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false" placeholder="输入邮箱或中国大陆手机号">
       </div>
       <button id="unifiedBack" type="button" hidden>返回修改</button>
 
@@ -432,10 +432,10 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
         </div>
         <div class="field">
           <label for="phoneCodeInput" data-phone-copy="短信验证码"></label>
-          <div class="code-row"><input id="phoneCodeInput" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6" aria-label="短信验证码"><button id="sendPhoneCodeBtn" type="button"></button></div>
+          <div class="code-row"><input id="phoneCodeInput" type="text" inputmode="numeric" autocomplete="one-time-code" aria-label="短信验证码"><button id="sendPhoneCodeBtn" type="button"></button></div>
         </div>
         <div id="phoneRegisterFields" hidden>
-          <div class="field"><label for="phoneEmailCode" data-phone-copy="邮箱验证码"></label><div class="code-row"><input id="phoneEmailCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6"><button id="unifiedEmailSendBtn" type="button" hidden>发送邮箱验证码</button></div></div>
+          <div class="field"><label for="phoneEmailCode" data-phone-copy="邮箱验证码"></label><div class="code-row"><input id="phoneEmailCode" type="text" inputmode="numeric" autocomplete="one-time-code"><button id="unifiedEmailSendBtn" type="button" hidden>发送邮箱验证码</button></div></div>
         </div>
         <button id="reviewPhoneSendBtn" type="button" hidden data-phone-copy="检查后继续"></button>
       </div>
@@ -447,7 +447,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       <div class="field" id="emailCodeField">
         <label for="codeInput">验证码</label>
         <div class="code-row">
-          <input id="codeInput" type="text" inputmode="numeric" placeholder="输入验证码">
+          <input id="codeInput" type="text" inputmode="numeric" autocomplete="one-time-code" placeholder="输入验证码">
           <button id="sendCodeBtn" type="button">发送验证码</button>
         </div>
       </div>
@@ -650,7 +650,11 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
         phoneNotice = null; msg.textContent = ''; renderPhone();
       } catch (error) { phoneMessage('', error); renderPhone(); }
     };
-    phoneCodeInput.addEventListener('keydown', event => { if (event.key === 'Enter') loginBtn.click(); });
+    // Pasted codes often carry spaces or surrounding text; keep only the 6 digits.
+    [codeInput, phoneCodeInput, registerEmailCode].forEach(input => {
+      input.addEventListener('input', () => { const digits = input.value.replace(/\D/g, '').slice(0, 6); if (digits !== input.value) input.value = digits; });
+      input.addEventListener('keydown', event => { if (event.key === 'Enter') loginBtn.click(); });
+    });
     phoneSend.onclick = async () => {
       if (!phoneUiEnabled || phonePending || loginMode === 'email') return;
       const attempt = captureLogin(); phonePending = true; msg.classList.remove('ok'); renderPhone();
@@ -759,8 +763,6 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
 
         const data = await res.json().catch(() => ({}));
         if (!currentLogin(attempt)) return;
-
-        console.log("send-code 返回状态:", res.status);
 
         if (!res.ok) {
           let errMsg = "服务器异常";
@@ -996,13 +998,23 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       const originalLogin = loginBtn.onclick;
       let step = 'identity', proof = null, operationId = null, verified = null, emailSent = false;
 
-      let proofChallenge = null, emailTimer = null;
-      modal.querySelector('.title').textContent = tr('欢迎使用 Sunland AI');
-      identityField.querySelector('label').textContent = tr('邮箱或手机号');
-      identity.placeholder = tr('输入邮箱或中国大陆手机号');
-      back.textContent = tr('返回修改');
+      let proofChallenge = null, emailTimer = null, emailSeconds = 0;
+      // The modal is excluded from automatic page translation, so copy is
+      // rendered here and again whenever the site language changes.
+      function renderCopy() {
+        modal.querySelector('.title').textContent = tr('欢迎使用 Sunland AI');
+        identityField.querySelector('label').textContent = tr('邮箱或手机号');
+        identity.placeholder = tr('输入邮箱或中国大陆手机号');
+        back.title = tr('返回修改');
+        back.setAttribute('aria-label', back.title + ' ' + identity.value.trim());
+        loginBtn.textContent = tr(step === 'identity' ? '下一步' : step === 'registration' ? '完成注册' : '登录');
+        modal.querySelector('.subtitle').textContent = tr(step === 'identity' ? '使用邮箱或手机号继续' : step === 'registration' ? '请验证邮箱以完成注册，已有邮箱账号不会自动合并' : '请输入验证码继续');
+        if (step === 'registration') renderEmailSend(emailSeconds);
+        if (phoneNotice) msg.textContent = phoneNotice.code ? phoneAuth.errorText({code: phoneNotice.code}) : tr(phoneNotice.source);
+      }
+      window.addEventListener('site-language-change', () => renderCopy());
       function renderEmailSend(seconds = 0) {
-        emailSend.disabled = phonePending || seconds > 0;
+        emailSeconds = seconds; emailSend.disabled = phonePending || seconds > 0;
         emailSend.textContent = seconds > 0 ? `${seconds}${tr('秒后重新发送')}` : tr('发送邮箱验证码');
       }
       function startEmailCooldown() {
@@ -1013,7 +1025,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
         step = next; tabs.hidden = true;
         identityField.hidden = next !== 'identity'; back.hidden = next === 'identity';
         // Shows which identity the code goes to; clicking it returns to edit.
-        if (next !== 'identity') { back.textContent = '‹ ' + identity.value.trim(); back.title = tr('返回修改'); back.setAttribute('aria-label', back.title + ' ' + identity.value.trim()); }
+        if (next !== 'identity') back.textContent = '‹ ' + identity.value.trim();
         emailField.hidden = true;
         emailCodeField.hidden = next !== 'email';
         modal.querySelector('#phoneLoginFields').hidden = !['phone', 'registration'].includes(next);
@@ -1025,9 +1037,8 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
         agree.hidden = next === 'identity';
         loginBtn.disabled = next !== 'identity' && !agreeCheck.checked;
         loginBtn.style.opacity = loginBtn.disabled ? '0.6' : '1';
-        loginBtn.textContent = tr(next === 'identity' ? '下一步' : next === 'registration' ? '完成注册' : '登录');
-        modal.querySelector('.subtitle').textContent = tr(next === 'identity' ? '使用邮箱或手机号继续' : next === 'registration' ? '请验证邮箱以完成注册，已有邮箱账号不会自动合并' : '请输入验证码继续');
-        if (next === 'registration') renderEmailSend();
+        if (next === 'registration') emailSeconds = 0;
+        renderCopy();
       }
       function randomProof() {
         const bytes = new Uint8Array(32); crypto.getRandomValues(bytes);
@@ -1065,9 +1076,10 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
             setLoginMode('email'); emailInput.value = value; showStep('email'); codeInput.focus(); return;
           }
           try {
-            const number = phoneAuth.normalizePhone(value); setLoginMode('phone'); phoneInput.value = number;
-            showStep('phone'); renderPhone(); phoneSend.focus();
-          } catch { msg.textContent = tr('请输入有效邮箱或中国大陆手机号'); }
+            const number = phoneAuth.normalizePhone(value.replace(/[\s-]/g, '')); setLoginMode('phone'); phoneInput.value = number;
+            // Same recovery as typing the number: restores an already sent SMS challenge.
+            showStep('phone'); phoneInput.dispatchEvent(new Event('input')); (challenge ? phoneCodeInput : phoneSend).focus();
+          } catch { phoneMessage('请输入有效邮箱或中国大陆手机号'); }
           return;
         }
         if (step === 'email') { await originalLogin(); return; }
