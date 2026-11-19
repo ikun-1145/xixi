@@ -14,9 +14,9 @@ P -c "create role anon nologin; create role authenticated nologin; create role s
 P < $D/00_fixture.sql >/dev/null
 P -c "grant select,insert,update,delete on all tables in schema public to service_role;" >/dev/null
 P < $M/20261115003339_phone_registration_verified_email.sql >/dev/null
-P < $M/20261119010000_phone_unified_verified_registration.sql >/dev/null
+P < $M/20261119125119_phone_unified_verified_registration.sql >/dev/null
 # Migration must be re-runnable.
-P < $M/20261119010000_phone_unified_verified_registration.sql >/dev/null
+P < $M/20261119125119_phone_unified_verified_registration.sql >/dev/null
 P < $D/10_cases.sql 2>&1 | grep -E "PASS|FAIL|ERROR"
 # Concurrency: hold the phone lock so three calls queue, then release together.
 P -c "set role service_role; select public.sunland_otp('reserve',encode(sha256('sc'::bytea),'hex'),encode(sha256('ip'::bytea),'hex'),'cccccccc-cccc-4ccc-8ccc-cccccccccccc',encode(sha256('123456'::bytea),'hex'))" >/dev/null

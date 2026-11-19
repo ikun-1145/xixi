@@ -1,4 +1,4 @@
--- Apply only after isolated verification and separate production authorization.
+-- Applied to production 2026-11-19 as migration version 20261119125119.
 begin;
 create or replace function public.sunland_phone_register_unified(
   p_data jsonb, p_subject text, p_ip text, p_request_id uuid, p_code_hash text
