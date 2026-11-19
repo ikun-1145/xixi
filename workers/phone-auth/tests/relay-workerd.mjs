@@ -172,10 +172,40 @@ try {
   assert.equal((await (await post('status')).json()).day_count,1);
   bindings.PHONE_SMS_ENABLED = 'false'; await restart();
   assert.equal((await send(phones[9])).status, 503); assert.equal(unexpected, 0);
+  // A second SQLite-backed DO models the one-time migration-day grant.
+  await runtime.dispose(); runtime=undefined;
+  options.resourcePersistencePath=join(root,'temporary-grant');
+  Object.assign(bindings,{PHONE_TEST_NOW:String(Date.parse('2026-11-19T04:00:00Z')),
+    PHONE_RELEASE_MODE:'canary', PHONE_AUTH_POLICY:JSON.stringify({perPhoneDaily:10,perIpDaily:20,dailyLimit:20,
+      unitCostMicros:7,dailyBudgetMicros:140,totalBudgetMicros:140,ipRequestsPerMinute:100,globalRequestsPerMinute:200}),
+    PHONE_IDENTITY_ENABLED:'false',PHONE_SMS_ENABLED:'false',PHONE_NEW_REGISTRATION_ENABLED:'false',
+    PHONE_ACCOUNT_MANAGEMENT_ENABLED:'false',PHONE_EMAIL_REAUTH_ENABLED:'false',PHONE_TURNSTILE_DIAGNOSTICS_ENABLED:'false',
+    PHONE_LOGIN_EXTRA_CANARY_ENABLED:'false',PHONE_LEDGER_EXPORT_ENABLED:'false'});
+  await start(); assert.equal((await post('initialize')).status,200);
+  assert.equal((await post('migrate-v2')).status,200);
+  Object.assign(bindings,{PHONE_RELEASE_MODE:'public',PHONE_AUTH_POLICY:JSON.stringify(publicPolicy),
+    PHONE_SMS_ENABLED:'true',PHONE_IDENTITY_ENABLED:'true',PHONE_TEMPORARY_SMS_20261119_ENABLED:'true'});
+  await restart();
+  const beforeTemporary=relayCalls;
+  const temporaryResults=await Promise.all(Array.from({length:25},(_,i)=>
+    send('137'+String(i).padStart(8,'0'),'login',{ip:`203.0.113.${i+1}`})));
+  assert.equal(temporaryResults.filter(r=>r.status===200).length,20);
+  assert.equal(temporaryResults.filter(r=>r.status===429).length,5);
+  assert.equal(relayCalls-beforeTemporary,20);
+  let temporaryStatus=await (await post('status')).json();
+  assert.equal(temporaryStatus.day_count,100); assert.equal(temporaryStatus.temporary_used,20);
+  await restart();
+  assert.equal((await send('13700000999','login',{ip:'203.0.113.200'})).status,429);
+  assert.equal((await (await post('status')).json()).temporary_used,20);
+  bindings.PHONE_TEST_NOW=String(Date.parse('2026-11-19T16:00:00Z')); await restart();
+  assert.equal((await send('13700000998','login',{ip:'203.0.113.201'})).status,200);
+  temporaryStatus=await (await post('status')).json(); assert.equal(temporaryStatus.day_count,1);
+  bindings.PHONE_SMS_ENABLED='false'; await restart();
+  assert.equal((await send('13700000997','login',{ip:'203.0.113.202'})).status,503);
   console.log(JSON.stringify({ passed: true, runtime: 'local workerd + SQLite DO',
     concurrent_send: true, concurrent_consume: true, v2_migration:true, v2_concurrent_daily_limit:true, utc8_midnight:true, five_attempt_limit: true, restart: true,
     provider_switch_and_rollback: true, reauth_isolation: true, retained_budget: true,
-    quarantine: true, missing_config: true, eight_second_body_timeout: true, client_id_recovery: true, turnstile_replay: true, emergency_off: true, real_network_calls: 0 }));
+    quarantine: true, missing_config: true, eight_second_body_timeout: true, client_id_recovery: true, turnstile_replay: true, emergency_off: true, temporary_grant_concurrency:true, temporary_grant_restart:true, temporary_grant_midnight:true, real_network_calls: 0 }));
 } finally {
   if (runtime) await runtime.dispose();
   await rm(root, { recursive: true, force: true });

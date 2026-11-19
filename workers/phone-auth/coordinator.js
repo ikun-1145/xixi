@@ -8,6 +8,10 @@ export const SINGLETON_NAME = 'sunland-phone-auth-v1';
 export const LEDGER_KEY = 'account';
 const EXTRA_LOGIN_KEY = 'canary:login-extra:v1';
 const V1_BACKUP_KEY = 'account:v1:backup';
+const TEMPORARY_KEY = 'quota:temporary:2026-11-19';
+const TEMPORARY_START = Date.UTC(2026, 10, 18, 16);
+const TEMPORARY_END = Date.UTC(2026, 10, 19, 16);
+const TEMPORARY_LIMIT = 20;
 const DAY = 86400000;
 const dayNumber = (now, schema) => Math.floor((now + (schema === 2 ? 8 * 3600000 : 0)) / DAY);
 const TTL = 300000;
@@ -161,6 +165,25 @@ export class PhoneAuthCoordinator {
     await tx.put('cleanup-cursor', records.size === 32 ? [...records.keys()].at(-1) : '');
   }
 
+  async temporaryQuota(tx, account, policy, now) {
+    if (this.env.PHONE_TEMPORARY_SMS_20261119_ENABLED !== 'true' || account.schema !== 2 ||
+        now < TEMPORARY_START || now >= TEMPORARY_END || account.day !== dayNumber(TEMPORARY_START, 2) ||
+        account.dayCount !== 100 || policy.dailyLimit !== 100) fail('BUDGET_EXCEEDED', 429);
+    const backup = await tx.get(V1_BACKUP_KEY);
+    if (!backup || backup.schema !== 1 || backup.initConfig !== account.initConfig ||
+        backup.keyId !== account.keyId) fail('SERVICE_UNAVAILABLE', 503);
+    const marker = await tx.get(TEMPORARY_KEY);
+    if (marker === undefined) {
+      if (account.dayMicros !== 0) fail('SERVICE_UNAVAILABLE', 503);
+      return {schema:1, day:account.day, used:0, structureConfig:account.structureConfig};
+    }
+    if (!marker || marker.schema !== 1 || marker.day !== account.day ||
+        marker.structureConfig !== account.structureConfig || !nonnegative(marker.used) ||
+        marker.used > TEMPORARY_LIMIT || account.dayMicros !== marker.used * policy.unitCostMicros ||
+        Object.keys(marker).length !== 4) fail('SERVICE_UNAVAILABLE', 503);
+    return marker;
+  }
+
   async prepare(input, context, operation, extraFingerprint) {
     const policy = settings(this.env);
     const now = this.now();
@@ -270,11 +293,21 @@ export class PhoneAuthCoordinator {
       const phoneCount = p?.day === account.day ? p.count : 0;
       const ipCount = i?.day === account.day ? i.count : 0;
       if (phoneCount >= policy.perPhoneDaily + Number(extra) || ipCount >= policy.perIpDaily + Number(extra)) fail('RATE_LIMITED', 429);
-      if (account.dayCount >= policy.dailyLimit + Number(extra) || (account.schema === 1 &&
+      let temporary;
+      if (account.dayCount >= policy.dailyLimit + Number(extra)) {
+        if (account.schema !== 2 || extra) fail('BUDGET_EXCEEDED', 429);
+        temporary = await this.temporaryQuota(tx, account, policy, now);
+        if (temporary.used >= TEMPORARY_LIMIT) fail('BUDGET_EXCEEDED', 429);
+      }
+      if (account.schema === 1 &&
           (account.totalMicros > policy.totalBudgetMicros + Number(extra) * policy.unitCostMicros - policy.unitCostMicros ||
-          account.dayMicros > policy.dailyBudgetMicros + Number(extra) * policy.unitCostMicros - policy.unitCostMicros))) fail('BUDGET_EXCEEDED', 429);
+          account.dayMicros > policy.dailyBudgetMicros + Number(extra) * policy.unitCostMicros - policy.unitCostMicros)) fail('BUDGET_EXCEEDED', 429);
       if (!Number.isSafeInteger(account.totalMicros + policy.unitCostMicros) || !Number.isSafeInteger(account.dayMicros + policy.unitCostMicros)) fail('SERVICE_UNAVAILABLE', 503);
-      account.dayCount++; account.dayMicros += policy.unitCostMicros; account.totalMicros += policy.unitCostMicros;
+      if (temporary) {
+        temporary.used++;
+        await tx.put(TEMPORARY_KEY, temporary);
+      } else account.dayCount++;
+      account.dayMicros += policy.unitCostMicros; account.totalMicros += policy.unitCostMicros;
       if (extra) await tx.put(EXTRA_LOGIN_KEY, {schema:1,used:1});
       else if (release.mode === 'canary') account.testReserved++;
       await tx.put(LEDGER_KEY, account);
@@ -508,9 +541,19 @@ export class PhoneAuthCoordinator {
           } else if (path === '/initialize' && (state !== 'ready' || stored.schema !== 1 || stored.initConfig !== fingerprint)) {
             fail('OPERATION_CONFLICT', 409);
           }
+          let temporaryUsed = 0, temporaryLimit = 0;
+          if (account.schema === 2 && this.env.PHONE_TEMPORARY_SMS_20261119_ENABLED === 'true' &&
+              now >= TEMPORARY_START && now < TEMPORARY_END && account.dayCount === 100) {
+            let target;
+            try { target = policy.mode === 'public' ? v2Policy(this.env, 'PHONE_AUTH_POLICY') : v2Policy(this.env, 'PHONE_AUTH_V2_POLICY'); }
+            catch { fail('RELEASE_CONFIG', 503); }
+            const marker = await this.temporaryQuota(tx, account, target, now);
+            temporaryUsed = marker.used; temporaryLimit = TEMPORARY_LIMIT;
+          }
           return { success: true, state: 'ready', schema: account.schema, enabled: account.enabled, mode: policy.mode,
             test_reserved: account.testReserved, total_micros: account.totalMicros,
-            day_count: account.dayCount, day_micros: account.dayMicros };
+            day_count: account.dayCount, day_micros: account.dayMicros,
+            temporary_limit: temporaryLimit, temporary_used: temporaryUsed };
         });
         return Response.json(output, { headers: { 'Cache-Control': 'no-store' } });
       }

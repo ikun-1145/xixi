@@ -532,6 +532,83 @@ test('v2 unknown provider result consumes quota; configuration drift and emergen
   assert.equal(h.messages.length,1);
 });
 
+async function temporaryQuotaFixture() {
+  const h = await migratedPublicFixture();
+  h.now = Date.parse('2026-11-19T04:00:00Z');
+  assert.equal((await h.migrate()).status, 200);
+  h.activate(); h.env.PHONE_TEMPORARY_SMS_20261119_ENABLED = 'true'; h.rebuild();
+  return h;
+}
+
+test('temporary migration-day allowance is global and atomically caps concurrent sends at 20', async () => {
+  const h = await temporaryQuotaFixture();
+  const before = structuredClone(h.storage.data.get('account:v1:backup'));
+  const sends = await Promise.allSettled(Array.from({length:25}, (_,i) =>
+    h.send('139'+String(i).padStart(8,'0'),'login',{ip:`198.51.100.${i+1}`})));
+  assert.equal(sends.filter(x=>x.status==='fulfilled').length,20);
+  assert.equal(sends.filter(x=>x.status==='rejected' && x.reason.code==='BUDGET_EXCEEDED').length,5);
+  assert.equal(h.messages.length,20);
+  assert.equal(h.storage.data.get(LEDGER_KEY).dayCount,100);
+  assert.equal(h.storage.data.get('quota:temporary:2026-11-19').used,20);
+  assert.deepEqual(h.storage.data.get('account:v1:backup'),before);
+  h.rebuild();
+  await assert.rejects(h.send('13900000301','login',{ip:'198.51.100.201'}),{code:'BUDGET_EXCEEDED'});
+  assert.equal(h.messages.length,20);
+});
+
+test('temporary quota survives restarts and cannot be duplicated by changing switch', async () => {
+  const h = await temporaryQuotaFixture();
+  await h.send('13900000302','login',{ip:'198.51.100.202'});
+  assert.equal(h.storage.data.get('quota:temporary:2026-11-19').used,1);
+  h.env.PHONE_TEMPORARY_SMS_20261119_ENABLED='false'; h.rebuild();
+  await assert.rejects(h.send('13900000303','login',{ip:'198.51.100.203'}),{code:'BUDGET_EXCEEDED'});
+  h.env.PHONE_TEMPORARY_SMS_20261119_ENABLED='true'; h.rebuild();
+  await h.send('13900000304','login',{ip:'198.51.100.204'});
+  assert.equal(h.storage.data.get('quota:temporary:2026-11-19').used,2);
+  assert.equal(h.storage.data.get(LEDGER_KEY).dayCount,100);
+});
+
+test('temporary quota expires at UTC+8 midnight; next day uses only normal quota', async () => {
+  const h = await temporaryQuotaFixture();
+  h.now=Date.parse('2026-11-19T15:59:59.999Z');
+  await h.send('13900000305','login',{ip:'198.51.100.205'});
+  assert.equal(h.storage.data.get('quota:temporary:2026-11-19').used,1);
+  h.now=Date.parse('2026-11-19T16:00:00.000Z'); h.rebuild();
+  await h.send('13900000306','login',{ip:'198.51.100.206'});
+  assert.equal(h.storage.data.get(LEDGER_KEY).dayCount,1);
+  assert.equal(h.storage.data.get('quota:temporary:2026-11-19').used,1);
+  h.storage.data.get(LEDGER_KEY).dayCount=100;
+  await assert.rejects(h.send('13900000307','login',{ip:'198.51.100.207'}),{code:'BUDGET_EXCEEDED'});
+});
+
+test('temporary quota counts unknown sends and obeys emergency closure', async () => {
+  const h = await temporaryQuotaFixture();
+  h.reply=()=>{throw Error('synthetic unknown delivery')};
+  await assert.rejects(h.send('13900000308','login',{ip:'198.51.100.208'}));
+  assert.equal(h.messages.length,1);
+  assert.equal(h.storage.data.get('quota:temporary:2026-11-19').used,1);
+  h.now+=600000; h.rebuild();
+  await assert.rejects(h.send('13900000308','login',{ip:'198.51.100.208'}));
+  assert.equal(h.messages.length,1);
+  h.env.PHONE_SMS_ENABLED='false'; h.rebuild();
+  await assert.rejects(h.send('13900000309','login',{ip:'198.51.100.209'}));
+  assert.equal(h.storage.data.get('quota:temporary:2026-11-19').used,1);
+});
+
+test('temporary quota status is read-only and corrupted counters fail closed', async () => {
+  const h=await temporaryQuotaFixture();
+  const status=()=>h.coordinator.fetch(new Request('https://internal/status',{method:'POST',
+    headers:{Authorization:'Bearer '+h.env.PHONE_AUTH_ADMIN_TOKEN},body:'{}'}));
+  const first=await (await status()).json();
+  assert.equal(first.temporary_limit,20); assert.equal(first.temporary_used,0);
+  assert.equal(h.storage.data.has('quota:temporary:2026-11-19'),false);
+  await h.send('13900000310','login',{ip:'198.51.100.210'});
+  assert.equal((await (await status()).json()).temporary_used,1);
+  h.storage.data.get('quota:temporary:2026-11-19').used=0;
+  await assert.rejects(h.send('13900000311','login',{ip:'198.51.100.211'}),{code:'SERVICE_UNAVAILABLE'});
+  assert.equal(h.messages.length,1);
+});
+
 test('relay DO persists only bound MAC, survives restart, consumes once under concurrency', async () => {
   const h = await fixture(); const sent = await h.send(); const code = h.messages[0].code;
   assert.match(code, /^\d{6}$/); assert.equal(h.row(sent.challenge_id).provider, 'relay');
