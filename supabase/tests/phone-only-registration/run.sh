@@ -24,9 +24,9 @@ P -At -c "select string_agg(proname||'='||md5(prosrc),' ' order by proname) from
 echo 'PASS: fixture matches production function bodies'
 P -c "grant select,insert,update,delete on all tables in schema public to service_role;
   update public.sunland_phone_auth_config set lookup_key_id='v1', lookup_check=repeat('c',64);" >/dev/null
-P < $M/20261119200000_phone_only_registration.sql >/dev/null
+P < $M/20261119140108_phone_only_registration.sql >/dev/null
 # Migration must be re-runnable.
-P < $M/20261119200000_phone_only_registration.sql >/dev/null
+P < $M/20261119140108_phone_only_registration.sql >/dev/null
 P < $D/10_cases.sql 2>&1 | grep -E "PASS|FAIL|ERROR"
 # Concurrency: hold the phone lock so calls queue, then release together.
 call() { # op candidate phone
