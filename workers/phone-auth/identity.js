@@ -120,7 +120,7 @@ export function createPhoneIdentity(env, { rpc } = {}) {
       if (!Number.isSafeInteger(r.issued_at) || !Number.isSafeInteger(r.version) || !['email','phone'].includes(r.method)) fail('IDENTITY_UNAVAILABLE',503);
       return {issued_at:r.issued_at,version:r.version,method:r.method};
     },
-    async login({phone,operationId,email}) {
+    async login({phone,operationId,email,unifiedOtp}) {
       const candidate = crypto.randomUUID(); const data = await target(phone,candidate);
       let r;
       if (email !== undefined) {
@@ -128,10 +128,13 @@ export function createPhoneIdentity(env, { rpc } = {}) {
         const args = {...data,candidate_id:candidate,email,lookup_key_id:env.PHONE_IDENTITY_LOOKUP_KEY_ID,lookup_check:await lookupCheck,
           ...await operation('register',operationId,[data.phone_hash,email])};
         try {
-          const response = await rpc('sunland_phone_register',{p_data:args});
+          const response = unifiedOtp ? await rpc('sunland_phone_register_unified',{p_data:args,...unifiedOtp}) :
+            await rpc('sunland_phone_register',{p_data:args});
           if (!response?.ok || !response.payload || typeof response.payload !== 'object' || Array.isArray(response.payload)) fail('IDENTITY_UNAVAILABLE',503);
           r = response.payload;
           if (r.code !== 'OK') {
+            if (r.code === 'INVALID') fail('CODE_INVALID',400);
+            if (r.code === 'THROTTLED') fail('RATE_LIMITED',429);
             if (Object.hasOwn(ERROR_STATUS,r.code)) fail(r.code,ERROR_STATUS[r.code]);
             fail('IDENTITY_UNAVAILABLE',503);
           }

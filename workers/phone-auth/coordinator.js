@@ -362,15 +362,24 @@ export class PhoneAuthCoordinator {
       retry_after: Math.ceil((reservedAt + LOCK - this.now()) / 1000) };
   }
 
-  async check(input, context) {
+  async check(input, context, unified) {
     const { phone, phoneHash, principalHash } = await this.prepare(input, context, 'check');
     const key = `t:challenge:${input.challenge_id}`;
+    if (unified && (this.env.PHONE_UNIFIED_LOGIN_ENABLED !== 'true' || input.purpose !== 'login' ||
+        !/^[0-9a-f]{64}$/.test(unified.proofHash || '') ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(unified.operationId || ''))) fail('INVALID_REQUEST');
+    const proofKey = unified ? `t:unified:${unified.proofHash}` : null;
     const attempt = await this.transaction(async tx => {
       const now = this.now();
       validate(input, context, 'check', now);
       await this.account(tx, now);
       const c = await tx.get(key);
       if (!c || c.schema !== 1 || c.phoneHash !== phoneHash || c.principalHash !== principalHash || c.purpose !== input.purpose) fail('CHALLENGE_INVALID');
+      if (unified && c.status === 'consumed') {
+        const existing = await tx.get(proofKey);
+        if (existing && existing.phoneHash === phoneHash && existing.challengeId === input.challenge_id &&
+            existing.operationId === unified.operationId && existing.expiresAt > now) return { recovered: true };
+      }
       const locked = await tx.get(`t:phone:${phoneHash}`);
       if (!locked || locked.challengeId !== input.challenge_id || !nonnegative(locked.lockUntil)) fail('SERVICE_UNAVAILABLE', 503);
       if (!nonnegative(c.expiresAt) || !nonnegative(c.attempts)) fail('SERVICE_UNAVAILABLE', 503);
@@ -385,6 +394,7 @@ export class PhoneAuthCoordinator {
       await tx.put(key, c);
       return { count: c.attempts, provider, otpMac: c.otpMac };
     });
+    if (attempt.recovered) return { success:true, verified:true };
     let providerError;
     try {
       if (attempt.provider === 'relay') {
@@ -406,12 +416,49 @@ export class PhoneAuthCoordinator {
       const expired = c.expiresAt <= now;
       c.status = expired ? 'failed' : !providerError ? 'consumed' :
         providerError.code === 'CODE_INVALID' && c.attempts < 5 ? 'sent' : 'failed';
+      if (!expired && !providerError && unified) {
+        if (await tx.get(proofKey) !== undefined) fail('OPERATION_CONFLICT', 409);
+        await tx.put(proofKey, {schema:1, phoneHash, challengeId:input.challenge_id,
+          operationId:unified.operationId, expiresAt:now + TTL, deleteAfter:now + TTL + LOCK});
+      }
       await tx.put(key, c);
       return expired;
     });
     if (expired) fail('CHALLENGE_EXPIRED');
     if (providerError) throw providerError;
     return { success: true, verified: true };
+  }
+
+  async unifiedProof(input, context) {
+    if (this.env.PHONE_UNIFIED_LOGIN_ENABLED !== 'true' || !input ||
+        !['mark-registration', 'verify', 'send-email'].includes(input.action) ||
+        !/^[0-9a-f]{64}$/.test(input.proofHash || '') ||
+        !/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(input.operationId || '')) fail('INVALID_REQUEST');
+    const candidate = {phone:input.phone, purpose:'login', challenge_id:input.challengeId, code:'000000'};
+    const now = this.now();
+    const normalized = validate(candidate, context, 'check', now);
+    const phoneHash = await digest(this.env.PHONE_AUTH_HMAC_KEY, 'phone', normalized.phone);
+    return this.transaction(async tx => {
+      const now = this.now();
+      await this.account(tx, now);
+      const key = `t:unified:${input.proofHash}`;
+      const item = await tx.get(key);
+      if (!item || item.schema !== 1 || item.phoneHash !== phoneHash || item.challengeId !== input.challengeId ||
+          item.operationId !== input.operationId || !nonnegative(item.expiresAt) || item.expiresAt <= now)
+        fail('CHALLENGE_INVALID', 403);
+      // Only a proof whose phone was found unregistered may drive email/registration.
+      if (input.action === 'mark-registration') {
+        if (item.registration !== true) { item.registration = true; await tx.put(key, item); }
+      } else if (item.registration !== true) fail('CHALLENGE_INVALID', 403);
+      if (input.action === 'send-email') {
+        const sends = item.emailSends ?? 0, next = item.nextEmailAt ?? 0;
+        if (!nonnegative(sends) || !nonnegative(next)) fail('SERVICE_UNAVAILABLE', 503);
+        if (sends >= 5 || next > now) fail('RATE_LIMITED', 429);
+        item.emailSends = sends + 1; item.nextEmailAt = now + 60000;
+        await tx.put(key, item);
+      }
+      return {success:true, expires_in:Math.floor((item.expiresAt - now) / 1000)};
+    });
   }
 
   async fetch(request) {
@@ -557,7 +604,7 @@ export class PhoneAuthCoordinator {
         });
         return Response.json(output, { headers: { 'Cache-Control': 'no-store' } });
       }
-      if (request.method !== 'POST' || !['/send', '/check', '/claim-turnstile'].includes(path)) fail('INVALID_REQUEST');
+      if (request.method !== 'POST' || !['/send', '/check', '/claim-turnstile', '/unified-check', '/unified-proof'].includes(path)) fail('INVALID_REQUEST');
       if (path === '/claim-turnstile') {
         await requireAdmin(this.env, request);
         if (this.env.PHONE_TURNSTILE_DIAGNOSTICS_ENABLED !== 'true' ||
@@ -594,7 +641,10 @@ export class PhoneAuthCoordinator {
         if (!claimed) fail('CAPTCHA_FAILED', 403);
         return Response.json({ success:true }, { headers:{ 'Cache-Control':'no-store' } });
       }
-      const output = await this[path.slice(1)](body?.input, body?.context);
+      if (path === '/unified-check' && (!body?.unified || typeof body.unified !== 'object')) fail('INVALID_REQUEST');
+      const output = path === '/unified-check' ? await this.check(body?.input, body?.context, body?.unified) :
+        path === '/unified-proof' ? await this.unifiedProof(body?.input, body?.context) :
+        await this[path.slice(1)](body?.input, body?.context);
       return Response.json(output, { headers: { 'Cache-Control': 'no-store' } });
     } catch (error) {
       const safe = error instanceof PhoneAuthError ? error : new PhoneAuthError('SERVICE_UNAVAILABLE', 503);

@@ -195,6 +195,17 @@
           typeof r.deletion_token!=='string'||!/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(r.deletion_token)||r.expires_in!==600)throw failure('SERVICE_UNAVAILABLE');
         return r;},
       async login(phone,challenge_id,code){try{return await request('/v1/phone/verify-code',{phone:normalizePhone(phone),challenge_id,code,operation_id:global.crypto.randomUUID()},{auth:false});}catch(error){if(['NETWORK','TIMEOUT','SERVICE_UNAVAILABLE'].includes(error.code))throw failure('VERIFY_UNCERTAIN');throw error;}},
+      async unifiedVerify(phone,challenge_id,code,operation_id,proof){
+        try{return await request('/v1/phone/unified/verify',{phone:'+86'+normalizePhone(phone),challenge_id,code,operation_id,proof},{auth:false});}
+        catch(error){if(['NETWORK','TIMEOUT','SERVICE_UNAVAILABLE'].includes(error.code))throw failure('VERIFY_UNCERTAIN');throw error;}
+      },
+      async unifiedEmailSend(phone,challenge_id,operation_id,proof,email){
+        return request('/v1/phone/unified/email/send',{phone:'+86'+normalizePhone(phone),challenge_id,operation_id,proof,email},{auth:false});
+      },
+      async unifiedRegister(phone,challenge_id,operation_id,proof,email,email_code){
+        try{return await request('/v1/phone/unified/register',{phone:'+86'+normalizePhone(phone),challenge_id,operation_id,proof,email,email_code},{auth:false});}
+        catch(error){if(['NETWORK','TIMEOUT','SERVICE_UNAVAILABLE'].includes(error.code))throw failure('VERIFY_UNCERTAIN');throw error;}
+      },
       async register(phone,challenge_id,code,email,email_code,operation_id){
         const p=pending();
         if(!p||p.id!==challenge_id||p.operationId!==operation_id||p.verificationStarted)throw failure('VERIFY_UNCERTAIN');

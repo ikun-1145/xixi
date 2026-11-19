@@ -1,17 +1,21 @@
 import { PhoneAuthError, requireSmsEnabled } from './errors.js';
 import { SINGLETON_NAME } from './coordinator.js';
 
-async function call(env, operation, input, context) {
+async function call(env, operation, input, context, unified) {
   requireSmsEnabled(env);
   if (typeof env.PHONE_AUTH_COORDINATOR?.getByName !== 'function') throw new PhoneAuthError('SERVICE_UNAVAILABLE', 503);
   try {
     const response = await env.PHONE_AUTH_COORDINATOR.getByName(SINGLETON_NAME).fetch(new Request(`https://phone-auth.internal/${operation}`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ input, context }),
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ input, context, ...(unified ? {unified} : {}) }),
     }));
     const output = await response.json();
     if (!response.ok) throw new PhoneAuthError(output?.code || 'SERVICE_UNAVAILABLE', response.status);
-    if (output?.success !== true || (operation === 'check' && output.verified !== true)) throw new PhoneAuthError('SERVICE_UNAVAILABLE', 503);
-    if (operation === 'check') return { success: true, verified: true };
+    if (output?.success !== true || (['check','unified-check'].includes(operation) && output.verified !== true)) throw new PhoneAuthError('SERVICE_UNAVAILABLE', 503);
+    if (['check','unified-check'].includes(operation)) return { success: true, verified: true };
+    if (operation === 'unified-proof') {
+      if (!Number.isInteger(output.expires_in) || output.expires_in < 0 || output.expires_in > 300) throw new PhoneAuthError('SERVICE_UNAVAILABLE', 503);
+      return { success:true, expires_in:output.expires_in };
+    }
     if (typeof output.challenge_id !== 'string' || !/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/.test(output.challenge_id) ||
         !Number.isInteger(output.expires_in) || output.expires_in < 0 || output.expires_in > 300 ||
         !Number.isInteger(output.retry_after) || output.retry_after < 0 || output.retry_after > 600) {
@@ -28,3 +32,5 @@ async function call(env, operation, input, context) {
 // JWT/status/reauth middleware, never deserialized from a browser request.
 export const sendPhoneCode = (env, input, context) => call(env, 'send', input, context);
 export const checkPhoneCode = (env, input, context) => call(env, 'check', input, context);
+export const checkUnifiedPhoneCode = (env, input, context, unified) => call(env, 'unified-check', input, context, unified);
+export const requireUnifiedPhoneProof = (env, input, context) => call(env, 'unified-proof', input, context);
