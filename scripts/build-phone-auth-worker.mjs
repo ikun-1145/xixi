@@ -59,17 +59,20 @@ export async function prepareStandalonePhoneWorker(output) {
   for (const [name,text] of Object.entries(files)) await writeFile(resolve(output,name),text,{flag:'wx',mode:0o600});
   return {...result,config};
 }
-export async function buildPhoneAuthWorker({workerRoot=process.env.SUNLAND_AUTH_WORKER_ROOT || resolve(project,'../../sunland_ai_app/worker')}={}) {
+export async function verifyPhoneAuthWorkerSource(workerRoot) {
   const expected = JSON.parse(await readFile(resolve(project,'workers/phone-auth/source-provenance.json'),'utf8'));
   workerRoot = resolve(workerRoot);
-  const files = {};
   for (const [name, hash] of Object.entries(expected.files)) {
     const bytes = await readFile(resolve(workerRoot,name));
     if (sha(bytes) !== hash) throw Error(`Unreviewed original Worker source changed: ${name}`);
-    files[name] = hash;
   }
   const srcFiles=(await readdir(resolve(workerRoot,'src'),{recursive:true})).filter(f=>f.endsWith('.js')).map(f=>'src/'+f).sort();
   if (srcFiles.join('\n') !== Object.keys(expected.files).filter(f=>f.startsWith('src/')).sort().join('\n')) throw Error('Original Worker source file set changed');
+  return expected;
+}
+export async function buildPhoneAuthWorker({workerRoot=process.env.SUNLAND_AUTH_WORKER_ROOT || resolve(project,'../../sunland_ai_app/worker')}={}) {
+  workerRoot = resolve(workerRoot);
+  const expected = await verifyPhoneAuthWorkerSource(workerRoot);
   const require = createRequire(resolve(workerRoot,'package.json'));
   const esbuild = require('esbuild');
   const index = resolve(workerRoot,'src/index.js');
@@ -87,7 +90,7 @@ export async function buildPhoneAuthWorker({workerRoot=process.env.SUNLAND_AUTH_
     }}]});
   // Catch concurrent edits to authoritative source while dependencies compile.
   for (const [name,hash] of Object.entries(expected.files)) if(sha(await readFile(resolve(workerRoot,name)))!==hash) throw Error(`Worker changed during build: ${name}`);
-  return {code:result.outputFiles[0].text,provenance:{...expected,esbuildVersion:esbuild.version,files}};
+  return {code:result.outputFiles[0].text,provenance:{...expected,esbuildVersion:esbuild.version}};
 }
 if (process.argv[1] && import.meta.url === pathToFileURL(resolve(process.argv[1])).href) {
   const output=process.argv[2];

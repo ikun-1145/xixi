@@ -1,10 +1,18 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import {mkdtemp,writeFile,rm} from 'node:fs/promises';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {pathToFileURL} from 'node:url';
 import { buildPhoneAuthWorker } from '../scripts/build-phone-auth-worker.mjs';
-test('actual existing Worker bundles with phone wrapper and public DO export without source edits',async()=>{
+test('actual existing Worker bundles with phone wrapper and public DO export without source edits',async t=>{
  const result=await buildPhoneAuthWorker();
  assert.ok(result.code.includes('PhoneAuthCoordinator'));
- const worker=await import('data:text/javascript;base64,'+Buffer.from(result.code).toString('base64'));
+ const directory=await mkdtemp(join(tmpdir(),'sunland-phone-build-'));
+ t.after(()=>rm(directory,{recursive:true,force:true}));
+ const file=join(directory,'worker.mjs');
+ await writeFile(file,result.code,{mode:0o600});
+ const worker=await import(pathToFileURL(file));
  assert.equal(typeof worker.default.fetch,'function'); assert.equal(typeof worker.PhoneAuthCoordinator,'function');
  const response=await worker.default.fetch(new Request('https://api.sunland.dev/v1/phone/status',{method:'POST',body:'{}',headers:{'Content-Type':'application/json'}}),{},{});
  assert.equal(response.status,503); assert.equal((await response.json()).code,'IDENTITY_DISABLED');

@@ -1,15 +1,22 @@
 // Actual authoritative Worker source + new modules + real PostgreSQL WASM SQL.
 // All HTTP (including provider/captcha/database) is intercepted; no live network.
-import test, {mock} from 'node:test';
+import test, {after,mock} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
+import {mkdtemp,readFile,rm,writeFile} from 'node:fs/promises';
 import {createHmac} from 'node:crypto';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {pathToFileURL} from 'node:url';
 import {PGlite} from '@electric-sql/pglite';
 import {JSDOM} from 'jsdom';
 import {buildPhoneAuthWorker} from '../scripts/build-phone-auth-worker.mjs';
 import {SINGLETON_NAME} from '../workers/phone-auth/coordinator.js';
 const built=await buildPhoneAuthWorker();
-const bundle=await import('data:text/javascript;base64,'+Buffer.from(built.code).toString('base64'));
+const directory=await mkdtemp(join(tmpdir(),'sunland-phone-integration-'));
+after(()=>rm(directory,{recursive:true,force:true}));
+const file=join(directory,'worker.mjs');
+await writeFile(file,built.code,{mode:0o600});
+const bundle=await import(pathToFileURL(file));
 const migration=await readFile(new URL('../supabase/migrations/20261024003756_phone_identity.sql',import.meta.url),'utf8');
 const contract=JSON.parse(await readFile(new URL('../docs/full-stack-development/requirements/mainland-phone-auth/phase-2-openapi.json',import.meta.url),'utf8'));
 function assertSchema(value,schema) {
