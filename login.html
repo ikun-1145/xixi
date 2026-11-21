@@ -139,7 +139,7 @@ function normalizeLoginUser(data, fallbackEmail) {
 <link rel="stylesheet" href="p/css/base.css">
 <link rel="stylesheet" href="p/css/phone-auth.css">
 <meta name="sunland-turnstile-sitekey" content="0x4AAAAAAC_W2Wj2YdkrQiMf">
-<meta name="sunland-phone-ui-enabled" content="true">
+<meta name="sunland-phone-ui-enabled" content="false">
 <meta name="sunland-unified-auth-enabled" content="true">
 <style>
 /* ===== 登录页（依赖 tokens.css / base.css，登录逻辑不变） ===== */
@@ -417,7 +417,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       </div>
       <button id="unifiedBack" type="button" hidden>返回修改</button>
 
-      <div class="phone-auth phone-tabs" role="group" aria-label="登录方式">
+      <div class="phone-auth phone-tabs" role="group" aria-label="登录方式" hidden>
         <button id="emailLoginTab" type="button" aria-pressed="true">邮箱登录</button>
         <button id="phoneLoginTab" type="button" aria-pressed="false">手机号登录</button>
         <button id="phoneRegisterTab" type="button" aria-pressed="false" data-phone-copy="手机号注册"></button>
@@ -573,14 +573,15 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
     const phoneAuth = window.SunlandPhoneAuth;
     let phoneClient = null;
     try {
-      if (typeof phoneAuth?.createClient === 'function' && typeof phoneAuth?.text === 'function' &&
+      if (document.querySelector('meta[name="sunland-phone-ui-enabled"]')?.content === 'true' &&
+          typeof phoneAuth?.createClient === 'function' && typeof phoneAuth?.text === 'function' &&
           typeof phoneAuth?.errorText === 'function' && typeof phoneAuth?.cooldown === 'function') {
         const candidate = phoneAuth.createClient();
         if (candidate && ['cancel', 'recovery', 'send', 'login', 'register', 'acknowledgeLoginSaved', 'acknowledgeReviewed']
           .every(name => typeof candidate[name] === 'function')) phoneClient = candidate;
       }
     } catch {}
-    const phoneUiEnabled = document.querySelector('meta[name="sunland-phone-ui-enabled"]')?.content === 'true' && !!phoneClient;
+    const phoneUiEnabled = !!phoneClient;
     modal.querySelector('#phoneLoginTab').closest('.phone-tabs').hidden = !phoneUiEnabled;
     const phoneInput = modal.querySelector('#phoneInput');
     const phoneCodeInput = modal.querySelector('#phoneCodeInput');
@@ -643,7 +644,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       renderPhone();
     });
     phoneReview.onclick = () => {
-      if (phoneReview.hidden || phonePending) return;
+      if (!phoneUiEnabled || phoneReview.hidden || phonePending) return;
       if (!window.confirm(tr('请先核实上次短信和登录结果。继续后可再次请求验证码，服务端仍会限制重复发送。确定已核实吗？'))) return;
       try {
         phoneClient.acknowledgeReviewed('login', true); challenge = null; phoneCodeInput.value = '';
@@ -681,14 +682,14 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
       }
       finally { if (currentLogin(attempt)) { phonePending = false; renderPhone(); } }
     };
-    let phoneTimer = setInterval(renderPhone, 1000);
-    window.addEventListener('site-language-change', renderPhone);
+    let phoneTimer = phoneUiEnabled ? setInterval(renderPhone, 1000) : null;
+    if (phoneUiEnabled) window.addEventListener('site-language-change', renderPhone);
     function cancelLogin() { loginGeneration++; phoneClient?.cancel(); challenge = null; phoneInput.value = ''; phoneCodeInput.value = ''; codeInput.value = ''; clearInterval(phoneTimer); clearInterval(timer); }
     window.addEventListener('pagehide', cancelLogin);
     window.addEventListener('pageshow', event => {
       if (!event.persisted) return;
       setLoginMode(loginMode);
-      clearInterval(phoneTimer); phoneTimer = setInterval(renderPhone, 1000);
+      if (phoneUiEnabled) { clearInterval(phoneTimer); phoneTimer = setInterval(renderPhone, 1000); }
       if (emailCooldownUntil > Date.now()) timer = setInterval(renderEmailCooldown, 1000);
       renderEmailCooldown();
     });
