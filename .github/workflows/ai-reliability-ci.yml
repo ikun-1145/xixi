@@ -67,19 +67,21 @@ jobs:
           path: .ci-auth-source
           persist-credentials: false
           fetch-depth: 0
-          sparse-checkout: |
-            worker
-            supabase/migrations
 
       - name: Verify Worker sources and install locked dependencies
         env:
           WORKER_REVISION: ${{ steps.auth-source.outputs.revision }}
+          GIT_ALLOW_PROTOCOL: ""
+          GIT_NO_LAZY_FETCH: "1"
         run: |
           source_dir="$(mktemp -d "$RUNNER_TEMP/sunland-auth.XXXXXXXX")"
           mv "$GITHUB_WORKSPACE/.ci-auth-source" "$source_dir/source"
           worker_root="$source_dir/source/worker"
           test "$(git -C "$worker_root" rev-parse HEAD)" = "$WORKER_REVISION"
-          git -C "$worker_root" cat-file -e 'bc5489b6e2962f3e1306aa4de5b4292cecf7ca3d^{commit}'
+          baseline=bc5489b6e2962f3e1306aa4de5b4292cecf7ca3d
+          git -C "$worker_root" rev-list --objects --missing=error "$baseline:worker" -- > /dev/null
+          git -C "$worker_root" show "$baseline:worker/src/index.js" > /dev/null
+          git -C "$worker_root" show "$WORKER_REVISION:worker/src/email-otp.js" > /dev/null
           node --input-type=module -e 'import { verifyPhoneAuthWorkerSource } from "./scripts/build-phone-auth-worker.mjs"; await verifyPhoneAuthWorkerSource(process.argv[1]);' "$worker_root"
           npm ci --prefix "$worker_root" --ignore-scripts --no-audit --no-fund
           echo "SUNLAND_AUTH_WORKER_ROOT=$worker_root" >> "$GITHUB_ENV"
@@ -93,4 +95,7 @@ jobs:
           node --check ai/ai-request-errors.js
 
       - name: Run complete web test suite
+        env:
+          GIT_ALLOW_PROTOCOL: ""
+          GIT_NO_LAZY_FETCH: "1"
         run: npm test
