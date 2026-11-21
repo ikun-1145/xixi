@@ -3440,7 +3440,7 @@ async function generateTitleFromAI(conversationId, userMessage, aiMessage) {
     const res = await authenticatedFetch("https://api.sunland.dev/v1/conversation-title", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ conversationId, userMessage, aiMessage }),
+      body: JSON.stringify({ conversationId: String(conversationId), userMessage, aiMessage }),
     });
     if (!res || !res.ok) return null;
     const data = await res.json();

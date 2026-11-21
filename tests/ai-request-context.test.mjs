@@ -283,11 +283,11 @@ test('AI title generation uses the dedicated endpoint instead of chat quota', as
     localStorage: { getItem: key => key === 'token' ? identityToken : null },
   });
 
-  assert.equal(await generateTitleFromAI('chat-1', '下周去哪里旅行', '可以考虑去海边'), '旅行计划');
+  assert.equal(await generateTitleFromAI(1795258285119, '下周去哪里旅行', '可以考虑去海边'), '旅行计划');
   assert.deepEqual(requests, [{
     url: 'https://api.sunland.dev/v1/conversation-title',
     method: 'POST',
-    body: { conversationId: 'chat-1', userMessage: '下周去哪里旅行', aiMessage: '可以考虑去海边' },
+    body: { conversationId: '1795258285119', userMessage: '下周去哪里旅行', aiMessage: '可以考虑去海边' },
   }]);
 });
 
