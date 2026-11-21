@@ -28,16 +28,14 @@ function extractTitleGenerator(dependencies) {
   const end = aiApp.indexOf('const MODERATION_REFUSAL_TEXT', start);
   const source = aiApp.slice(start, end);
   return new Function(
-    'apiFetch',
+    'authenticatedFetch',
     'session',
     'localStorage',
-    'currentModel',
     `${source}; return generateTitleFromAI;`,
   )(
-    dependencies.apiFetch,
+    dependencies.authenticatedFetch,
     dependencies.session,
     dependencies.localStorage,
-    dependencies.currentModel || 'deepseek-v4-flash',
   );
 }
 
@@ -269,13 +267,13 @@ test('titles apply only to the captured conversation and request token', () => {
   }), false);
 });
 
-test('AI title generation requests a non-streaming JSON response', async () => {
+test('AI title generation uses the dedicated endpoint instead of chat quota', async () => {
   const requests = [];
   const generateTitleFromAI = extractTitleGenerator({
-    apiFetch: async body => {
-      requests.push(body);
+    authenticatedFetch: async (url, { method, body }) => {
+      requests.push({ url, method, body: JSON.parse(body) });
       return new Response(JSON.stringify({
-        choices: [{ message: { content: '旅行计划' } }],
+        title: '旅行计划',
       }), {
         status: 200,
         headers: { 'content-type': 'application/json' },
@@ -285,9 +283,12 @@ test('AI title generation requests a non-streaming JSON response', async () => {
     localStorage: { getItem: key => key === 'token' ? identityToken : null },
   });
 
-  assert.equal(await generateTitleFromAI('下周去哪里旅行', '可以考虑去海边'), '旅行计划');
-  assert.equal(requests.length, 1);
-  assert.equal(requests[0].stream, false);
+  assert.equal(await generateTitleFromAI('chat-1', '下周去哪里旅行', '可以考虑去海边'), '旅行计划');
+  assert.deepEqual(requests, [{
+    url: 'https://api.sunland.dev/v1/conversation-title',
+    method: 'POST',
+    body: { conversationId: 'chat-1', userMessage: '下周去哪里旅行', aiMessage: '可以考虑去海边' },
+  }]);
 });
 
 test('AI title generation runs only after the first user and assistant messages', async () => {

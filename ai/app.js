@@ -3433,23 +3433,18 @@ if (isNearBottom()) {
 }
 
 // AI标题生成助手
-async function generateTitleFromAI(userMsg, aiMsg, { model, signal } = {}) {
+async function generateTitleFromAI(conversationId, userMessage, aiMessage) {
   try {
-    const prompt = `请根据下面的对话生成一个简短标题（不超过12个字，不要标点结尾）：\n用户：${userMsg}\n助手：${aiMsg}`;
-
     if (!session || !localStorage.getItem("token")) return null;
 
-    const res = await apiFetch({
-      model: model || currentModel,
-      stream: false,
-      messages: [
-        { role: "system", content: "你是一个标题生成器，只返回标题本身。" },
-        { role: "user", content: prompt }
-      ]
-    }, false, signal);
+    const res = await authenticatedFetch("https://api.sunland.dev/v1/conversation-title", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ conversationId, userMessage, aiMessage }),
+    });
     if (!res || !res.ok) return null;
     const data = await res.json();
-    let title = data.choices?.[0]?.message?.content?.trim() || "";
+    let title = typeof data?.title === "string" ? data.title.trim() : "";
 
     if (title.length > 12) title = title.slice(0, 12) + "…";
     return title || null;
@@ -3601,7 +3596,7 @@ function scheduleRequestTitle(requestContext, aiText) {
   saveConversations();
   renderChatList();
 
-  generateTitleFromAI(userMsg, firstAssistantMsg, { model: requestContext.model }).then(title => {
+  generateTitleFromAI(conversationId, userMsg, firstAssistantMsg).then(title => {
     if (generation !== sessionGeneration || getCurrentUserId() !== userId) return;
     const fallback = userMsg.slice(0, 12).replace(/\n/g, " ");
     const applied = applyRequestTitle({
