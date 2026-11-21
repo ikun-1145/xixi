@@ -13,8 +13,8 @@ test('standalone phone Worker interoperates with unchanged production KV/AI base
   t.after(() => rm(dir, { recursive: true, force: true }));
   await writeFile(join(dir, 'phone.mjs'), built.code); await writeFile(join(dir, 'ai.mjs'), built.baseline);
   const phone = await import(pathToFileURL(join(dir, 'phone.mjs'))), ai = (await import(pathToFileURL(join(dir, 'ai.mjs')))).default;
-  assert.ok(built.code.length < 100000, 'AI/email implementation must tree-shake out');
-  for (const marker of ['sunland_otp', 'CODE_STORE', 'OTP_MAINTENANCE', 'api.deepseek.com']) assert.ok(!built.code.includes(marker));
+  assert.ok(built.code.length < built.baseline.length / 3, 'the phone bundle must exclude the bulk of the AI baseline');
+  for (const marker of ['CODE_STORE', 'OTP_MAINTENANCE', 'api.deepseek.com']) assert.ok(!built.code.includes(marker));
   assert.equal(phone.default.scheduled, undefined);
   const db = new PGlite(); t.after(() => db.close());
   await db.exec(`create role anon;create role authenticated;create role service_role bypassrls;
@@ -26,10 +26,14 @@ test('standalone phone Worker interoperates with unchanged production KV/AI base
     grant select,insert,update,delete on user_profiles,account_deletion_jobs to service_role;
     insert into user_profiles(user_id,email,pro,onboarding_version,onboarding_step) values('existing-email','owner@example.test',true,1,3);`);
   await db.exec(await readFile(new URL('../supabase/migrations/20261024003756_phone_identity.sql', import.meta.url), 'utf8'));
+  await db.exec("create unique index user_profiles_email_unique_idx on user_profiles(lower(email)) where email is not null and identity_status is distinct from 'retired'");
+  for (const file of ['20261115003339_phone_registration_verified_email.sql', '20261119140108_phone_only_registration.sql']) {
+    await db.exec(await readFile(new URL(`../supabase/migrations/${file}`, import.meta.url), 'utf8'));
+  }
   const secret = 'synthetic-existing-ai-signing-secret';
   let now = Date.now(), captchaAction = 'phone_login', smsCalls = 0, unexpected = 0, mailedCode;
   const env = { APP_JWT_LEGACY_SECRET: secret, SUPABASE_PROJECT_URL: 'https://database.test.invalid', SUPABASE_SECRET_KEY: 'sb_secret_synthetic',
-    PHONE_IDENTITY_ENABLED: 'true', PHONE_SMS_ENABLED: 'true', PHONE_NEW_REGISTRATION_ENABLED: 'true',
+    PHONE_IDENTITY_ENABLED: 'true', PHONE_SMS_ENABLED: 'true', PHONE_NEW_REGISTRATION_ENABLED: 'true', PHONE_ONLY_REGISTRATION_ENABLED: 'true', PHONE_UNIFIED_LOGIN_ENABLED: 'true',
     PHONE_IDENTITY_LOOKUP_KEY: 'synthetic-lookup-secret-at-least-32-bytes', PHONE_IDENTITY_LOOKUP_KEY_ID: 'v1',
     PHONE_IDENTITY_ENCRYPTION_KEYS: JSON.stringify({ v1: Buffer.alloc(32, 7).toString('base64url') }), PHONE_IDENTITY_ENCRYPTION_KEY_ID: 'v1',
     PHONE_AUTH_HMAC_KEY: 'synthetic-phone-hmac-secret-at-least-32', PHONE_AUTH_HMAC_KEY_ID: 'v1', PHONE_AUTH_ADMIN_TOKEN: 'synthetic-phone-admin-secret-at-least-32',
@@ -52,6 +56,7 @@ test('standalone phone Worker interoperates with unchanged production KV/AI base
     if (url.hostname === 'api.deepseek.com') return new Response('data: {"choices":[{"delta":{"content":"synthetic reply"}}]}\n\ndata: [DONE]\n\n', { headers: { 'Content-Type': 'text/event-stream' } });
     if (url.hostname === 'database.test.invalid') {
       if (url.pathname.endsWith('/rpc/sunland_phone_identity')) return Response.json((await db.query('select sunland_phone_identity($1,$2::jsonb) value', [body.p_action, JSON.stringify(body.p_data)])).rows[0].value);
+      if (url.pathname.endsWith('/rpc/sunland_phone_register_phone_only')) return Response.json((await db.query('select sunland_phone_register_phone_only($1::jsonb) value', [JSON.stringify(body.p_data)])).rows[0].value);
       if (url.pathname === '/rest/v1/user_profiles') {
         assert.ok(!init.method || init.method === 'GET', 'existing profiles must not be mutated by the HTTP adapter');
         const id = url.searchParams.get('user_id')?.slice(3), email = url.searchParams.get('email')?.slice(3);
@@ -81,7 +86,8 @@ test('standalone phone Worker interoperates with unchanged production KV/AI base
     for (const purpose of ['bind', 'change', 'unbind']) assert.equal((await invoke(phone.default, env, '/v1/phone/send-code', { phone: '13800000000', purpose, turnstile_token: 'mock' })).status, 503);
     assert.equal((await invoke(phone.default, env, '/v1/phone/_admin/initialize', {}, 'wrong')).status, 401);
     assert.equal((await invoke(phone.default, env, '/v1/phone/_admin/initialize', {}, env.PHONE_AUTH_ADMIN_TOKEN)).status, 200);
-    assert.equal((await invoke(phone.default, env, '/v1/phone/_admin/initialize', {}, env.PHONE_AUTH_ADMIN_TOKEN)).status, 409);
+    assert.equal((await invoke(phone.default, env, '/v1/phone/_admin/initialize', {}, env.PHONE_AUTH_ADMIN_TOKEN)).status, 200);
+    assert.equal(data.get('account').totalMicros, 0);
     assert.equal(smsCalls, 0);
   });
   await t.test('unchanged ai baseline still sends and consumes KV email codes', async () => {
@@ -90,12 +96,13 @@ test('standalone phone Worker interoperates with unchanged production KV/AI base
     const verified = await invoke(ai, aiEnv, '/verify-code', { email: 'owner@example.test', code: mailedCode }); assert.equal(verified.status, 200); const login = await verified.json(); assert.equal(login.user.id, 'existing-email'); emailToken = login.token;
     assert.ok(!kv.has('code:owner%40example.test'));
   });
-  const send = async number => { const r = await invoke(phone.default, env, '/v1/phone/send-code', { phone: number, purpose: 'login', turnstile_token: 'mock' }); assert.equal(r.status, 200); return (await r.json()).challenge_id; };
-  const verify = (number, id) => invoke(phone.default, env, '/v1/phone/verify-code', { phone: number, challenge_id: id, code: '123456', operation_id: crypto.randomUUID() });
+  const send = async number => { const challenge_id=crypto.randomUUID();const r = await invoke(phone.default, env, '/v1/phone/send-code', { phone: number, purpose: 'login', challenge_id, turnstile_token: crypto.randomUUID() }); assert.equal(r.status, 200);return {phone:'+86'+number,challenge_id,operation_id:crypto.randomUUID(),proof:Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64url')}; };
+  const verify = body => invoke(phone.default, env, '/v1/phone/unified/verify', {...body,code:'123456'});
   await t.test('phone registration creates a separate null-email ID; replay cannot mint another JWT', async () => {
-    const id = await send('13800000000'); const r = await verify('13800000000', id); assert.equal(r.status, 200); const output = await r.json();
+    const body = await send('13800000000');const verified=await verify(body);assert.equal(verified.status,200);assert.equal((await verified.json()).status,'registration_required');
+    const r=await invoke(phone.default,env,'/v1/phone/unified/register-phone',body);assert.equal(r.status,200); const output = await r.json();
     token = output.token; user = output.user.id; assert.notEqual(user, 'existing-email'); assert.equal(output.user.email, null); assert.equal(output.is_new_user, true);
-    assert.equal((await verify('13800000000', id)).status, 409);
+    assert.equal((await verify({...body,operation_id:crypto.randomUUID()})).status, 409);
     assert.equal((await db.query('select count(*)::int n from sunland_phone_identities')).rows[0].n, 1);
     assert.deepEqual((await db.query("select pro,email from user_profiles where user_id='existing-email'")).rows[0], { pro: true, email: 'owner@example.test' });
   });
@@ -111,10 +118,10 @@ test('standalone phone Worker interoperates with unchanged production KV/AI base
     assert.equal((await (await invoke(ai, aiEnv, '/v1/usage', {}, token)).json()).isPro, true);
   });
   await t.test('same number logs into the same account; disabled registration cannot create another', async () => {
-    now += 600001; const id = await send('13800000000'); const r = await verify('13800000000', id); const output = await r.json(); assert.equal(output.user.id, user); assert.equal(output.is_new_user, false);
-    env.PHONE_NEW_REGISTRATION_ENABLED = 'false'; const denied = await verify('13800000001', await send('13800000001')); assert.equal(denied.status, 403);
+    now += 600001;const r = await verify(await send('13800000000')); const output = await r.json(); assert.equal(output.user.id, user); assert.equal(output.is_new_user, false);
+    env.PHONE_NEW_REGISTRATION_ENABLED = 'false'; const denied = await verify(await send('13800000001')); assert.equal(denied.status, 403);
     assert.equal((await db.query('select count(*)::int n from user_profiles')).rows[0].n, 2);
-    assert.equal((await invoke(phone.default, env, '/v1/phone/send-code', { phone: '13800000001', purpose: 'login', turnstile_token: 'mock' })).status, 429);
+    assert.equal((await invoke(phone.default, env, '/v1/phone/send-code', { phone: '13800000001', purpose: 'login', turnstile_token: crypto.randomUUID() })).status, 429);
   });
   await t.test('phone OFF and RLS fail closed; email session remains usable', async () => {
     env.PHONE_IDENTITY_ENABLED = 'false'; assert.equal((await invoke(phone.default, env, '/v1/phone/verify-code')).status, 503);

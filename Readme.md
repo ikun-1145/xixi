@@ -81,6 +81,8 @@ npx wrangler pages functions build --outdir /tmp/sunland-verify-build
 npx wrangler pages dev . --port 8788 --compatibility-date=2026-06-24
 ```
 
+全量测试中的 Worker 集成用例需要独立的、已授权访问的认证源码检出。使用 `workers/phone-auth/source-provenance.json` 中的 `sourceCommit`，保留 Git 历史（包含独立 Worker 使用的固定基线）以及同一检出中的 `supabase/migrations/`。在该检出的 `worker/` 目录运行 `npm ci --no-audit --no-fund`，然后将 `SUNLAND_AUTH_WORKER_ROOT` 指向这个 `worker/` 目录再运行 `npm test`。不要用正在开发的认证源码或生产凭据替代测试输入。
+
 当前只预留了视频、反向搜图、C2PA / Content Credentials 和 AI 生成检测接口；这些能力不会输出伪造概率。
 
 示例网站：https://sunland.dev
