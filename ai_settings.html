@@ -12,11 +12,16 @@
       location.replace("login.html?return=ai.html");
     }
   </script>
-  <script defer src="p/js/site-i18n-extra.js?v=20261024-phone-1"></script>
+  <script defer src="p/js/site-i18n-extra.js?v=20261120-phone-only-1"></script>
+
   <script defer src="p/js/site-i18n.js?v=20261001-review-1"></script>
   <title>设置 - Sunland AI · Beta</title>
+  <meta name="sunland-phone-settings-enabled" content="false">
+  <meta name="sunland-turnstile-sitekey" content="0x4AAAAAAC_W2Wj2YdkrQiMf">
+  <link rel="stylesheet" href="p/css/phone-auth.css">
+  <script defer src="p/js/phone-auth.js?v=20261120-phone-only-1"></script>
+  <script defer src="p/js/phone-settings.js?v=20261114-1"></script>
   <link rel="stylesheet" href="p/css/icons.css?v=20260829-1">
-  <link rel="stylesheet" href="p/css/phone-auth.css?v=20261024-1">
   <style>
     :root {
       --accent: #22d3ee;
@@ -1072,6 +1077,15 @@ body.dark .usage-hint {
     .account-delete-status.success {
       color: #059669;
     }
+    .account-delete-manual {
+      padding: 0 16px 14px;
+      border-bottom: 1px solid var(--border);
+      font-size: 12px;
+      line-height: 1.6;
+      color: var(--subtext);
+    }
+    .account-delete-manual p { margin: 0 0 4px; }
+    .account-delete-manual a { color: #ef4444; font-weight: 500; word-break: break-all; }
     body.dark .account-delete-dialog {
       background: #0f172a;
       border-color: var(--border-dark);
@@ -1179,17 +1193,49 @@ body.dark .usage-hint {
       </div>
     </div>
 
-    <section id="phoneSettings" class="card phone-auth phone-settings-card" aria-label="手机号管理"></section>
 
     <!-- 账号与安全 -->
     <div class="section-label" data-site-i18n-ignore>账号与安全</div>
     <div class="card" data-site-i18n-ignore>
+      <div id="phoneSettings" class="phone-auth" hidden>
+        <div class="row">
+          <div class="row-left"><div class="row-label" data-phone-label="phone"></div></div>
+          <span id="phoneSettingsValue" class="row-value"></span>
+        </div>
+        <div class="phone-settings-card">
+          <div class="phone-actions">
+            <button id="phoneSettingsBind" type="button" data-phone-label="bind"></button>
+            <button id="phoneSettingsChange" type="button" data-phone-label="change"></button>
+            <button id="phoneSettingsUnbind" type="button" data-phone-label="unbind"></button>
+          </div>
+          <div id="phoneSettingsReauth" hidden>
+            <p id="phoneSettingsReauthHint" class="phone-note"></p>
+            <label id="phoneSettingsOldPhoneLabel" hidden><span data-phone-label="currentPhone"></span><input id="phoneSettingsOldPhone" type="tel" inputmode="tel" autocomplete="tel-national"></label>
+            <div class="phone-input-row"><label><span data-phone-label="code"></span><input id="phoneSettingsAuthCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></label><button id="phoneSettingsAuthSend" type="button" data-phone-label="send"></button></div>
+            <button id="phoneSettingsAuthNext" type="button" data-phone-label="verify"></button>
+          </div>
+          <div id="phoneSettingsTarget" hidden>
+            <label><span data-phone-label="newPhone"></span><input id="phoneSettingsNewPhone" type="tel" inputmode="tel" autocomplete="tel-national"></label>
+            <div class="phone-input-row"><label><span data-phone-label="code"></span><input id="phoneSettingsNewCode" type="text" inputmode="numeric" autocomplete="one-time-code" maxlength="6"></label><button id="phoneSettingsTargetSend" type="button" data-phone-label="send"></button></div>
+            <button id="phoneSettingsTargetConfirm" type="button" data-phone-label="confirm"></button>
+          </div>
+          <div id="phoneSettingsUnbindConfirm" hidden><p class="phone-note" data-phone-label="unlinkWarning"></p><button id="phoneSettingsUnbindSubmit" type="button" data-phone-label="confirmUnbind"></button></div>
+          <button id="phoneSettingsReview" type="button" hidden data-phone-label="review"></button>
+          <button id="phoneSettingsCancel" type="button" hidden data-phone-label="cancel"></button>
+          <p id="phoneSettingsMessage" class="phone-status" role="status" aria-live="polite"></p>
+        </div>
+      </div>
       <div class="row">
         <div class="row-left">
           <div class="row-icon" style="background:rgba(239,68,68,0.1)"><span class="ui-svg-icon icon-alert" aria-hidden="true"></span></div>
           <div class="row-label">删除账号<small>永久删除账号及关联数据，无法恢复</small></div>
         </div>
         <button id="openAccountDeleteBtn" class="data-action-btn" type="button">删除账号</button>
+      </div>
+      <div id="accountDeleteManual" class="account-delete-manual" role="note" hidden>
+        <p data-delete-note="phone" hidden>当前账号未绑定邮箱，暂不支持自助删除。人工核验身份后可申请注销，请发送邮件至：</p>
+        <p data-delete-note="unknown" hidden>暂时无法确认账号验证方式，请刷新后重试。未绑定邮箱的账号可在人工核验身份后申请注销，请发送邮件至：</p>
+        <a href="mailto:support@sunland.dev">support@sunland.dev</a>
       </div>
     </div>
 
@@ -1488,7 +1534,7 @@ body.dark .usage-hint {
       try { display = JSON.parse(localStorage.getItem("user") || "{}"); } catch { /* Display cache only. */ }
       const claims = decodeJwtPayload(settingsCredential);
       return { ...(display?.id === userId ? display : {}), id: userId,
-        email: claims?.email || (display?.id === userId ? display.email : null) || userId };
+        email: claims?.email || (display?.id === userId ? display.email : null) || "" };
     }
     async function ensureSettingsIdentity() {
       const payment = window.SunlandProPayment;
@@ -1727,7 +1773,7 @@ async function editNickname() {
         ringEl.classList.add("uploading");
 
         const profile = await uploadAvatar(user, file);
-        setAvatarImage(profile.avatar_url, (user.email || "?")[0].toUpperCase());
+        setAvatarImage(profile.avatar_url, (user.email || "U")[0].toUpperCase());
         await saveProfileToCloud(user, profile);
         cacheProfile(user.id, profile);
         syncLocalUserProfile(profile);
@@ -1846,8 +1892,9 @@ async function editNickname() {
       }
 
       // 基础信息
-      const email = user.email || "未知";
-      const letter = (email[0] || "?").toUpperCase();
+      // Phone-only accounts have no email; show the sign-in method instead.
+      const email = user.email || "手机号登录 · 未绑定邮箱";
+      const letter = (user.email?.[0] || "U").toUpperCase();
 
       document.getElementById("userEmail").innerText = email;
       const userIdEl = document.getElementById("userId");
@@ -2019,8 +2066,6 @@ document.querySelectorAll("a").forEach(a => {   a.addEventListener("click", () =
 <script type="module" src="ai/sunland-beta-diagnostics.js"></script>
 <script type="module" src="ai/account-delete.js"></script>
 <script type="module" src="ai/history-controls.js"></script>
-<script src="p/js/phone-auth.js?v=20261024-1"></script>
-<script src="ai/phone-settings.js?v=20261024-1"></script>
 
 <div id="loadingBar" aria-hidden="true"><span class="bar"></span></div>
 <dialog

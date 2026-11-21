@@ -32,7 +32,7 @@ function proofHash(token) {
 }
 const ERROR_STATUS = { INVALID_REQUEST:400, PHONE_KEY_MISMATCH:503, ACCOUNT_NOT_ACTIVE:403, ACCOUNT_BANNED:403,
   PHONE_CONFLICT:409, PHONE_ALREADY_BOUND:409, PHONE_NOT_BOUND:409, REAUTH_INVALID:403,
-  ALTERNATIVE_LOGIN_REQUIRED:409, OPERATION_CONFLICT:409, DELETION_CONFLICT:409, REGISTRATION_DISABLED:403 };
+  ALTERNATIVE_LOGIN_REQUIRED:409, OPERATION_CONFLICT:409, DELETION_CONFLICT:409, EMAIL_CONFLICT:409, REGISTRATION_DISABLED:403 };
 
 // Server only. No database credentials or raw phone numbers cross the public API.
 export function createPhoneIdentity(env, { rpc } = {}) {
@@ -55,8 +55,9 @@ export function createPhoneIdentity(env, { rpc } = {}) {
   const lookupCheck = hmac(env.PHONE_IDENTITY_LOOKUP_KEY, 'sunland-phone-index-canary:v1', '');
   async function call(action, data) {
     try {
-      const r = await rpc('sunland_phone_identity', { p_action:action, p_data:{...data,
-        lookup_key_id:env.PHONE_IDENTITY_LOOKUP_KEY_ID, lookup_check:await lookupCheck} });
+      const p_data = {...data, lookup_key_id:env.PHONE_IDENTITY_LOOKUP_KEY_ID, lookup_check:await lookupCheck};
+      const r = await (action === 'register_phone_only' ? rpc('sunland_phone_register_phone_only', { p_data }) :
+        rpc('sunland_phone_identity', { p_action:action, p_data }));
       if (!r?.ok || !r.payload || typeof r.payload !== 'object' || Array.isArray(r.payload)) fail('IDENTITY_UNAVAILABLE', 503);
       if (r.payload.code !== 'OK') {
         if (Object.hasOwn(ERROR_STATUS,r.payload.code)) fail(r.payload.code,ERROR_STATUS[r.payload.code]);
@@ -120,10 +121,33 @@ export function createPhoneIdentity(env, { rpc } = {}) {
       if (!Number.isSafeInteger(r.issued_at) || !Number.isSafeInteger(r.version) || !['email','phone'].includes(r.method)) fail('IDENTITY_UNAVAILABLE',503);
       return {issued_at:r.issued_at,version:r.version,method:r.method};
     },
-    async login({phone,operationId}) {
+    async login({phone,operationId,email,unifiedOtp,phoneOnly}) {
       const candidate = crypto.randomUUID(); const data = await target(phone,candidate);
-      const r = await call('login',{...data,candidate_id:candidate,allow_create:env.PHONE_NEW_REGISTRATION_ENABLED === 'true',
-        ...await operation('login',operationId,[data.phone_hash])});
+      let r;
+      if (phoneOnly === true) {
+        if (email !== undefined || env.PHONE_NEW_REGISTRATION_ENABLED !== 'true' || env.PHONE_ONLY_REGISTRATION_ENABLED !== 'true') fail('REGISTRATION_DISABLED',403);
+        // Same operation semantics as plain login: a retried call returns the cached account.
+        r = await call('register_phone_only',{...data,candidate_id:candidate,...await operation('login',operationId,[data.phone_hash])});
+      } else if (email !== undefined) {
+        if (env.PHONE_NEW_REGISTRATION_ENABLED !== 'true') fail('REGISTRATION_DISABLED',403);
+        const args = {...data,candidate_id:candidate,email,lookup_key_id:env.PHONE_IDENTITY_LOOKUP_KEY_ID,lookup_check:await lookupCheck,
+          ...await operation('register',operationId,[data.phone_hash,email])};
+        try {
+          const response = unifiedOtp ? await rpc('sunland_phone_register_unified',{p_data:args,...unifiedOtp}) :
+            await rpc('sunland_phone_register',{p_data:args});
+          if (!response?.ok || !response.payload || typeof response.payload !== 'object' || Array.isArray(response.payload)) fail('IDENTITY_UNAVAILABLE',503);
+          r = response.payload;
+          if (r.code !== 'OK') {
+            if (r.code === 'INVALID') fail('CODE_INVALID',400);
+            if (r.code === 'THROTTLED') fail('RATE_LIMITED',429);
+            if (Object.hasOwn(ERROR_STATUS,r.code)) fail(r.code,ERROR_STATUS[r.code]);
+            fail('IDENTITY_UNAVAILABLE',503);
+          }
+        } catch (error) { if (error instanceof PhoneAuthError) throw error; fail('IDENTITY_UNAVAILABLE',503); }
+      } else {
+        r = await call('login',{...data,candidate_id:candidate,allow_create:false,
+          ...await operation('login',operationId,[data.phone_hash])});
+      }
       if (!idPattern.test(r.user_id || '') || !(r.email === null || typeof r.email === 'string') ||
           typeof r.is_new_user !== 'boolean' || ![0,1].includes(r.onboarding?.version) || ![1,2,3].includes(r.onboarding?.step) ||
           (r.onboarding.version === 1 && r.onboarding.step !== 3)) fail('IDENTITY_UNAVAILABLE',503);

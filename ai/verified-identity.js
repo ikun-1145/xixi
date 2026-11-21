@@ -58,7 +58,7 @@ function buildDisplayUser({ userId, serverUser, tokenPayload, cachedUser }) {
       safeCache?.user_email,
       safeCache?.mail,
       userId.includes("@") ? userId : "",
-    ) || "未知用户",
+    ),
     nickname: selectDisplayValue(server.nickname, server.name, safeCache?.nickname, safeCache?.name),
     avatar_url: selectDisplayValue(
       server.avatar_url,

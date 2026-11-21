@@ -271,7 +271,14 @@ test("Tavily classifies upstream failures without returning empty evidence", asy
 
   const timeoutProvider = new TavilySearchProvider("test-only-key", async (_request, init) => (
     new Promise((resolve, reject) => {
-      init.signal.addEventListener("abort", () => reject(init.signal.reason), { once: true });
+      // AbortSignal.timeout uses an unref timer in Node. This referenced
+      // deadline keeps the fake pending request alive until its abort fires,
+      // and fails the test if the abort never arrives.
+      const safeguard = setTimeout(() => reject(new Error("timeout signal did not fire")), 500);
+      init.signal.addEventListener("abort", () => {
+        clearTimeout(safeguard);
+        reject(init.signal.reason);
+      }, { once: true });
     })
   ));
   await assert.rejects(

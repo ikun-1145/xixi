@@ -29,6 +29,7 @@ function fixture(options = {}) {
     readJsonBodyWithLimit: async (request, max) => { const text = await request.text(); if (Buffer.byteLength(text) > max) return { error: 'too_large' }; try { return { value: JSON.parse(text) }; } catch { return { error: 'bad_json' }; } },
     json: (data, status = 200) => Response.json(data, { status, headers: { 'Access-Control-Allow-Origin': 'https://sunland.dev' } }),
     createEmailOtp: input => { calls.push(['otp', input]); return { consume: async code => { calls.push(['consume', code]); if (options.otpThrows) throw new Error('secret failure'); return { code: options.otpCode || 'OK' }; } }; },
+    sendPhoneReauthEmail: async input => { calls.push(['reauth-send', input]); return { success: true, retry_after: 60 }; },
   };
   const sms = {
     sendPhoneCode: async (...args) => { calls.push(['send', ...args]); return { success: true, challenge_id: UUID, expires_in: 300, retry_after: 600 }; },
@@ -36,7 +37,7 @@ function fixture(options = {}) {
   };
   const scheduled = () => 'scheduled';
   const original = { scheduled, fetch: async request => { calls.push(['delegate', request]); return new Response(await request.text()); } };
-  const worker = createPhoneAuthWorker(original, hooks, { identityFactory: () => identity, sms });
+  const worker = createPhoneAuthWorker(original, hooks, { identityFactory: () => identity, sms, loginOnly: options.loginOnly || false });
   const env = { PHONE_IDENTITY_ENABLED: 'true', test: true };
   const invoke = async (path, body = {}, opts = {}) => {
     const response = await worker.fetch(new Request(`https://api.sunland.dev${path}`, { method: opts.method || 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer raw-existing-jwt', 'CF-Connecting-IP': '192.0.2.1', ...opts.headers }, body: JSON.stringify(body) }), env, {});
@@ -66,6 +67,53 @@ test('login send is anonymous and forwards only Phase1 fields with ingress IP', 
   assert.equal(calls.some(x => x[0] === 'session'), false);
 });
 
+test('send accepts and forwards a UUIDv4 recovery challenge without changing the legacy request', async () => {
+  const { invoke, calls } = fixture();
+  const result = await invoke('/v1/phone/send-code', { phone: PHONE, purpose: 'login', turnstile_token: 'captcha', challenge_id: UUID });
+  assert.equal(result.data.success, true);
+  assert.equal(calls.find(x => x[0] === 'send')[2].challenge_id, UUID);
+  const invalid = await invoke('/v1/phone/send-code', { phone: PHONE, purpose: 'login', turnstile_token: 'captcha', challenge_id: '12345678-1234-1234-8234-123456789abc' });
+  assert.equal(invalid.response.status, 400);
+  assert.equal(calls.filter(x => x[0] === 'send').length, 1);
+});
+
+test('standalone relay rejects legacy sends before SMS while preserving new and aliyun clients', async () => {
+  const f = fixture({ loginOnly: true }); f.env.PHONE_SMS_PROVIDER = 'relay';
+  const body = { phone: PHONE, purpose: 'login', turnstile_token: 'captcha' };
+  const old = await f.invoke('/v1/phone/send-code', body);
+  assert.equal(old.response.status, 400); assert.equal(old.data.code, 'INVALID_REQUEST');
+  assert.equal(f.calls.some(x => x[0] === 'send'), false);
+  assert.equal((await f.invoke('/v1/phone/send-code', { ...body, challenge_id: UUID })).data.success, true);
+  f.env.PHONE_SMS_PROVIDER = 'aliyun';
+  assert.equal((await f.invoke('/v1/phone/send-code', body)).data.success, true);
+  const other = fixture(); other.env.PHONE_SMS_PROVIDER = 'relay';
+  assert.equal((await other.invoke('/v1/phone/send-code', body)).data.success, true);
+});
+
+test('relay keeps management and all reauthentication closed even if other gates are enabled', async () => {
+  const f=fixture({loginOnly:true}); Object.assign(f.env,{PHONE_SMS_PROVIDER:'relay',PHONE_ACCOUNT_MANAGEMENT_ENABLED:'true',PHONE_EMAIL_REAUTH_ENABLED:'true'});
+  for (const route of ['reauth/email/send','reauth/email','reauth/phone','bind','change','unbind']) {
+    const result=await f.invoke(`/v1/phone/${route}`,{});
+    assert.equal(result.data.code,'IDENTITY_DISABLED');
+  }
+  for (const purpose of ['bind','change','reauth','unbind']) {
+    const result=await f.invoke('/v1/phone/send-code',{phone:PHONE,purpose,turnstile_token:'captcha',challenge_id:UUID});
+    assert.equal(result.data.code,'IDENTITY_DISABLED');
+  }
+  assert.equal(f.calls.length,0);
+  const login=await f.invoke('/v1/phone/send-code',{phone:PHONE,purpose:'login',turnstile_token:'captcha',challenge_id:UUID});
+  assert.equal(login.data.success,true);
+});
+
+test('relay never sends or proves deletion SMS, even if an unapproved switch is set', async () => {
+  const f=fixture({loginOnly:true}); Object.assign(f.env,{PHONE_SMS_PROVIDER:'relay',PHONE_RELAY_DELETE_REAUTH_ENABLED:'true',PHONE_ACCOUNT_MANAGEMENT_ENABLED:'true'});
+  for (const purpose of ['reauth','bind','change','unbind'])
+    assert.equal((await f.invoke('/v1/phone/send-code',{phone:PHONE,purpose,turnstile_token:'captcha',challenge_id:UUID})).data.code,'IDENTITY_DISABLED');
+  for (const action of ['delete','bind'])
+    assert.equal((await f.invoke('/v1/phone/reauth/phone',{...checkBody(),action})).data.code,'IDENTITY_DISABLED');
+  assert.equal(f.calls.some(x => ['send','check','grant'].includes(x[0])),false);
+});
+
 test('SMS check precedes identity login and signs only authoritative identity using existing JWT helper', async () => {
   const { invoke, calls } = fixture();
   const { data } = await invoke('/v1/phone/verify-code', { ...checkBody(), operation_id: UUID });
@@ -92,6 +140,35 @@ test('email reauth consumes OTP for current DB email and session, ignores JWT st
   const grant = calls.find(x => x[0] === 'grant')[1];
   assert.deepEqual({ ...grant, sessionHash: 'session' }, { userId: 'existing-user', sessionHash: 'session', purpose: 'bind', method: 'email', subject: 'current@example.test' });
   assert.equal(calls.some(x => x[0] === 'login'), false);
+});
+
+test('standalone account management and email reauth remain closed by default', async () => {
+  const f = fixture({ loginOnly: true });
+  assert.equal((await f.invoke('/v1/phone/reauth/email/send', { action: 'bind' })).data.code, 'IDENTITY_DISABLED');
+  assert.equal((await f.invoke('/v1/phone/bind', {})).data.code, 'IDENTITY_DISABLED');
+  assert.equal(f.calls.some(x => x[0] === 'reauth-send'), false);
+  f.env.PHONE_ACCOUNT_MANAGEMENT_ENABLED = 'true';
+  assert.equal((await f.invoke('/v1/phone/reauth/email/send', { action: 'bind' })).data.code, 'IDENTITY_DISABLED');
+});
+
+test('standalone email reauth binds the current account, session and requested action', async () => {
+  const f = fixture({ loginOnly: true });
+  f.env.PHONE_ACCOUNT_MANAGEMENT_ENABLED = 'true'; f.env.PHONE_EMAIL_REAUTH_ENABLED = 'true';
+  assert.equal((await f.invoke('/v1/phone/reauth/email/send', { action: 'bind' })).data.success, true);
+  const send = f.calls.find(x => x[0] === 'reauth-send')[1];
+  assert.equal(send.email, 'current@example.test');
+  assert.deepEqual(JSON.parse(send.bindCode('123456')), ['123456', 'existing-user', 'session-hash'.repeat(5), 'bind']);
+  assert.equal(f.calls.some(x => x[0] === 'login'), false);
+  assert.equal((await f.invoke('/v1/phone/reauth/email', { code: '123456', action: 'bind' })).data.reauth_token, PROOF);
+  assert.deepEqual(JSON.parse(f.calls.find(x => x[0] === 'consume')[1]), ['123456', 'existing-user', 'session-hash'.repeat(5), 'bind']);
+});
+
+test('standalone email reauth refuses unauthenticated and absent-email requests', async () => {
+  for (const options of [{ unauthorized: true }, { current: { email: null } }]) {
+    const f = fixture({ loginOnly: true, ...options });f.env.PHONE_ACCOUNT_MANAGEMENT_ENABLED = 'true';f.env.PHONE_EMAIL_REAUTH_ENABLED = 'true';
+    const result = await f.invoke('/v1/phone/reauth/email/send', { action: 'bind' });
+    assert.ok([401, 403].includes(result.response.status));assert.equal(f.calls.some(x => x[0] === 'reauth-send'), false);
+  }
 });
 
 for (const code of ['INVALID', 'THROTTLED']) test(`email OTP ${code} cannot issue grant`, async () => {

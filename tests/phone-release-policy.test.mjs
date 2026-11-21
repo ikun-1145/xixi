@@ -24,19 +24,19 @@ class Storage {
   }
 }
 async function fixture() {
-  let now=START; const storage=new Storage(); const calls=[];
+  let now=START, tokenSequence=0; const storage=new Storage(); const calls=[];
   const env={PHONE_SMS_ENABLED:'true',PHONE_RELEASE_MODE:'canary',PHONE_AUTH_HMAC_KEY:secret,PHONE_AUTH_HMAC_KEY_ID:'test-v1',PHONE_AUTH_ADMIN_TOKEN:admin,
     PHONE_SMS_CANARY_PHONE_HASHES:JSON.stringify(await Promise.all(phones.slice(0,4).map(phoneHash))),
     PHONE_AUTH_POLICY:JSON.stringify({perPhoneDaily:10,perIpDaily:20,dailyLimit:20,unitCostMicros:1,dailyBudgetMicros:20,totalBudgetMicros:100,ipRequestsPerMinute:50,globalRequestsPerMinute:100}),
     TURNSTILE_SECRET:'mock',PHONE_TURNSTILE_HOSTNAME:'sunland.dev',PHONE_ALIYUN_ACCESS_KEY_ID:'mock',PHONE_ALIYUN_ACCESS_KEY_SECRET:'mock',PHONE_SMS_SIGN_NAME:'mock',PHONE_SMS_TEMPLATE_CODE:'mock'};
   const fetchImpl=async(url,options)=>{
     const captcha=new URL(url).hostname==='challenges.cloudflare.com'; calls.push(captcha?'captcha':'supplier');
-    if(captcha) return Response.json({success:true,hostname:'sunland.dev',action:`phone_${JSON.parse(options.body).response}`,challenge_ts:new Date(now).toISOString()});
+    if(captcha) return Response.json({success:true,hostname:'sunland.dev',action:`phone_${JSON.parse(options.body).response.split(':')[0]}`,challenge_ts:new Date(now).toISOString()});
     if(h.providerFailure) return Response.json({Success:false,Code:'isv.BUSINESS_LIMIT_CONTROL'});
     return Response.json({Success:true,Code:'OK'});
   };
   const h={env,storage,calls,advance(ms){now+=ms;},rebuild(){h.do=new PhoneAuthCoordinator({storage},env,{now:()=>now,fetchImpl});},
-    send(phone=phones[0],purpose='login'){return h.do.send({phone,purpose,turnstile_token:purpose},{ip:'192.0.2.1',userId:'u',sessionId:'server-session-123456',identityStatus:'active',reauthenticatedAt:now});},
+    send(phone=phones[0],purpose='login'){return h.do.send({phone,purpose,turnstile_token:`${purpose}:${++tokenSequence}`},{ip:'192.0.2.1',userId:'u',sessionId:'server-session-123456',identityStatus:'active',reauthenticatedAt:now});},
     admin(path,token=admin,body={}){return h.do.fetch(new Request(`https://phone-auth.internal/${path}`,{method:'POST',headers:{Authorization:`Bearer ${token}`},body:JSON.stringify(body)}));}};
   h.rebuild(); return h;
 }
@@ -47,7 +47,7 @@ test('canary persistent reservation cap survives concurrency, next day, restart 
   assert.equal(sends.filter(r=>r.reason?.code==='CANARY_LIMITED').length,1);
   assert.equal(h.calls.filter(c=>c==='supplier').length,3);
   h.advance(86400000); h.rebuild(); await assert.rejects(h.send(phones[3]),{code:'CANARY_LIMITED'});
-  h.env.PHONE_RELEASE_MODE='public'; await h.send(phones[3]);
+  h.env.PHONE_RELEASE_MODE='public'; await assert.rejects(h.send(phones[3]),{code:'RELEASE_CONFIG'});
   h.env.PHONE_RELEASE_MODE='canary'; h.advance(86400000);h.rebuild();await assert.rejects(h.send(phones[3]),{code:'CANARY_LIMITED'});
   assert.equal(h.storage.data.get(LEDGER_KEY).testReserved,3);
 });
@@ -65,12 +65,12 @@ test('canary fails closed for malformed mode, allowlist, all unapproved purposes
   await assert.rejects(h.send(phones[3]),{code:'CANARY_LIMITED'});
   assert.equal(h.storage.data.get(LEDGER_KEY).testReserved,3);
 });
-test('internal initialization requires independent strong admin credential and refuses all existing state',async()=>{
+test('initialization requires independent admin and preserves existing state',async()=>{
   const h=await fixture();assert.equal((await h.admin('initialize','wrong')).status,401);assert.equal(h.storage.data.size,0);
   h.env.PHONE_AUTH_ADMIN_TOKEN='short';assert.equal((await h.admin('initialize','short')).status,503);h.env.PHONE_AUTH_ADMIN_TOKEN=admin;
   h.storage.data.set('t:phone:old',{quarantined:true});assert.equal((await h.admin('initialize')).status,409);h.storage.data.clear();
   assert.equal((await h.admin('initialize')).status,200);const saved=structuredClone(h.storage.data);
-  assert.equal((await h.admin('initialize')).status,409);assert.deepEqual(h.storage.data,saved);
+  assert.equal((await h.admin('initialize')).status,200);assert.deepEqual(h.storage.data,saved);
   const status=await(await h.admin('status')).json();assert.equal(status.test_reserved,0);assert.ok(!JSON.stringify(status).includes('phone:'));
   h.storage.data.get(LEDGER_KEY).testReserved=undefined;await assert.rejects(h.send(),{code:'SERVICE_UNAVAILABLE'});
 });
@@ -85,20 +85,74 @@ test('initialization uses server values only, is safe with SMS off, and is never
   for(const forbidden of [secret,admin,'test-v1','13800000000','phoneHash','challengeId','lockUntil'])assert.equal(serialized.includes(forbidden),false);
   h.env.PHONE_AUTH_ADMIN_TOKEN=secret;assert.equal((await h.admin('status',secret)).status,503);
 });
-test('concurrent initialization permits one fresh ledger and does not repair or replace legacy state',async()=>{
+test('concurrent initialization is idempotent and does not repair legacy state',async()=>{
   const h=await fixture();const responses=await Promise.all([h.admin('initialize'),h.admin('initialize')]);
-  assert.deepEqual(responses.map(r=>r.status).sort(),[200,409]);
+  assert.deepEqual(responses.map(r=>r.status).sort(),[200,200]);
   const original=structuredClone(h.storage.data.get(LEDGER_KEY));delete h.storage.data.get(LEDGER_KEY).testReserved;
   const legacy=structuredClone(h.storage.data);assert.equal((await h.admin('initialize')).status,409);
-  assert.equal((await h.admin('status')).status,503);assert.deepEqual(h.storage.data,legacy);
+  assert.equal((await (await h.admin('status')).json()).state,'abnormal');assert.deepEqual(h.storage.data,legacy);
   assert.equal(original.totalMicros,0);
 });
-test('new registration policy is a trusted strict server boolean and known denial remains classified',async()=>{
+test('status is storage-read-only and distinguishes empty, foreign, version and configuration states',async()=>{
+  const h=await fixture();
+  assert.equal((await (await h.admin('status')).json()).state,'uninitialized');assert.equal(h.storage.data.size,0);
+  h.storage.data.set('foreign',1);assert.equal((await (await h.admin('status')).json()).state,'abnormal');
+  assert.equal((await h.admin('initialize')).status,409);h.storage.data.clear();
+  await h.admin('initialize');const before=structuredClone(h.storage.data);h.advance(86400000);
+  assert.equal((await (await h.admin('status')).json()).state,'ready');assert.deepEqual(h.storage.data,before);
+  assert.equal((await h.admin('initialize')).status,200);assert.deepEqual(h.storage.data,before);
+  h.storage.data.get(LEDGER_KEY).schema=3;assert.equal((await (await h.admin('status')).json()).state,'incompatible');
+  assert.equal((await h.admin('initialize')).status,409);h.storage.data=structuredClone(before);
+  h.env.PHONE_AUTH_POLICY=JSON.stringify({...JSON.parse(h.env.PHONE_AUTH_POLICY),dailyLimit:19});
+  assert.equal((await (await h.admin('status')).json()).state,'incompatible');assert.equal((await h.admin('initialize')).status,409);
+  assert.deepEqual(h.storage.data,before);
+  h.env.PHONE_AUTH_POLICY=JSON.stringify({...JSON.parse(h.env.PHONE_AUTH_POLICY),dailyLimit:20});
+  delete h.storage.data.get(LEDGER_KEY).initConfig;
+  assert.equal((await (await h.admin('status')).json()).state,'unverified');assert.equal((await h.admin('initialize')).status,409);
+});
+test('storage failures do not create or reset a ledger and can recover safely',async()=>{
+  const h=await fixture();const transaction=h.storage.transaction.bind(h.storage);
+  h.storage.transaction=async()=>{throw Error('synthetic failure');};
+  assert.equal((await h.admin('status')).status,503);assert.equal((await h.admin('initialize')).status,503);
+  assert.equal(h.storage.data.size,0);h.storage.transaction=transaction;
+  assert.equal((await (await h.admin('status')).json()).state,'uninitialized');
+  h.storage.transaction=fn=>transaction(tx=>fn({...tx,put:async(k,v)=>{await tx.put(k,v);throw Error('synthetic post-write failure');}}));
+  assert.equal((await h.admin('initialize')).status,503);assert.equal(h.storage.data.size,0);h.storage.transaction=transaction;
+  assert.equal((await h.admin('initialize')).status,200);const before=structuredClone(h.storage.data);
+  h.storage.transaction=async()=>{throw Error('synthetic failure');};assert.equal((await h.admin('initialize')).status,503);
+  assert.deepEqual(h.storage.data,before);h.storage.transaction=transaction;
+  assert.equal((await (await h.admin('status')).json()).state,'ready');
+});
+test('registration is strictly gated and uses a new fail-closed RPC while login never creates',async()=>{
   for(const value of [undefined,false,true,'false','true']) {
-    let data; const env={PHONE_IDENTITY_ENABLED:'true',PHONE_NEW_REGISTRATION_ENABLED:value,PHONE_IDENTITY_LOOKUP_KEY:secret,PHONE_IDENTITY_LOOKUP_KEY_ID:'v1',
+    const calls=[]; const env={PHONE_IDENTITY_ENABLED:'true',PHONE_NEW_REGISTRATION_ENABLED:value,PHONE_IDENTITY_LOOKUP_KEY:secret,PHONE_IDENTITY_LOOKUP_KEY_ID:'v1',
       PHONE_IDENTITY_ENCRYPTION_KEYS:JSON.stringify({v1:Buffer.alloc(32,7).toString('base64url')}),PHONE_IDENTITY_ENCRYPTION_KEY_ID:'v1',PHONE_AUTH_HMAC_KEY:secret};
-    const identity=createPhoneIdentity(env,{rpc:async(_,{p_data})=>{data=p_data;return{ok:true,payload:{code:'REGISTRATION_DISABLED'}};}});
-    await assert.rejects(identity.login({phone:phones[0],operationId:crypto.randomUUID(),allow_create:true}),{code:'REGISTRATION_DISABLED'});
-    assert.equal(data.allow_create,value==='true');
+    const identity=createPhoneIdentity(env,{rpc:async(name,{p_data})=>{calls.push({name,data:p_data});return{ok:true,payload:{code:'REGISTRATION_DISABLED'}};}});
+    await assert.rejects(identity.login({phone:phones[0],operationId:crypto.randomUUID()}),{code:'REGISTRATION_DISABLED'});
+    assert.equal(calls[0].name,'sunland_phone_identity'); assert.equal(calls[0].data.allow_create,false);
+    calls.length=0;
+    await assert.rejects(identity.login({phone:phones[0],email:'test@example.test',operationId:crypto.randomUUID()}),{code:'REGISTRATION_DISABLED'});
+    assert.equal(calls.length,value==='true'?1:0);
+    if (calls.length) assert.equal(calls[0].name,'sunland_phone_register');
+  }
+});
+test('phone-only registration needs both registration switches and calls only its dedicated RPC',async()=>{
+  for(const [reg,only] of [['false','true'],['true','false'],['true',undefined],['true','true']]) {
+    const calls=[]; const env={PHONE_IDENTITY_ENABLED:'true',PHONE_NEW_REGISTRATION_ENABLED:reg,PHONE_ONLY_REGISTRATION_ENABLED:only,PHONE_IDENTITY_LOOKUP_KEY:secret,PHONE_IDENTITY_LOOKUP_KEY_ID:'v1',
+      PHONE_IDENTITY_ENCRYPTION_KEYS:JSON.stringify({v1:Buffer.alloc(32,7).toString('base64url')}),PHONE_IDENTITY_ENCRYPTION_KEY_ID:'v1',PHONE_AUTH_HMAC_KEY:secret};
+    const identity=createPhoneIdentity(env,{rpc:async(name,args)=>{calls.push({name,args});
+      return{ok:true,payload:{code:'OK',user_id:args.p_data.candidate_id,email:null,onboarding:{version:0,step:1},is_new_user:true}};}});
+    const op=crypto.randomUUID(); const run=()=>identity.login({phone:phones[0],operationId:op,phoneOnly:true});
+    await assert.rejects(identity.login({phone:phones[0],operationId:op,phoneOnly:true,email:'x@example.test'}),{code:'REGISTRATION_DISABLED'});
+    if(reg!=='true'||only!=='true'){await assert.rejects(run(),{code:'REGISTRATION_DISABLED'});assert.equal(calls.length,0);continue;}
+    const r=await run(); assert.equal(r.email,null);
+    assert.equal(calls.length,1); assert.equal(calls[0].name,'sunland_phone_register_phone_only');
+    assert.equal(Object.hasOwn(calls[0].args,'p_action'),false);
+    const data=calls[0].args.p_data;
+    for(const k of ['email','allow_create']) assert.equal(Object.hasOwn(data,k),false);
+    assert.ok(!JSON.stringify(data).includes(phones[0]));
+    // The request hash equals a plain login of the same operation, so retries recover through unified/verify.
+    await identity.login({phone:phones[0],operationId:op,phoneOnly:true});
+    assert.equal(calls[1].args.p_data.request_hash,data.request_hash);
   }
 });

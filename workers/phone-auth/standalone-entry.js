@@ -3,9 +3,12 @@ import { getUserFromRequest, getUserStatus, accountStatusRejection, applicationS
 import { createPhoneAuthWorker } from './routes.js';
 import { requireAdmin } from './release-policy.js';
 import { PhoneAuthError } from './errors.js';
+import { turnstileProbe } from './turnstile-probe.js';
+import { createEmailOtp } from 'sunland-phone-email-otp';
+import { sendPhoneReauthEmail } from './email-reauth.js';
 export { PhoneAuthCoordinator } from './coordinator.js';
 const hooks = { getUserFromRequest, getUserStatus, accountStatusRejection, applicationSigningSecret,
-  signJWT, callIdentityRpc, readJsonBodyWithLimit, json };
+  signJWT, callIdentityRpc, readJsonBodyWithLimit, json, createEmailOtp, sendPhoneReauthEmail };
 const worker = createPhoneAuthWorker({ fetch(request, env) {
   if (request.method === 'OPTIONS') return new Response(null, { status: 204, headers: json({}, 200, env).headers });
   return json({ error: 'Not found' }, 404, env);
@@ -14,8 +17,9 @@ const worker = createPhoneAuthWorker({ fetch(request, env) {
 export default { async fetch(request, env, ctx) {
   const path = new URL(request.url).pathname;
   if (path.startsWith('/v1/phone/_admin/')) {
+    if (path === '/v1/phone/_admin/turnstile-probe') return turnstileProbe(request, env, { readBody: readJsonBodyWithLimit });
     try {
-      if (request.method !== 'POST' || !['/v1/phone/_admin/initialize', '/v1/phone/_admin/status'].includes(path)) return json({ error: 'Not found' }, 404, env);
+      if (request.method !== 'POST' || !['/v1/phone/_admin/initialize', '/v1/phone/_admin/status', '/v1/phone/_admin/migrate-v2', '/v1/phone/_admin/export-ledger'].includes(path)) return json({ error: 'Not found' }, 404, env);
       await requireAdmin(env, request);
       const parsed = await readJsonBodyWithLimit(request, 4096);
       if (parsed.error) return json({ error: 'Invalid request' }, 400, env);

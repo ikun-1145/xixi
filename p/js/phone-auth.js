@@ -8,16 +8,23 @@
     UNAUTHORIZED:'登录已失效，请重新登录', ACCOUNT_NOT_ACTIVE:'账号正在注销或已注销，无法登录', ACCOUNT_BANNED:'当前账号无法登录',
     SMS_DISABLED:'手机号认证暂未启用', IDENTITY_DISABLED:'手机号认证暂未启用', CAPTCHA_FAILED:'人机验证未完成，请重试',
     REAUTH_INVALID:'安全验证已失效，请重新验证', REAUTH_REQUIRED:'请先完成安全验证', PHONE_CONFLICT:'该手机号暂时无法绑定，请使用其他号码',
-    PHONE_ALREADY_BOUND:'请刷新手机号状态后重试', PHONE_NOT_BOUND:'请刷新手机号状态后重试',
+    EMAIL_CONFLICT:'该邮箱已注册，请使用其他邮箱', PHONE_ALREADY_BOUND:'请刷新手机号状态后重试', PHONE_NOT_BOUND:'请刷新手机号状态后重试',
     ALTERNATIVE_LOGIN_REQUIRED:'请先验证其他可用登录方式', OPERATION_CONFLICT:'操作状态已变化，请刷新后重新验证',
     CHALLENGE_INVALID:'验证码错误或已过期，请重新获取', CHALLENGE_EXPIRED:'验证码已过期，请重新获取',
-    CHALLENGE_USED:'验证码已使用，请重新获取', CODE_INVALID:'验证码错误或已过期，请重新获取',
+    CHALLENGE_USED:'验证码已使用，请重新获取', CHALLENGE_PENDING:'发送仍在处理中，请稍后再验证', CODE_INVALID:'验证码错误或已过期，请重新获取',
     RATE_LIMITED:'请求过于频繁，请稍后再试', PROVIDER_RATE_LIMITED:'请求过于频繁，请稍后再试',
     BUDGET_EXCEEDED:'短信服务暂时不可用，请稍后再试', TIMEOUT:'请求超时，请重新获取验证码或刷新状态',
     NETWORK:'网络连接失败，请检查网络后重试', SERVICE_UNAVAILABLE:'认证服务暂时不可用，请稍后再试',
+    SEND_UNCERTAIN:'发送状态未知，请勿重复发送；收到验证码后可尝试验证，未必能通过',
+    VERIFY_UNCERTAIN:'验证结果未知，请先检查登录状态，勿重复发送短信',
   };
   const text = source => global.SiteI18n?.translate?.(source) || source;
-  const errorText = error => text(messages[error?.code] || messages.SERVICE_UNAVAILABLE);
+  const recoveryMessages = {
+    SEND_UNCERTAIN:{'zh-Hant':'傳送狀態未知，請勿重複傳送；收到驗證碼後可嘗試驗證，但不一定通過',en:'Send status is unknown. Do not resend. If a code arrives, you may try it, but it may not be accepted.',ja:'送信状況は不明です。再送しないでください。コードが届いた場合は試せますが、認証できない場合があります。',ko:'전송 상태를 알 수 없습니다. 다시 보내지 마세요. 코드가 도착하면 시도할 수 있지만 인증되지 않을 수 있습니다.',es:'El estado del envío es desconocido. No lo repitas. Puedes probar el código si llega, pero podría no aceptarse.'},
+    VERIFY_UNCERTAIN:{'zh-Hant':'驗證結果未知，請先檢查登入狀態，勿重複傳送簡訊',en:'Verification status is unknown. Check your login status and do not resend.',ja:'認証結果を確認できません。ログイン状態を確認し、再送しないでください。',ko:'인증 결과를 알 수 없습니다. 로그인 상태를 확인하고 다시 보내지 마세요.',es:'El resultado de verificación es desconocido. Comprueba tu sesión y no vuelvas a enviar el mensaje.'},
+    CHALLENGE_PENDING:{'zh-Hant':'傳送仍在處理中，請稍後再驗證',en:'The request is still processing. Try verification again later.',ja:'送信処理中です。しばらくしてから認証してください。',ko:'전송을 처리 중입니다. 잠시 후 다시 인증하세요.',es:'El envío sigue procesándose. Intenta verificarlo más tarde.'},
+  };
+  const errorText = error => recoveryMessages[error?.code]?.[global.SiteI18n?.getLanguage?.()] || text(messages[error?.code] || messages.SERVICE_UNAVAILABLE);
   function failure(code) { const error = new Error(messages[code] || messages.SERVICE_UNAVAILABLE); error.code = code; return error; }
   function normalizePhone(value) {
     const local = typeof value === 'string' ? value.trim().replace(/^\+86/, '') : '';
@@ -78,13 +85,55 @@
     });}finally{widget?.destroy?.();}
   }
   function decode(token) {try {let p=String(token).split('.')[1].replace(/-/g,'+').replace(/_/g,'/');return JSON.parse(global.atob(p.padEnd(Math.ceil(p.length/4)*4,'=')));}catch{return null;}}
-  function createClient({getToken=()=>global.localStorage.getItem('token'),fetchImpl=(...args)=>global.fetch(...args),timeoutMs=12000,captcha=runTurnstile,emailCaptcha=runEmailCaptcha}={}) {
+  function createClient({getToken=()=>global.localStorage.getItem('token'),fetchImpl=(...args)=>global.fetch(...args),timeoutMs=12000,sendTimeoutMs=20000,captcha=runTurnstile,emailCaptcha=runEmailCaptcha}={}) {
     let epoch=0, sending=false;const controllers=new Set();
+    const pendingKey='sunland.phone.pending.v1';
+    // The handle is deliberately independent of phone, OTP, tokens and CAPTCHA.
+    // It is retained across reload/cancel, and an uncertain send never retries.
+    function pending() {
+      let value;
+      try { value=global.sessionStorage.getItem(pendingKey); } catch { throw failure('SERVICE_UNAVAILABLE'); }
+      if(value===null)return null;
+      try {
+        const p=JSON.parse(value);
+        if(!p||p.version!==1||typeof p.id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(p.id)||
+          !['login','bind','change','reauth'].includes(p.purpose)||!Number.isSafeInteger(p.expiresAt)||p.expiresAt<0||
+          (p.operationId!==undefined && (p.purpose!=='login'||typeof p.operationId!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(p.operationId)))||
+          (p.verificationStarted!==undefined && (p.verificationStarted!==true || !p.operationId)))throw Error();
+        return p;
+      } catch { throw failure('SERVICE_UNAVAILABLE'); }
+    }
+    function rememberPending(id,purpose,operationId) {
+      // Multiple clients in the same tab can finish CAPTCHA concurrently.
+      if(pending())throw failure('SEND_UNCERTAIN');
+      const value=JSON.stringify({version:1,id,purpose,expiresAt:Date.now()+300000,...(operationId?{operationId}: {})});
+      try {global.sessionStorage.setItem(pendingKey,value);if(global.sessionStorage.getItem(pendingKey)!==value)throw Error();}
+      catch {throw failure('SERVICE_UNAVAILABLE');}
+    }
+    function clearPending(id) {
+      try {if(pending()?.id===id)global.sessionStorage.removeItem(pendingKey);} catch { /* fail closed on future sends */ }
+    }
+    function recovery(purpose) {
+      const p=pending();
+      if(!p||p.purpose!==purpose)return null;
+      return {challenge_id:p.id,expires_in:Math.max(0,Math.floor((p.expiresAt-Date.now())/1000)),
+        expired:p.expiresAt<=Date.now(),review_after:p.expiresAt+300000,operation_id:p.operationId||null,verification_started:p.verificationStarted===true};
+    }
+    function pendingRecovery() {
+      const p=pending();
+      return p ? { purpose:p.purpose, ...recovery(p.purpose) } : null;
+    }
+    function acknowledgeReviewed(purpose,reviewed) {
+      const p=pending();
+      // Explicit human review is required; the server lock/quarantine remains authoritative.
+      if(!p||p.purpose!==purpose||reviewed!==true||Date.now()<p.expiresAt+300000)throw failure('INVALID_REQUEST');
+      try {global.sessionStorage.removeItem(pendingKey);}catch{throw failure('SERVICE_UNAVAILABLE');}
+    }
     const capture=()=>({token:getToken(),epoch});
     const current=s=>s.epoch===epoch&&s.token===getToken();
     const assert=s=>{if(!current(s))throw failure('SESSION_CHANGED');};
     function cancel(){epoch++;for(const controller of controllers)controller.abort();controllers.clear();}
-    async function request(path,input,{auth=true,snapshot=capture()}={}) {
+    async function request(path,input,{auth=true,snapshot=capture(),deadlineMs=timeoutMs}={}) {
       assert(snapshot);if(auth&&!snapshot.token)throw failure('UNAUTHORIZED');
       const controller=new global.AbortController();controllers.add(controller);let timer;
       try {
@@ -94,24 +143,38 @@
           if(!res.ok){const code=Object.hasOwn(messages,data?.code)?data.code:res.status===401?'UNAUTHORIZED':'SERVICE_UNAVAILABLE';throw failure(code);}
           if(!data||typeof data!=='object'||Array.isArray(data))throw failure('SERVICE_UNAVAILABLE');
           return data;
-        })(),new Promise((_,reject)=>{timer=global.setTimeout(()=>{controller.abort();reject(failure('TIMEOUT'));},timeoutMs);})]);
+        })(),new Promise((_,reject)=>{timer=global.setTimeout(()=>{controller.abort();reject(failure('TIMEOUT'));},deadlineMs);})]);
         assert(snapshot);return result;
       }catch(error){assert(snapshot);if(error?.code&&Object.hasOwn(messages,error.code))throw error;throw failure('NETWORK');}
       finally{global.clearTimeout(timer);controllers.delete(controller);}
     }
-    async function send(phone,purpose,reauth_token) {
+    async function send(phone,purpose,reauth_token,registration) {
       phone=normalizePhone(phone);if(!['login','bind','change','reauth'].includes(purpose))throw failure('INVALID_REQUEST');
-      if(sending)throw failure('BUSY');if(cooldown(phone)>0)throw failure('RATE_LIMITED');sending=true;
+      if(registration && (purpose!=='login'||typeof registration.email!=='string'||!/^\S+@\S+\.\S+$/.test(registration.email)||registration.email.length>254||typeof registration.operation_id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(registration.operation_id)))throw failure('INVALID_REQUEST');
+      if(sending)throw failure('BUSY');if(pending())throw failure('SEND_UNCERTAIN');if(cooldown(phone)>0)throw failure('RATE_LIMITED');sending=true;
       const snapshot=capture(),controller=new global.AbortController();controllers.add(controller);
       try{
         const turnstile_token=await captcha('phone_'+purpose,{signal:controller.signal});assert(snapshot);
         if(typeof turnstile_token!=='string'||!turnstile_token.length||turnstile_token.length>2048)throw failure('CAPTCHA_FAILED');
-        const r=await request('/v1/phone/send-code',{phone,purpose,turnstile_token,...(reauth_token?{reauth_token}:{})},{auth:purpose!=='login',snapshot});
-        if(r.success!==true||typeof r.challenge_id!=='string'||!Number.isInteger(r.retry_after)||r.retry_after<0||r.retry_after>600||!Number.isInteger(r.expires_in)||r.expires_in<0||r.expires_in>300)throw failure('SERVICE_UNAVAILABLE');
+        if(purpose!=='login'&&!snapshot.token)throw failure('UNAUTHORIZED');
+        const challenge_id=global.crypto.randomUUID();
+        rememberPending(challenge_id,purpose,registration?.operation_id);
+        let r;
+        try {
+          r=await request('/v1/phone/send-code',{phone,purpose,turnstile_token,challenge_id,...(reauth_token?{reauth_token}:{}),...(registration?{email:registration.email,operation_id:registration.operation_id}:{})},{auth:purpose!=='login',snapshot,deadlineMs:sendTimeoutMs});
+          if(r.success!==true||r.challenge_id!==challenge_id||!Number.isInteger(r.retry_after)||r.retry_after<0||r.retry_after>600||!Number.isInteger(r.expires_in)||r.expires_in<0||r.expires_in>300)throw failure('SERVICE_UNAVAILABLE');
+        } catch(error) {
+          if(error?.code==='SESSION_CHANGED')throw error;
+          // These ingress/admission failures are established before any paid reservation.
+          if(['IDENTITY_DISABLED','CAPTCHA_FAILED','CANARY_DENIED','RELEASE_CONFIG'].includes(error?.code)) {
+            clearPending(challenge_id);throw error;
+          }
+          throw failure('SEND_UNCERTAIN');
+        }
         rememberCooldown(phone,r.retry_after);return r;
       }finally{sending=false;controllers.delete(controller);}
     }
-    return {capture,current,cancel,send,
+    return {capture,current,cancel,send,recovery,pendingRecovery,acknowledgeReviewed,
       async status(){const r=await request('/v1/phone/status',{});
         if(typeof r.bound!=='boolean'||typeof r.has_email!=='boolean'||
           (r.bound ? typeof r.phone!=='string'||!/^\+86 \*{7}\d{4}$/.test(r.phone) : r.phone!==null))throw failure('SERVICE_UNAVAILABLE');
@@ -131,13 +194,37 @@
         if(r.ok!==true||typeof r.deletion_job_id!=='string'||!/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/.test(r.deletion_job_id)||
           typeof r.deletion_token!=='string'||!/^[A-Za-z0-9_-]{42}[AEIMQUYcgkosw048]$/.test(r.deletion_token)||r.expires_in!==600)throw failure('SERVICE_UNAVAILABLE');
         return r;},
-      login:(phone,challenge_id,code)=>request('/v1/phone/verify-code',{phone:normalizePhone(phone),challenge_id,code,operation_id:global.crypto.randomUUID()},{auth:false}),
+      async login(phone,challenge_id,code){try{return await request('/v1/phone/verify-code',{phone:normalizePhone(phone),challenge_id,code,operation_id:global.crypto.randomUUID()},{auth:false});}catch(error){if(['NETWORK','TIMEOUT','SERVICE_UNAVAILABLE'].includes(error.code))throw failure('VERIFY_UNCERTAIN');throw error;}},
+      async unifiedVerify(phone,challenge_id,code,operation_id,proof){
+        try{return await request('/v1/phone/unified/verify',{phone:'+86'+normalizePhone(phone),challenge_id,code,operation_id,proof},{auth:false});}
+        catch(error){if(['NETWORK','TIMEOUT','SERVICE_UNAVAILABLE'].includes(error.code))throw failure('VERIFY_UNCERTAIN');throw error;}
+      },
+      async unifiedEmailSend(phone,challenge_id,operation_id,proof,email){
+        return request('/v1/phone/unified/email/send',{phone:'+86'+normalizePhone(phone),challenge_id,operation_id,proof,email},{auth:false});
+      },
+      async unifiedRegister(phone,challenge_id,operation_id,proof,email,email_code){
+        try{return await request('/v1/phone/unified/register',{phone:'+86'+normalizePhone(phone),challenge_id,operation_id,proof,email,email_code},{auth:false});}
+        catch(error){if(['NETWORK','TIMEOUT','SERVICE_UNAVAILABLE'].includes(error.code))throw failure('VERIFY_UNCERTAIN');throw error;}
+      },
+      async unifiedRegisterPhone(phone,challenge_id,operation_id,proof){
+        try{return await request('/v1/phone/unified/register-phone',{phone:'+86'+normalizePhone(phone),challenge_id,operation_id,proof},{auth:false});}
+        catch(error){if(['NETWORK','TIMEOUT','SERVICE_UNAVAILABLE'].includes(error.code))throw failure('VERIFY_UNCERTAIN');throw error;}
+      },
+      async register(phone,challenge_id,code,email,email_code,operation_id){
+        const p=pending();
+        if(!p||p.id!==challenge_id||p.operationId!==operation_id||p.verificationStarted)throw failure('VERIFY_UNCERTAIN');
+        try {const value=JSON.stringify({...p,verificationStarted:true});global.sessionStorage.setItem(pendingKey,value);if(global.sessionStorage.getItem(pendingKey)!==value)throw Error();} catch {throw failure('SERVICE_UNAVAILABLE');}
+        try{return await request('/v1/phone/verify-code',{phone:normalizePhone(phone),challenge_id,code,email,email_code,operation_id},{auth:false});}
+        catch(error){if(['NETWORK','TIMEOUT','SERVICE_UNAVAILABLE'].includes(error.code))throw failure('VERIFY_UNCERTAIN');throw error;}
+      },
+      acknowledgeLoginSaved(challenge_id){clearPending(challenge_id);},
       async emailSend(email){if(typeof email!=='string'||!/^\S+@\S+\.\S+$/.test(email))throw failure('INVALID_REQUEST');
         const snapshot=capture(),controller=new global.AbortController();controllers.add(controller);
         try{const token=await emailCaptcha({signal:controller.signal});assert(snapshot);return await request('/send-code',{email,token},{auth:false,snapshot});}finally{controllers.delete(controller);}},
+      emailReauthSend:action=>request('/v1/phone/reauth/email/send',{action}),
       emailProof:(code,action)=>request('/v1/phone/reauth/email',{code,action}),
-      phoneProof:(phone,challenge_id,code,action)=>request('/v1/phone/reauth/phone',{phone:normalizePhone(phone),challenge_id,code,action}),
-      mutate:(action,data)=>{if(!['bind','change','unbind'].includes(action))return Promise.reject(failure('INVALID_REQUEST'));return request('/v1/phone/'+action,{...data,...(data.phone?{phone:normalizePhone(data.phone)}:{}),operation_id:global.crypto.randomUUID()});},
+      async phoneProof(phone,challenge_id,code,action){const r=await request('/v1/phone/reauth/phone',{phone:normalizePhone(phone),challenge_id,code,action});if(typeof r.reauth_token==='string'&&r.reauth_token)clearPending(challenge_id);return r;},
+      async mutate(action,data){if(!['bind','change','unbind'].includes(action))throw failure('INVALID_REQUEST');const r=await request('/v1/phone/'+action,{...data,...(data.phone?{phone:normalizePhone(data.phone)}:{}),operation_id:global.crypto.randomUUID()});if(r.ok===true&&data.challenge_id)clearPending(data.challenge_id);return r;},
     };
   }
   global.SunlandPhoneAuth=Object.freeze({createClient,normalizePhone,text,errorText,cooldown,rememberCooldown,runTurnstile,runEmailCaptcha});
