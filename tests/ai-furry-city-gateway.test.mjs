@@ -8,7 +8,8 @@ import vm from 'node:vm';
 import {JSDOM} from 'jsdom';
 
 import {appendFurryEventMessage} from '../ai/furry-event-cards.js';
-import {buildFurryEventModelHistory, createFurryEventCardMessage, getLatestFurryEventCard} from '../ai/furry-events.js';
+import {buildFurryEventModelHistory, createFurryEventCardMessage, getLatestFurryEventCard,
+  resolveFurryQueryParams, shouldSearchFurryEvents} from '../ai/furry-events.js';
 import {createAssistantHistoryMessage} from '../ai/reasoning.js';
 
 const workerRoot = process.env.SUNLAND_FURRY_GATEWAY_TEST_ROOT;
@@ -53,17 +54,20 @@ test('Web chat renders FCC Gateway cards and continues the latest city query', {
   const noop = () => {};
   let requestNumber = 0;
   let interrupted = false;
+  let overrideResponse;
   const errors = [];
   const run = vm.runInNewContext(`${requestSource}\nrunDeepSeekRequest`, {
     window, chatInner, setTimeout, clearTimeout, TextDecoder,
     localStorage: {getItem: () => 'fixture-session'},
     newHistoryOperationId: () => `city-fixture-${++requestNumber}`,
     buildFurryEventModelHistory, getLatestFurryEventCard, createFurryEventCardMessage, appendFurryEventMessage,
+    resolveFurryQueryParams, shouldSearchFurryEvents,
     buildVisionMessages: messages => messages,
     apiFetch: async body => {
       assert.equal(body.furry_events_v1, true);
       assert.equal(body.furry_conversation_id, '1795258285119');
       assert.equal(body.furry_location_v1, undefined);
+      if (overrideResponse) return overrideResponse(body);
       if (interrupted) return new Response(
         'data: {"type":"furry_event_result","status":"searching"}\n\n' +
         'data: {"choices":[{"delta":{"content":"已收到"},"finish_reason":"stop"}]}\n\n',
@@ -103,11 +107,11 @@ test('Web chat renders FCC Gateway cards and continues the latest city query', {
     }
     if (id === null) {
       assert.equal(card.furryEvents.length, 0);
-      assert.match(history.at(-1).content, city === '京都' ? /覆盖范围未知/ : /未找到匹配活动/);
+      assert.match(history.at(-1).content, city === '京都' ? /获取失败/ : /没有找到相关兽聚活动/);
     } else {
       assert.equal(card.furryEvents[0].id, `fcc:${id}`);
       assert.ok(chatInner.lastElementChild.textContent.includes(`${city}夹具活动 ${id}`));
-      assert.match(history.at(-1).content, /票价未提供/);
+      assert.equal(history.at(-1).content, '相关兽聚活动');
     }
   }
   const previousCard = chatInner.lastElementChild;
@@ -118,6 +122,30 @@ test('Web chat renders FCC Gateway cards and continues the latest city query', {
   assert.equal(history.at(-1).interrupted, true);
   assert.equal(chatInner.lastElementChild, previousCard);
   assert.deepEqual(errors, [['回复中断，已保留收到的内容', true]]);
+  const runPrompt = async (prompt, controller = new AbortController()) => {
+    history.push({role:'user', content:prompt});
+    await run({history, bubble:window.document.querySelector('#answer'), controller,
+      nativeFurry:true, userId:'fixture-user', sessionGeneration:1, conversationId:1795258285119});
+    return history.at(-1).content;
+  };
+  const falseClaim = '我帮你看了下广州近期的兽聚活动，都整理在上面啦，点卡片里的链接就能看详情～';
+  overrideResponse = () => new Response(`data: ${JSON.stringify({choices:[{delta:{content:falseClaim}}]})}\n\ndata: [DONE]\n\n`);
+  assert.equal(await runPrompt('广州最近有什么兽聚？'), '兽聚信息暂时获取失败，请稍后再试');
+  assert.equal(chatInner.lastElementChild, previousCard);
+  overrideResponse = () => new Response('data: {"choices":[{"delta":{"content":"兽迷线下聚会。"}}]}\n\ndata: [DONE]\n\n');
+  assert.equal(await runPrompt('兽聚是什么？'), '兽迷线下聚会。');
+  const controller = new AbortController();
+  const encoder = new TextEncoder();
+  overrideResponse = () => new Response(new ReadableStream({
+    start(stream) { stream.enqueue(encoder.encode('data: {"type":"furry_event_result","status":"searching"}\n\n')); },
+    pull(stream) {
+      if (!chatInner.querySelector('.is-loading')) return;
+      controller.abort();
+      stream.error(controller.signal.reason);
+    },
+  }));
+  assert.equal(await runPrompt('广州最近有什么兽聚？', controller), '广州最近有什么兽聚？');
+  assert.equal(chatInner.querySelector('.is-loading'), null);
   window.close();
 });
 
