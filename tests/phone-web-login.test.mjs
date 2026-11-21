@@ -4,16 +4,20 @@ import {readFileSync} from 'node:fs';
 import {JSDOM} from 'jsdom';
 const html=readFileSync(new URL('../login.html',import.meta.url),'utf8');
 const client=readFileSync(new URL('../p/js/phone-auth.js',import.meta.url),'utf8');
-function harness({phoneEnabled=true,phoneModule='present',unified=false}={}){
- const dom=new JSDOM(html,{url:'https://sunland.dev/login.html',runScripts:'outside-only'});const w=dom.window;const calls=[];w.document.querySelector('meta[name="sunland-phone-ui-enabled"]').content=String(phoneEnabled);
+function harness({phoneEnabled=true,phoneModule='present',unified=false,url='https://sunland.dev/login.html'}={}){
+ const dom=new JSDOM(html,{url,runScripts:'outside-only'});const w=dom.window;const calls=[];let phoneClients=0;
+ if(phoneEnabled!==null)w.document.querySelector('meta[name="sunland-phone-ui-enabled"]').content=String(phoneEnabled);
  w.document.querySelector('meta[name="sunland-unified-auth-enabled"]').content=String(unified);
  w.AbortController=AbortController;w.crypto.randomUUID=crypto.randomUUID.bind(crypto);w.alert=()=>{};
  w.initGeetest4=(_opts,callback)=>callback({onReady(fn){fn();},onError(){},onSuccess(fn){w.__emailCaptchaSuccess=fn;},getValidate(){return {mock:true};},showCaptcha(){},appendTo(){}});
  w.fetch=async(url,init)=>{const body=JSON.parse(init.body);calls.push({url,body});return Response.json(url.endsWith('send-code')?{success:true,challenge_id:body.challenge_id,expires_in:300,retry_after:600}:{token:'mock-jwt',user:{id:'same-account',email:null},onboarding:{version:0,step:1},is_new_user:true});};
  w.SunlandLoginBanStatus={check:async()=>({isBanned:false})};
- if(phoneModule!=='missing'){w.eval(client);const real=w.SunlandPhoneAuth;w.SunlandPhoneAuth={...real,createClient:phoneModule==='broken'?()=>{throw Error('synthetic');}:phoneModule==='incomplete'?()=>({}):opts=>real.createClient({...opts,captcha:async()=>'mock'})};}
+ if(phoneModule!=='missing'){w.eval(client);const real=w.SunlandPhoneAuth;w.SunlandPhoneAuth={...real,createClient:opts=>{
+  phoneClients++;if(phoneModule==='broken')throw Error('synthetic');
+  return phoneModule==='incomplete'?{}:real.createClient({...opts,captcha:async()=>'mock'});
+ }};}
  for(const script of [...w.document.querySelectorAll('script:not([src])')])w.eval(script.textContent);
- return{dom,w,calls};
+ return{dom,w,calls,phoneClients};
 }
 const flush=()=>new Promise(r=>setTimeout(r,0));
 for(const phoneModule of ['missing','broken','incomplete'])test(`email login stays usable when phone module is ${phoneModule}`,async t=>{
@@ -95,9 +99,31 @@ test('real language catalog translates phone login labels and authentication err
  assert.notEqual(h.w.SunlandPhoneAuth.errorText({code:'CODE_INVALID'}),'验证码错误或已过期，请重新获取');
 });
 
-test('phone client uses a recovery-specific cache key and keeps the released phone entry enabled',()=>{
- assert.match(html,/p\/js\/phone-auth\.js\?v=20261120-phone-only-1/);
- assert.match(html,/<meta name="sunland-phone-ui-enabled" content="true">/);
+test('deployed default ignores legacy phone selection and keeps the email flow and return target',async t=>{
+ const url='https://sunland.dev/login?return=copilot.html&mode=phone&sunland-phone-ui-enabled=true#register';
+ for(let load=0;load<2;load++){
+  const {dom,w,calls,phoneClients}=harness({phoneEnabled:null,unified:true,url});t.after(()=>dom.window.close());
+  const doc=w.document;
+  w.history.replaceState({loginMode:'phone'},'');
+  w.dispatchEvent(new w.PageTransitionEvent('pageshow',{persisted:true}));
+  for(const id of ['phoneLoginTab','phoneRegisterTab','sendPhoneCodeBtn'])doc.getElementById(id).click();
+  assert.equal(phoneClients,0);
+  assert.equal(doc.querySelector('.phone-tabs').hidden,true);
+  assert.equal(doc.querySelector('#phoneLoginFields').hidden,true);
+  assert.equal(doc.querySelector('#unifiedIdentityField').hidden,true);
+  assert.equal(doc.querySelector('#emailLoginField').hidden,false);
+  assert.equal(doc.querySelector('#emailCodeField').hidden,false);
+  assert.equal(w.getPostLoginTarget(),'copilot.html');
+  assert.equal(calls.length,0);
+  doc.querySelector('#emailInput').value='fixture@example.test';
+  doc.querySelector('#sendCodeBtn').click();await flush();
+  w.__emailCaptchaSuccess();await flush();
+  doc.querySelector('#codeInput').value='123456';
+  doc.querySelector('#agreeCheck').click();
+  doc.querySelector('#loginBtn').click();await flush();await flush();
+  assert.deepEqual(calls.map(({url})=>new URL(url).pathname),['/send-code','/verify-code']);
+  assert.equal(w.localStorage.getItem('token'),'mock-jwt');
+ }
 });
 
 test('unified authentication switched off falls back to the three-tab entry', t=>{
