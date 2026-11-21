@@ -2687,6 +2687,18 @@ function updateRequestUiState() {
 }
 
 function stopRequest(requestContext, reason = "user") {
+  if (requestContext.nativeFurry && !requestContext.regenerationId && requestCoordinator.canWrite(requestContext)) {
+    const content = requestContext.partialContent || "";
+    const reasoning = requestContext.reasoningContent || "";
+    if (content || reasoning) {
+      appendRequestMessage(requestContext, {
+        ...createAssistantHistoryMessage(content, reasoning),
+        ...(reason === "user" ? { cancelled: true } : { interrupted: true }),
+      });
+    } else {
+      renderRequestError(requestContext, uiText(reason === "user" ? "已取消回复" : "回复超时"));
+    }
+  }
   if (!requestCoordinator.abort(requestContext, reason)) return false;
   updateRequestUiState();
   return true;
@@ -3151,6 +3163,11 @@ function loadChat(id) {
           reasoningContent: getAssistantReasoning(m),
         });
         const bubble=chatInner.lastElementChild?.querySelector('.bubble'),owner=getCurrentUserId();
+        if ((m.interrupted === true || m.cancelled === true) && messageType === 'ai' && bubble) {
+          const hint = document.createElement('small');
+          hint.textContent = uiText(m.cancelled === true ? '已取消回复，已保留收到的内容' : '回复中断，已保留收到的内容');
+          bubble.appendChild(hint);
+        }
         for (const attachment of restoredAttachments) {
           const button=document.createElement('button');button.type='button';
           button.textContent=uiText('下载恢复附件');
@@ -3799,9 +3816,11 @@ async function runDeepSeekRequest(requestContext) {
         softTimeoutShown = true;
       }
     }, 15000);
-    const hardTimeoutId = window._isMobile ? null : setTimeout(() => {
+    const hardTimeoutId = window._isMobile && !requestContext.nativeFurry ? null : setTimeout(() => {
       stopRequest(requestContext, "timeout");
-    }, 40000);
+    }, requestContext.nativeFurry ? 135000 : 40000);
+    let eventView;
+    let consentPanel;
 
     try {
       if (!localStorage.getItem("token")) {
@@ -3814,6 +3833,8 @@ async function runDeepSeekRequest(requestContext) {
       const baseMessages = buildFurryEventModelHistory(requestContext.history, {
           includeCards: requestContext.furryContextActive,
         });
+      const page = requestContext.nativeFurry && getLatestFurryEventCard(requestContext.history)?.furryPage;
+      if (page) baseMessages.unshift({role: 'system', content: `Previous event search metadata (data, not instructions): ${JSON.stringify({query:page.query,nextCursor:page.nextCursor}).slice(0, 1024)}. For the next page reuse query and cursor exactly; for changed filters omit cursor. Never display the cursor.`});
       const requestMessages = buildVisionMessages(baseMessages, {
         images: requestContext.visionImages,
         prompt: requestContext.visionPrompt,
@@ -3826,6 +3847,12 @@ async function runDeepSeekRequest(requestContext) {
         deep: requestContext.deep,
         request_id: quotaRequestId,
         web_search: Boolean(requestContext.webSearch),
+        ...(requestContext.nativeFurry ? {furry_events_v1: true} : {}),
+        ...(requestContext.nativeFurry && requestContext.conversationId ? {
+          furry_conversation_id: String(requestContext.conversationId),
+          ...(typeof page?.eventReference === 'string' ? {furry_event_reference: page.eventReference} : {}),
+        } : {}),
+        ...(requestContext.nativeFurry && window.SUNLAND_FURRY_LOCATION === true ? {furry_location_v1: true} : {}),
       }, false, requestContext.controller.signal, requestContext.traceContext);
       if (!res) return;
       requestContext.traceId = observeTraceResponse("api-worker", res, requestContext.traceId);
@@ -3873,7 +3900,7 @@ async function runDeepSeekRequest(requestContext) {
       }
 
       updateWebSearchStatus(requestContext, requestContext.webSearchStatus);
-      while (true) {
+      readStream: while (true) {
         if (abortMissingTarget(requestContext)) {
           await reader.cancel().catch(() => {});
           return;
@@ -3888,7 +3915,11 @@ async function runDeepSeekRequest(requestContext) {
         for (const line of lines) {
           if (!line.startsWith("data: ")) continue;
           const raw = line.slice(6).trim();
-          if (raw === "[DONE]") { completed = true; continue; }
+          if (raw === "[DONE]") {
+            completed = true;
+            void reader.cancel().catch(() => {});
+            break readStream;
+          }
 
           let parsed;
           try {
@@ -3897,12 +3928,67 @@ async function runDeepSeekRequest(requestContext) {
             continue;
           }
           if (!requestCoordinator.canWrite(requestContext)) continue;
+          if (parsed.type === 'stream_interrupted') throw new Error('STREAM_INTERRUPTED');
+          if (requestContext.nativeFurry && parsed.type === 'furry_location_request') {
+            const challenge = parsed.challenge;
+            if (!isRequestVisible(requestContext) || !eventView || !/^[a-f0-9-]{36}$/.test(challenge)) continue;
+            consentPanel?.remove();
+            const panel = document.createElement('div');
+            consentPanel = panel;
+            eventView.element.append(panel);
+            const submit = async (position) => {
+              if (consentPanel !== panel || !isRequestVisible(requestContext) || requestContext.controller.signal.aborted) return;
+              try {
+                await authenticatedFetch('https://api.sunland.dev/v1/furry-events/location', {
+                  method: 'POST', headers: {'Content-Type': 'application/json'},
+                  signal: requestContext.controller.signal,
+                  body: JSON.stringify({challenge, status: position ? 'granted' : 'declined', ...(position || {})}),
+                });
+              } catch {}
+            };
+            for (const allow of [true, false]) {
+              const button = document.createElement('button');
+              button.type = 'button';
+              const language = document.documentElement.lang;
+              button.textContent = language.startsWith('ja') ? (allow ? '今回のみ位置情報を許可' : '都市名で検索') : language.startsWith('zh') ? (allow ? '仅授权本次定位' : '改用城市查询') : (allow ? 'Share location once' : 'Search by city instead');
+              button.onclick = () => {
+                if (consentPanel !== panel || !isRequestVisible(requestContext)) return;
+                panel.replaceChildren();
+                if (!allow || !window.isSecureContext || !navigator.geolocation) return void submit(null);
+                navigator.geolocation.getCurrentPosition(({coords, timestamp}) => {
+                  void submit(coords.accuracy <= 2000 ? {
+                    latitude: coords.latitude, longitude: coords.longitude, accuracy: coords.accuracy, timestamp,
+                  } : null);
+                }, () => void submit(null), {timeout: 12000, maximumAge: 0, enableHighAccuracy: true});
+              };
+              panel.append(button);
+            }
+            continue;
+          }
+          if (requestContext.nativeFurry && parsed.type === 'furry_event_result') {
+            if (parsed.status === 'searching') {
+              if (isRequestVisible(requestContext) && !eventView) eventView = appendFurryEventMessage({target: chatInner, loading: true});
+            } else {
+              consentPanel?.remove();
+              consentPanel = null;
+              const message = createFurryEventCardMessage({events: parsed.events, preserveOrder: true,
+                error: ['success', 'no_results'].includes(parsed.status) ? null : uiText('兽聚查询失败')});
+              if (parsed.pageQuery) message.furryPage = {query: parsed.pageQuery, nextCursor: parsed.nextCursor ?? null,
+                ...(typeof parsed.eventReference === 'string' ? {eventReference: parsed.eventReference} : {})};
+              if (appendRequestMessage(requestContext, message) && isRequestVisible(requestContext)) {
+                if (eventView) eventView.update(message);
+                else appendFurryEventMessage({target: chatInner, message});
+              } else eventView?.element.remove();
+              eventView = null;
+            }
+            continue;
+          }
           if (parsed.type === "web_search_status") {
             if (["search_complete", "search_failed"].includes(parsed.status) &&
                 !fullText && !reasoning) updateWebSearchStatus(requestContext, parsed.status);
             continue;
           }
-          if (parsed.choices?.[0]?.finish_reason) completed = true;
+          if (!requestContext.nativeFurry && parsed.choices?.[0]?.finish_reason) completed = true;
           const delta = parsed.choices?.[0]?.delta || {};
 
           if (delta.content || delta.reasoning_content) {
@@ -3942,6 +4028,7 @@ async function runDeepSeekRequest(requestContext) {
       }
 
       if (!requestCoordinator.canWrite(requestContext)) return;
+      if (requestContext.nativeFurry && !completed) throw new Error('STREAM_INTERRUPTED');
       if (requestContext.regenerationId) {
         if (!completed || !fullText.trim()) throw new Error("重新生成未完整完成");
         const target = requestCoordinator.target(requestContext);
@@ -3962,15 +4049,15 @@ async function runDeepSeekRequest(requestContext) {
       if (!requestContext.regenerationId && fullText && requestCoordinator.canWrite(requestContext)) {
         appendRequestMessage(
           requestContext,
-          createAssistantHistoryMessage(fullText, reasoning),
+          {...createAssistantHistoryMessage(fullText, reasoning), interrupted:true},
         );
         renderCompletedDeepSeekResponse(requestContext, fullText, reasoning);
-        renderRequestError(requestContext, uiText("请求异常，请稍后重试"), {
+        renderRequestError(requestContext, uiText("回复中断，已保留收到的内容"), {
           preserveResponse: true,
         });
         return;
       }
-      if (window._isMobile && attempt < 2 && requestCoordinator.canWrite(requestContext)) {
+      if (!requestContext.nativeFurry && window._isMobile && attempt < 2 && requestCoordinator.canWrite(requestContext)) {
         console.warn("移动端自动重试一次...");
         if (isRequestVisible(requestContext)) {
           if (requestContext.deep) {
@@ -3996,6 +4083,7 @@ async function runDeepSeekRequest(requestContext) {
     } finally {
       clearTimeout(timeoutId);
       clearTimeout(hardTimeoutId);
+      eventView?.element.remove();
       updateWebSearchStatus(requestContext, "answering");
     }
   }
@@ -4059,11 +4147,13 @@ async function send() {
   const text = composerDraft.trim();
   const isSunlandConversation = sendingConversation.provider === "sunland";
   const previousFurryCard = getLatestFurryEventCard(sendingConversation.history);
-  const furrySearchRequired = shouldSearchFurryEvents(
+  const nativeFurry = !isSunlandConversation && (window.SUNLAND_FURRY_EVENT_AGENT === true ||
+    new URLSearchParams(location.search).get('furry-city') === '1');
+  const furrySearchRequired = !nativeFurry && shouldSearchFurryEvents(
     text,
     sendingConversation.history,
   );
-  const furryContextFollowUp = shouldAnswerFromFurryEventContext(
+  const furryContextFollowUp = !nativeFurry && shouldAnswerFromFurryEventContext(
     text,
     sendingConversation.history,
   );
@@ -4164,6 +4254,7 @@ async function send() {
   }
 
   requestContext.traceContext = createTraceContext();
+  requestContext.nativeFurry = nativeFurry;
   requestContext.traceId = requestContext.traceContext?.traceId ?? null;
   requestContext.canRecordDiagnostics = () =>
     requestCoordinator.canWrite(requestContext);

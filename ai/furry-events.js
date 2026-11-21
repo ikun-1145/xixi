@@ -159,6 +159,7 @@ export function normalizeFurryEvent(raw) {
     end_at: endAt,
     city,
     address,
+    distanceKm: typeof raw.distanceKm === 'number' && Number.isFinite(raw.distanceKm) && raw.distanceKm >= 0 ? raw.distanceKm : null,
     cover: safeHttpUrl(raw.cover)
       ?? safeHttpUrl(raw.cover_url)
       ?? safeHttpUrl(raw.coverUrl),
@@ -187,7 +188,7 @@ function eventInformationScore(event) {
   ].filter(Boolean).length;
 }
 
-export function normalizeFurryEvents(value) {
+export function normalizeFurryEvents(value, preserveOrder = false) {
   const byKey = new Map();
   (Array.isArray(value) ? value : []).forEach((raw, index) => {
     const event = normalizeFurryEvent(raw);
@@ -201,7 +202,8 @@ export function normalizeFurryEvents(value) {
       byKey.set(key, event);
     }
   });
-  return Array.from(byKey.values()).sort((a, b) => (
+  const events = Array.from(byKey.values());
+  return preserveOrder ? events : events.sort((a, b) => (
     a.start_at.localeCompare(b.start_at) || a.name.localeCompare(b.name, "zh-CN")
   ));
 }
@@ -433,8 +435,8 @@ export async function enrichFurryEventsWithWeather(
   });
 }
 
-export function createFurryEventCardMessage({ events, query, error = null }) {
-  const normalizedEvents = normalizeFurryEvents(events);
+export function createFurryEventCardMessage({ events, query, error = null, preserveOrder = false }) {
+  const normalizedEvents = normalizeFurryEvents(events, preserveOrder);
   return {
     role: "assistant",
     content: "",
@@ -442,6 +444,7 @@ export function createFurryEventCardMessage({ events, query, error = null }) {
     furryEvents: normalizedEvents,
     furryQuery: validPreviousQuery(query),
     isEmpty: normalizedEvents.length === 0,
+    ...(preserveOrder ? {preserveOrder:true} : {}),
     ...(error ? { furryError: cleanText(error, 160) || "兽聚查询失败" } : {}),
   };
 }

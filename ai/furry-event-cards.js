@@ -41,7 +41,7 @@ function weatherText(weather) {
 }
 
 function eventLocation(event) {
-  return [event.city, event.address].filter(Boolean).join(" · ") || uiText("地点待公布");
+  return [event.distanceKm == null ? null : `≈ ${event.distanceKm} km`, event.city, event.address].filter(Boolean).join(" · ") || uiText("地点待公布");
 }
 
 function createEventCard(documentRef, event) {
@@ -170,7 +170,7 @@ function renderLoading(documentRef, content) {
 }
 
 function renderResult(documentRef, content, message) {
-  const events = normalizeFurryEvents(message?.furryEvents);
+  const events = normalizeFurryEvents(message?.furryEvents, message?.preserveOrder === true);
   if (message?.furryError) {
     const error = documentRef.createElement("div");
     error.className = "furry-event-empty";

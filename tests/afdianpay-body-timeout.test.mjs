@@ -1,6 +1,6 @@
 // Isolated real HTTP transport; every request is restricted to this loopback server.
 // The production Worker has no provider URL override. Only the imported test copy
-// substitutes its fixed endpoint and shortens its timeout for deterministic tests.
+// substitutes its endpoint and starts the short provider deadline at headers.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createServer } from 'node:http';
@@ -9,8 +9,11 @@ import { readFile } from 'node:fs/promises';
 const productionSource = await readFile(new URL('../workers/afdianpay/worker.js',import.meta.url),'utf8');
 const officialEndpoint = 'const AFDIAN_QUERY_ENDPOINT = "https://ifdian.net/api/open/query-order";';
 const timeoutConstant = 'const REQUEST_TIMEOUT_MS = 8_000;';
+const requestTimer = 'const timeout = setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);';
 assert.equal(productionSource.split(officialEndpoint).length,2);
 assert.equal(productionSource.split(timeoutConstant).length,2);
+assert.equal(productionSource.split(requestTimer).length,2);
+assert.equal(productionSource.split('clearTimeout(timeout);').length,2);
 
 async function withLoopback(status,fn){
  const calls=[];const sockets=new Set();const nativeFetch=globalThis.fetch;
@@ -34,13 +37,34 @@ async function withLoopback(status,fn){
  server.on('connection',socket=>{sockets.add(socket);socket.on('close',()=>sockets.delete(socket));});
  await new Promise(resolve=>server.listen(0,'127.0.0.1',resolve));
  const base=`http://127.0.0.1:${server.address().port}`;
- const source=productionSource.replace(officialEndpoint,`const AFDIAN_QUERY_ENDPOINT = "${base}/provider";`).replace(timeoutConstant,'const REQUEST_TIMEOUT_MS = 80;');
- const {reconcilePage}=await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
+ const source=productionSource.replace(officialEndpoint,`const AFDIAN_QUERY_ENDPOINT = "${base}/provider";`)
+  .replace(requestTimer,'const timeout = url === AFDIAN_QUERY_ENDPOINT ? providerDeadline(controller) : setTimeout(() => controller.abort(), REQUEST_TIMEOUT_MS);')
+  .replace('clearTimeout(timeout);','url === AFDIAN_QUERY_ENDPOINT ? timeout.cancel() : clearTimeout(timeout);')+`
+const deadlines = new WeakMap();
+function providerDeadline(controller) {
+ const abort = () => controller.abort();
+ let timer = setTimeout(abort, REQUEST_TIMEOUT_MS);
+ const deadline = {
+  start() { clearTimeout(timer); timer = setTimeout(abort, 80); },
+  cancel() { clearTimeout(timer); deadlines.delete(controller.signal); },
+ };
+ deadlines.set(controller.signal, deadline);
+ return deadline;
+}
+export function startProviderDeadline(signal) { deadlines.get(signal).start(); }
+`;
+ const {reconcilePage,startProviderDeadline}=await import(`data:text/javascript;base64,${Buffer.from(source).toString('base64')}`);
  let signal;
  globalThis.fetch=(input,init)=>{
   const url=new URL(input instanceof Request?input.url:String(input));
   assert.equal(url.origin,base,'isolated transport may only access the owned loopback server');
-  if(url.pathname==='/provider')signal=init.signal;
+  if(url.pathname==='/provider'){
+   signal=init.signal;
+   return nativeFetch(input,init).then(response=>{
+    startProviderDeadline(init.signal);
+    return response;
+   });
+  }
   return nativeFetch(input,init);
  };
  try{
