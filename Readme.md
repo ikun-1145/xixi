@@ -81,7 +81,35 @@ npx wrangler pages functions build --outdir /tmp/sunland-verify-build
 npx wrangler pages dev . --port 8788 --compatibility-date=2026-06-24
 ```
 
-全量测试中的 Worker 集成用例需要独立的、已授权访问的认证源码检出。使用 `workers/phone-auth/source-provenance.json` 中的 `sourceCommit`，保留 Git 历史（包含独立 Worker 使用的固定基线）以及同一检出中的 `supabase/migrations/`。在该检出的 `worker/` 目录运行 `npm ci --no-audit --no-fund`，然后将 `SUNLAND_AUTH_WORKER_ROOT` 指向这个 `worker/` 目录再运行 `npm test`。不要用正在开发的认证源码或生产凭据替代测试输入。
+公开 PR 运行 `npm run test:public`，不访问私库或私有凭据。四个依赖私有 Worker 的测试文件由所有者在可信本机运行 `npm run test:private-worker`；两组互斥，合起来就是 `npm test`，不以跳过用例代替验证。
+
+### 私有 Worker 合并验证（仅所有者）
+
+1. 在指定的 `ikun-1145/xixi` PR 中审查最新完整 Head SHA 的差异，尤其是工作流、依赖锁和所有会执行的代码。用 `gh pr view <PR> -R ikun-1145/xixi --json headRefOid --jq .headRefOid` 核对 SHA，在临时目录完整检出该 SHA。不要运行未审查的 PR。
+2. 在站点目录外，从授权的 `ikun-1145/sunland-ai-dart` 完整检出 `workers/phone-auth/source-provenance.json` 的 `sourceCommit`；不要浅克隆或部分克隆，也不要使用开发工作树。保留 `supabase/migrations/`，将 `SUNLAND_AUTH_WORKER_ROOT` 指向其中的 `worker/`。使用 Node.js `22.23.5`，先运行以下校验，再安装依赖：
+
+   ```sh
+   set -e
+   export GIT_ALLOW_PROTOCOL='' GIT_NO_LAZY_FETCH=1
+   revision=$(node -p 'require("./workers/phone-auth/source-provenance.json").sourceCommit')
+   test "$(git -C "$SUNLAND_AUTH_WORKER_ROOT" rev-parse HEAD)" = "$revision"
+   git -C "$SUNLAND_AUTH_WORKER_ROOT" rev-list --objects --missing=error bc5489b6e2962f3e1306aa4de5b4292cecf7ca3d:worker -- >/dev/null
+   git -C "$SUNLAND_AUTH_WORKER_ROOT" show "$revision:worker/src/email-otp.js" >/dev/null
+   node --input-type=module -e 'import { verifyPhoneAuthWorkerSource } from "./scripts/build-phone-auth-worker.mjs"; await verifyPhoneAuthWorkerSource(process.env.SUNLAND_AUTH_WORKER_ROOT);'
+   npm ci --prefix "$SUNLAND_AUTH_WORKER_ROOT" --ignore-scripts --no-audit --no-fund
+   npm ci --ignore-scripts --no-audit --no-fund
+   ```
+
+3. 在无网络、无凭据环境中运行测试。例如 Mac mini 上使用临时 HOME 和 macOS 沙箱（`node` 与 `npm` 须在同一工具链目录）：
+
+   ```sh
+   run_home=$(mktemp -d)
+   env -i PATH="$(dirname "$(command -v node)"):/usr/bin:/bin" HOME="$run_home" TMPDIR="$run_home" \
+     SUNLAND_AUTH_WORKER_ROOT="$SUNLAND_AUTH_WORKER_ROOT" GIT_ALLOW_PROTOCOL='' GIT_NO_LAZY_FETCH=1 \
+     sandbox-exec -p '(version 1)(allow default)(deny network*)' npm run test:private-worker > "$run_home/test.log" 2>&1
+   ```
+
+4. 私下检查退出码与日志，只在 PR 记录完整 SHA 和测试计数（通过、失败、跳过）；不要上传源码、日志或产物。完成后删除本次临时目录和检出。合并前重新核对 Head SHA 和同一提交的公开 CI；新增提交立即使本次记录失效。
 
 当前只预留了视频、反向搜图、C2PA / Content Credentials 和 AI 生成检测接口；这些能力不会输出伪造概率。
 

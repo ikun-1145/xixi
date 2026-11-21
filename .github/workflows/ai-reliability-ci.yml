@@ -1,29 +1,13 @@
 name: AI Web Reliability CI
 
-on:
-  pull_request:
-    paths:
-      - "ai/**"
-      - "p/js/site-i18n.js"
-      - ".agent-sync/**"
-      - ".agents/skills/**"
-      - ".codex/agents/**"
-      - "scripts/roster.py"
-      - "scripts/build*phone*.mjs"
-      - "workers/phone-auth/**"
-      - "tests/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/ai-reliability-ci.yml"
+on: pull_request
 
-# Verification only. No deployment or production API calls.
 permissions:
   contents: read
 
 jobs:
   web-tests:
-    if: github.event.pull_request.head.repo.full_name == github.repository
-    environment: private-worker-ci
+    name: Public web tests
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
@@ -42,66 +26,13 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Read the audited Worker revision
-        id: auth-source
-        run: |
-          node --input-type=module -e '
-            import { readFileSync } from "node:fs";
-            const { sourceCommit } = JSON.parse(readFileSync("workers/phone-auth/source-provenance.json", "utf8"));
-            if (typeof sourceCommit !== "string" || !/^[a-f0-9]{40}$/.test(sourceCommit)) throw Error("Expected a full Worker commit SHA");
-            console.log(`revision=${sourceCommit}`);
-          ' >> "$GITHUB_OUTPUT"
-
-      - name: Checkout audited private Worker source
-        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
-        with:
-          repository: ikun-1145/sunland-ai-dart
-          ref: ${{ steps.auth-source.outputs.revision }}
-          token: ${{ secrets.SUNLAND_AUTH_WORKER_READ_TOKEN }}
-          path: .ci-auth-source
-          persist-credentials: false
-          fetch-depth: 0
-
-      - name: Verify Worker sources and install locked dependencies
-        env:
-          WORKER_REVISION: ${{ steps.auth-source.outputs.revision }}
-          GIT_ALLOW_PROTOCOL: ""
-          GIT_NO_LAZY_FETCH: "1"
-        run: |
-          source_dir="$(mktemp -d "$RUNNER_TEMP/sunland-auth.XXXXXXXX")"
-          mv "$GITHUB_WORKSPACE/.ci-auth-source" "$source_dir/source"
-          worker_root="$source_dir/source/worker"
-          test "$(git -C "$worker_root" rev-parse HEAD)" = "$WORKER_REVISION"
-          baseline=bc5489b6e2962f3e1306aa4de5b4292cecf7ca3d
-          git -C "$worker_root" rev-list --objects --missing=error "$baseline:worker" -- > /dev/null
-          git -C "$worker_root" show "$baseline:worker/src/index.js" > /dev/null
-          git -C "$worker_root" show "$WORKER_REVISION:worker/src/email-otp.js" > /dev/null
-          node --input-type=module -e 'import { verifyPhoneAuthWorkerSource } from "./scripts/build-phone-auth-worker.mjs"; await verifyPhoneAuthWorkerSource(process.argv[1]);' "$worker_root"
-          if ! npm ci --prefix "$worker_root" --ignore-scripts --no-audit --no-fund > /dev/null 2>&1; then
-            echo '::error::Locked private Worker dependency installation failed; reproduce in a trusted local checkout.'
-            exit 1
-          fi
-          echo "SUNLAND_AUTH_WORKER_ROOT=$worker_root" >> "$GITHUB_ENV"
-
       - name: Install locked dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Check changed JavaScript syntax
+      - name: Check JavaScript syntax
         run: |
           node --check ai/app.js
           node --check ai/ai-request-errors.js
 
-      - name: Run complete web test suite
-        env:
-          GIT_ALLOW_PROTOCOL: ""
-          GIT_NO_LAZY_FETCH: "1"
-        run: |
-          report="$(mktemp "$RUNNER_TEMP/web-tests.XXXXXXXX")"
-          trap 'rm -f "$report"' EXIT
-          status=0
-          npm test > "$report" 2>&1 || status=$?
-          awk '/^# (tests|pass|fail|skipped) [0-9]+$/ { print }' "$report"
-          if (( status != 0 )); then
-            echo '::error::Web tests failed; reproduce in a trusted local checkout for details.'
-          fi
-          exit "$status"
+      - name: Run public web tests (private Worker suite runs separately)
+        run: npm run test:public
