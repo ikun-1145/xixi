@@ -1,6 +1,7 @@
 import test, { mock } from 'node:test';
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
+import { createHmac } from 'node:crypto';
 import { PhoneAuthCoordinator, LEDGER_KEY, SINGLETON_NAME } from '../workers/phone-auth/coordinator.js';
 import { sendPhoneCode, checkPhoneCode } from '../workers/phone-auth/service.js';
 
@@ -21,12 +22,12 @@ function assertContract(name, value) {
 }
 
 const START = Date.parse('2026-10-24T00:00:00Z');
-const POLICY = { perPhoneDaily: 2, perIpDaily: 3, dailyLimit: 4, unitCostMicros: 100000,
+const POLICY = { perPhoneDaily: 2, perIpDaily: 3, dailyLimit: 100, unitCostMicros: 100000,
   dailyBudgetMicros: 400000, totalBudgetMicros: 500000, ipRequestsPerMinute: 20, globalRequestsPerMinute: 100 };
 const ctx = { ip: '192.0.2.1' };
 const phone = '13800000000';
 const sensitive = { ...ctx, userId: 'existing-user', sessionId: 'server-token-digest-1234', identityStatus: 'active', reauthenticatedAt: START };
-const input = (n = phone, purpose = 'login') => ({ phone: n, purpose, turnstile_token: 'mock-turnstile' });
+const input = (n = phone, purpose = 'login') => ({ phone: n, purpose, turnstile_token: crypto.randomUUID() });
 
 // Shared transactional store models separate requests/object reconstructions;
 // it is deliberately not presented as Cloudflare runtime acceptance.
@@ -61,11 +62,20 @@ function harness(overrides = {}) {
   const storage = new MockStorage();
   let now = START;
   const calls = [];
-  const env = { PHONE_SMS_ENABLED: 'true', PHONE_RELEASE_MODE: 'public', PHONE_AUTH_HMAC_KEY: 'mock-only-hmac-key-at-least-32-characters',
+  const env = { PHONE_SMS_ENABLED: 'true', PHONE_RELEASE_MODE: 'public', PHONE_LOGIN_EXTRA_CANARY_ENABLED: 'false', PHONE_AUTH_HMAC_KEY: 'mock-only-hmac-key-at-least-32-characters',
     PHONE_AUTH_HMAC_KEY_ID: 'test-v1', PHONE_AUTH_POLICY: JSON.stringify(POLICY),
     TURNSTILE_SECRET: 'mock-secret', PHONE_TURNSTILE_HOSTNAME: 'sunland.dev',
     PHONE_ALIYUN_ACCESS_KEY_ID: 'mock-id', PHONE_ALIYUN_ACCESS_KEY_SECRET: 'mock-secret',
     PHONE_SMS_SIGN_NAME: 'mock-sign', PHONE_SMS_TEMPLATE_CODE: 'mock-template', ...overrides };
+  const mac = (domain, value) => createHmac('sha256', 'mock-only-hmac-key-at-least-32-characters').update(`${domain}\0${value}`).digest('hex');
+  const ledger = storage.data.get(LEDGER_KEY);
+  if (env.PHONE_RELEASE_MODE === 'public') {
+    const policy = JSON.parse(env.PHONE_AUTH_POLICY);
+    Object.assign(ledger, { schema: 2, structureConfig: mac('ledger-structure:v2', JSON.stringify([2, 'test-v1', SINGLETON_NAME])),
+      operationConfig: mac('ledger-operation:v2', JSON.stringify(Object.keys(POLICY).map(key => policy[key]))) });
+  } else {
+    env.PHONE_SMS_CANARY_PHONE_HASHES = JSON.stringify([phone, '13900000000'].map(value => mac('phone', value)));
+  }
   const h = { storage, env, calls, captchaPosts: [], captcha: {}, send: {}, check: {},
     advance(ms) { now += ms; }, setTime(ms) { now = ms; } };
   const fetchImpl = async (url, options) => {
@@ -128,6 +138,14 @@ test('send + check use same fixed coordinator and consume once without issuing i
   const persisted = JSON.stringify([...h.storage.data]);
   for (const raw of [phone, ctx.ip, '123456', 'mock-turnstile', 'mock-secret']) assert.equal(persisted.includes(raw), false);
   assert.equal(Object.hasOwn(sent, 'token'), false);
+});
+
+test('a previously claimed Turnstile token cannot reserve another SMS', async () => {
+  const h = harness();
+  const first = input();
+  await h.sendCode(first);
+  await rejects(h.sendCode({ ...first, phone: '13900000000' }), 'CAPTCHA_FAILED');
+  assert.deepEqual(h.calls, ['captcha', 'SendSmsVerifyCode']);
 });
 
 test('malformed inputs, extra user_id, unknown purpose and untrusted context are rejected', async () => {
@@ -223,21 +241,22 @@ test('supplier failure and unknown send outcome retain budget and phone lock', a
 
 test('phone/IP daily quotas, global atomic daily count and daily amount budget', async () => {
   const h = harness();
+  h.storage.data.get(LEDGER_KEY).dayCount = 96;
   await h.sendCode(); h.advance(600000); await h.sendCode(); h.advance(600000);
   await rejects(h.sendCode(), 'RATE_LIMITED');
   await h.sendCode(input('13900000000'));
   await rejects(h.sendCode(input('13700000000')), 'RATE_LIMITED');
   await h.sendCode(input('13700000000'), { ip: '192.0.2.2' });
   await rejects(h.sendCode(input('13600000000'), { ip: '192.0.2.3' }), 'BUDGET_EXCEEDED');
-  assert.equal(h.storage.data.get(LEDGER_KEY).dayCount, 4);
-  const h2 = harness({ PHONE_AUTH_POLICY: JSON.stringify({ ...POLICY, dailyBudgetMicros: 100000 }) });
+  assert.equal(h.storage.data.get(LEDGER_KEY).dayCount, 100);
+  const h2 = harness({ PHONE_RELEASE_MODE: 'canary', PHONE_AUTH_POLICY: JSON.stringify({ ...POLICY, dailyBudgetMicros: 100000 }) });
   const results = await Promise.allSettled([h2.sendCode(), h2.sendCode(input('13900000000'))]);
   assert.equal(results.filter(x => x.status === 'fulfilled').length, 1);
   assert.equal(h2.calls.filter(x => x === 'SendSmsVerifyCode').length, 1);
 });
 
 test('lifetime budget survives UTC day rollover and rebuilding the coordinator', async () => {
-  const h = harness({ PHONE_AUTH_POLICY: JSON.stringify({ ...POLICY, totalBudgetMicros: 100000 }) });
+  const h = harness({ PHONE_RELEASE_MODE: 'canary', PHONE_AUTH_POLICY: JSON.stringify({ ...POLICY, totalBudgetMicros: 100000 }) });
   await h.sendCode(); h.advance(86400000); h.coordinator = h.rebuild();
   await rejects(h.sendCode(input('13900000000')), 'BUDGET_EXCEEDED');
   assert.equal(h.storage.data.get(LEDGER_KEY).totalMicros, 100000);
@@ -283,12 +302,13 @@ test('unknown verification outcome closes challenge; unfinished send remains qua
 });
 
 test('atomic global daily quota across different phones/objects and minute request limit', async () => {
-  const h = harness({ PHONE_AUTH_POLICY: JSON.stringify({ ...POLICY, dailyLimit: 1 }) });
+  const h = harness();
+  h.storage.data.get(LEDGER_KEY).dayCount = 99;
   const other = h.rebuild();
   const results = await Promise.allSettled([h.coordinator.send(input(), ctx),
     other.send(input('13900000000'), { ip: '192.0.2.2' })]);
   assert.equal(results.filter(x => x.status === 'fulfilled').length, 1);
-  assert.equal(h.storage.data.get(LEDGER_KEY).dayCount, 1);
+  assert.equal(h.storage.data.get(LEDGER_KEY).dayCount, 100);
   const h2 = harness({ PHONE_AUTH_POLICY: JSON.stringify({ ...POLICY, globalRequestsPerMinute: 1 }) });
   h2.captcha.success = false;
   await rejects(h2.sendCode(), 'CAPTCHA_FAILED');

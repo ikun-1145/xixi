@@ -1,42 +1,38 @@
 name: AI Web Reliability CI
 
-on:
-  pull_request:
-    paths:
-      - "ai/**"
-      - "p/js/site-i18n.js"
-      - "tests/**"
-      - "package.json"
-      - "package-lock.json"
-      - ".github/workflows/ai-reliability-ci.yml"
+on: pull_request
 
-# This workflow is verification-only. No secrets, deployment or production API calls.
 permissions:
   contents: read
 
 jobs:
   web-tests:
+    name: Public web tests
     runs-on: ubuntu-latest
     timeout-minutes: 12
     steps:
       - name: Checkout proposed changes
-        uses: actions/checkout@v4
+        uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683
         with:
           persist-credentials: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
         with:
-          node-version: "22"
-          cache: "npm"
+          node-version: "22.23.5"
+
+      - name: Set up Python for roster tests
+        uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065
+        with:
+          python-version: "3.12"
 
       - name: Install locked dependencies without lifecycle scripts
         run: npm ci --ignore-scripts --no-audit --no-fund
 
-      - name: Check changed JavaScript syntax
+      - name: Check JavaScript syntax
         run: |
           node --check ai/app.js
           node --check ai/ai-request-errors.js
 
-      - name: Run complete web test suite
-        run: npm test
+      - name: Run public web tests (private Worker suite runs separately)
+        run: npm run test:public

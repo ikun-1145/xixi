@@ -1,13 +1,22 @@
 // Actual authoritative Worker source + new modules + real PostgreSQL WASM SQL.
 // All HTTP (including provider/captcha/database) is intercepted; no live network.
-import test, {mock} from 'node:test';
+import test, {after,mock} from 'node:test';
 import assert from 'node:assert/strict';
-import {readFile} from 'node:fs/promises';
+import {mkdtemp,readFile,rm,writeFile} from 'node:fs/promises';
+import {createHmac} from 'node:crypto';
+import {tmpdir} from 'node:os';
+import {join} from 'node:path';
+import {pathToFileURL} from 'node:url';
 import {PGlite} from '@electric-sql/pglite';
 import {JSDOM} from 'jsdom';
 import {buildPhoneAuthWorker} from '../scripts/build-phone-auth-worker.mjs';
+import {SINGLETON_NAME} from '../workers/phone-auth/coordinator.js';
 const built=await buildPhoneAuthWorker();
-const bundle=await import('data:text/javascript;base64,'+Buffer.from(built.code).toString('base64'));
+const directory=await mkdtemp(join(tmpdir(),'sunland-phone-integration-'));
+after(()=>rm(directory,{recursive:true,force:true}));
+const file=join(directory,'worker.mjs');
+await writeFile(file,built.code,{mode:0o600});
+const bundle=await import(pathToFileURL(file));
 const migration=await readFile(new URL('../supabase/migrations/20261024003756_phone_identity.sql',import.meta.url),'utf8');
 const contract=JSON.parse(await readFile(new URL('../docs/full-stack-development/requirements/mainland-phone-auth/phase-2-openapi.json',import.meta.url),'utf8'));
 function assertSchema(value,schema) {
@@ -47,16 +56,23 @@ test('real Worker fetch integrates identity, original JWT/email/database-token a
  lease_expires_at timestamptz,attempt_id text,fencing_version bigint not null default 0,data_deleted_at timestamptz,recovery_expires_at timestamptz,created_at timestamptz not null default now());
  grant select,insert,update,delete on user_profiles,account_deletion_jobs to service_role;`);
  await db.exec(migration);
+ await db.exec("create unique index user_profiles_email_unique_idx on user_profiles(lower(email)) where email is not null and identity_status is distinct from 'retired'");
+ for(const file of ['20261115003339_phone_registration_verified_email.sql','20261119140108_phone_only_registration.sql']) {
+  await db.exec(await readFile(new URL(`../supabase/migrations/${file}`,import.meta.url),'utf8'));
+ }
  const env={JWT_SECRET:secret,SUPABASE_JWT_SECRET:'mock-database-jwt-secret',SUPABASE_PROJECT_URL:'https://database.test.invalid',SUPABASE_SECRET_KEY:'sb_secret_mock_only',
  PHONE_IDENTITY_ENABLED:'true',PHONE_IDENTITY_LOOKUP_KEY:'mock-lookup-secret-more-than-32-chars',PHONE_IDENTITY_LOOKUP_KEY_ID:'v1',
  PHONE_IDENTITY_ENCRYPTION_KEYS:JSON.stringify({v1:Buffer.alloc(32,7).toString('base64url')}),PHONE_IDENTITY_ENCRYPTION_KEY_ID:'v1',
  PHONE_AUTH_HMAC_KEY:'mock-hmac-secret-more-than-32-chars',PHONE_AUTH_HMAC_KEY_ID:'v1',PHONE_SMS_ENABLED:'true',PHONE_RELEASE_MODE:'public',PHONE_NEW_REGISTRATION_ENABLED:'true',TURNSTILE_SECRET:'mock-captcha',PHONE_TURNSTILE_HOSTNAME:'sunland.dev',
  PHONE_ALIYUN_ACCESS_KEY_ID:'mock-id',PHONE_ALIYUN_ACCESS_KEY_SECRET:'mock-secret',PHONE_SMS_SIGN_NAME:'mock-sign',PHONE_SMS_TEMPLATE_CODE:'mock-template',
- PHONE_AUTH_POLICY:JSON.stringify({perPhoneDaily:20,perIpDaily:40,dailyLimit:50,unitCostMicros:1,dailyBudgetMicros:50,totalBudgetMicros:100,ipRequestsPerMinute:100,globalRequestsPerMinute:200})};
+ PHONE_LOGIN_EXTRA_CANARY_ENABLED:'false',PHONE_ONLY_REGISTRATION_ENABLED:'true',PHONE_UNIFIED_LOGIN_ENABLED:'true',
+ PHONE_AUTH_POLICY:JSON.stringify({perPhoneDaily:20,perIpDaily:40,dailyLimit:100,unitCostMicros:1,dailyBudgetMicros:50,totalBudgetMicros:100,ipRequestsPerMinute:100,globalRequestsPerMinute:200})};
  const encoder=new TextEncoder();const lookupKey=await crypto.subtle.importKey('raw',encoder.encode(env.PHONE_IDENTITY_LOOKUP_KEY),{name:'HMAC',hash:'SHA-256'},false,['sign']);
  const canary=Buffer.from(await crypto.subtle.sign('HMAC',lookupKey,encoder.encode('sunland-phone-index-canary:v1\0'))).toString('hex');
  await db.query('update sunland_phone_auth_config set lookup_key_id=$1,lookup_check=$2',['v1',canary]);
- const store=new Storage(new Map([['account',{schema:1,enabled:true,keyId:'v1',testReserved:0,totalMicros:0,day:Math.floor(now/86400000),dayCount:0,dayMicros:0,minute:Math.floor(now/60000),minuteCount:0,lastNow:now}]]));
+ const mac=(domain,value)=>createHmac('sha256',env.PHONE_AUTH_HMAC_KEY).update(`${domain}\0${JSON.stringify(value)}`).digest('hex');
+ const store=new Storage(new Map([['account',{schema:2,enabled:true,keyId:'v1',testReserved:0,totalMicros:0,day:Math.floor((now+8*3600000)/86400000),dayCount:0,dayMicros:0,minute:Math.floor(now/60000),minuteCount:0,lastNow:now,
+  structureConfig:mac('ledger-structure:v2',[2,'v1',SINGLETON_NAME]),operationConfig:mac('ledger-operation:v2',Object.values(JSON.parse(env.PHONE_AUTH_POLICY)))}]]));
  const fetchMock=mock.method(globalThis,'fetch',async(input,init={})=>{
   const url=new URL(typeof input==='string'?input:input.url);const body=init.body?JSON.parse(init.body):{};
   if(url.hostname==='challenges.cloudflare.com')return Response.json({success:true,hostname:'sunland.dev',action:captchaAction,challenge_ts:new Date().toISOString()});
@@ -64,6 +80,9 @@ test('real Worker fetch integrates identity, original JWT/email/database-token a
   assert.equal(url.hostname,'database.test.invalid','live network forbidden');
   if(url.pathname==='/rest/v1/rpc/sunland_phone_identity') {
    const r=await db.query('select sunland_phone_identity($1,$2::jsonb) result',[body.p_action,JSON.stringify(body.p_data)]);return Response.json(r.rows[0].result);
+  }
+  if(url.pathname==='/rest/v1/rpc/sunland_phone_register_phone_only') {
+   const r=await db.query('select sunland_phone_register_phone_only($1::jsonb) result',[JSON.stringify(body.p_data)]);return Response.json(r.rows[0].result);
   }
   if(url.pathname==='/rest/v1/rpc/sunland_otp') {
    if(body.p_action==='challenge')return Response.json({code:'OK',request_id:'13365418-4c84-4fc4-b827-94cf45011d49'});
@@ -81,17 +100,26 @@ test('real Worker fetch integrates identity, original JWT/email/database-token a
  env.PHONE_AUTH_COORDINATOR={getByName(){return {fetch:r=>coordinator.fetch(r)};}};
  const request=async(path,body={},token)=>{
   const response=await bundle.default.fetch(new Request('https://api.sunland.dev'+path,{method:'POST',headers:{'Content-Type':'application/json','CF-Connecting-IP':'192.0.2.1',...(token?{Authorization:'Bearer '+token}:{})},body:JSON.stringify(body)}),env,{});
-  const output=await response.json(); const responseSchema=contract.paths[path]?.post.responses[String(response.status)]?.content['application/json'].schema; if(path.startsWith('/v1/phone/')){assert.ok(responseSchema,`undocumented status ${response.status}`);assertSchema(output,responseSchema);} return {status:response.status,body:output,headers:response.headers};
+  const output=await response.json(); const responseSchema=contract.paths[path]?.post.responses[String(response.status)]?.content['application/json'].schema; if(path.startsWith('/v1/phone/')&&!path.startsWith('/v1/phone/unified/')){assert.ok(responseSchema,`undocumented status ${response.status}`);assertSchema(output,responseSchema);} return {status:response.status,body:output,headers:response.headers};
  };
- const send=async(phone,purpose='login',token,reauth_token)=>{captchaAction='phone_'+purpose;const r=await request('/v1/phone/send-code',{phone,purpose,turnstile_token:'mock',...(reauth_token?{reauth_token}:{})},token);assert.equal(r.status,200,JSON.stringify(r.body));return r.body.challenge_id;};
+ const send=async(phone,purpose='login',token,reauth_token)=>{captchaAction='phone_'+purpose;const r=await request('/v1/phone/send-code',{phone,purpose,turnstile_token:crypto.randomUUID(),...(reauth_token?{reauth_token}:{})},token);assert.equal(r.status,200,JSON.stringify(r.body));return r.body.challenge_id;};
+ const register=async phone=>{
+  captchaAction='phone_login';
+  const challenge_id=crypto.randomUUID();
+  const sent=await request('/v1/phone/send-code',{phone,challenge_id,purpose:'login',turnstile_token:crypto.randomUUID()});
+  assert.equal(sent.status,200,JSON.stringify(sent.body));
+  const body={phone:'+86'+phone,challenge_id,operation_id:crypto.randomUUID(),proof:Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64url')};
+  const verified=await request('/v1/phone/unified/verify',{...body,code:'123456'});
+  assert.equal(verified.status,200,JSON.stringify(verified.body));assert.equal(verified.body.status,'registration_required');
+  return request('/v1/phone/unified/register-phone',body);
+ };
  let user,token;
  try {
   await t.test('new phone registration uses atomic SQL and original JWT, preserves null email',async()=>{
-   const phone='13800000000',challenge_id=await send(phone);
-   const r=await request('/v1/phone/verify-code',{phone,challenge_id,code:'123456',operation_id:crypto.randomUUID()});
+   const r=await register('13800000000');
    assert.equal(r.status,200,JSON.stringify(r.body));user=r.body.user.id;token=r.body.token;
    assert.equal(r.body.user.email,null);assert.equal(r.body.is_new_user,true);assert.deepEqual(r.body.onboarding,{version:0,step:1});assert.equal(decode(token).id,user);
-   assert.deepEqual(Object.keys(r.body).sort(),['is_new_user','onboarding','token','user']);
+   assert.deepEqual(Object.keys(r.body).sort(),['is_new_user','onboarding','status','token','user']);
   });
   await t.test('actual Worker refuses client registration override and does not create a disabled account',async()=>{
    env.PHONE_NEW_REGISTRATION_ENABLED='false';
@@ -145,7 +173,7 @@ test('real Worker fetch integrates identity, original JWT/email/database-token a
    assert.equal((await db.query('select count(*)::int n from user_profiles')).rows[0].n,1);
   });
   await t.test('phone-only account can reauth and authorize existing deletion job without email',async()=>{
-   const phone='13900000000',challenge_id=await send(phone);const registered=await request('/v1/phone/verify-code',{phone,challenge_id,code:'123456',operation_id:crypto.randomUUID()});assert.equal(registered.status,200);
+   const phone='13900000000',registered=await register(phone);assert.equal(registered.status,200,JSON.stringify(registered.body));
    const id=registered.body.user.id,auth=registered.body.token;
    // A separate SMS fixture for the next flow: clear only synthetic test state.
    // Real persistent budget/phone quarantine is never reset by application code.
@@ -163,13 +191,17 @@ test('real Worker fetch integrates identity, original JWT/email/database-token a
    assert.equal(r.headers.get('Access-Control-Allow-Origin'),'https://sunland.dev');
    assert.ok(smsCalls>=4);
   });
-  await t.test('website API client executes unchanged Phase2 Worker routes and SQL identity transactions',async()=>{
+  await t.test('website API client uses unified registration and preserves phone management contracts',async()=>{
    const dom=new JSDOM('',{url:'https://sunland.dev',runScripts:'outside-only'});dom.window.AbortController=AbortController;dom.window.crypto.randomUUID=crypto.randomUUID.bind(crypto);
    dom.window.eval(await readFile(new URL('../p/js/phone-auth.js',import.meta.url),'utf8'));
-   const client=dom.window.SunlandPhoneAuth.createClient({captcha:async action=>{captchaAction=action;return 'mock-turnstile';},fetchImpl:(url,init)=>bundle.default.fetch(new Request(url,{...init,headers:{...init.headers,'CF-Connecting-IP':'192.0.2.1'}}),env,{})});
+   const client=dom.window.SunlandPhoneAuth.createClient({captcha:async action=>{captchaAction=action;return crypto.randomUUID();},fetchImpl:(url,init)=>bundle.default.fetch(new Request(url,{...init,headers:{...init.headers,'CF-Connecting-IP':'192.0.2.1'}}),env,{})});
    try {
-    const sent=await client.send('13400001234','login');const registered=await client.login('13400001234',sent.challenge_id,'123456');assert.equal(registered.is_new_user,true);
+    const operation=crypto.randomUUID(), proof=Buffer.from(crypto.getRandomValues(new Uint8Array(32))).toString('base64url');
+    const sent=await client.send('13400001234','login');
+    assert.equal((await client.unifiedVerify('13400001234',sent.challenge_id,'123456',operation,proof)).status,'registration_required');
+    const registered=await client.unifiedRegisterPhone('13400001234',sent.challenge_id,operation,proof);assert.equal(registered.is_new_user,true);
     dom.window.localStorage.setItem('token',registered.token);dom.window.localStorage.setItem('user',JSON.stringify(registered.user));
+    client.acknowledgeLoginSaved(sent.challenge_id);
     const identity=await client.refreshSession();assert.equal(identity.id,registered.user.id);assert.equal((await client.status()).phone,'+86 *******1234');
     await db.query('update user_profiles set email=$1 where user_id=$2',['web-owner@example.test',identity.id]);
     const grant=await client.emailProof('123456','change');const target=await client.send('13300005678','change',grant.reauth_token);

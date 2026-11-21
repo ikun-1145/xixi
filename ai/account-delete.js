@@ -14,6 +14,7 @@ let bodyEl = null;
 let currentStep = 0;
 let deletionJobId = "";
 let deletionToken = "";
+let deletionSession = "";
 let cleanupIdentity = null;
 let cooldownTimer = null;
 let busy = false;
@@ -238,7 +239,7 @@ export function collectAccountLocalStorageKeys(userId) {
   ];
 }
 
-export async function clearAccountLocalStorage(userId, { clearDiagnostics = async () => {} } = {}) {
+export async function clearAccountLocalStorage(userId, { clearDiagnostics = async () => {}, expectedToken = getAppToken() } = {}) {
   const keys = collectAccountLocalStorageKeys(userId);
   const owner=normalizeUserId(userId),prefix=vaultPrefix(owner);
   for (let i=0;i<localStorage.length;i++) {
@@ -253,6 +254,9 @@ export async function clearAccountLocalStorage(userId, { clearDiagnostics = asyn
   try {
     await clearDiagnostics();
   } catch {}
+  if (getAppToken() !== expectedToken) {
+    throw Object.assign(new Error("登录状态已失效，请重新登录"), { code: "SESSION_CHANGED" });
+  }
 
   try {
     window.SunlandDatabaseToken?.clear?.();
@@ -363,10 +367,12 @@ async function authorizeDeletion(code, email, verifyBtn, statusEl) {
     if (!res.ok || !data.deletion_job_id || !data.deletion_token) {
       throw new Error(data.error || "验证失败，请稍后重试");
     }
+    cleanupIdentity = await prepareCleanupIdentity();
+    if (getAppToken() !== appToken) return;
     deletionJobId = data.deletion_job_id;
     deletionToken = data.deletion_token;
+    deletionSession = appToken;
     stopCooldown();
-    cleanupIdentity = await prepareCleanupIdentity();
     renderStep3();
   } catch (error) {
     setStatus(statusEl, error.message || "验证失败，请稍后重试", "error");
@@ -434,12 +440,14 @@ function renderStep5(success, message) {
 
 async function executeDeletion() {
   if (busy || !deletionJobId || !deletionToken) return;
+  const appToken = deletionSession;
+  if (getAppToken() !== appToken) return;
   renderStep4();
   setBusy(true);
 
   try {
     const identity = cleanupIdentity || await prepareCleanupIdentity();
-    const appToken = getAppToken();
+    if (getAppToken() !== appToken) return;
     const res = await fetch(API_BASE, {
       method: "POST",
       headers: {
@@ -454,6 +462,7 @@ async function executeDeletion() {
       }),
     });
     const data = await res.json().catch(() => ({}));
+    if (getAppToken() !== appToken) return;
     if (!res.ok && !data.already_completed) {
       throw new Error(data.error || "账号删除失败，请稍后重试");
     }
@@ -461,16 +470,19 @@ async function executeDeletion() {
     const userId = typeof data.user_id === "string" ? data.user_id : getCurrentUser()?.id || "";
     await clearAccountLocalStorage(userId, {
       clearDiagnostics: () => clearDiagnosticsForIdentity(identity),
+      expectedToken: appToken,
     });
     deletionJobId = "";
     deletionToken = "";
+    deletionSession = "";
+    if (getAppToken()) return;
 
     renderStep5(true, "账号已删除，正在返回登录页...");
     setTimeout(() => {
-      window.location.replace("login.html");
+      if (!getAppToken()) window.location.replace("login.html");
     }, 1600);
   } catch (error) {
-    renderStep5(false, error.message || "账号删除失败，请稍后重试");
+    if (getAppToken() === appToken) renderStep5(false, error.message || "账号删除失败，请稍后重试");
   } finally {
     setBusy(false);
   }
@@ -511,6 +523,7 @@ function openDialog() {
   stopCooldown();
   deletionJobId = "";
   deletionToken = "";
+  deletionSession = "";
   cleanupIdentity = null;
   setBusy(false);
   renderStep1();
