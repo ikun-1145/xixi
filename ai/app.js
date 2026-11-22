@@ -1238,6 +1238,7 @@ function clearVerifiedSession() {
   clearTimeout(syncTimer);
   ++chatRenderVersion;
   ++usageVersion;
+  publicFurryUserId = null;
   for (const request of requestCoordinator.requests.values()) {
     requestCoordinator.abort(request, "session-changed");
     requestCoordinator.finish(request, "aborted");
@@ -2035,6 +2036,11 @@ function showProModelModal() {
 
 let usageVersion = 0;
 let lastUsageDate = null;
+let publicFurryUserId = null;
+
+function isPublicFurryAvailable(userId) {
+  return Boolean(userId) && publicFurryUserId === userId;
+}
 
 function renderRemaining(remain) {
   if (remain === -1 || isActivated) {
@@ -2055,12 +2061,14 @@ async function refreshChatUsage() {
   try {
     const usage = await readUsage(authenticatedFetch, userId);
     if (getCurrentUserId() !== userId || version !== usageVersion) return;
+    publicFurryUserId = usage.furryCity === true ? userId : null;
     if (membershipRequest && !payments.isCurrent(membershipRequest)) return;
     payments?.applyMembership(usage.isPro, membershipRequest);
     lastUsageDate = usage.date;
     renderRemaining(usage.remain);
   } catch {
     if (getCurrentUserId() === userId && version === usageVersion) {
+      publicFurryUserId = null;
       payments?.markUnavailable(membershipRequest);
       renderRemaining(null);
     }
@@ -4160,7 +4168,7 @@ async function send() {
   const text = composerDraft.trim();
   const isSunlandConversation = sendingConversation.provider === "sunland";
   const previousFurryCard = getLatestFurryEventCard(sendingConversation.history);
-  const nativeFurry = !isSunlandConversation && (window.SUNLAND_FURRY_EVENT_AGENT === true ||
+  const nativeFurry = !isSunlandConversation && (isPublicFurryAvailable(verifiedUserId) || window.SUNLAND_FURRY_EVENT_AGENT === true ||
     new URLSearchParams(location.search).get('furry-city') === '1');
   const furrySearchRequired = !nativeFurry && shouldSearchFurryEvents(
     text,
