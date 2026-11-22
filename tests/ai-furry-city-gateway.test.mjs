@@ -75,7 +75,8 @@ async function verifyWebTurns(t, exploration = false) {
         {headers: {'content-type': 'text/event-stream'}},
       );
       const sse = execFileSync(process.execPath, [resolve(workerRoot, 'test/fixtures/furry-city-turn.mjs'), JSON.stringify(body), contextFile], {
-        encoding:'utf8', env:exploration ? {...process.env,SUNLAND_FURRY_EXPLORATION_FIXTURE:'1',SUNLAND_FURRY_WORKER_ARTIFACT:explorationArtifact} : process.env,
+        encoding:'utf8', env:exploration ? {...process.env,SUNLAND_FURRY_EXPLORATION_FIXTURE:'1',SUNLAND_FURRY_PUBLIC_FIXTURE:'1',
+          SUNLAND_FURRY_WORKER_ARTIFACT:explorationArtifact} : process.env,
       });
       return new Response(sse, {headers: {'content-type': 'text/event-stream'}});
     },
@@ -97,22 +98,26 @@ async function verifyWebTurns(t, exploration = false) {
   if (exploration) {
     let recommendations;
     for (const [prompt, cards, expected] of [
-      ['最近有什么兽聚？',4,/相关兽聚活动/],
+      ['兽聚是什么？',0,/兽迷线下交流/],
+      ['最近有什么兽聚？',4,/FCC 共找到 4 场活动，本页显示 4 场/],
       ['推荐5个你觉得适合的',4,/推荐 4 场[\s\S]+夹具场馆 1/],
       ['把刚才推荐的几个再显示一下',4,/相关兽聚活动/],
       ['宁波的',0,/没有找到相关兽聚活动/],
       ['显示几个卡片给我看',0,/没有找到相关兽聚活动/],
       ['换成杭州的',0,/获取失败/],
-      ['再显示这几场',1,/杭州夹具活动 4/],
+      ['重试杭州的查询',1,/杭州夹具活动 4/],
+      ['再显示这几场',1,/相关兽聚活动/],
       ['只要下个月的',1,/杭州夹具活动 4/],
-      ['第一个怎么样',1,/杭州夹具活动 4在夹具场馆 4/],
+      ['第一个怎么样',0,/杭州夹具活动 4在夹具场馆 4/],
       ['再给我看三个',0,/全部看过/],
       ['讲个冷笑话',0,/冰箱说/],
     ]) {
+      const previousView = chatInner.lastElementChild;
       history.push({role:'user',content:prompt});
       await run({history,bubble:window.document.querySelector('#answer'),controller:new AbortController(),
         nativeFurry:true,userId:'fixture-user',sessionGeneration:1,conversationId:1795258285119});
-      const rendered = [...chatInner.lastElementChild.querySelectorAll('.furry-event-title')].map(node=>node.textContent);
+      const view = chatInner.lastElementChild;
+      const rendered = view && view !== previousView ? [...view.querySelectorAll('.furry-event-title')].map(node=>node.textContent) : [];
       assert.equal(rendered.length,cards,prompt);
       assert.match(history.at(-1).content,expected,prompt);
       if (prompt === '推荐5个你觉得适合的') recommendations = rendered;
