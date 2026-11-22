@@ -88,12 +88,14 @@ function getLoginTarget(search) {
 }
 
 test('ai.html checks local login before loading app logic', () => {
+  const guardOffset = aiHtml.indexOf('window.__SUNLAND_AI_AUTH_OK__ = false');
+  const scriptOffset = aiHtml.search(/appScript\.src\s*=\s*"ai\/app\.js(?:\?[^"]+)?"/);
   assert.ok(
-    aiHtml.indexOf('window.__SUNLAND_AI_AUTH_OK__ = false') > -1,
+    guardOffset > -1,
     'ai.html should check for a token before app.js runs'
   );
   assert.ok(
-    aiHtml.indexOf('window.__SUNLAND_AI_AUTH_OK__ = false') < aiHtml.indexOf('appScript.src = "ai/app.js"'),
+    scriptOffset > guardOffset,
     'login guard must run before ai/app.js is loaded'
   );
   assert.match(aiHtml, /if \(window\.__SUNLAND_AI_AUTH_OK__\)/);
