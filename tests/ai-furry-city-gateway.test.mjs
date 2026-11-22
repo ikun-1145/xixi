@@ -13,6 +13,7 @@ import {buildFurryEventModelHistory, createFurryEventCardMessage, getLatestFurry
 import {createAssistantHistoryMessage} from '../ai/reasoning.js';
 
 const workerRoot = process.env.SUNLAND_FURRY_GATEWAY_TEST_ROOT;
+const explorationArtifact = process.env.SUNLAND_FURRY_EXPLORATION_ARTIFACT;
 const source = readFileSync(new URL('../ai/app.js', import.meta.url), 'utf8');
 const requestSource = source.slice(source.indexOf('async function runDeepSeekRequest('),
   source.indexOf('const lastRealSendByConversation'));
@@ -44,7 +45,7 @@ test('city stop saves current partial text once and distinguishes cancellation',
   assert.deepEqual(notices, ['回复超时']);
 });
 
-test('Web chat renders FCC Gateway cards and continues the latest city query', {skip: !workerRoot}, async t => {
+async function verifyWebTurns(t, exploration = false) {
   const directory = mkdtempSync(resolve(tmpdir(), 'fcc-web-'));
   t.after(() => rmSync(directory, {recursive:true}));
   const contextFile = resolve(directory, 'context.json');
@@ -73,7 +74,9 @@ test('Web chat renders FCC Gateway cards and continues the latest city query', {
         'data: {"choices":[{"delta":{"content":"已收到"},"finish_reason":"stop"}]}\n\n',
         {headers: {'content-type': 'text/event-stream'}},
       );
-      const sse = execFileSync(process.execPath, [resolve(workerRoot, 'test/fixtures/furry-city-turn.mjs'), JSON.stringify(body), contextFile], {encoding: 'utf8'});
+      const sse = execFileSync(process.execPath, [resolve(workerRoot, 'test/fixtures/furry-city-turn.mjs'), JSON.stringify(body), contextFile], {
+        encoding:'utf8', env:exploration ? {...process.env,SUNLAND_FURRY_EXPLORATION_FIXTURE:'1',SUNLAND_FURRY_WORKER_ARTIFACT:explorationArtifact} : process.env,
+      });
       return new Response(sse, {headers: {'content-type': 'text/event-stream'}});
     },
     observeTraceResponse: noop, sessionGeneration: 1, getCurrentUserId: () => 'fixture-user',
@@ -91,6 +94,37 @@ test('Web chat renders FCC Gateway cards and continues the latest city query', {
     }, uiText: text => text,
     console: {error: error => { throw error; }},
   });
+  if (exploration) {
+    let recommendations;
+    for (const [prompt, cards, expected] of [
+      ['最近有什么兽聚？',4,/相关兽聚活动/],
+      ['推荐5个你觉得适合的',4,/推荐 4 场[\s\S]+夹具场馆 1/],
+      ['把刚才推荐的几个再显示一下',4,/相关兽聚活动/],
+      ['宁波的',0,/没有找到相关兽聚活动/],
+      ['显示几个卡片给我看',0,/没有找到相关兽聚活动/],
+      ['换成杭州的',0,/获取失败/],
+      ['再显示这几场',1,/杭州夹具活动 4/],
+      ['只要下个月的',1,/杭州夹具活动 4/],
+      ['第一个怎么样',1,/杭州夹具活动 4在夹具场馆 4/],
+      ['再给我看三个',0,/全部看过/],
+      ['讲个冷笑话',0,/冰箱说/],
+    ]) {
+      history.push({role:'user',content:prompt});
+      await run({history,bubble:window.document.querySelector('#answer'),controller:new AbortController(),
+        nativeFurry:true,userId:'fixture-user',sessionGeneration:1,conversationId:1795258285119});
+      const rendered = [...chatInner.lastElementChild.querySelectorAll('.furry-event-title')].map(node=>node.textContent);
+      assert.equal(rendered.length,cards,prompt);
+      assert.match(history.at(-1).content,expected,prompt);
+      if (prompt === '推荐5个你觉得适合的') recommendations = rendered;
+      if (prompt === '把刚才推荐的几个再显示一下') assert.deepEqual(rendered,recommendations);
+      if (prompt === '宁波的' || prompt === '显示几个卡片给我看') {
+        assert.equal(getLatestFurryEventCard(history).furryPage.query.location_scope.name,'宁波');
+        assert.equal(getLatestFurryEventCard(history).furryPage.eventReference,undefined);
+      }
+    }
+    window.close();
+    return;
+  }
   for (const [prompt, id, city] of [
     ['下个月东京有什么兽聚？', 1, '東京'], ['大阪的呢？', 2, '大阪'], ['还有吗？', 3, '大阪'],
     ['第二个活动在哪里？', 3, '大阪'],
@@ -107,7 +141,7 @@ test('Web chat renders FCC Gateway cards and continues the latest city query', {
     }
     if (id === null) {
       assert.equal(card.furryEvents.length, 0);
-      assert.match(history.at(-1).content, city === '京都' ? /获取失败/ : /没有找到相关兽聚活动/);
+      assert.match(history.at(-1).content, city === '京都' ? /记录不足以确认/ : /没有找到相关兽聚活动/);
     } else {
       assert.equal(card.furryEvents[0].id, `fcc:${id}`);
       assert.ok(chatInner.lastElementChild.textContent.includes(`${city}夹具活动 ${id}`));
@@ -147,7 +181,11 @@ test('Web chat renders FCC Gateway cards and continues the latest city query', {
   assert.equal(await runPrompt('广州最近有什么兽聚？', controller), '广州最近有什么兽聚？');
   assert.equal(chatInner.querySelector('.is-loading'), null);
   window.close();
-});
+}
+
+test('Web chat renders FCC Gateway cards and continues the latest city query', {skip: !workerRoot}, t => verifyWebTurns(t));
+test('Web exploration renders grounded recommendations, redisplays and replaces city conditions',
+  {skip: !workerRoot || !explorationArtifact}, t => verifyWebTurns(t,true));
 
 test('RPC-exported FCC records survive Gateway pagination and revoke on city change', {skip:!workerRoot}, t => {
   const directory = mkdtempSync(resolve(tmpdir(), 'fcc-replay-'));

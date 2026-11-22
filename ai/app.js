@@ -3971,15 +3971,18 @@ async function runDeepSeekRequest(requestContext) {
             } else {
               consentPanel?.remove();
               consentPanel = null;
+              const coverageUnknown = parsed.status === 'coverage_unknown';
+              const coverageText = coverageUnknown ? uiText('FCC 的记录不足以确认这个范围内是否有活动') : '';
               const message = createFurryEventCardMessage({events: parsed.status === 'success' ? parsed.events : [], preserveOrder: true,
-                error: ['success', 'no_results'].includes(parsed.status) ? null : uiText('兽聚查询失败')});
+                error: ['success', 'no_results'].includes(parsed.status) ? null : coverageText || uiText('兽聚查询失败')});
               if (parsed.status === 'success' && (message.isEmpty || message.furryEvents.length !== parsed.events.length)) {
                 message.furryEvents = [];
                 message.isEmpty = true;
                 message.furryError = uiText('兽聚查询失败');
               }
-              eventSummary = uiText(message.furryError ? '兽聚信息暂时获取失败，请稍后再试'
-                : message.isEmpty ? '没有找到相关兽聚活动' : '相关兽聚活动');
+              const summary = typeof parsed.summary === 'string' && parsed.summary.length <= 6000 ? parsed.summary.trim() : '';
+              eventSummary = coverageText || (!message.furryError && summary ? summary : uiText(message.furryError ? '兽聚信息暂时获取失败，请稍后再试'
+                : message.isEmpty ? '没有找到相关兽聚活动' : '相关兽聚活动'));
               if (parsed.pageQuery && (!message.furryError || parsed.status === 'coverage_unknown')) message.furryPage = {query: parsed.pageQuery, nextCursor: parsed.nextCursor ?? null,
                 ...(typeof parsed.eventReference === 'string' ? {eventReference: parsed.eventReference} : {})};
               if (appendRequestMessage(requestContext, message) && isRequestVisible(requestContext)) {
