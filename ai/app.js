@@ -375,11 +375,6 @@ async function apiFetch(body, _retried = false, signal = undefined, traceContext
     signal,
   }, _retried);
 }
-/* ===== 页面进入动画触发 ===== */
-document.body.classList.add("ai-entering");
-setTimeout(() => {
-  document.body.classList.remove("ai-entering");
-}, 650);
 function applyAutoTheme() {
   const hour = new Date().getHours();
   const isNight = hour >= 18 || hour < 6;
@@ -642,6 +637,7 @@ function showError(title, extra = {}) {
 }
 
 function showToast(text, action = null) {
+  const lifetime = action ? 9000 : 2000;
   const toast = document.createElement("div");
   toast.className = "chat-toast";
   toast.setAttribute("role", "status");
@@ -671,8 +667,9 @@ function showToast(text, action = null) {
     link.style.cssText = "display:block;margin-top:6px;color:inherit;font-weight:700;text-decoration:underline;";
     toast.appendChild(link);
   }
+  toast.style.setProperty("--frost-toast-life", `${lifetime}ms`);
   document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), action ? 9000 : 2000);
+  setTimeout(() => toast.remove(), lifetime);
 }
 let thinkingBubble = null;
 
@@ -852,14 +849,14 @@ import {
   persistCurrentConversationId,
   restoreLocalConversationState,
 } from './conversation-recovery.js';
-import { renderSafeMarkdown } from './safe-markdown.js';
+import { renderSafeMarkdown } from './safe-markdown.js?v=20261124-frost-motion-2';
 import { HistorySync, HistoryConflict, newHistoryOperationId } from './history-sync.js?v=20261124-history-sync';
 import { HistoryVault, storedHistoryAttachments } from './history-vault.js?v=20261124-history-sync';
 import {
   clearChatErrorNotices,
   showChatErrorNotice,
 } from './chat-error-notice.js?v=20260829-1';
-import { appendFurryEventMessage } from './furry-event-cards.js';
+import { appendFurryEventMessage } from './furry-event-cards.js?v=20261124-frost-motion-2';
 import {
   buildFurryEventModelHistory,
   createFurryEventCardMessage,
@@ -2664,7 +2661,6 @@ window.addEventListener("resize", () => {
 let controller = null;
 let sendingLock = false;
 let isStreaming = false;
-let hasTypedOnce = false;       // ⭐ 只允许一次打字动画
 let isLoadingHistory = false;   // ⭐ 是否在加载历史记录
 let chatRenderVersion = 0;
 let currentChatRender = Promise.resolve();
@@ -2739,15 +2735,6 @@ function handleSendButtonIntent(e, source) {
   if (visibleRequest) {
     stopRequest(visibleRequest, "user");
     return;
-  }
-
-  if (window.anime) {
-    anime({
-      targets: '#sendBtn',
-      scale: [1, 0.9, 1.1, 1],
-      duration: 280,
-      easing: 'easeOutQuad'
-    });
   }
 
   send();
@@ -3214,7 +3201,7 @@ function loadChat(id, { preserveSidebar = false } = {}) {
 
     renderHistory.filter(message => message.role !== "system").forEach(m => {
       if (isFurryEventCardMessage(m)) {
-        appendFurryEventMessage({ target: chatInner, message: m });
+        appendFurryEventMessage({ target: chatInner, message: m, animate: false });
         return;
       }
       const messageType = m.role === "user" ? "user" : "ai";
@@ -3409,13 +3396,13 @@ function renderCompletedDeepSeekResponse(requestContext, content, reasoningConte
 function addMessage(text, type, options = {}) {
   const div = document.createElement("div");
   div.className = "message " + type;
+  if (!isLoadingHistory) div.classList.add("message-enter");
 
   const bubble = document.createElement("div");
   bubble.className = "bubble";
 
   if (type === "ai") {
     if (options.thinking === true) {
-      bubble.style.animation = "fadeInBubble 0.2s ease";
       bubble.style.opacity = "0.8";
 
       if (options.deepThinking === true) {
@@ -3444,10 +3431,7 @@ function addMessage(text, type, options = {}) {
       });
       if (reasoningContent) completeReasoningDisclosure(bubble, reasoningContent);
       const contentTarget = reasoningContent ? ensureAssistantContent(bubble) : bubble;
-      const result = renderSafeMarkdown(contentTarget, text, {
-        animateText: !hasTypedOnce && !isLoadingHistory,
-      });
-      if (result.animated) hasTypedOnce = true;
+      renderSafeMarkdown(contentTarget, text);
     }
   } else {
     if (options.imageSrc && SAFE_INLINE_IMAGE_PATTERN.test(options.imageSrc)) {
@@ -3464,34 +3448,6 @@ function addMessage(text, type, options = {}) {
 
   div.appendChild(bubble);
   chatInner.appendChild(div);
-
-  // ⭐ 气泡进入动画（正确位置）
-  const animate = window.anime && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
-  if (animate) {
-    anime({
-      targets: bubble,
-      opacity: [0, 1],
-      translateY: [12, 0],
-      duration: 380,
-      easing: 'easeOutExpo'
-    });
-  }
-
-  // ⭐ 打字动画（真正生效）
-  if (animate) {
-    const chars = bubble.querySelectorAll('.typing span');
-    if (chars.length) {
-      anime({
-        targets: chars,
-        opacity: [0, 1],
-        translateY: [4, 0],
-        delay: anime.stagger(18),
-        easing: 'easeOutQuad'
-      });
-    }
-  }
-
-
 
 if (isNearBottom()) {
   chat.scrollTop = chat.scrollHeight;
@@ -4539,7 +4495,25 @@ if (await holdForMaintenanceIfEnabled()) {
   await new Promise(() => {});
 }
 await Promise.resolve();
-window.__SUNLAND_AI_REVEAL__?.();
+document.getElementById("settingsBtn")?.addEventListener("click", () => {
+  try {
+    window.history.replaceState({
+      ...window.history.state,
+      sunlandSettingsReturn: { conversationId: currentId, scrollTop: chat.scrollTop },
+    }, "");
+  } catch {
+    // 历史状态不可写时仍按原路径进入设置。
+  }
+}, { capture: true });
+
+window.__SUNLAND_AI_REVEAL__?.(() => {
+  const savedView = window.history.state?.sunlandSettingsReturn;
+  if (performance.getEntriesByType("navigation")[0]?.type !== "back_forward" ||
+      !savedView || savedView.conversationId !== currentId) return;
+
+  chat.scrollTop = savedView.scrollTop;
+  document.getElementById("avatarBtn")?.focus({ preventScroll: true });
+});
 const sidebar = document.getElementById("sidebar");
 const toggle = document.getElementById("menuToggle");
 const overlay = document.getElementById("sidebarOverlay");

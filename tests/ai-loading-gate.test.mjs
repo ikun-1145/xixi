@@ -109,8 +109,14 @@ test("ai loading shell keeps the app inert until the ready signal reveals it", (
   context.window.setTimeout = context.setTimeout;
 
   vm.runInNewContext(getLoadingBootstrap(), context);
-  context.window.__SUNLAND_AI_REVEAL__();
+  let revealed = false;
+  context.window.__SUNLAND_AI_REVEAL__(() => {
+    assert.equal(app.getAttribute("inert"), null);
+    assert.equal(root.hasClass("app-ready"), true);
+    revealed = true;
+  });
 
+  assert.equal(revealed, true);
   assert.equal(app.getAttribute("aria-hidden"), null);
   assert.equal(app.getAttribute("inert"), null);
   assert.equal(body.getAttribute("aria-busy"), null);
@@ -124,7 +130,7 @@ test("ai app waits for resources and restored user state before revealing", () =
   const supabaseReadyIndex = aiApp.indexOf("await supabaseReady;");
   const loginReadyIndex = aiApp.indexOf("await checkLogin({ waitForUserState: true });");
   const resourceReadyIndex = aiApp.indexOf("window.__SUNLAND_AI_RESOURCES_READY__");
-  const revealIndex = aiApp.indexOf("window.__SUNLAND_AI_REVEAL__?.();");
+  const revealIndex = aiApp.indexOf("window.__SUNLAND_AI_REVEAL__?.(");
 
   assert.ok(supabaseReadyIndex > -1);
   assert.ok(loginReadyIndex > supabaseReadyIndex);
