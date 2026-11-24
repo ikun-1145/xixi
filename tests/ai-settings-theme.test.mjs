@@ -18,6 +18,11 @@ test("settings dark theme covers the document beyond the first viewport", () => 
   );
   assert.match(
     settingsHtml,
-    /document\.body\.classList\.toggle\("dark",\s*isDark\);/u,
+    /document\.body\?\.classList\.toggle\("dark",\s*isDark\);/u,
   );
+});
+
+test("settings applies its theme before painting the page content", () => {
+  assert.match(settingsHtml, /<head>[\s\S]*?\n\s+applySettingsTheme\(\);\s*<\/script>[\s\S]*?<\/head>/u);
+  assert.match(settingsHtml, /<body class="frost-settings">\s*<script>applySettingsTheme\(\);<\/script>/u);
 });

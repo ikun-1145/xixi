@@ -15,12 +15,14 @@ function createDocument(html) {
 test('copilot loads the shared Sunland design system before its page styles', () => {
   const tokensPosition = copilotHtml.indexOf('href="p/css/tokens.css"');
   const basePosition = copilotHtml.indexOf('href="p/css/base.css"');
+  const motionPosition = copilotHtml.indexOf('href="ai/frost-tokens.css');
   const pagePosition = copilotHtml.indexOf('href="p/css/copilot.css');
-  const bodyPosition = copilotHtml.indexOf('<body>');
+  const bodyPosition = copilotHtml.search(/<body[\s>]/u);
 
   assert.ok(tokensPosition > -1);
   assert.ok(tokensPosition < basePosition);
-  assert.ok(basePosition < pagePosition);
+  assert.ok(basePosition < motionPosition);
+  assert.ok(motionPosition < pagePosition);
   assert.ok(pagePosition < bodyPosition);
   assert.doesNotMatch(copilotHtml, /<style[\s>]/u);
 });

@@ -33,12 +33,19 @@
   --frost-radius: 12px;
   --frost-panel: 22px;
   --frost-control: 44px;
-  --frost-fast: 150ms;
-  --frost-motion: 230ms;
+  --frost-fast: 130ms;
+  --frost-state: 180ms;
+  --frost-float-motion: 220ms;
+  --frost-motion: 290ms;
+  --frost-page-motion: 300ms;
+  --frost-pulse: 1250ms;
   --frost-ease: cubic-bezier(.2, .65, .3, 1);
+  --frost-spring: cubic-bezier(.25, .8, .3, 1.035);
+  --frost-exit: cubic-bezier(.4, 0, 1, 1);
 }
 
-html:is(.night, .dark) {
+html:is(.night, .dark),
+.frost-login.night {
   color-scheme: dark;
   --frost-canvas: #0c1222;
   --frost-rail: #111b2e;
@@ -66,7 +73,7 @@ html:is(.night, .dark) {
   --frost-float: 0 18px 48px rgb(0 0 0 / 40%);
 }
 
-:is(.frost-chat, .frost-settings) :is(button, a, input, summary, [tabindex], [role="button"]):focus-visible {
+:is(.frost-chat, .frost-settings, .frost-login, .frost-tool) :is(button, a, input, textarea, select, summary, [tabindex], [role="button"]):focus-visible {
   outline: 2px solid var(--frost-brand);
   outline-offset: 2px;
 }
@@ -76,10 +83,44 @@ html:is(.night, .dark) {
   background: url('../p/branding/sunland-logo-transparent.png') center / contain no-repeat;
 }
 
+:is(.frost-chat, .frost-settings, .frost-login, .frost-tool) :is(button, summary) {
+  transition: background-color var(--frost-fast), color var(--frost-fast), border-color var(--frost-state),
+    opacity var(--frost-fast), scale var(--frost-fast) var(--frost-spring);
+}
+@media (hover: hover) {
+  :is(.frost-settings, .frost-login, .frost-tool) button:not(:disabled):hover { filter: brightness(1.06); }
+}
+
+@keyframes frost-rise {
+  from { opacity: .55; translate: 0 6px; }
+}
+@keyframes frost-pop {
+  from { opacity: 0; translate: 0 5px; scale: .98; }
+}
+@keyframes frost-leave {
+  to { opacity: 0; translate: 0 4px; scale: .985; }
+}
+@keyframes frost-pulse {
+  50% { opacity: .5; }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  @view-transition { navigation: auto; }
+  ::view-transition-group(root) {
+    animation-duration: var(--frost-page-motion);
+    animation-timing-function: var(--frost-ease);
+  }
+  :is(.frost-chat, .frost-settings, .frost-login, .frost-tool) :is(button, summary):not(:disabled):active {
+    scale: .97;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
-  :is(.frost-chat, .frost-settings) *,
-  :is(.frost-chat, .frost-settings) *::before,
-  :is(.frost-chat, .frost-settings) *::after {
+  :is(.frost-chat, .frost-settings, .frost-login, .frost-tool),
+  :is(.frost-chat, .frost-settings, .frost-login, .frost-tool) *,
+  :is(.frost-chat, .frost-settings, .frost-login, .frost-tool) *::before,
+  :is(.frost-chat, .frost-settings, .frost-login, .frost-tool) *::after,
+  :is(.frost-settings, .frost-tool) dialog::backdrop {
     animation: none !important;
     transition: none !important;
     scroll-behavior: auto !important;

@@ -52,10 +52,14 @@
 }
 .frost-settings .avatar-hero {
   gap: 8px;
-  padding: clamp(22px, 5vw, 40px) 16px 16px;
+  padding: clamp(18px, 3vw, 26px) 16px 12px;
   border: 1px solid var(--frost-line);
   border-radius: var(--frost-panel) var(--frost-panel) 0 0;
-  background: radial-gradient(ellipse at top, var(--frost-glow), transparent 80%), var(--frost-surface);
+  background: radial-gradient(ellipse at top, color-mix(in srgb, var(--frost-glow) 62%, transparent), transparent 80%), var(--frost-surface);
+}
+.frost-settings :is(.avatar-hero, .nickname-row, .card, .footer),
+.frost-settings details[open] .diagnostics-body {
+  animation: frost-rise var(--frost-page-motion) var(--frost-ease);
 }
 .frost-settings .hero-name { font-size: clamp(1.2rem, 3vw, 1.65rem); overflow-wrap: anywhere; text-align: center; }
 .frost-settings .hero-badge.free,
@@ -72,21 +76,62 @@
   box-shadow: var(--frost-shadow);
 }
 .frost-settings .section-label {
-  margin: 24px 0 8px 4px;
+  margin: 28px 0 9px 4px;
   color: var(--frost-muted);
   font-size: var(--frost-small);
   letter-spacing: .025em;
   text-transform: none;
 }
-.frost-settings .card {
+.frost-settings .card,
+body.dark.frost-settings .card {
   border: 1px solid var(--frost-line);
   border-radius: var(--frost-panel);
+  box-shadow: var(--frost-shadow);
   backdrop-filter: none;
 }
-.frost-settings .pro-card {
+.frost-settings .diagnostics-body {
+  padding: 18px;
+}
+.frost-settings .diagnostics-copy,
+.frost-settings .diagnostics-points,
+.frost-settings .diagnostics-stage-note {
+  max-width: 68ch;
+  color: var(--frost-body);
+  font-size: var(--frost-small);
+  line-height: 1.65;
+}
+.frost-settings .diagnostics-points { padding-inline-start: 1.2rem; }
+.frost-settings .diagnostics-action-btn,
+.frost-settings .diagnostics-clear-btn {
+  min-height: var(--frost-control);
+  border-radius: var(--frost-radius);
+  font-size: var(--frost-small);
+}
+.frost-settings .card.pro-card,
+body.dark.frost-settings .card.pro-card {
   background: linear-gradient(135deg, var(--frost-surface), var(--frost-iris-tint));
 }
 .frost-settings .pro-card.activated { animation: none; }
+.frost-settings .pro-card.activated::before { display: none; }
+.frost-settings .pro-inner { gap: 10px; }
+.frost-settings .pro-disabled-note,
+.frost-settings .pro-support-link { margin-top: 0; }
+.frost-settings :is(.pro-support-link, .pro-support-link a) { color: var(--frost-brand); }
+.frost-settings :is(#proReviewStatus, #proPaymentStatus):empty { margin-top: -10px; }
+.frost-settings .pro-gem { background: var(--frost-iris-tint); box-shadow: none; }
+.frost-settings .pro-gem .ui-svg-icon { color: var(--frost-iris); }
+.frost-settings .btn-pro {
+  background: var(--frost-accent);
+  color: var(--frost-on-accent);
+  box-shadow: none;
+}
+.frost-settings #proRecheckBtn {
+  border: 1px solid var(--frost-line-strong);
+  background: var(--frost-surface);
+  color: var(--frost-brand);
+}
+.frost-settings .btn-pro::after { display: none; }
+.frost-settings .btn-pro:hover { transform: none; box-shadow: inset 0 0 0 1px currentColor; }
 .frost-settings :is(.row-icon, .usage-bar-bg, .diagnostics-preview-content, .diagnostics-performance) {
   background: var(--frost-tint) !important;
   color: var(--frost-text);
@@ -95,10 +140,10 @@
 .frost-settings .row-left { min-width: 0; }
 .frost-settings .row-label { overflow-wrap: anywhere; }
 .frost-settings .row-value { color: var(--frost-body); }
-.frost-settings .usage-bar-fill { background: var(--frost-accent); }
+.frost-settings .usage-bar-fill { background: var(--frost-accent); transition: width var(--frost-motion) var(--frost-ease); }
 .frost-settings button:not([hidden]), .frost-settings summary { min-height: var(--frost-control); }
 .frost-settings .row :is(button, .row-value) { flex-shrink: 0; }
-.frost-settings .row #userId { flex-shrink: 1; }
+.frost-settings .row :is(#userId, #userEmail) { flex-shrink: 1; min-width: 0; overflow-wrap: anywhere; text-align: end; }
 .frost-settings :is(.data-action-btn, .diagnostics-action-btn, .diagnostics-preview-close) {
   border-color: var(--frost-line);
   background: var(--frost-tint);
@@ -123,6 +168,27 @@
   box-shadow: var(--frost-float);
 }
 .frost-settings dialog::backdrop { background: var(--frost-shade); }
+.frost-settings dialog[open] { animation: frost-pop var(--frost-float-motion) var(--frost-spring); }
+.frost-settings dialog[open]::backdrop { animation: frost-dialog-shade var(--frost-float-motion) var(--frost-ease); }
+@keyframes frost-dialog-shade { from { opacity: 0; } }
+
+@supports (transition-behavior: allow-discrete) and (overlay: auto) {
+  .frost-settings dialog {
+    opacity: 0;
+    translate: 0 5px;
+    scale: .985;
+    pointer-events: none;
+    transition: opacity var(--frost-state) var(--frost-exit), translate var(--frost-state) var(--frost-exit),
+      scale var(--frost-state) var(--frost-exit), display var(--frost-state) allow-discrete, overlay var(--frost-state) allow-discrete;
+  }
+  .frost-settings dialog[open] { opacity: 1; translate: none; scale: 1; pointer-events: auto; }
+  .frost-settings dialog::backdrop {
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--frost-state), display var(--frost-state) allow-discrete, overlay var(--frost-state) allow-discrete;
+  }
+  .frost-settings dialog[open]::backdrop { opacity: 1; pointer-events: auto; }
+}
 .frost-settings .account-delete-close { min-width: var(--frost-control); }
 .frost-settings .diagnostics-preview-content { max-height: 44dvh; font-size: var(--frost-small); }
 .frost-settings .footer { color: var(--frost-muted); }

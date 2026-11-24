@@ -1,0 +1,79 @@
+.frost-login {
+  background: var(--frost-canvas);
+  color: var(--frost-text);
+  font-family: var(--frost-font);
+}
+.frost-login::before {
+  background: radial-gradient(580px 380px at 88% 0%, var(--frost-glow), transparent 75%),
+    radial-gradient(520px 360px at 8% 100%, var(--frost-halo), transparent 75%);
+}
+.modal.active {
+  padding: max(16px, env(safe-area-inset-top)) max(16px, env(safe-area-inset-right)) max(16px, env(safe-area-inset-bottom)) max(16px, env(safe-area-inset-left));
+}
+.modal.active .modal-content { animation: frost-rise var(--frost-page-motion) var(--frost-ease); }
+.modal-content {
+  max-width: 432px;
+  max-height: calc(100dvh - max(16px, env(safe-area-inset-top)) - max(16px, env(safe-area-inset-bottom)));
+  padding: 28px clamp(18px, 5vw, 32px) 24px;
+  border-color: var(--frost-line);
+  border-radius: var(--frost-panel);
+  background: var(--frost-surface);
+  box-shadow: var(--frost-float);
+}
+.close {
+  top: 8px;
+  right: 8px;
+  display: grid;
+  place-items: center;
+  width: var(--frost-control);
+  height: var(--frost-control);
+  padding: 0;
+  border: 0;
+  border-radius: var(--frost-radius);
+  background: transparent;
+  color: var(--frost-muted);
+}
+.close:hover { background: var(--frost-hover); color: var(--frost-brand); }
+.brand {
+  width: 60px;
+  height: 60px;
+  border: 1px solid var(--frost-line);
+  border-radius: 18px;
+  background: var(--frost-tint);
+}
+.brand img { width: 84%; height: 84%; }
+.title { color: var(--frost-text); font-size: clamp(1.35rem, 3vw, 1.6rem); line-height: 1.2; }
+.subtitle { margin: 8px 0 24px; color: var(--frost-body); }
+.field > label { color: var(--frost-text); }
+.field input[type="email"],
+.field input[type="text"],
+#emailInput, #codeInput {
+  border-color: var(--frost-line-strong);
+  border-radius: var(--frost-radius);
+  background: var(--frost-raised);
+  color: var(--frost-text);
+  font-size: 1rem;
+}
+.frost-login :is(#emailInput, #codeInput, #unifiedIdentity) {
+  transition: border-color var(--frost-state), background-color var(--frost-state);
+}
+#emailInput::placeholder, #codeInput::placeholder, #unifiedIdentity::placeholder { color: var(--frost-muted); }
+#emailInput:focus, #codeInput:focus, #unifiedIdentity:focus { border-color: var(--frost-brand); box-shadow: none; }
+#sendCodeBtn, #unifiedBack, #unifiedEmailSendBtn {
+  border-color: var(--frost-line);
+  border-radius: var(--frost-radius);
+  background: var(--frost-tint);
+  color: var(--frost-brand);
+}
+#sendCodeBtn:hover:not(:disabled), #unifiedBack:hover, #unifiedEmailSendBtn:hover:not(:disabled) {
+  border-color: var(--frost-brand);
+  background: var(--frost-hover);
+}
+.agree { color: var(--frost-body); line-height: 1.55; }
+.agree input { flex: none; accent-color: var(--frost-brand); }
+.agree a { color: var(--frost-brand); text-decoration: underline; text-underline-offset: 3px; }
+#loginBtn { border-radius: var(--frost-radius); }
+#loginBtn, #loginBtn:hover:not(:disabled) { background: var(--frost-accent); color: var(--frost-on-accent); }
+#loginBtn:disabled { background: var(--frost-tint); color: var(--frost-text); }
+#loginMsg { color: var(--frost-error); }
+#loginMsg.ok { color: var(--frost-success); }

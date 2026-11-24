@@ -12,6 +12,16 @@
       location.replace("login.html?return=ai.html");
     }
   </script>
+  <script>
+    function applySettingsTheme() {
+      const theme = localStorage.getItem("theme");
+      const hour = new Date().getHours();
+      const isDark = theme ? theme === "dark" : hour >= 18 || hour < 6;
+      document.documentElement.classList.toggle("dark", isDark);
+      document.body?.classList.toggle("dark", isDark);
+    }
+    applySettingsTheme();
+  </script>
   <script defer src="p/js/site-i18n-extra.js?v=20261120-phone-only-1"></script>
 
   <script defer src="p/js/site-i18n.js?v=20261001-review-1"></script>
@@ -1145,10 +1155,11 @@ body.dark .usage-hint {
   to   { transform: translateX(440%); }
 }
 </style>
-<link rel="stylesheet" href="ai/frost-tokens.css?v=1">
-<link rel="stylesheet" href="ai/frost-settings.css?v=1">
+<link rel="stylesheet" href="ai/frost-tokens.css?v=4">
+<link rel="stylesheet" href="ai/frost-settings.css?v=4">
 </head>
 <body class="frost-settings">
+<script>applySettingsTheme();</script>
 
   <div class="header">
     <button class="back-btn" onclick="history.back()">←</button>
@@ -2011,32 +2022,15 @@ async function editNickname() {
     }
 // ===== 夜间模式同步 + 自动模式 =====
 (function syncTheme() {
-  function applyTheme() {
-    let theme = localStorage.getItem("theme");
-
-    // 如果用户没有手动设置，则按时间自动
-    if (!theme) {
-      const hour = new Date().getHours();
-      theme = (hour >= 18 || hour < 6) ? "dark" : "light";
-    }
-
-    const isDark = theme === "dark";
-    document.documentElement.classList.toggle("dark", isDark);
-    document.body.classList.toggle("dark", isDark);
-  }
-
-  // 初始执行
-  applyTheme();
-
   // 跨页面同步
   window.addEventListener("storage", (e) => {
     if (e.key === "theme") {
-      applyTheme();
+      applySettingsTheme();
     }
   });
 
   // 每5分钟检查一次时间（避免跨6点不刷新）
-  setInterval(applyTheme, 5 * 60 * 1000);
+  setInterval(applySettingsTheme, 5 * 60 * 1000);
 })();
     // 页面进入立即关闭 loading（防止残留）
     document.addEventListener("DOMContentLoaded", () => {

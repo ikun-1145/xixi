@@ -57,36 +57,11 @@ function hardenLinks(root) {
   });
 }
 
-function wrapTextForTypingAnimation(root) {
-  if (root.querySelector("pre, code")) return false;
-
-  const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT);
-  const textNodes = [];
-  while (walker.nextNode()) textNodes.push(walker.currentNode);
-
-  let wrapped = false;
-  textNodes.forEach(textNode => {
-    if (!textNode.data) return;
-
-    const fragment = document.createDocumentFragment();
-    Array.from(textNode.data).forEach(character => {
-      const span = document.createElement("span");
-      span.textContent = character;
-      fragment.appendChild(span);
-    });
-    textNode.replaceWith(fragment);
-    wrapped = true;
-  });
-
-  if (wrapped) root.classList.add("typing");
-  return wrapped;
-}
-
 /**
  * 所有 AI Markdown（实时流、完整回复与历史恢复）都必须经过此入口。
  * 依赖缺失时安全失败为纯文本，绝不回退到未经清洗的 innerHTML。
  */
-export function renderSafeMarkdown(target, markdown, options = {}) {
+export function renderSafeMarkdown(target, markdown) {
   if (!target) return { animated: false, sanitized: false };
 
   const source = String(markdown ?? "");
@@ -123,9 +98,5 @@ export function renderSafeMarkdown(target, markdown, options = {}) {
   hardenLinks(fragment);
   target.replaceChildren(fragment);
 
-  const animated = options.animateText === true
-    ? wrapTextForTypingAnimation(target)
-    : false;
-
-  return { animated, sanitized: true };
+  return { animated: false, sanitized: true };
 }

@@ -249,7 +249,6 @@ test('bootstrap initializes every recovery state before checkLogin can call load
     ['controller', /\blet\s+controller\s*=\s*null\b/],
     ['sendingLock', /\blet\s+sendingLock\s*=\s*false\b/],
     ['isStreaming', /\blet\s+isStreaming\s*=\s*false\b/],
-    ['hasTypedOnce', /\blet\s+hasTypedOnce\s*=\s*false\b/],
     ['isLoadingHistory', /\blet\s+isLoadingHistory\s*=\s*false\b/],
     ['currentChatRender', /\blet\s+currentChatRender\s*=\s*Promise\.resolve\(\)/],
     ['lastUserMessage', /\blet\s+lastUserMessage\s*=\s*null\b/],

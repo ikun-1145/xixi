@@ -436,7 +436,8 @@ test('live app binds async writes, title generation, abort, and delayed renderin
 
 test('API boundary gives auxiliary calls one ID while preserving caller retry IDs', async () => {
   const start=aiApp.indexOf('async function apiFetch(');
-  const end=aiApp.indexOf('/* ===== 页面进入动画触发 ===== */',start);
+  const end=aiApp.indexOf('function applyAutoTheme()',start);
+  assert.ok(start >= 0 && end > start);
   const requests=[];
   const api=new Function('authenticatedFetch','traceparentFor','newHistoryOperationId',
     `${aiApp.slice(start,end)};return apiFetch;`)(async(_,init)=>{requests.push(init);return new Response('{}');},
@@ -453,7 +454,8 @@ test('API boundary gives auxiliary calls one ID while preserving caller retry ID
 
 test('auxiliary API ID and payload survive actual authenticated 401 retry', async () => {
   const start=aiApp.indexOf('async function authenticatedFetch(');
-  const end=aiApp.indexOf('/* ===== 页面进入动画触发 ===== */',start);
+  const end=aiApp.indexOf('function applyAutoTheme()',start);
+  assert.ok(start >= 0 && end > start);
   const sent=[];let token='old-token',generated=0;
   const api=new Function('localStorage','session','getCurrentUserId','getCurrentVerifiedIdentity',
     'getVerifiedToken','resolveIdentityResult','window','fetch','traceparentFor','newHistoryOperationId',

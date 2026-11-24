@@ -361,9 +361,11 @@ body::before {
 /* ===== 确保 GeeTest 人机验证浮层显示在卡片之上 ===== */
 body > [class*="geetest_"] { z-index: 100000 !important; }
 </style>
+<link rel="stylesheet" href="ai/frost-tokens.css?v=4">
+<link rel="stylesheet" href="ai/frost-login.css?v=3">
 </head>
 
-<body>
+<body class="frost-login">
 <script src="p/vendor/supabase-2.110.7.js"></script>
 <script type="module" src="ai/maintenance.js?v=20260905-1"></script>
 <script>
@@ -402,7 +404,7 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
 
     modal.innerHTML = `
     <div class="modal-content">
-      <span class="close">×</span>
+      <button type="button" class="close" aria-label="关闭">×</button>
 
       <div class="brand">
         <img src="p/branding/sunland-logo-transparent.png" alt="Sunland AI · Beta">
@@ -1131,10 +1133,8 @@ body > [class*="geetest_"] { z-index: 100000 !important; }
 
     function closeModal() {
       cancelLogin();
-      modal.classList.add("closing");
       document.body.style.overflow = "";
-      // 独立登录页：关闭后返回首页（避免留下空白页面）
-      setTimeout(() => { location.href = "index.html"; }, 200);
+      location.href = "index.html";
     }
 
     modal.querySelector(".close").onclick = closeModal;
