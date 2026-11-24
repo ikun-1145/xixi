@@ -23,3 +23,6 @@ export const supabase = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
 export const supabaseData = createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, {
   accessToken: () => globalThis.SunlandDatabaseToken?.get() ?? null
 })
+
+export const createDataClient = accessToken =>
+  createClient(SUPABASE_URL, SUPABASE_PUBLISHABLE_KEY, { accessToken })

@@ -25,6 +25,12 @@
   --frost-shade: rgb(16 35 57 / 46%);
   --frost-shadow: 0 10px 28px rgb(29 68 93 / 9%), 0 2px 4px rgb(29 68 93 / 5%);
   --frost-float: 0 16px 44px rgb(21 51 74 / 20%);
+  --frost-glass-nav: var(--frost-rail);
+  --frost-glass-control: var(--frost-surface);
+  --frost-glass-float: var(--frost-raised);
+  --frost-glass-facet: var(--frost-tint);
+  --frost-glass-edge: inset 0 1px 0 rgb(255 255 255 / 86%);
+  --frost-glass-filter: none;
   --frost-font: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans", "Microsoft YaHei", sans-serif;
   --frost-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
   --frost-small: .8125rem;
@@ -71,6 +77,19 @@ html:is(.night, .dark),
   --frost-shade: rgb(3 7 17 / 72%);
   --frost-shadow: 0 12px 28px rgb(0 0 0 / 17%), 0 2px 4px rgb(0 0 0 / 12%);
   --frost-float: 0 18px 48px rgb(0 0 0 / 40%);
+  --frost-glass-edge: inset 0 1px 0 rgb(231 246 255 / 14%);
+}
+
+@supports ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) {
+  @media (prefers-reduced-transparency: no-preference) {
+    :root {
+      --frost-glass-nav: color-mix(in srgb, var(--frost-rail) 83%, transparent);
+      --frost-glass-control: color-mix(in srgb, var(--frost-raised) 78%, transparent);
+      --frost-glass-float: color-mix(in srgb, var(--frost-raised) 92%, transparent);
+      --frost-glass-facet: color-mix(in srgb, var(--frost-tint) 78%, transparent);
+      --frost-glass-filter: blur(18px) saturate(145%);
+    }
+  }
 }
 
 :is(.frost-chat, .frost-settings, .frost-login, .frost-tool) :is(button, a, input, textarea, select, summary, [tabindex], [role="button"]):focus-visible {

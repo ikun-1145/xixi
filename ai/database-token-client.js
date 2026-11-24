@@ -4,6 +4,7 @@
   let cached = null;
   let pending = null;
   let generation = 0;
+  const TOKEN_TIMEOUT_MS = 10_000;
 
   function payload(token) {
     try {
@@ -28,6 +29,7 @@
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${token}` },
       body: "{}",
+      signal: AbortSignal.timeout(TOKEN_TIMEOUT_MS),
     });
     if (!response.ok) return null;
     const data = await response.json().catch(() => null);
@@ -42,6 +44,7 @@
       method: "POST",
       headers: { "content-type": "application/json", authorization: `Bearer ${appToken}` },
       body: "{}",
+      signal: AbortSignal.timeout(TOKEN_TIMEOUT_MS),
     });
     const data = await response.json().catch(() => null);
     return { response, data };
@@ -68,13 +71,13 @@
       const refreshed = await refreshAppToken(appToken);
       if (refreshed) return requestToken(refreshed, true, requestGeneration);
     }
-    if (!response.ok) throw new Error("database-token-unavailable");
-    if (generation !== requestGeneration) {
+    if (!response.ok) throw Object.assign(new Error("database-token-unavailable"), { status: response.status });
+    if (generation !== requestGeneration || localStorage.getItem("token") !== appToken) {
       throw new Error("database-token-identity-changed");
     }
     const appClaims = payload(localStorage.getItem("token"));
     const userId = appClaims?.id || appClaims?.sub;
-    cached = validateDatabaseToken(data, userId);
+    cached = { ...validateDatabaseToken(data, userId), appToken };
     return cached.token;
   }
 
@@ -90,19 +93,25 @@
     return validateDatabaseToken(data, userId).token;
   }
 
-  async function get() {
+  async function get(expectedUserId = null) {
     const appToken = localStorage.getItem("token");
     const appClaims = payload(appToken);
     const userId = appClaims?.id || appClaims?.sub;
+    if (expectedUserId && expectedUserId !== userId) throw new Error("database-token-identity-changed");
     if (!appToken || !userId) return null;
-    if (cached?.userId === userId && cached.expiresAt > Date.now() + 60_000) return cached.token;
-    if (!pending) {
-      const request = requestToken(appToken, false, generation).finally(() => {
-        if (pending === request) pending = null;
+    if (cached?.userId === userId && cached.appToken === appToken &&
+        cached.expiresAt > Date.now() + 60_000) return cached.token;
+    if (pending?.appToken !== appToken || pending?.expectedUserId !== expectedUserId) {
+      const request = requestToken(appToken, Boolean(expectedUserId), generation).finally(() => {
+        if (pending?.request === request) pending = null;
       });
-      pending = request;
+      pending = { appToken, expectedUserId, request };
     }
-    return pending;
+    const token = await pending.request;
+    if (expectedUserId && (localStorage.getItem("token") !== appToken || payload(token)?.id !== expectedUserId)) {
+      throw new Error("database-token-identity-changed");
+    }
+    return token;
   }
 
   global.addEventListener?.("storage", (event) => {

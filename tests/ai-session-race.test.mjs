@@ -35,6 +35,8 @@ function harness(initialToken = tokenFor('A'), values = new Map()) {
     identityAuthority: authority, localStorage: storage, sessionStorage: storage,
     session: null, sessionToken: storage.getItem('token'), sessionGeneration: 0,
     historySessionGeneration: 0, restoreVersion: 0, checkLoginPromise: null,
+    historyRetryTimer: null, historyRetryAt: 0, historyRetryAttempts: 0,
+    navigator: { onLine: true }, setTimeout: () => 0,
     restoreLoginPromise: null, restoreLoginPromiseVersion: 0,
     stopProActivationPolling: null, deletedConversationIds: new Set(), deletingConversationIds: new Set(),
     history: [{ role: 'system' }], conversations: [], currentId: null, currentProfile: null,
@@ -58,7 +60,7 @@ function harness(initialToken = tokenFor('A'), values = new Map()) {
     syncFromCloud: async () => effects.push('sync'), checkActivation: async () => {},
     startActivationPolling: noop, loadChat: () => effects.push('load-chat'),
     showToast: () => effects.push('toast'), SUNLAND_LOGIN_STATE_MESSAGE: 'fixture',
-    console: { log: noop, warn: noop, error: noop }, clearTimeout, Headers,
+    console: { log: noop, warn: noop, error: noop }, clearTimeout, Headers, AbortSignal,
     alert: () => effects.push('alert'), goToLogin: () => effects.push('login-redirect'),
     fetch: async () => Response.json({ ok: true }),
     restoreLoginState: options => context.checkLogin(options),
@@ -347,3 +349,17 @@ for (const status of [200, 401]) {
     assert.equal(app.values.get('token'), tokenFor('A', 2));
   });
 }
+
+test('login restoration opens durable local history while cloud history is still pending', async () => {
+  const app = harness();
+  const cloud = deferred();
+  const saved = { id: 'local-chat', userId: 'A', history: [{ role: 'user', content: 'offline' }] };
+  app.context.getHistoryVault = () => ({ snapshot: { records: [saved], currentId: saved.id } });
+  app.context.syncFromCloud = () => { app.effects.push('sync-started'); return cloud.promise; };
+  const restore = app.context.checkLogin({ waitForUserState: true });
+  app.refreshes[0].resolve(responseFor('A'));
+  await restore;
+  assert.equal(app.context.currentId, saved.id);
+  assert.deepEqual(app.effects.filter(effect => ['sync-started', 'load-chat'].includes(effect)), ['sync-started', 'load-chat']);
+  cloud.resolve();
+});
