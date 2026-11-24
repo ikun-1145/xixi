@@ -8,8 +8,7 @@ import vm from 'node:vm';
 import {JSDOM} from 'jsdom';
 
 import {appendFurryEventMessage} from '../ai/furry-event-cards.js';
-import {buildFurryEventModelHistory, createFurryEventCardMessage, getLatestFurryEventCard,
-  resolveFurryQueryParams, shouldSearchFurryEvents} from '../ai/furry-events.js';
+import {buildFurryEventModelHistory, createFurryEventCardMessage, getLatestFurryEventCard} from '../ai/furry-events.js';
 import {createAssistantHistoryMessage} from '../ai/reasoning.js';
 
 const workerRoot = process.env.SUNLAND_FURRY_GATEWAY_TEST_ROOT;
@@ -45,7 +44,7 @@ test('city stop saves current partial text once and distinguishes cancellation',
   assert.deepEqual(notices, ['回复超时']);
 });
 
-async function verifyWebTurns(t, exploration = false) {
+async function verifyWebTurns(t, exploration = false, mocked = false) {
   const directory = mkdtempSync(resolve(tmpdir(), 'fcc-web-'));
   t.after(() => rmSync(directory, {recursive:true}));
   const contextFile = resolve(directory, 'context.json');
@@ -62,7 +61,6 @@ async function verifyWebTurns(t, exploration = false) {
     localStorage: {getItem: () => 'fixture-session'},
     newHistoryOperationId: () => `city-fixture-${++requestNumber}`,
     buildFurryEventModelHistory, getLatestFurryEventCard, createFurryEventCardMessage, appendFurryEventMessage,
-    resolveFurryQueryParams, shouldSearchFurryEvents,
     buildVisionMessages: messages => messages,
     apiFetch: async body => {
       assert.equal(body.furry_events_v1, true);
@@ -75,7 +73,8 @@ async function verifyWebTurns(t, exploration = false) {
         {headers: {'content-type': 'text/event-stream'}},
       );
       const sse = execFileSync(process.execPath, [resolve(workerRoot, 'test/fixtures/furry-city-turn.mjs'), JSON.stringify(body), contextFile], {
-        encoding:'utf8', env:exploration ? {...process.env,SUNLAND_FURRY_EXPLORATION_FIXTURE:'1',SUNLAND_FURRY_WORKER_ARTIFACT:explorationArtifact} : process.env,
+        encoding:'utf8', env:exploration ? {...process.env,SUNLAND_FURRY_EXPLORATION_FIXTURE:'1',SUNLAND_FURRY_PUBLIC_FIXTURE:'1',
+          SUNLAND_FURRY_WORKER_ARTIFACT:explorationArtifact} : process.env,
       });
       return new Response(sse, {headers: {'content-type': 'text/event-stream'}});
     },
@@ -94,25 +93,51 @@ async function verifyWebTurns(t, exploration = false) {
     }, uiText: text => text,
     console: {error: error => { throw error; }},
   });
+  if (mocked) {
+    history.push({role:'user', content:'广州最近有什么兽聚？'});
+    const outcome = {type:'furry_event_result',status:'unavailable'};
+    const reply = '好的，这次不查兽聚。';
+    const frame = {choices:[{delta:{content:reply}}]};
+    const runFrames = async (...frames) => {
+      overrideResponse = () => new Response(frames.map(item => `data: ${JSON.stringify(item)}\n\n`).join('') + 'data: [DONE]\n\n');
+      await run({history,bubble:window.document.querySelector('#answer'),controller:new AbortController(),
+        nativeFurry:true,userId:'fixture-user',sessionGeneration:1,conversationId:1795258285119});
+    };
+    await runFrames(outcome);
+    assert.equal(history.at(-1).content, '兽聚信息暂时获取失败，请稍后再试');
+    history.at(-2).furryPage = {query:{},nextCursor:null};
+    const previousView = chatInner.lastElementChild;
+    history.push({role:'user',content:'不要查兽聚'});
+    await runFrames(frame);
+    assert.equal(history.at(-1).content, reply);
+    assert.equal(window.document.querySelector('#answer').textContent, reply);
+    assert.equal(chatInner.lastElementChild, previousView);
+    window.close();
+    return;
+  }
   if (exploration) {
     let recommendations;
     for (const [prompt, cards, expected] of [
-      ['最近有什么兽聚？',4,/相关兽聚活动/],
+      ['兽聚是什么？',0,/兽迷线下交流/],
+      ['最近有什么兽聚？',4,/FCC 共找到 4 场活动，本页显示 4 场/],
       ['推荐5个你觉得适合的',4,/推荐 4 场[\s\S]+夹具场馆 1/],
       ['把刚才推荐的几个再显示一下',4,/相关兽聚活动/],
       ['宁波的',0,/没有找到相关兽聚活动/],
       ['显示几个卡片给我看',0,/没有找到相关兽聚活动/],
       ['换成杭州的',0,/获取失败/],
-      ['再显示这几场',1,/杭州夹具活动 4/],
+      ['重试杭州的查询',1,/杭州夹具活动 4/],
+      ['再显示这几场',1,/相关兽聚活动/],
       ['只要下个月的',1,/杭州夹具活动 4/],
-      ['第一个怎么样',1,/杭州夹具活动 4在夹具场馆 4/],
+      ['第一个怎么样',0,/杭州夹具活动 4在夹具场馆 4/],
       ['再给我看三个',0,/全部看过/],
       ['讲个冷笑话',0,/冰箱说/],
     ]) {
+      const previousView = chatInner.lastElementChild;
       history.push({role:'user',content:prompt});
       await run({history,bubble:window.document.querySelector('#answer'),controller:new AbortController(),
         nativeFurry:true,userId:'fixture-user',sessionGeneration:1,conversationId:1795258285119});
-      const rendered = [...chatInner.lastElementChild.querySelectorAll('.furry-event-title')].map(node=>node.textContent);
+      const view = chatInner.lastElementChild;
+      const rendered = view && view !== previousView ? [...view.querySelectorAll('.furry-event-title')].map(node=>node.textContent) : [];
       assert.equal(rendered.length,cards,prompt);
       assert.match(history.at(-1).content,expected,prompt);
       if (prompt === '推荐5个你觉得适合的') recommendations = rendered;
@@ -162,12 +187,9 @@ async function verifyWebTurns(t, exploration = false) {
       nativeFurry:true, userId:'fixture-user', sessionGeneration:1, conversationId:1795258285119});
     return history.at(-1).content;
   };
-  const falseClaim = '我帮你看了下广州近期的兽聚活动，都整理在上面啦，点卡片里的链接就能看详情～';
-  overrideResponse = () => new Response(`data: ${JSON.stringify({choices:[{delta:{content:falseClaim}}]})}\n\ndata: [DONE]\n\n`);
-  assert.equal(await runPrompt('广州最近有什么兽聚？'), '兽聚信息暂时获取失败，请稍后再试');
-  assert.equal(chatInner.lastElementChild, previousCard);
   overrideResponse = () => new Response('data: {"choices":[{"delta":{"content":"兽迷线下聚会。"}}]}\n\ndata: [DONE]\n\n');
   assert.equal(await runPrompt('兽聚是什么？'), '兽迷线下聚会。');
+  assert.equal(chatInner.lastElementChild, previousCard);
   const controller = new AbortController();
   const encoder = new TextEncoder();
   overrideResponse = () => new Response(new ReadableStream({
@@ -183,6 +205,7 @@ async function verifyWebTurns(t, exploration = false) {
   window.close();
 }
 
+test('Web preserves a normal reply after a city search and renders explicit Gateway failures', t => verifyWebTurns(t,false,true));
 test('Web chat renders FCC Gateway cards and continues the latest city query', {skip: !workerRoot}, t => verifyWebTurns(t));
 test('Web exploration renders grounded recommendations, redisplays and replaces city conditions',
   {skip: !workerRoot || !explorationArtifact}, t => verifyWebTurns(t,true));

@@ -53,6 +53,21 @@ test('late quota snapshots cannot overwrite a newer chat result or another accou
   assert.equal(h.hint.innerText, '今日剩余 12 次');
 });
 
+test('public city capability is opt-in, account-scoped and cleared by server shutdown', async () => {
+  const h = harness();
+  const available = (id) => vm.runInContext(`isPublicFurryAvailable(${JSON.stringify(id)})`, h.context);
+  assert.equal(available('a'),false);
+  const admitted = vm.runInContext('refreshChatUsage()', h.context);
+  h.pending.shift()({remain:19,furryCity:true});
+  await admitted;
+  assert.equal(available('a'),true);
+  assert.equal(available('b'),false);
+  const disabled = vm.runInContext('refreshChatUsage()', h.context);
+  h.pending.shift()({remain:19});
+  await disabled;
+  assert.equal(available('a'),false);
+});
+
 test('chat quota updates are account scoped and both pages stop querying obsolete usage tables', () => {
   const quotaStart = app.indexOf('// Quota belongs');
   const errorHandlerStart = app.indexOf('if (!res.ok) {', quotaStart);
