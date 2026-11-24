@@ -69,10 +69,8 @@ button {
   gap: var(--space-4);
   min-height: 64px;
   padding: calc(var(--space-3) + env(safe-area-inset-top)) 0 var(--space-3);
-  background: var(--glass-bg);
+  background: transparent;
   border-bottom: 1px solid var(--border);
-  -webkit-backdrop-filter: blur(12px);
-  backdrop-filter: blur(12px);
 }
 
 .topbar::before {
@@ -84,7 +82,9 @@ button {
   z-index: -1;
   width: 100vw;
   transform: translateX(-50%);
-  background: inherit;
+  background: var(--frost-glass-control);
+  -webkit-backdrop-filter: var(--frost-glass-filter);
+  backdrop-filter: var(--frost-glass-filter);
   border-bottom: inherit;
 }
 
@@ -207,10 +207,10 @@ button {
 .panel {
   padding: var(--space-6);
   margin-bottom: var(--space-4);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--frost-glass-control);
+  border: 1px solid var(--frost-line);
   border-radius: var(--r-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--frost-glass-edge), var(--frost-shadow);
 }
 
 .panel-title,
@@ -623,10 +623,10 @@ textarea#comment::placeholder {
 .result-card {
   padding: var(--space-4);
   margin-bottom: var(--space-3);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--frost-glass-control);
+  border: 1px solid var(--frost-line);
   border-radius: var(--r-lg);
-  box-shadow: var(--shadow-sm);
+  box-shadow: var(--frost-glass-edge), var(--frost-shadow);
 }
 
 .rc-title {
@@ -789,10 +789,13 @@ textarea#comment::placeholder {
   max-width: min(86vw, 460px);
   padding: 10px var(--space-4);
   transform: translate(-50%, 8px);
-  color: var(--surface);
-  background: var(--text);
+  color: var(--frost-text);
+  background: var(--frost-glass-float);
+  border: 1px solid var(--frost-line);
   border-radius: var(--r-md);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--frost-glass-edge), var(--frost-float);
+  -webkit-backdrop-filter: var(--frost-glass-filter);
+  backdrop-filter: var(--frost-glass-filter);
   opacity: 0;
   pointer-events: none;
   font-size: var(--text-sm);
@@ -815,9 +818,7 @@ textarea#comment::placeholder {
   align-items: center;
   justify-content: center;
   padding: var(--space-6);
-  background: var(--scrim);
-  -webkit-backdrop-filter: blur(8px);
-  backdrop-filter: blur(8px);
+  background: var(--frost-shade);
 }
 
 .modal-mask.show {
@@ -829,10 +830,12 @@ textarea#comment::placeholder {
   max-width: 380px;
   padding: var(--space-8) var(--space-6) var(--space-6);
   color: var(--text);
-  background: var(--surface);
-  border: 1px solid var(--border);
+  background: var(--frost-glass-float);
+  border: 1px solid var(--frost-line);
   border-radius: var(--r-lg);
-  box-shadow: var(--shadow-md);
+  box-shadow: var(--frost-glass-edge), var(--frost-float);
+  -webkit-backdrop-filter: var(--frost-glass-filter);
+  backdrop-filter: var(--frost-glass-filter);
   text-align: center;
   animation: modal-enter var(--dur-base) var(--ease) both;
 }

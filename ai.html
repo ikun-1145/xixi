@@ -185,8 +185,8 @@ html.night .app-loading-spinner {
   display: inline;
 }
 </style>
-<link rel="stylesheet" href="ai/frost-tokens.css?v=4">
-<link rel="stylesheet" href="ai/frost-chat.css?v=5">
+<link rel="stylesheet" href="ai/frost-tokens.css?v=5">
+<link rel="stylesheet" href="ai/frost-chat.css?v=7">
 
 <!-- CSP for GeeTest -->
 <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;
@@ -684,7 +684,7 @@ child-src *;
 if (window.__SUNLAND_AI_AUTH_OK__) {
   const appScript = document.createElement("script");
   appScript.type = "module";
-  appScript.src = "ai/app.js?v=20261124-frost-motion-3";
+  appScript.src = "ai/app.js?v=20261124-frost-glass-1";
   appScript.addEventListener("error", () => {
     window.__SUNLAND_AI_BOOT_FAILED__?.();
   }, { once: true });

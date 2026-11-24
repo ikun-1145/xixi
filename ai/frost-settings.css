@@ -24,8 +24,9 @@
   min-height: 64px;
   padding: calc(8px + env(safe-area-inset-top)) max(var(--frost-pad), env(safe-area-inset-right)) 8px max(var(--frost-pad), env(safe-area-inset-left));
   border-bottom: 1px solid var(--frost-line);
-  background: var(--frost-surface);
-  backdrop-filter: none;
+  background: var(--frost-glass-control);
+  -webkit-backdrop-filter: var(--frost-glass-filter);
+  backdrop-filter: var(--frost-glass-filter);
 }
 .frost-settings .header-title { font-size: 1rem; }
 .frost-settings .back-btn {
@@ -86,7 +87,8 @@
 body.dark.frost-settings .card {
   border: 1px solid var(--frost-line);
   border-radius: var(--frost-panel);
-  box-shadow: var(--frost-shadow);
+  background: var(--frost-glass-control);
+  box-shadow: var(--frost-glass-edge), var(--frost-shadow);
   backdrop-filter: none;
 }
 .frost-settings .diagnostics-body {
@@ -163,9 +165,11 @@ body.dark.frost-settings .card.pro-card {
   overscroll-behavior: contain;
   border: 1px solid var(--frost-line-strong);
   border-radius: var(--frost-panel);
-  background: var(--frost-raised);
+  background: var(--frost-glass-float);
   color: var(--frost-text);
-  box-shadow: var(--frost-float);
+  box-shadow: var(--frost-glass-edge), var(--frost-float);
+  -webkit-backdrop-filter: var(--frost-glass-filter);
+  backdrop-filter: var(--frost-glass-filter);
 }
 .frost-settings dialog::backdrop { background: var(--frost-shade); }
 .frost-settings dialog[open] { animation: frost-pop var(--frost-float-motion) var(--frost-spring); }

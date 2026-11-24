@@ -398,20 +398,31 @@ const input = document.getElementById("input");
 const visualViewport = window.visualViewport;
 if (visualViewport) {
   const app = document.getElementById("app");
+  let viewportFrame = 0;
   const fitComposerToViewport = () => {
-    const keyboardOpen = document.activeElement === input && visualViewport.scale === 1 &&
-      window.innerHeight - visualViewport.height > 100;
-    if (keyboardOpen) {
-      app.style.setProperty("--frost-keyboard-height", `${visualViewport.height}px`);
-      app.style.setProperty("--frost-keyboard-top", `${visualViewport.offsetTop}px`);
-    } else {
-      app.style.removeProperty("--frost-keyboard-height");
-      app.style.removeProperty("--frost-keyboard-top");
+    viewportFrame = 0;
+    const keyboardOpen = document.activeElement === input && Math.abs(visualViewport.scale - 1) < .01 &&
+      document.documentElement.clientHeight - visualViewport.height > 80;
+    const height = keyboardOpen ? `${Math.floor(visualViewport.height)}px` : "";
+    const top = keyboardOpen ? `${Math.max(0, visualViewport.offsetTop)}px` : "";
+    if (app.style.getPropertyValue("--frost-keyboard-height") !== height ||
+        app.style.getPropertyValue("--frost-keyboard-top") !== top) {
+      const pinned = isNearBottom();
+      app.classList.toggle("keyboard-visible", keyboardOpen);
+      app.style.setProperty("--frost-keyboard-height", height);
+      app.style.setProperty("--frost-keyboard-top", top);
+      if (pinned) chat.scrollTop = chat.scrollHeight;
     }
+    const menu = document.getElementById("modelMenu");
+    if (menu?.classList.contains("show")) positionModelMenu(document.getElementById("modelSelector"), menu);
   };
-  visualViewport.addEventListener("resize", fitComposerToViewport);
-  visualViewport.addEventListener("scroll", fitComposerToViewport);
-  input.addEventListener("blur", fitComposerToViewport);
+  const scheduleViewportFit = () => {
+    if (!viewportFrame) viewportFrame = requestAnimationFrame(fitComposerToViewport);
+  };
+  visualViewport.addEventListener("resize", scheduleViewportFit);
+  visualViewport.addEventListener("scroll", scheduleViewportFit);
+  input.addEventListener("focus", scheduleViewportFit);
+  input.addEventListener("blur", scheduleViewportFit);
 }
 
 // ⭐ 防止移动端自动弹出键盘（iOS / Safari 修复）
@@ -1421,8 +1432,8 @@ function renderChatList() {
         if (conversationIdKey(currentId) !== conversationIdKey(c.id)) {
           deepMode = false;
           updateDeepButton();
+          loadChat(c.id, { animate: true });
         }
-        loadChat(c.id);
       }
 
       closeSidebarForMobile();
@@ -1715,6 +1726,12 @@ function getProviderBindingMessage(conversation) {
     : "当前对话已绑定 DeepSeek。请新建对话以切换模型。";
 }
 
+function positionModelMenu(selector, menu) {
+  const rect = selector.getBoundingClientRect();
+  menu.style.setProperty("--frost-menu-anchor", `${rect.left + rect.width / 2}px`);
+  menu.style.setProperty("--frost-menu-top", `${rect.top - 8}px`);
+}
+
 // 初始化
  setTimeout(() => {
   const modelSelector = document.getElementById("modelSelector");
@@ -1727,20 +1744,10 @@ function getProviderBindingMessage(conversation) {
     e.stopPropagation();
     void refreshModelCatalog().then(renderModelMenu).catch(renderModelMenu);
 
-    const rect = modelSelector.getBoundingClientRect();
-
-    modelMenu.style.position = "fixed";
-    modelMenu.style.setProperty("--frost-menu-anchor", `${rect.left + rect.width / 2}px`);
-
-    // 向上展开
-    modelMenu.style.setProperty("--frost-menu-top", `${rect.top - 8}px`);
-    modelMenu.style.transform = "translate(-50%, -100%) scale(0.95)";
-
-    modelMenu.style.zIndex = "99999";   // ⭐ 强制最高
-    modelMenu.style.pointerEvents = "auto";
-
-    modelMenu.classList.toggle("show");
-    if (e.detail === 0 && modelMenu.classList.contains("show")) modelMenu.focus();
+    if (modelMenu.classList.toggle("show")) {
+      positionModelMenu(modelSelector, modelMenu);
+      if (e.detail === 0) modelMenu.focus();
+    }
   };
 
   modelMenu.onclick = event => {
@@ -1812,16 +1819,17 @@ function getProviderBindingMessage(conversation) {
   });
 }, 0);
 
-var SIDEBAR_BREAKPOINT = 768;
+const sidebarDrawerQuery = matchMedia('(max-width: 768px), (max-width: 1400px) and (hover: none) and (pointer: coarse)');
 
 function isSidebarMobile() {
-  return window.innerWidth <= SIDEBAR_BREAKPOINT;
+  return sidebarDrawerQuery.matches;
 }
 
 function setSidebarOpen(open) {
   const sidebar = document.getElementById("sidebar");
   const overlay = document.getElementById("sidebarOverlay");
   if (!sidebar) return;
+  document.getElementById("menuToggle")?.setAttribute("aria-expanded", String(open));
 
   if (isSidebarMobile()) {
     sidebar.classList.remove("collapsed");
@@ -1859,6 +1867,7 @@ function setupSidebarByDevice() {
 
   const isMobile = isSidebarMobile();
   const wasMobile = window.__lastIsSidebarMobile;
+  if (wasMobile === isMobile) return;
 
   if (isMobile) {
     sidebar.classList.remove("collapsed");
@@ -1878,6 +1887,7 @@ function setupSidebarByDevice() {
   }
 
   window.__lastIsSidebarMobile = isMobile;
+  document.getElementById("menuToggle")?.setAttribute("aria-expanded", String(sidebar.classList.contains("open")));
   document.body.classList.add("sidebar-ready");
 }
 
@@ -2658,6 +2668,7 @@ document.body.classList.remove("preload");
 window.addEventListener("resize", () => {
   requestAnimationFrame(setupSidebarByDevice);
 });
+sidebarDrawerQuery.addEventListener("change", setupSidebarByDevice);
 let controller = null;
 let sendingLock = false;
 let isStreaming = false;
@@ -3119,7 +3130,8 @@ function createNewChat() {
   if (conversations.length) {
     const latest = conversations[0];
     if (latest && !hasConversationStarted(latest)) {
-      loadChat(latest.id);
+      if (currentId !== latest.id) loadChat(latest.id, { animate: true });
+      else closeSidebarForMobile();
       return;
     }
   }
@@ -3142,7 +3154,10 @@ function createNewChat() {
   history = [...newChat.history];
   chatRenderVersion += 1;
 
+  animateChatExit(chatInner.children);
   chatInner.innerHTML = "";
+  isLoadingHistory = false;
+  animateEmptyChat();
   saveConversations();
   renderChatList();
   updateModelUI();
@@ -3151,7 +3166,74 @@ function createNewChat() {
 }
 
 
-function loadChat(id, { preserveSidebar = false } = {}) {
+const chatMotion = matchMedia("(prefers-reduced-motion: reduce)");
+const welcome = document.getElementById("welcome");
+let chatExit;
+let composerEntrance;
+function canAnimateChat() {
+  return !chatMotion.matches && document.documentElement.classList.contains("app-ready");
+}
+
+function visibleChatItems(items, viewport = chat.getBoundingClientRect()) {
+  const visible = [];
+  for (const element of items) {
+    const bounds = element.getBoundingClientRect();
+    if (bounds.top >= viewport.bottom) break;
+    if (bounds.height && bounds.bottom > viewport.top) visible.push({ element, bounds });
+  }
+  return visible;
+}
+
+function clearChatMotion() {
+  chatExit?.remove();
+  chatExit = null;
+  composerEntrance?.cancel();
+  composerEntrance = null;
+}
+chatMotion.addEventListener("change", clearChatMotion);
+
+function animateChatExit(items) {
+  clearChatMotion();
+  if (!canAnimateChat()) return;
+  const viewport = chat.getBoundingClientRect();
+  const visible = visibleChatItems(items, viewport);
+  if (!visible.length) return;
+
+  // Keep the transition out of the message scroller and interaction tree.
+  const exit = document.createElement("div");
+  exit.className = "chat-departing";
+  exit.inert = true;
+  exit.setAttribute("aria-hidden", "true");
+  Object.assign(exit.style, { top: `${viewport.top}px`, left: `${viewport.left}px`, width: `${viewport.width}px`, height: `${viewport.height}px` });
+  for (const { element, bounds } of visible) {
+    const ghost = element.cloneNode(true);
+    ghost.removeAttribute("id");
+    ghost.querySelectorAll("[id]").forEach(node => node.removeAttribute("id"));
+    Object.assign(ghost.style, { position: "absolute", margin: 0, top: `${bounds.top - viewport.top}px`, left: `${bounds.left - viewport.left}px`, width: `${bounds.width}px` });
+    exit.append(ghost);
+  }
+  chatExit = exit;
+  chat.after(exit);
+  const motion = exit.animate([{ opacity: .85 }, { opacity: 0, transform: "translateY(-4px)" }], { duration: 110, easing: "ease-out" });
+  const removeExit = () => {
+    exit.remove();
+    if (chatExit === exit) chatExit = null;
+  };
+  motion.finished.then(removeExit, removeExit);
+}
+
+function animateEmptyChat() {
+  if (!canAnimateChat()) return;
+  welcome.classList.add("welcome-enter");
+  if (document.activeElement !== input) {
+    composerEntrance = input.closest(".input-box").animate([{ opacity: .72, transform: "translateY(8px)" }, { opacity: 1, transform: "none" }],
+      { duration: 250, easing: "ease-out" });
+  }
+}
+welcome.addEventListener("animationend", () => welcome.classList.remove("welcome-enter"));
+input.addEventListener("focus", () => composerEntrance?.cancel());
+
+function loadChat(id, { preserveSidebar = false, animate = false } = {}) {
   if (!preserveSidebar) closeSidebarForMobile();
   const c = conversations.find(x => x.id === id);
   if (!c) return false;
@@ -3174,7 +3256,6 @@ function loadChat(id, { preserveSidebar = false } = {}) {
     catch (error) { logHistoryFailure("local-selection", error); }
   }
   history = JSON.parse(JSON.stringify(c.history));
-  chatInner.style.opacity = "0";
   updateRequestUiState();
 
   setTimeout(() => {
@@ -3185,19 +3266,15 @@ function loadChat(id, { preserveSidebar = false } = {}) {
     const latestConversation = conversations.find(item => item.id === id);
     if (!latestConversation) {
       isLoadingHistory = false;
-      chatInner.style.opacity = "1";
       finishChatRender();
       return;
     }
     const renderHistory = cloneRequestHistory(latestConversation.history);
     history = cloneRequestHistory(renderHistory);
+    if (animate) animateChatExit(chatInner.childElementCount ? chatInner.children : [welcome]);
+    else clearChatMotion();
+    welcome.classList.remove("welcome-enter");
     chatInner.innerHTML = "";
-
-    // ⭐ 禁用气泡动画（关键修复）
-    const style = document.createElement("style");
-    style.id = "no-anim";
-    style.innerText = ".bubble { animation: none !important; }";
-    document.head.appendChild(style);
 
     renderHistory.filter(message => message.role !== "system").forEach(m => {
       if (isFurryEventCardMessage(m)) {
@@ -3255,16 +3332,18 @@ function loadChat(id, { preserveSidebar = false } = {}) {
       showChatErrorNotice({ target: chatInner, message: pendingError.message });
     }
 
-    chatInner.style.opacity = "1";
-
-    // ⭐ 恢复动画
-    requestAnimationFrame(() => {
-      document.getElementById("no-anim")?.remove();
-    });
+    chat.scrollTop = chat.scrollHeight;
+    if (animate && canAnimateChat()) {
+      if (!chatInner.childElementCount) animateEmptyChat();
+      visibleChatItems(chatInner.children).forEach(({ element }, index) => {
+        element.style.setProperty("--frost-history-delay", `${Math.min(index, 5) * 40}ms`);
+        element.classList.add("history-enter");
+      });
+    }
 
     isLoadingHistory = false;
     finishChatRender();
-  }, 120);
+  }, 0);
 
   // ⭐ 重新渲染侧边栏（更新选中高亮）
   renderChatList();
@@ -3447,11 +3526,10 @@ function addMessage(text, type, options = {}) {
   }
 
   div.appendChild(bubble);
+  if (!isLoadingHistory && !chatInner.childElementCount) animateChatExit([welcome]);
   chatInner.appendChild(div);
 
-if (isNearBottom()) {
-  chat.scrollTop = chat.scrollHeight;
-}
+  if (!isLoadingHistory && isNearBottom()) chat.scrollTop = chat.scrollHeight;
 }
 
 // AI标题生成助手
@@ -4411,7 +4489,7 @@ async function send() {
 }
 
 input.addEventListener("keydown", e => {
-  if (e.key === "Enter" && !e.shiftKey) {
+  if (e.key === "Enter" && !e.shiftKey && !e.isComposing && e.keyCode !== 229) {
     e.preventDefault();
     send();
   }
@@ -4519,7 +4597,7 @@ const toggle = document.getElementById("menuToggle");
 const overlay = document.getElementById("sidebarOverlay");
 
 // 移动端默认关闭 sidebar（使用 open 控制）
-if (window.innerWidth <= 768) {
+if (isSidebarMobile()) {
   sidebar.classList.remove("open");
 }
 
