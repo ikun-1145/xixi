@@ -1,0 +1,134 @@
+:root:has(.frost-settings) {
+  --accent: var(--frost-brand);
+  --accent2: var(--frost-brand);
+  --pro: var(--frost-brand);
+  --pro2: var(--frost-iris);
+  --danger: var(--frost-error);
+  --bg: var(--frost-canvas);
+  --surface: var(--frost-surface);
+  --border: var(--frost-line);
+  --text: var(--frost-text);
+  --subtext: var(--frost-muted);
+  --shadow: var(--frost-shadow);
+  --bg-dark: var(--bg);
+  --surface-dark: var(--surface);
+  --border-dark: var(--border);
+  --text-dark: var(--text);
+  --subtext-dark: var(--subtext);
+}
+
+.frost-settings { font-family: var(--frost-font); }
+.frost-settings::before { display: none; }
+.frost-settings .header {
+  height: auto;
+  min-height: 64px;
+  padding: calc(8px + env(safe-area-inset-top)) max(var(--frost-pad), env(safe-area-inset-right)) 8px max(var(--frost-pad), env(safe-area-inset-left));
+  border-bottom: 1px solid var(--frost-line);
+  background: var(--frost-surface);
+  backdrop-filter: none;
+}
+.frost-settings .header-title { font-size: 1rem; }
+.frost-settings .back-btn {
+  width: var(--frost-control);
+  height: var(--frost-control);
+  background: var(--frost-tint);
+  border: 1px solid var(--frost-line);
+  border-radius: var(--frost-radius);
+}
+.settings-brand {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  margin-inline-start: auto;
+  color: var(--frost-body);
+  font-size: var(--frost-small);
+  font-weight: 720;
+  white-space: nowrap;
+}
+.settings-brand .frost-mark { width: 26px; height: 26px; }
+.frost-settings .page {
+  max-width: 48rem;
+  padding: var(--frost-pad) max(var(--frost-pad), env(safe-area-inset-right)) calc(40px + env(safe-area-inset-bottom)) max(var(--frost-pad), env(safe-area-inset-left));
+}
+.frost-settings .avatar-hero {
+  gap: 8px;
+  padding: clamp(22px, 5vw, 40px) 16px 16px;
+  border: 1px solid var(--frost-line);
+  border-radius: var(--frost-panel) var(--frost-panel) 0 0;
+  background: radial-gradient(ellipse at top, var(--frost-glow), transparent 80%), var(--frost-surface);
+}
+.frost-settings .hero-name { font-size: clamp(1.2rem, 3vw, 1.65rem); overflow-wrap: anywhere; text-align: center; }
+.frost-settings .hero-badge.free,
+.frost-settings .avatar-inner { background: var(--frost-tint); color: var(--frost-brand); }
+.frost-settings .hero-badge.pro { background: var(--frost-iris-tint); color: var(--frost-iris); }
+.frost-settings .avatar-ring { background: var(--frost-accent); box-shadow: var(--frost-shadow); }
+.frost-settings .avatar-ring::after { background: var(--frost-brand); border-color: var(--frost-surface); }
+.frost-settings .avatar-ring::before { background-color: var(--frost-on-accent); }
+.frost-settings .nickname-row {
+  border: 1px solid var(--frost-line);
+  border-top: 0;
+  border-radius: 0 0 var(--frost-panel) var(--frost-panel);
+  background: var(--frost-surface);
+  box-shadow: var(--frost-shadow);
+}
+.frost-settings .section-label {
+  margin: 24px 0 8px 4px;
+  color: var(--frost-muted);
+  font-size: var(--frost-small);
+  letter-spacing: .025em;
+  text-transform: none;
+}
+.frost-settings .card {
+  border: 1px solid var(--frost-line);
+  border-radius: var(--frost-panel);
+  backdrop-filter: none;
+}
+.frost-settings .pro-card {
+  background: linear-gradient(135deg, var(--frost-surface), var(--frost-iris-tint));
+}
+.frost-settings .pro-card.activated { animation: none; }
+.frost-settings :is(.row-icon, .usage-bar-bg, .diagnostics-preview-content, .diagnostics-performance) {
+  background: var(--frost-tint) !important;
+  color: var(--frost-text);
+}
+.frost-settings .row-icon { color: var(--frost-brand); }
+.frost-settings .row-left { min-width: 0; }
+.frost-settings .row-label { overflow-wrap: anywhere; }
+.frost-settings .row-value { color: var(--frost-body); }
+.frost-settings .usage-bar-fill { background: var(--frost-accent); }
+.frost-settings button:not([hidden]), .frost-settings summary { min-height: var(--frost-control); }
+.frost-settings .row :is(button, .row-value) { flex-shrink: 0; }
+.frost-settings .row #userId { flex-shrink: 1; }
+.frost-settings :is(.data-action-btn, .diagnostics-action-btn, .diagnostics-preview-close) {
+  border-color: var(--frost-line);
+  background: var(--frost-tint);
+  color: var(--frost-brand);
+}
+.frost-settings :is(#openAccountDeleteBtn, .diagnostics-clear-btn) {
+  border-color: var(--frost-line);
+  background: var(--frost-error-bg);
+  color: var(--frost-error);
+}
+.frost-settings .account-delete-btn.primary { background: var(--frost-accent); color: var(--frost-on-accent); }
+.frost-settings .account-delete-btn.danger { background: var(--frost-error-bg); color: var(--frost-error); border: 1px solid currentColor; }
+.frost-settings :is(.account-delete-status, .beta-diagnostics-status).success { color: var(--frost-success); }
+.frost-settings dialog:is(.diagnostics-preview-dialog, .account-delete-dialog) {
+  max-height: min(78dvh, calc(100dvh - 32px - env(safe-area-inset-top) - env(safe-area-inset-bottom)), 720px);
+  overflow: auto;
+  overscroll-behavior: contain;
+  border: 1px solid var(--frost-line-strong);
+  border-radius: var(--frost-panel);
+  background: var(--frost-raised);
+  color: var(--frost-text);
+  box-shadow: var(--frost-float);
+}
+.frost-settings dialog::backdrop { background: var(--frost-shade); }
+.frost-settings .account-delete-close { min-width: var(--frost-control); }
+.frost-settings .diagnostics-preview-content { max-height: 44dvh; font-size: var(--frost-small); }
+.frost-settings .footer { color: var(--frost-muted); }
+.frost-settings #loadingBar { top: env(safe-area-inset-top); }
+
+@media (hover: hover) {
+  .frost-settings .row:is([onclick], .settings-link):hover,
+  .frost-settings .back-btn:hover { background: var(--frost-hover); }
+}

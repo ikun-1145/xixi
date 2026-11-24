@@ -2,9 +2,9 @@
 <html lang="zh-Hans" class="preload app-loading">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <script defer src="p/js/site-i18n-extra.js?v=20261120-phone-only-1"></script>
-<script defer src="p/js/site-i18n.js?v=20261019-web-search"></script>
+<script defer src="p/js/site-i18n.js?v=20261123-frosted-ui"></script>
 
 <title>Sunland AI · Beta</title>
 <link rel="manifest" href="/manifest.json">
@@ -185,6 +185,8 @@ html.night .app-loading-spinner {
   display: inline;
 }
 </style>
+<link rel="stylesheet" href="ai/frost-tokens.css?v=1">
+<link rel="stylesheet" href="ai/frost-chat.css?v=1">
 
 <!-- CSP for GeeTest -->
 <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;
@@ -220,7 +222,7 @@ child-src *;
 })();
 </script>
 </head>
-<body class="preload" aria-busy="true">
+<body class="preload frost-chat" aria-busy="true">
 <div id="aiBootScreen" role="status" aria-live="polite" aria-label="页面加载中">
   <div class="app-loading-content">
     <div class="app-loading-spinner" aria-hidden="true"></div>
@@ -228,44 +230,15 @@ child-src *;
   </div>
 </div>
 <div id="app" aria-hidden="true" inert>
-  <button id="scrollBottomBtn" style="
-    position: fixed;
-    bottom: 90px;
-    right: 20px;
-    width: 36px;
-    height: 36px;
-    border-radius: 50%;
-    background: rgba(255,255,255,0.85);
-    backdrop-filter: blur(8px);
-    border: 1px solid rgba(0,0,0,0.08);
-    box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-    color: #555;
-    font-size: 16px;
-    cursor: pointer;
-    opacity: 0;
-    pointer-events: none;
-    transform: translateY(8px) scale(0.9);
-    transition: opacity .25s ease, transform .25s cubic-bezier(0.34,1.56,0.64,1);
-    z-index: 40;
-  ">↓</button>
 <div id="sidebar">
-  <button id="newChatBtn" class="ghost-btn" style="width:100%;justify-content:center;">+ 新对话</button>
+  <div class="rail-brand" aria-hidden="true"><span class="frost-mark"></span>Sunland AI</div>
+  <button id="newChatBtn" class="ghost-btn" type="button">+ 新对话</button>
   <div class="sidebar-feature-links">
-    <a id="copilotEntry" class="sidebar-feature-link" href="copilot.html" aria-label="护福宝">护福宝</a>
-    <a id="verifyEntry" class="sidebar-feature-link" href="verify.html" aria-label="信息鉴真">信息鉴真</a>
+    <a id="copilotEntry" class="sidebar-feature-link" href="copilot.html" aria-label="护福宝"><span class="ui-svg-icon icon-shield-check" aria-hidden="true"></span>护福宝</a>
+    <a id="verifyEntry" class="sidebar-feature-link" href="verify.html" aria-label="信息鉴真"><span class="ui-svg-icon icon-search" aria-hidden="true"></span>信息鉴真</a>
   </div>
 
-<input id="chatSearch" placeholder="搜索历史对话" style="
-  width:100%;
-  height:28px;              /* ⭐ 控制高度的核心 */
-  padding:4px 6px;
-  border-radius:8px;
-  border:1px solid rgba(0,0,0,0.08);
-  margin-bottom:8px;
-  font-size:12px;
-  outline:none;
-  box-sizing:border-box;
-">
+  <input id="chatSearch" placeholder="搜索历史对话">
 
   <div id="chatList"></div>
 </div>
@@ -274,19 +247,9 @@ child-src *;
 <div class="header">
 
   <!-- 左边 -->
-  <div style="display:flex;align-items:center;gap:10px;">
-    <div id="menuToggle" style="
-      width:32px;height:32px;
-      border-radius:8px;
-      display:flex;align-items:center;justify-content:center;
-      cursor:pointer;
-      background:rgba(0,0,0,0.05);
-      font-size:16px;
-    "><span class="ui-svg-icon icon-menu" aria-hidden="true"></span></div>
-
-    <div style="font-weight:600;font-size:14px;">
-      Sunland AI · Beta
-    </div>
+  <div class="top-brand">
+    <button id="menuToggle" type="button" aria-controls="sidebar" aria-label="搜索历史对话"><span class="ui-svg-icon icon-menu" aria-hidden="true"></span></button>
+    <div class="top-wordmark">Sunland AI <span>Beta</span></div>
   </div>
 
   <!-- 右边 -->
@@ -295,7 +258,7 @@ child-src *;
     <button class="ghost-btn" id="downloadBtn" onclick="location.href='download.html'">下载公测版</button>
     <button class="pro-btn" id="proBtn">购买 Pro</button>
 
-    <div class="avatar" id="avatarBtn"></div>
+    <button type="button" class="avatar" id="avatarBtn" aria-label="账号" aria-controls="userMenu"></button>
 
     <div class="user-menu" id="userMenu">
       <div class="email" id="userEmail">未登录</div>
@@ -308,13 +271,20 @@ child-src *;
 
 </div>
 
-<div id="welcome" class="welcome">想聊点什么？</div>
-
 <div id="chat" class="chat-container">
+  <div id="welcome" class="welcome">
+    <div class="welcome-emblem" aria-hidden="true"><span class="frost-mark"></span></div>
+    <h1>想聊点什么？</h1>
+    <div class="welcome-shortcuts">
+      <a href="copilot.html"><span class="ui-svg-icon icon-shield-check" aria-hidden="true"></span>护福宝</a>
+      <a href="verify.html"><span class="ui-svg-icon icon-search" aria-hidden="true"></span>信息鉴真</a>
+    </div>
+  </div>
   <div id="chatInner" class="chat-inner"></div>
 </div>
 
 <div class="input-area">
+  <button id="scrollBottomBtn" type="button" tabindex="-1" aria-label="滚动到底部">↓</button>
   <div class="input-box">
 
   <!-- 顶部功能（融合） -->
@@ -349,7 +319,7 @@ child-src *;
         </svg>
       </button>
 
-      <div id="modelSelector" role="button" aria-label="模型加载中" title="模型加载中" aria-busy="true">模型加载中</div>
+      <button id="modelSelector" type="button" aria-label="模型加载中" title="模型加载中" aria-busy="true" aria-controls="modelMenu">模型加载中</button>
     </div>
 
     <button id="sendBtn" class="icon-btn">↑</button>
@@ -361,19 +331,7 @@ child-src *;
 </div>
 </div>
 </div>
-<div id="modelMenu" style="
-position:absolute;
-left:50%;
-transform:translateX(-50%);
-width:194px;
-background:rgba(255,255,255,0.95);
-color:#1f2937;
-backdrop-filter:blur(12px);
-border-radius:12px;
-padding:6px;
-box-shadow:0 10px 30px rgba(0,0,0,0.2);
-z-index:999;
-">
+<div id="modelMenu" tabindex="-1">
   <span>正在加载模型…</span>
 </div>
 
@@ -726,7 +684,7 @@ z-index:999;
 if (window.__SUNLAND_AI_AUTH_OK__) {
   const appScript = document.createElement("script");
   appScript.type = "module";
-  appScript.src = "ai/app.js?v=20261122-furry-sse";
+  appScript.src = "ai/app.js?v=20261123-frosted-ui";
   appScript.addEventListener("error", () => {
     window.__SUNLAND_AI_BOOT_FAILED__?.();
   }, { once: true });
