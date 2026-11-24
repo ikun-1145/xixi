@@ -38,8 +38,10 @@ test("first launch provides a usable login path and creates an empty chat", () =
     appSource,
     /await checkLogin\(\);[\s\S]*if \(getCurrentVerifiedIdentity\(\) && !conversations\.length\) \{\s*createNewChat\(\);/u,
   );
-  assert.match(aiHtml, /id="welcome"[^>]*>想聊点什么？</u);
-  assert.match(aiHtml, /placeholder="有问题，尽管问"/u);
+  const { window } = new JSDOM(aiHtml);
+  assert.equal(window.document.querySelector("#welcome h1")?.textContent, "想聊点什么？");
+  assert.equal(window.document.getElementById("input")?.placeholder, "有问题，尽管问");
+  window.close();
 });
 
 test("Sunland is discoverable before a conversation starts and its limits are explicit", () => {

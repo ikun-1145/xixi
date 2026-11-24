@@ -398,6 +398,24 @@ function isNearBottom() {
   return chat.scrollHeight - chat.scrollTop - chat.clientHeight < 80;
 }
 const input = document.getElementById("input");
+const visualViewport = window.visualViewport;
+if (visualViewport) {
+  const app = document.getElementById("app");
+  const fitComposerToViewport = () => {
+    const keyboardOpen = document.activeElement === input && visualViewport.scale === 1 &&
+      window.innerHeight - visualViewport.height > 100;
+    if (keyboardOpen) {
+      app.style.setProperty("--frost-keyboard-height", `${visualViewport.height}px`);
+      app.style.setProperty("--frost-keyboard-top", `${visualViewport.offsetTop}px`);
+    } else {
+      app.style.removeProperty("--frost-keyboard-height");
+      app.style.removeProperty("--frost-keyboard-top");
+    }
+  };
+  visualViewport.addEventListener("resize", fitComposerToViewport);
+  visualViewport.addEventListener("scroll", fitComposerToViewport);
+  input.addEventListener("blur", fitComposerToViewport);
+}
 
 // ⭐ 防止移动端自动弹出键盘（iOS / Safari 修复）
 window.addEventListener("load", () => {
@@ -623,18 +641,25 @@ function showError(title, extra = {}) {
 
 function showToast(text, action = null) {
   const toast = document.createElement("div");
+  toast.className = "chat-toast";
+  toast.setAttribute("role", "status");
   toast.textContent = text;
   toast.style.cssText = `
     position:fixed;
-    top:20px;
+    top:max(20px, env(safe-area-inset-top));
     left:50%;
     transform:translateX(-50%);
-    background:#22d3ee;
-    color:#00323a;
+    box-sizing:border-box;
+    width:max-content;
+    max-width:min(420px, calc(100vw - 24px));
+    overflow-wrap:anywhere;
+    background:var(--frost-raised, #22d3ee);
+    color:var(--frost-text, #00323a);
+    border:1px solid var(--frost-line-strong, transparent);
     padding:8px 14px;
-    border-radius:10px;
-    font-size:13px;
-    box-shadow:0 8px 20px rgba(0,0,0,0.15);
+    border-radius:var(--frost-radius, 10px);
+    font-size:var(--frost-small, 13px);
+    box-shadow:var(--frost-float, 0 8px 20px rgba(0,0,0,0.15));
     z-index:9999;
   `;
   if (action?.href && action?.label) {
@@ -1356,6 +1381,9 @@ function renderChatList() {
   filtered.forEach(c => {
     const div = document.createElement("div");
     div.className = "chat-list-item";
+    if (conversationIdKey(c.id) === conversationIdKey(currentId)) {
+      div.setAttribute("aria-current", "true");
+    }
 
     const title = c.title || "新对话";
     const visibleTitle = title === "新对话" ? uiText(title) : title;
@@ -1693,7 +1721,7 @@ function renderModelMenu() {
     item.dataset.modelId = model.id;
     item.setAttribute("data-site-i18n-ignore", "");
     item.textContent = model.displayName;
-    const allowed = availableFor(model, isActivated) && (model.provider !== "sunland" || sunlandProvider.isSupported);
+    const allowed = availableFor(model, isActivated) && Boolean(providerRegistry.get(model.provider));
     item.disabled = !allowed;
     if (!allowed) item.title = "当前账户不可用";
     menu.append(item);
@@ -1722,16 +1750,17 @@ function getProviderBindingMessage(conversation) {
     const rect = modelSelector.getBoundingClientRect();
 
     modelMenu.style.position = "fixed";
-    modelMenu.style.left = rect.left + rect.width / 2 + "px";
+    modelMenu.style.setProperty("--frost-menu-anchor", `${rect.left + rect.width / 2}px`);
 
     // 向上展开
-    modelMenu.style.top = rect.top - 8 + "px";
+    modelMenu.style.setProperty("--frost-menu-top", `${rect.top - 8}px`);
     modelMenu.style.transform = "translate(-50%, -100%) scale(0.95)";
 
     modelMenu.style.zIndex = "99999";   // ⭐ 强制最高
     modelMenu.style.pointerEvents = "auto";
 
     modelMenu.classList.toggle("show");
+    if (e.detail === 0 && modelMenu.classList.contains("show")) modelMenu.focus();
   };
 
   modelMenu.onclick = event => {
@@ -1795,6 +1824,11 @@ function getProviderBindingMessage(conversation) {
     if (!modelMenu.contains(e.target) && e.target !== modelSelector) {
       modelMenu.classList.remove("show");
     }
+  });
+  modelMenu.addEventListener("keydown", (event) => {
+    if (event.key !== "Escape") return;
+    modelMenu.classList.remove("show");
+    modelSelector.focus();
   });
 }, 0);
 
@@ -3394,14 +3428,12 @@ function addMessage(text, type, options = {}) {
     }
   }
 
-  const welcome = document.getElementById("welcome");
-  if (welcome) welcome.remove();
-
   div.appendChild(bubble);
   chatInner.appendChild(div);
 
   // ⭐ 气泡进入动画（正确位置）
-  if (window.anime) {
+  const animate = window.anime && !window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  if (animate) {
     anime({
       targets: bubble,
       opacity: [0, 1],
@@ -3412,7 +3444,7 @@ function addMessage(text, type, options = {}) {
   }
 
   // ⭐ 打字动画（真正生效）
-  if (window.anime) {
+  if (animate) {
     const chars = bubble.querySelectorAll('.typing span');
     if (chars.length) {
       anime({
@@ -4289,12 +4321,6 @@ async function send() {
       }
     }
 
-    const welcome = document.getElementById("welcome");
-    if (welcome && currentId === requestContext.conversationId) {
-      welcome.classList.add("hidden");
-      setTimeout(() => welcome.remove(), 300);
-    }
-
     if (text && currentId === requestContext.conversationId) addMessage(text, "user");
     if (navigator.vibrate) navigator.vibrate(10);
     const persistedUserMessage = visionImages.length
@@ -4519,6 +4545,7 @@ if (scrollBtn) {
   // 监听滚动，离底部超过 150px 才显示
   chat.addEventListener("scroll", () => {
     const distFromBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight;
+    scrollBtn.tabIndex = distFromBottom > 150 ? 0 : -1;
     if (distFromBottom > 150) {
       scrollBtn.style.opacity = "1";
 scrollBtn.style.pointerEvents = "auto";
@@ -4532,7 +4559,7 @@ scrollBtn.style.transform = "translateY(8px) scale(0.9)";
 
   // 点击滚到底部
   scrollBtn.onclick = () => {
-    chat.scrollTo({ top: chat.scrollHeight, behavior: "smooth" });
+    chat.scrollTo({ top: chat.scrollHeight, behavior: window.matchMedia("(prefers-reduced-motion: reduce)").matches ? "instant" : "smooth" });
   };
 }
 // 前台低频同步；页面刷新、重新聚焦和重新可见时还会立即同步。

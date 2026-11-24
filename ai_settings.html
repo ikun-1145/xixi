@@ -2,7 +2,7 @@
 <html lang="zh-CN">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
   <meta name="sunland-turnstile-sitekey" content="">
   <meta name="sunland-phone-ui-enabled" content="false">
   <script>
@@ -1145,12 +1145,15 @@ body.dark .usage-hint {
   to   { transform: translateX(440%); }
 }
 </style>
+<link rel="stylesheet" href="ai/frost-tokens.css?v=1">
+<link rel="stylesheet" href="ai/frost-settings.css?v=1">
 </head>
-<body>
+<body class="frost-settings">
 
   <div class="header">
     <button class="back-btn" onclick="history.back()">←</button>
     <span class="header-title">设置</span>
+    <span class="settings-brand" aria-hidden="true"><span class="frost-mark"></span>Sunland AI</span>
   </div>
 
   <div class="page">
@@ -1168,7 +1171,7 @@ body.dark .usage-hint {
     </div>
 
     <!-- 账号 -->
-     <div class="row" onclick="editNickname()" style="cursor:pointer;">
+     <div class="row nickname-row" onclick="editNickname()" style="cursor:pointer;">
   <div class="row-left">
     <div class="row-icon" style="background:rgba(34,211,238,0.1)"><span class="ui-svg-icon icon-user" aria-hidden="true"></span></div>
     <div class="row-label">昵称</div>

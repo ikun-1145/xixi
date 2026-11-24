@@ -170,6 +170,7 @@
     ["+ 新对话", "+ New Chat", "+ 新しいチャット"],
     ["新对话", "New Chat", "新しいチャット"],
     ["搜索历史对话", "Search chat history", "チャット履歴を検索"],
+    ["滚动到底部", "Scroll to bottom", "一番下までスクロール", {"zh-Hant": "捲動到底部", "ko": "맨 아래로 스크롤", "es": "Desplazarse hasta el final"}],
     ["今日剩余 20 次", "20 messages left today", "本日あと20回"],
     ["下载公测版", "Download Beta", "ベータ版をダウンロード"],
     ["升级 Pro", "Upgrade to Pro", "Pro にアップグレード"],

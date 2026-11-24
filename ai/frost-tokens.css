@@ -1,0 +1,87 @@
+/* Sunland AI Web · scoped palette and component scales */
+:root {
+  color-scheme: light;
+  --frost-canvas: #edf4f7;
+  --frost-rail: #e1edf2;
+  --frost-surface: #f8fcfe;
+  --frost-raised: #fff;
+  --frost-tint: #e4eff5;
+  --frost-hover: #d7e8f1;
+  --frost-text: #142739;
+  --frost-body: #30485c;
+  --frost-muted: #506a7c;
+  --frost-line: #c7d9e4;
+  --frost-line-strong: #8cabbf;
+  --frost-brand: #006581;
+  --frost-iris: #534685;
+  --frost-iris-tint: #ece9f8;
+  --frost-on-accent: #fff;
+  --frost-accent: linear-gradient(135deg, #00637c, #21588c);
+  --frost-error: #a13046;
+  --frost-error-bg: #fcebf0;
+  --frost-success: #176b55;
+  --frost-glow: #b7e8ef;
+  --frost-halo: #d5cef6;
+  --frost-shade: rgb(16 35 57 / 46%);
+  --frost-shadow: 0 10px 28px rgb(29 68 93 / 9%), 0 2px 4px rgb(29 68 93 / 5%);
+  --frost-float: 0 16px 44px rgb(21 51 74 / 20%);
+  --frost-font: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Hiragino Sans", "Microsoft YaHei", sans-serif;
+  --frost-mono: ui-monospace, SFMono-Regular, Consolas, monospace;
+  --frost-small: .8125rem;
+  --frost-leading: 1.7;
+  --frost-pad: clamp(16px, 3vw, 44px);
+  --frost-radius: 12px;
+  --frost-panel: 22px;
+  --frost-control: 44px;
+  --frost-fast: 150ms;
+  --frost-motion: 230ms;
+  --frost-ease: cubic-bezier(.2, .65, .3, 1);
+}
+
+html:is(.night, .dark) {
+  color-scheme: dark;
+  --frost-canvas: #0c1222;
+  --frost-rail: #111b2e;
+  --frost-surface: #152238;
+  --frost-raised: #1a2a41;
+  --frost-tint: #1b3048;
+  --frost-hover: #253d58;
+  --frost-text: #f3faff;
+  --frost-body: #c6d8e7;
+  --frost-muted: #a4bbce;
+  --frost-line: #2b405b;
+  --frost-line-strong: #526d86;
+  --frost-brand: #70ddf5;
+  --frost-iris: #c4b8ff;
+  --frost-iris-tint: #252b4a;
+  --frost-on-accent: #072434;
+  --frost-accent: linear-gradient(135deg, #8ce8f6, #79bdea);
+  --frost-error: #ffadbb;
+  --frost-error-bg: #392337;
+  --frost-success: #81ddbf;
+  --frost-glow: #194352;
+  --frost-halo: #28234e;
+  --frost-shade: rgb(3 7 17 / 72%);
+  --frost-shadow: 0 12px 28px rgb(0 0 0 / 17%), 0 2px 4px rgb(0 0 0 / 12%);
+  --frost-float: 0 18px 48px rgb(0 0 0 / 40%);
+}
+
+:is(.frost-chat, .frost-settings) :is(button, a, input, summary, [tabindex], [role="button"]):focus-visible {
+  outline: 2px solid var(--frost-brand);
+  outline-offset: 2px;
+}
+
+.frost-mark {
+  display: block;
+  background: url('../p/branding/sunland-logo-transparent.png') center / contain no-repeat;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :is(.frost-chat, .frost-settings) *,
+  :is(.frost-chat, .frost-settings) *::before,
+  :is(.frost-chat, .frost-settings) *::after {
+    animation: none !important;
+    transition: none !important;
+    scroll-behavior: auto !important;
+  }
+}
