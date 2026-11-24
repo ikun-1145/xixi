@@ -32,6 +32,20 @@ function createPage() {
   };
 }
 
+test('keeps long Markdown prose in text nodes without per-character animation', () => {
+  const { target } = createPage();
+  const prose = 'Plain text stays selectable. '.repeat(100);
+
+  renderSafeMarkdown(target, `${prose}**important**`, { animateText: true });
+
+  const paragraph = target.querySelector('p');
+  assert.equal(paragraph.firstChild.nodeType, 3);
+  assert.equal(paragraph.firstChild.data, prose);
+  assert.equal(paragraph.querySelector('strong').textContent, 'important');
+  assert.equal(target.querySelector('span'), null);
+  assert.equal(target.classList.contains('typing'), false);
+});
+
 test('removes img onerror payloads', () => {
   const { dom, target } = createPage();
 

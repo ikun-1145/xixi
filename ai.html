@@ -28,7 +28,7 @@
     window.addEventListener("load", resolve, { once: true });
   });
 
-  window.__SUNLAND_AI_REVEAL__ = function () {
+  window.__SUNLAND_AI_REVEAL__ = function (onReveal) {
     var root = document.documentElement;
     var body = document.body;
     var app = document.getElementById("app");
@@ -46,6 +46,7 @@
         root.classList.add("app-ready");
         loadingScreen.classList.add("is-hidden");
         setTimeout(function () { loadingScreen.remove(); }, 240);
+        if (onReveal) onReveal();
       });
     });
   };
@@ -85,12 +86,11 @@
 <script src="p/vendor/supabase-2.110.7.js"></script>
 <script src="ai/database-token-client.js"></script>
 <script src="ai/pro-payment.js?v=20261002-waffo-prod"></script>
-<script async src="https://cdn.jsdelivr.net/npm/animejs@3.2.1/lib/anime.min.js"></script>
 <link rel="preload" href="https://cdn.jsdelivr.net/npm/highlight.js/styles/github.min.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
 <script async src="https://cdn.jsdelivr.net/npm/highlight.js/highlight.min.js"></script>
 
 <link rel="stylesheet" href="ai/styles-1.css?v=20261019-web-search">
-<link rel="stylesheet" href="ai/styles-2.css?v=20260829-2">
+<link rel="stylesheet" href="ai/styles-2.css?v=20261124-frost-motion-2">
 
 <link rel="stylesheet" href="ai/model-menu.css">
 
@@ -185,8 +185,8 @@ html.night .app-loading-spinner {
   display: inline;
 }
 </style>
-<link rel="stylesheet" href="ai/frost-tokens.css?v=1">
-<link rel="stylesheet" href="ai/frost-chat.css?v=1">
+<link rel="stylesheet" href="ai/frost-tokens.css?v=4">
+<link rel="stylesheet" href="ai/frost-chat.css?v=5">
 
 <!-- CSP for GeeTest -->
 <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;
@@ -262,8 +262,8 @@ child-src *;
 
     <div class="user-menu" id="userMenu">
       <div class="email" id="userEmail">未登录</div>
-      <div id="settingsBtn">设置</div>
-      <div class="logout" id="logoutBtn">退出登录</div>
+      <button type="button" id="settingsBtn">设置</button>
+      <button type="button" class="logout" id="logoutBtn">退出登录</button>
     </div>
   </div>
 
@@ -684,7 +684,7 @@ child-src *;
 if (window.__SUNLAND_AI_AUTH_OK__) {
   const appScript = document.createElement("script");
   appScript.type = "module";
-  appScript.src = "ai/app.js?v=20261123-frosted-ui";
+  appScript.src = "ai/app.js?v=20261124-frost-motion-3";
   appScript.addEventListener("error", () => {
     window.__SUNLAND_AI_BOOT_FAILED__?.();
   }, { once: true });

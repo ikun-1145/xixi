@@ -204,11 +204,12 @@ function renderResult(documentRef, content, message) {
   content.appendChild(track);
 }
 
-export function appendFurryEventMessage({ target, message = null, loading = false }) {
+export function appendFurryEventMessage({ target, message = null, loading = false, animate = true }) {
   if (!target?.ownerDocument) return null;
   const documentRef = target.ownerDocument;
   const wrapper = documentRef.createElement("div");
   wrapper.className = "message ai furry-event-message";
+  if (animate) wrapper.classList.add("furry-event-enter");
   const content = documentRef.createElement("section");
   content.className = "furry-event-results";
   content.setAttribute("aria-live", "polite");
