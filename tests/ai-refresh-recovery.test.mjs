@@ -265,7 +265,7 @@ test('bootstrap initializes every recovery state before checkLogin can call load
 
   const bootstrapBlock = aiApp.slice(
     bootstrap,
-    aiApp.indexOf('const sidebar = document.getElementById("sidebar")', bootstrap),
+    aiApp.indexOf('const scrollBtn = document.getElementById("scrollBottomBtn")', bootstrap),
   );
   assert.match(bootstrapBlock, /await supabaseReady;\s*await refreshModelCatalog\(\)\.catch\(\(\) => null\);\s*await checkLogin\(\{ waitForUserState: true \}\);\s*scheduleRenderUser\(\);/);
   assert.match(bootstrapBlock, /updateProviderCapabilityUI\(\)/);
