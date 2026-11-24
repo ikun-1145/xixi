@@ -140,7 +140,7 @@
         const result=await Promise.race([(async()=>{
           const res=await fetchImpl(API+path,{method:'POST',credentials:'omit',redirect:'error',headers:{'Content-Type':'application/json',...(auth?{Authorization:'Bearer '+snapshot.token}:{})},body:JSON.stringify(input),signal:controller.signal});
           const data=await res.json();assert(snapshot);
-          if(!res.ok){const code=Object.hasOwn(messages,data?.code)?data.code:res.status===401?'UNAUTHORIZED':'SERVICE_UNAVAILABLE';throw failure(code);}
+          if(!res.ok){const code=Object.hasOwn(messages,data?.code)?data.code:res.status===401?'UNAUTHORIZED':'SERVICE_UNAVAILABLE';throw Object.assign(failure(code),{status:res.status});}
           if(!data||typeof data!=='object'||Array.isArray(data))throw failure('SERVICE_UNAVAILABLE');
           return data;
         })(),new Promise((_,reject)=>{timer=global.setTimeout(()=>{controller.abort();reject(failure('TIMEOUT'));},deadlineMs);})]);
@@ -165,6 +165,9 @@
           if(r.success!==true||r.challenge_id!==challenge_id||!Number.isInteger(r.retry_after)||r.retry_after<0||r.retry_after>600||!Number.isInteger(r.expires_in)||r.expires_in<0||r.expires_in>300)throw failure('SERVICE_UNAVAILABLE');
         } catch(error) {
           if(error?.code==='SESSION_CHANGED')throw error;
+          if(!registration && error?.status===429 && ['RATE_LIMITED','BUDGET_EXCEEDED','CANARY_LIMITED'].includes(error.code)) {
+            clearPending(challenge_id);rememberCooldown(phone,60);throw failure('RATE_LIMITED');
+          }
           // These ingress/admission failures are established before any paid reservation.
           if(['IDENTITY_DISABLED','CAPTCHA_FAILED','CANARY_DENIED','RELEASE_CONFIG'].includes(error?.code)) {
             clearPending(challenge_id);throw error;

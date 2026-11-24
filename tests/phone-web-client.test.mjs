@@ -138,6 +138,28 @@ test('only known pre-reservation denials clear recovery; ambiguous failures rema
  }
 });
 
+test('only confirmed SMS admission throttles clear recovery and apply a local cooldown',async t=>{
+ for(const [code,status,registration,blocked] of [
+  ['RATE_LIMITED',429,null,false],['BUDGET_EXCEEDED',429,null,false],['CANARY_LIMITED',429,null,false],
+  ['PROVIDER_RATE_LIMITED',429,null,true],['RATE_LIMITED',503,null,true],
+  ['RATE_LIMITED',429,{email:'fixture@example.test',operation_id:'123e4567-e89b-42d3-a456-426614174000'},true],
+  [null,429,null,true],
+ ]){
+  let requests=0;
+  const h=harness({fetchImpl:async()=>{
+   requests++;
+   return code ? Response.json({code},{status}) : new Response('<html>Too Many Requests</html>',{status,headers:{'Retry-After':'60'}});
+  }});t.after(()=>h.dom.window.close());
+  const expected=blocked?'SEND_UNCERTAIN':'RATE_LIMITED';
+  await assert.rejects(h.client.send('13800000000','login',undefined,registration),{code:expected});
+  assert.equal(Boolean(h.client.recovery('login')),blocked);
+  const seconds=h.api.cooldown('13800000000');
+  assert.ok(blocked ? seconds===0 : seconds>0&&seconds<=60);
+  await assert.rejects(h.client.send('13800000000','login'),{code:expected});
+  assert.equal(requests,1);
+ }
+});
+
 test('SMS disabled after reservation retains the handle until reviewed',async()=>{
  const h=harness();const c=h.api.createClient({captcha:async()=> 'mock',fetchImpl:async()=>Response.json({code:'SMS_DISABLED'},{status:503})});
  await assert.rejects(c.send('13800000000','login'),{code:'SEND_UNCERTAIN'});assert.ok(c.recovery('login'));h.dom.window.close();
