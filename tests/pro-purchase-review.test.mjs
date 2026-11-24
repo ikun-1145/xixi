@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import { JSDOM } from "jsdom";
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
+const payModalHandler = /^async function showPayModal\(\) \{[\s\S]*?^\}/m;
 
 test("pricing offers Production dual payments, legal and support details in all six languages", async () => {
   for (const language of ["zh", "zh-Hant", "en", "ja", "ko", "es"]) {
@@ -90,7 +91,8 @@ test("Production merchandise UI creates an authenticated intent once and waits f
 
 test("AI upgrade handler always enters public pricing without payment fallback", async () => {
   const app = read("ai/app.js");
-  const handler = app.slice(app.indexOf("async function showPayModal()"), app.indexOf("// ===== 设备检测", app.indexOf("async function showPayModal()")));
+  const handler = app.match(payModalHandler)?.[0];
+  assert.ok(handler, "showPayModal function found");
   const { default: vm } = await import("node:vm");
   const location = { href: "https://sunland.dev/ai.html" };
   await vm.runInNewContext(handler + "showPayModal()", { window: { location, open() { throw new Error("unexpected popup"); } } });
@@ -104,7 +106,8 @@ test("AI upgrade handler always enters public pricing without payment fallback",
 test("deep-thinking and Pro-model modal purchase buttons use the review pricing path", async () => {
   const app = read("ai/app.js");
   const { default: vm } = await import("node:vm");
-  const route = app.slice(app.indexOf("async function showPayModal()"), app.indexOf("// ===== 设备检测", app.indexOf("async function showPayModal()")));
+  const route = app.match(payModalHandler)?.[0];
+  assert.ok(route, "showPayModal function found");
   for (const [start, end] of [["function showProRequiredModal()", "function showProModelModal()"], ["function showProModelModal()", "let usageVersion = 0;"]]) {
     const dom = new JSDOM("<body></body>", { url: "https://sunland.dev/ai.html" });
     const begin = app.indexOf(start);

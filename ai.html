@@ -186,7 +186,7 @@ html.night .app-loading-spinner {
 }
 </style>
 <link rel="stylesheet" href="ai/frost-tokens.css?v=5">
-<link rel="stylesheet" href="ai/frost-chat.css?v=7">
+<link rel="stylesheet" href="ai/frost-chat.css?v=8">
 
 <!-- CSP for GeeTest -->
 <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;
@@ -242,13 +242,13 @@ child-src *;
 
   <div id="chatList"></div>
 </div>
-<div id="sidebarOverlay"></div>
+<div id="sidebarOverlay" aria-hidden="true"></div>
 
 <div class="header">
 
   <!-- 左边 -->
   <div class="top-brand">
-    <button id="menuToggle" type="button" aria-controls="sidebar" aria-label="搜索历史对话"><span class="ui-svg-icon icon-menu" aria-hidden="true"></span></button>
+    <button id="menuToggle" type="button" aria-controls="sidebar" aria-expanded="false" aria-label="搜索历史对话"><span class="ui-svg-icon icon-menu" aria-hidden="true"></span></button>
     <div class="top-wordmark">Sunland AI <span>Beta</span></div>
   </div>
 
@@ -684,7 +684,7 @@ child-src *;
 if (window.__SUNLAND_AI_AUTH_OK__) {
   const appScript = document.createElement("script");
   appScript.type = "module";
-  appScript.src = "ai/app.js?v=20261124-frost-glass-1";
+  appScript.src = "ai/app.js?v=20261124-frost-glass-2";
   appScript.addEventListener("error", () => {
     window.__SUNLAND_AI_BOOT_FAILED__?.();
   }, { once: true });

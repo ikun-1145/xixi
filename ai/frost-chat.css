@@ -18,12 +18,13 @@ html.app-loading .frost-chat { background: var(--frost-canvas) !important; }
 /* Keep the existing sidebar and message scrollers. The composer has its own
    grid row so a taller draft or attachment never covers the last message. */
 body.frost-chat #app {
-  --rail-offset: clamp(224px, 20vw, 274px);
+  --rail-width: clamp(200px, 22vw, 274px);
+  --rail-offset: 0px;
   --shell-inset: clamp(16px, 3.2vw, 48px);
   --reading-width: 52rem;
   --home-width: 46rem;
   display: grid;
-  grid-template-columns: minmax(0, 1fr);
+  grid-template-columns: var(--rail-offset) minmax(0, 1fr);
   grid-template-rows: auto minmax(0, 1fr) auto;
   top: var(--frost-keyboard-top, 0px);
   bottom: auto;
@@ -35,21 +36,22 @@ body.frost-chat #app {
     linear-gradient(150deg, var(--frost-glow) -45%, transparent 57%),
     linear-gradient(315deg, color-mix(in srgb, var(--frost-halo) 70%, var(--frost-canvas)) -25%, transparent 39%);
   animation: none;
-  transition: background-color var(--frost-motion) var(--frost-ease);
+  transition: background-color var(--frost-motion) var(--frost-ease),
+    grid-template-columns var(--frost-motion) var(--frost-ease);
 }
 @supports (height: 100dvh) {
   body.frost-chat #app { height: var(--frost-keyboard-height, 100dvh); }
 }
-.frost-chat #app:has(#sidebar.collapsed) { --rail-offset: 0px; }
+.frost-chat #app[data-sidebar-layout="docked"]:has(#sidebar.open) { --rail-offset: var(--rail-width); }
 .frost-chat #app:has(#chatInner:empty) {
   grid-template-rows: auto minmax(0, 1fr) auto minmax(0, .36fr);
 }
 .frost-chat #app > :is(.header, #chat, .input-area) {
-  margin-left: var(--rail-offset);
+  grid-column: 2;
+  margin-left: 0;
   width: auto;
   min-width: 0;
   box-sizing: border-box;
-  transition: margin-left var(--frost-motion) var(--frost-ease);
 }
 .frost-chat #app > .header {
   grid-row: 1;
@@ -171,10 +173,11 @@ body.frost-chat #app {
 }
 
 .frost-chat #app #sidebar {
-  --rail-width: clamp(224px, 20vw, 274px);
   width: var(--rail-width);
+  min-height: 0;
   padding: calc(14px + env(safe-area-inset-top)) 14px calc(14px + env(safe-area-inset-bottom)) max(14px, env(safe-area-inset-left));
   border-right: 1px solid var(--frost-line);
+  border-radius: 0 var(--frost-panel) var(--frost-panel) 0;
   height: 100%;
   background: var(--frost-glass-nav);
   color: var(--frost-text);
@@ -183,11 +186,28 @@ body.frost-chat #app {
   backdrop-filter: var(--frost-glass-filter);
   will-change: auto;
   scrollbar-width: thin;
-  transition: transform var(--frost-motion) var(--frost-ease), visibility var(--frost-motion);
+  transform: translateX(-100%);
+  visibility: hidden;
+  transition: transform var(--frost-motion) var(--frost-ease), visibility 0s linear var(--frost-motion);
 }
-.frost-chat #sidebar.collapsed { visibility: hidden; }
-.frost-chat #sidebarOverlay {
-  display: block;
+.frost-chat #app #sidebar.open {
+  transform: none;
+  visibility: visible;
+  transition-delay: 0s;
+}
+.frost-chat #app[data-sidebar-layout="docked"] > #sidebar {
+  grid-area: 1 / 1 / -1 / 2;
+  position: relative;
+  inset: auto;
+  z-index: 1;
+}
+.frost-chat #app[data-sidebar-layout="drawer"] > #sidebar {
+  --rail-width: min(82vw, 292px);
+  box-shadow: var(--frost-glass-edge), var(--frost-float);
+}
+.frost-chat #app[data-sidebar-layout="drawer"] > #sidebarOverlay {
+  display: block !important;
+  z-index: 250;
   background: var(--frost-shade);
   visibility: hidden;
   opacity: 0;
@@ -195,7 +215,7 @@ body.frost-chat #app {
   -webkit-backdrop-filter: none;
   transition: opacity var(--frost-motion) var(--frost-ease), visibility 0s linear var(--frost-motion);
 }
-.frost-chat #sidebarOverlay.active {
+.frost-chat #app[data-sidebar-layout="drawer"] > #sidebarOverlay.active {
   visibility: visible;
   opacity: 1;
   transition-delay: 0s;
@@ -575,6 +595,7 @@ body.frost-chat .message.user .bubble {
   background: var(--frost-glass-facet);
   color: var(--frost-text);
   box-shadow: var(--frost-glass-edge);
+  -webkit-backdrop-filter: none;
   backdrop-filter: none;
   font-size: .9375rem;
   overflow-wrap: anywhere;
@@ -585,15 +606,9 @@ body.frost-chat .message.user .bubble {
   color: var(--frost-text);
   font-size: clamp(.9375rem, 1.3vw, 1.0625rem);
   line-height: var(--frost-leading);
+  text-align: start;
   white-space: normal;
   overflow-wrap: anywhere;
-}
-.frost-chat .message.ai .bubble:not(.chat-error-notice, :has(.furry-event-results)) {
-  padding: clamp(12px, 2vw, 20px);
-  border: 1px solid var(--frost-line);
-  border-radius: 8px 23px 23px;
-  background: var(--frost-glass-control);
-  box-shadow: var(--frost-glass-edge);
 }
 .frost-chat .message.ai :is(.bubble, .reasoning-content) :is(h1, h2, h3, h4, h5, h6) {
   margin: .55em 0 .2em;
@@ -801,20 +816,13 @@ body.frost-chat .furry-event-skeleton {
   .frost-chat .message.ai:focus-within .regen { opacity: 1; transform: none; }
 }
 
-/* Match the JS drawer query: tablet touch layouts need the full reading width. */
-@media (max-width: 768px), (max-width: 1400px) and (hover: none) and (pointer: coarse) {
-  body.frost-chat #app { --rail-offset: 0px; }
-  .frost-chat #app #sidebar { --rail-width: min(82vw, 292px); box-shadow: var(--frost-glass-edge), var(--frost-float); }
-  .frost-chat #app #sidebar:not(.open) { transform: translateX(-100%); visibility: hidden; }
-  .frost-chat #app #sidebarOverlay { display: block !important; }
-}
 .frost-chat #app.keyboard-visible:has(#chatInner:empty) { grid-template-rows: auto minmax(0, 1fr) auto; }
 .frost-chat #app.keyboard-visible > .input-area { padding-bottom: 6px; }
 .frost-chat #app.keyboard-visible #input { max-height: min(132px, calc(var(--frost-keyboard-height) * .23)); }
 .frost-chat #app.keyboard-visible .welcome-emblem { display: none; }
 .frost-chat #app.keyboard-visible .welcome h1 { font-size: clamp(1.4rem, 4vw, 2rem); }
 @media (max-width: 768px) {
-  body.frost-chat #app { --rail-offset: 0px; --shell-inset: 13px; }
+  body.frost-chat #app { --shell-inset: 13px; }
   .frost-chat #app > .header { min-height: 60px; padding-left: max(10px, env(safe-area-inset-left)); }
   .frost-chat #app .top-brand { gap: 6px; }
   .frost-chat #app .top-wordmark { font-size: .9375rem; }

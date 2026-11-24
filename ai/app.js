@@ -1436,7 +1436,7 @@ function renderChatList() {
         }
       }
 
-      closeSidebarForMobile();
+      closeSidebarDrawer();
     };
 
     list.appendChild(div);
@@ -1819,114 +1819,50 @@ function positionModelMenu(selector, menu) {
   });
 }, 0);
 
-const sidebarDrawerQuery = matchMedia('(max-width: 768px), (max-width: 1400px) and (hover: none) and (pointer: coarse)');
-
-function isSidebarMobile() {
-  return sidebarDrawerQuery.matches;
-}
+// A short, touch-first landscape viewport also needs the full chat width.
+const sidebarDrawerQuery = matchMedia('(max-width: 720px), (max-width: 1000px) and (max-height: 540px) and (pointer: coarse)');
+const sidebarApp = document.getElementById("app");
+const sidebarEl = document.getElementById("sidebar");
+const menuToggle = document.getElementById("menuToggle");
+const overlayEl = document.getElementById("sidebarOverlay");
+const sidebarPreferenceKey = "sunland_ai_sidebar_collapsed";
 
 function setSidebarOpen(open) {
-  const sidebar = document.getElementById("sidebar");
-  const overlay = document.getElementById("sidebarOverlay");
-  if (!sidebar) return;
-  document.getElementById("menuToggle")?.setAttribute("aria-expanded", String(open));
-
-  if (isSidebarMobile()) {
-    sidebar.classList.remove("collapsed");
-    sidebar.classList.toggle("open", open);
-    overlay?.classList.toggle("active", open);
-    return;
+  if (!open && sidebarEl.contains(document.activeElement)) {
+    menuToggle.focus({ preventScroll: true });
   }
-
-  overlay?.classList.remove("active");
-  sidebar.classList.toggle("collapsed", !open);
-  sidebar.classList.toggle("open", open);
+  sidebarEl.inert = !open;
+  sidebarEl.classList.toggle("open", open);
+  overlayEl.classList.toggle("active", open && sidebarApp.dataset.sidebarLayout === "drawer");
+  menuToggle.setAttribute("aria-expanded", String(open));
 }
 
-function toggleSidebar() {
-  const sidebar = document.getElementById("sidebar");
-  if (!sidebar) return;
-
-  if (isSidebarMobile()) {
-    setSidebarOpen(!sidebar.classList.contains("open"));
-  } else {
-    setSidebarOpen(sidebar.classList.contains("collapsed"));
-  }
-}
-
-function closeSidebarForMobile() {
-  if (isSidebarMobile()) {
+function closeSidebarDrawer() {
+  if (sidebarApp.dataset.sidebarLayout === "drawer") {
     setSidebarOpen(false);
   }
 }
 
-function setupSidebarByDevice() {
-  const sidebar = document.getElementById("sidebar");
-  const overlay = document.getElementById("sidebarOverlay");
-  if (!sidebar) return;
-
-  const isMobile = isSidebarMobile();
-  const wasMobile = window.__lastIsSidebarMobile;
-  if (wasMobile === isMobile) return;
-
-  if (isMobile) {
-    sidebar.classList.remove("collapsed");
-
-    if (wasMobile !== true) {
-      sidebar.classList.remove("open");
-    }
-
-    overlay?.classList.toggle("active", sidebar.classList.contains("open"));
-  } else {
-    overlay?.classList.remove("active");
-    sidebar.classList.add("open");
-
-    if (wasMobile === true) {
-      sidebar.classList.remove("collapsed");
-    }
-  }
-
-  window.__lastIsSidebarMobile = isMobile;
-  document.getElementById("menuToggle")?.setAttribute("aria-expanded", String(sidebar.classList.contains("open")));
-  document.body.classList.add("sidebar-ready");
+function updateSidebarLayout() {
+  const layout = sidebarDrawerQuery.matches ? "drawer" : "docked";
+  sidebarApp.dataset.sidebarLayout = layout;
+  setSidebarOpen(layout === "docked" && localStorage.getItem(sidebarPreferenceKey) !== "1");
 }
 
-// ===== 侧边栏点击关闭优化 =====
-(function () {
-  const menuToggle = document.getElementById("menuToggle");
-  const sidebar = document.getElementById("sidebar");
-  const overlay = document.getElementById("sidebarOverlay");
-
-  if (menuToggle && sidebar) {
-    menuToggle.onclick = (e) => {
-      e.stopPropagation();
-      toggleSidebar();
-    };
+menuToggle.addEventListener("click", () => {
+  const open = !sidebarEl.classList.contains("open");
+  setSidebarOpen(open);
+  if (sidebarApp.dataset.sidebarLayout === "docked") {
+    if (open) localStorage.removeItem(sidebarPreferenceKey);
+    else localStorage.setItem(sidebarPreferenceKey, "1");
   }
+});
+overlayEl.addEventListener("click", closeSidebarDrawer);
+installSidebarTouchScrollGuard(sidebarEl);
+updateSidebarLayout();
+document.body.classList.add("sidebar-ready");
+sidebarDrawerQuery.addEventListener("change", updateSidebarLayout);
 
-  if (!sidebar) return;
-
-  installSidebarTouchScrollGuard(sidebar);
-
-  // 阻止侧边栏内部点击冒泡
-  sidebar.addEventListener("click", (e) => {
-    e.stopPropagation();
-  });
-
-  // 仅点击侧边栏外部才关闭（只在移动端生效，PC禁用自动收起）
-  document.addEventListener("click", (e) => {
-    const sidebar = document.getElementById("sidebar");
-    if (!sidebar) return;
-
-    if (!isSidebarMobile()) return; // ⭐ PC端禁止自动收缩
-
-    if (!sidebar.classList.contains("open")) return;
-
-    if (!sidebar.contains(e.target) && e.target !== menuToggle) {
-      setSidebarOpen(false);
-    }
-  });
-})();
 function appendProRecheckControl(container) {
   const payments = window.SunlandProPayment;
   if (!payments) return;
@@ -2634,41 +2570,6 @@ async function showPayModal() {
   window.location.href = "pricing.html";
 }
 
-// ===== 设备检测控制侧边栏 =====
-// 初始化执行
-
-// ⭐ 立即执行（不要等动画帧，防止移动端闪现/默认展开）
-setupSidebarByDevice();
-// ⭐ iOS/Safari 兼容：再延迟一次
-setTimeout(setupSidebarByDevice, 50);
-
-// === Sidebar menu/overlay toggle logic ===
-const menuToggle = document.getElementById("menuToggle");
-const sidebarEl = document.getElementById("sidebar");
-const overlayEl = document.getElementById("sidebarOverlay");
-
-if (menuToggle && sidebarEl) {
-  menuToggle.onclick = (e) => {
-    e.stopPropagation();
-    toggleSidebar();
-  };
-}
-
-if (overlayEl) {
-  overlayEl.onclick = () => {
-    setSidebarOpen(false);
-  };
-}
-
-// 再移除 preload
-document.documentElement.classList.remove("preload");
-document.body.classList.remove("preload");
-
-// 屏幕变化时重新判断（横竖屏）
-window.addEventListener("resize", () => {
-  requestAnimationFrame(setupSidebarByDevice);
-});
-sidebarDrawerQuery.addEventListener("change", setupSidebarByDevice);
 let controller = null;
 let sendingLock = false;
 let isStreaming = false;
@@ -3131,7 +3032,7 @@ function createNewChat() {
     const latest = conversations[0];
     if (latest && !hasConversationStarted(latest)) {
       if (currentId !== latest.id) loadChat(latest.id, { animate: true });
-      else closeSidebarForMobile();
+      else closeSidebarDrawer();
       return;
     }
   }
@@ -3162,7 +3063,7 @@ function createNewChat() {
   renderChatList();
   updateModelUI();
   updateRequestUiState();
-  closeSidebarForMobile();
+  closeSidebarDrawer();
 }
 
 
@@ -3234,7 +3135,7 @@ welcome.addEventListener("animationend", () => welcome.classList.remove("welcome
 input.addEventListener("focus", () => composerEntrance?.cancel());
 
 function loadChat(id, { preserveSidebar = false, animate = false } = {}) {
-  if (!preserveSidebar) closeSidebarForMobile();
+  if (!preserveSidebar) closeSidebarDrawer();
   const c = conversations.find(x => x.id === id);
   if (!c) return false;
 
@@ -4591,33 +4492,6 @@ window.__SUNLAND_AI_REVEAL__?.(() => {
 
   chat.scrollTop = savedView.scrollTop;
   document.getElementById("avatarBtn")?.focus({ preventScroll: true });
-});
-const sidebar = document.getElementById("sidebar");
-const toggle = document.getElementById("menuToggle");
-const overlay = document.getElementById("sidebarOverlay");
-
-// 移动端默认关闭 sidebar（使用 open 控制）
-if (isSidebarMobile()) {
-  sidebar.classList.remove("open");
-}
-
-if (toggle) {
-  toggle.onclick = (e) => {
-    e.stopPropagation();
-    toggleSidebar();
-  };
-}
-
-overlay.onclick = () => {
-  setSidebarOpen(false);
-};
-
-// 页面初始化时确保遮罩关闭（防止残留挡住点击）
-overlay.classList.remove("active");
-
-// 在 window resize 时自动修复（防止切换设备尺寸后异常）
-window.addEventListener("resize", () => {
-  requestAnimationFrame(setupSidebarByDevice);
 });
 // ===== Scroll to Bottom Button =====
 const scrollBtn = document.getElementById("scrollBottomBtn");
