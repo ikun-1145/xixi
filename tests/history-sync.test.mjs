@@ -144,13 +144,14 @@ test('a conflicted branch does not prevent copying content into an independent n
   assert.equal(remote.rows.find(row=>row.id==='fresh').history[0].content,'offline');
 });
 
-test('identical old cache without a trustworthy base conflicts explicitly', async () => {
+test('identical legacy cache acquires the actual remote base without a duplicate write', async () => {
   const remote=server();
   const sync=new HistorySync({userId:'user',storage:storage(),rpc:p=>remote.rpc(p),isCurrent:()=>true});
   const kept=sync.reconcile([record()],remote.rows);
   assert.equal(kept[0].history[0].content,'M1');
-  await assert.rejects(sync.save(()=>kept),HistoryConflict);
+  await sync.save(()=>kept);
   assert.equal(remote.calls.length,0);
+  assert.deepEqual(sync.state.bases.same,remote.rows[0]);
 });
 test('reload resumes a lost delete receipt without another save', async () => {
   const remote=server(),tab=storage(),sync=device(remote,tab); remote.loseReply=true;
@@ -227,4 +228,83 @@ test('persistence failure prevents regen from mutating an original or sending a 
   sync.reconcile([], [original]);tab.setItem=()=>{throw new Error('full')};
   assert.throws(()=>sync.beginRegeneration(original),/full/);
   assert.equal(original.history.at(-1).content,'old');assert.equal(remote.calls.length,0);
+});
+
+test('a stale but compatible upload advances the base only after a fresh read and appends once', async () => {
+  const remote = server(), sync = device(remote);
+  remote.rows = [record(['M1', 'same turn'])];
+  const local = [record(['M1', 'same turn', 'offline continuation'])];
+  await assert.rejects(sync.save(() => local), HistoryConflict);
+  const rebased = sync.reconcile(local, remote.rows);
+  await sync.save(() => rebased);
+  assert.deepEqual(remote.rows[0].history.map(row => row.content), ['M1', 'same turn', 'offline continuation']);
+  assert.deepEqual(remote.calls[1].p_upserts[0].expected_record.history, record(['M1', 'same turn']).history);
+});
+
+test('independent device divergence is retained in one deterministic sibling and original cloud chat stays intact', async () => {
+  const remote = server(), a = device(remote), b = device(remote);
+  const offline = [record(['M1', 'B1'])];
+  await a.save(() => [record(['M1', 'A1'])]);
+  await assert.rejects(b.save(() => offline), HistoryConflict);
+  const retain = async local => b.retainLocalBranches(b.reconcile(local, remote.rows), remote.rows, [], [], () => false);
+  const merged = await retain(offline);
+  const fork = merged.find(row => row.id !== 'same');
+  assert.match(fork.id, /^conflict-[\da-f]{64}$/);
+  assert.equal(fork.history.at(-1).content, 'B1');
+  await b.save(() => merged);
+  const fresh = device(remote);
+  const archive = [{ records: offline }];
+  const migrated = await fresh.retainLocalBranches(fresh.reconcile([], remote.rows), remote.rows, [], archive, () => false);
+  const priorCalls = remote.calls.length;
+  await fresh.save(() => migrated);
+  assert.equal(remote.calls.length, priorCalls);
+  assert.equal(remote.rows.length, 2);
+  assert.equal(remote.rows.find(row => row.id === 'same').history.at(-1).content, 'A1');
+  assert.equal(remote.rows.find(row => row.id === fork.id).history.at(-1).content, 'B1');
+});
+
+test('an offline archive is retained only for its owner alongside the normal synchronized chats', async () => {
+  const remote = server(), sync = device(remote);
+  const old = { records: [
+    { ...record(['M1']), id: 'same' },
+    { ...record(['private offline']), id: 'offline', userId: 'user' },
+    { ...record(['other account']), id: 'foreign', userId: 'foreign' },
+    { ...record(['previously deleted']), id: 'removed', userId: 'user' },
+  ], sync: { deleted: ['removed'] } };
+  const before = copy(old);
+  const merged = await sync.retainLocalBranches(sync.reconcile([], remote.rows), remote.rows, [], [old], () => false);
+  await sync.save(() => merged);
+  assert.deepEqual(old, before);
+  assert.deepEqual(remote.rows.map(row => row.id).sort(), ['offline', 'same']);
+});
+
+test('delete intent survives another operation failing offline, and is sent after its write receipt', async () => {
+  const remote = server(), localStorage = storage(), a = device(remote, localStorage);
+  remote.loseReply = true;
+  await assert.rejects(a.save(() => [record(['M1', 'another turn'])]), /reply lost/);
+  remote.loseReply = true;
+  await assert.rejects(a.delete('same', true), /reply lost/);
+  const reload = new HistorySync({ userId: 'user', storage: localStorage, rpc: p => remote.rpc(p), isCurrent: () => true });
+  await reload.enqueue(() => reload.deliverDeletes());
+  assert.deepEqual(remote.calls[0], remote.calls[1]);
+  assert.deepEqual(remote.calls[1], remote.calls[2]);
+  assert.deepEqual(remote.calls[3].p_deletes[0].expected_record.history.map(row => row.content), ['M1', 'another turn']);
+  assert.deepEqual(reload.state.contextDeletes, ['same']);
+  assert.deepEqual(remote.rows, []);
+});
+
+test('a pending legacy import remains local and cannot leak device-only attachment bytes on replay', async () => {
+  const remote = server(), localStorage = storage();
+  const deviceOnly = { ...record(), id: 'local-import', history: [{ role: 'user', content: 'image',
+    recoveryOutbox: { ownerId: 'user', imageBytesBase64: ['AQID'] } }] };
+  const ordinary = { ...record(['normal']), id: 'ordinary' };
+  localStorage.setItem('conversation_sync_user', JSON.stringify({
+    pending: { id: 'legacy-pending', upserts: [{ record: deviceOnly }, { record: ordinary }], deletes: [] },
+  }));
+  const sync = new HistorySync({ userId: 'user', storage: localStorage, rpc: p => remote.rpc(p), isCurrent: () => true });
+  const records = [deviceOnly, ordinary];
+  await sync.save(() => records);
+  assert.deepEqual(records[0], deviceOnly);
+  assert.equal(remote.calls.length, 1);
+  assert.deepEqual(remote.calls[0].p_upserts.map(item => item.record.id), ['ordinary']);
 });

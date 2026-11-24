@@ -160,7 +160,7 @@ test('fails closed to plain text if the sanitizer is unavailable', () => {
 
 test('all dynamic AI and history Markdown paths use the shared renderer', () => {
   assert.doesNotMatch(aiApp, /marked\.parse/);
-  assert.match(aiApp, /renderHistory\.slice\(1\)[\s\S]*?addMessage\(m\.content/);
+  assert.match(aiApp, /renderHistory\.filter\(message => message\.role !== "system"\)[\s\S]*?addMessage\(m\.content/);
   assert.match(aiApp, /renderRequestMarkdown\(requestContext, requestContext\.bubble, text/);
   assert.match(aiApp, /renderSafeMarkdown\(view\.content, reasoningContent\)/);
   assert.match(aiApp, /renderSafeMarkdown\(contentTarget, fullText\)/);

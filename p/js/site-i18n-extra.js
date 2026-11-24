@@ -77,14 +77,7 @@
   "登录方式": {"zh-Hant":"登入方式","en":"Sign-in method","ja":"ログイン方法","ko":"로그인 방법","es":"Método de acceso"},
   "安全验证": {"zh-Hant":"安全驗證","en":"Security verification","ja":"本人確認","ko":"본인 확인","es":"Verificación de seguridad"},
   "QQ交流群": {"zh-Hant":"QQ交流群","en":"QQ community group","ja":"QQ交流グループ","ko":"QQ 커뮤니티 채팅방","es":"Grupo de QQ"},
-  "下载恢复附件": {"zh-Hant":"下載恢復附件","en":"Download recovered attachment","ja":"復元した添付をダウンロード","ko":"복구된 첨부 다운로드","es":"Descargar adjunto recuperado"},
-  "恢复附件无效，原始备份仍保留": {"zh-Hant":"恢復附件無效，原始備份仍保留","en":"Invalid recovered attachment. The original backup is retained.","ja":"復元した添付は無効です。元のバックアップは保持されています。","ko":"복구된 첨부가 잘못되었습니다. 원본 백업은 보관됩니다.","es":"Adjunto recuperado inválido. Se conserva la copia original."},
-  "历史备份与恢复": {"zh-Hant": "歷史備份與恢復", "en": "History backup and recovery", "ja": "履歴のバックアップと復元", "ko": "기록 백업 및 복구", "es": "Copia y recuperación del historial"},
-  "保留本机未同步分支。恢复仅创建新会话，不覆盖已有云端历史；备份含私密消息，远程附件保留原始引用。": {"zh-Hant": "保留本機未同步分支。恢復僅建立新對話，不覆蓋雲端歷史；備份包含私人訊息，遠端附件保留原始參照。", "en": "Keep unsynced local branches. Recovery creates new chats without overwriting cloud history. Backups contain private messages; remote attachments remain references.", "ja": "未同期のローカル履歴を保持します。復元は新しい会話を作成し、クラウド履歴を上書きしません。バックアップには私的なメッセージが含まれ、リモート添付は参照のままです。", "ko": "동기화되지 않은 로컬 분기를 보관합니다. 복구는 새 대화를 만들며 클라우드 기록을 덮어쓰지 않습니다. 백업에는 비공개 메시지가 포함되고 원격 첨부는 참조로 유지됩니다.", "es": "Conserva ramas locales sin sincronizar. La recuperación crea chats nuevos sin sobrescribir el historial. La copia contiene mensajes privados; los adjuntos remotos siguen siendo referencias."},
-  "导出完整本机历史": {"zh-Hant": "匯出完整本機歷史", "en": "Export full local history", "ja": "ローカル履歴をすべてエクスポート", "ko": "전체 로컬 기록 내보내기", "es": "Exportar historial local completo"},
-  "恢复保留的本机分支": {"zh-Hant": "恢復保留的本機分支", "en": "Recover saved local branches", "ja": "保存したローカル履歴を復元", "ko": "보관된 로컬 분기 복구", "es": "Recuperar ramas locales guardadas"},
-  "导入备份": {"zh-Hant": "匯入備份", "en": "Import backup", "ja": "バックアップをインポート", "ko": "백업 가져오기", "es": "Importar copia"},
-  "打开聊天查看恢复会话": {"zh-Hant": "開啟聊天查看恢復對話", "en": "Open chat to view recovered conversations", "ja": "チャットで復元した会話を見る", "ko": "복구된 대화를 채팅에서 보기", "es": "Abrir chat para ver conversaciones recuperadas"},
+  "下载附件": {"zh-Hant":"下載附件","en":"Download attachment","ja":"添付をダウンロード","ko":"첨부 다운로드","es":"Descargar adjunto"},
   "检查到账状态": {
     "zh-Hant": "檢查到帳狀態",
     "en": "Check payment status",
@@ -966,9 +959,6 @@
     "ko": "지금 이 채팅을 삭제할 수 없습니다. 나중에 다시 시도하십시오.",
     "es": "Incapaz de borrar este chat ahora mismo. Por favor, intente de nuevo más tarde."
   },
-  "对话在其他设备上有新修改，本机内容已保留，暂未同步。请复制未同步内容到新对话后重试。": {"zh-Hant": "對話在其他裝置上有新修改，本機內容已保留，暫未同步。請複製未同步內容到新對話後重試。", "ko": "다른 기기에서 채팅이 변경되었습니다. 이 기기의 내용은 보관되었지만 동기화되지 않았습니다. 새 채팅에 복사한 후 다시 시도하세요.", "es": "El chat cambió en otro dispositivo. El contenido local se conserva sin sincronizar. Cópialo a un chat nuevo para continuar."},
-  "云端同步暂时失败，本机内容已保留，将在下次同步时重试。": {"zh-Hant": "雲端同步暫時失敗，本機內容已保留，將在下次同步時重試。", "ko": "동기화가 일시적으로 실패했습니다. 이 기기의 내용은 보관되었으며 다음 동기화 때 다시 시도합니다.", "es": "La sincronización falló temporalmente. El contenido local se conserva y se reintentará en la próxima sincronización."},
-  "历史已删除，AI 上下文暂未清理，将在下次同步时重试。": {"zh-Hant": "歷史已刪除，AI 上下文暫未清理，將在下次同步時重試。", "ko": "기록이 삭제되었습니다. AI 컨텍스트 정리는 다음 동기화 때 다시 시도합니다.", "es": "El historial se eliminó. La limpieza del contexto de IA se reintentará en la próxima sincronización."},
   "对话已删除。": {
     "zh-Hant": "對話已刪除。",
     "ko": "채팅 삭제.",
@@ -3636,9 +3626,6 @@
     "es": "Enviar mensaje",
     "ko": "메시지 보내기"
   },
-  "对话在其他设备上有新修改，本机内容已保留，暂未同步。请复制未同步内容到新对话后重试。": {"zh-Hant": "對話在其他裝置上有新修改，本機內容已保留，暫未同步。請複製未同步內容到新對話後重試。", "ko": "다른 기기에서 채팅이 변경되었습니다. 이 기기의 내용은 보관되었지만 동기화되지 않았습니다. 새 채팅에 복사한 후 다시 시도하세요.", "es": "El chat cambió en otro dispositivo. El contenido local se conserva sin sincronizar. Cópialo a un chat nuevo para continuar."},
-  "云端同步暂时失败，本机内容已保留，将在下次同步时重试。": {"zh-Hant": "雲端同步暫時失敗，本機內容已保留，將在下次同步時重試。", "ko": "동기화가 일시적으로 실패했습니다. 이 기기의 내용은 보관되었으며 다음 동기화 때 다시 시도합니다.", "es": "La sincronización falló temporalmente. El contenido local se conserva y se reintentará en la próxima sincronización."},
-  "历史已删除，AI 上下文暂未清理，将在下次同步时重试。": {"zh-Hant": "歷史已刪除，AI 上下文暫未清理，將在下次同步時重試。", "ko": "기록이 삭제되었습니다. AI 컨텍스트 정리는 다음 동기화 때 다시 시도합니다.", "es": "El historial se eliminó. La limpieza del contexto de IA se reintentará en la próxima sincronización."},
   "对话已删除。": {
     "es": "Chat eliminado.",
     "ko": "채팅이 삭제되었습니다."

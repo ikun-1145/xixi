@@ -19,6 +19,7 @@ function runtime({ appToken, fetchImpl }) {
   const context = {
     fetch: fetchImpl,
     Headers,
+    AbortSignal,
     Date,
     Promise,
     Error,

@@ -270,7 +270,7 @@ async function authenticatedFetch(url, init = {}, _retried = false, requestIdent
       return null;
     }
     if (result.reason === "verification-unavailable") {
-      window.SunlandProPayment?.markUnavailable();
+      if (!requestIdentity?.background) window.SunlandProPayment?.markUnavailable();
       throw new Error("verification-unavailable");
     }
     return getVerifiedToken(result.identity);
@@ -338,6 +338,7 @@ async function authenticatedFetch(url, init = {}, _retried = false, requestIdent
         : null);
     }
     // refresh 失败才真正登出
+    if (requestIdentity?.background) return res;
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     alert("登录已过期，请重新登录");
@@ -351,6 +352,7 @@ async function authenticatedFetch(url, init = {}, _retried = false, requestIdent
     if (requestIdentity?.userId && requestIdentity.userId !== getCurrentUserId()) {
       return null;
     }
+    if (requestIdentity?.background) return res;
     localStorage.removeItem("token");
     localStorage.removeItem("user");
     alert("登录已过期，请重新登录");
@@ -851,8 +853,8 @@ import {
   restoreLocalConversationState,
 } from './conversation-recovery.js';
 import { renderSafeMarkdown } from './safe-markdown.js';
-import { HistorySync, HistoryConflict, newHistoryOperationId } from './history-sync.js';
-import { HistoryVault, recoveredAttachments } from './history-vault.js';
+import { HistorySync, HistoryConflict, newHistoryOperationId } from './history-sync.js?v=20261124-history-sync';
+import { HistoryVault, storedHistoryAttachments } from './history-vault.js?v=20261124-history-sync';
 import {
   clearChatErrorNotices,
   showChatErrorNotice,
@@ -884,7 +886,6 @@ import {
   createConversation,
   hasConversationStarted,
   isSupportedProviderId,
-  mergeConversationCollections,
   setConversationProvider,
 } from './providers/conversation.js';
 import {
@@ -943,11 +944,13 @@ function createOfflineSupabaseClient() {
 
 let supabase = createOfflineSupabaseClient();
 let publicSupabase = createOfflineSupabaseClient();
+let createHistoryClient = null;
 
-const supabaseReady = import('../p/js/supabaseClient.js')
+const supabaseReady = import('../p/js/supabaseClient.js?v=20261124-history-sync')
   .then((module) => {
     if (module?.supabaseData) {
       supabase = module.supabaseData;
+      createHistoryClient = module.createDataClient;
       if (module.supabase) publicSupabase = module.supabase;
       if (session?.userId) {
         const identity = getCurrentVerifiedIdentity();
@@ -1198,6 +1201,7 @@ async function resolveIdentityResult({ token, expectedUserId = null, force = fal
     expectedUserId,
     force,
     retainToken,
+    signal: AbortSignal.timeout(12_000),
     isCurrent: () => isSessionStateCurrent(state, session?.identity),
   });
   if (!isSessionStateCurrent(state, result.identity)) return { ok: false, reason: "stale-resolution" };
@@ -1222,6 +1226,7 @@ function setSession(identity) {
   const nextUserId = getVerifiedUserId(identity);
   if (previousUserId !== nextUserId) {
     ++historySessionGeneration;
+    resetHistoryRetry();
     stopAccountBanRealtime();
   }
   window.SunlandDatabaseToken?.clear?.();
@@ -1261,6 +1266,7 @@ function clearVerifiedSession() {
   history = history.length ? [history[0]] : [];
   currentProfile = null;
   clearTimeout(syncTimer);
+  resetHistoryRetry();
   ++chatRenderVersion;
   ++usageVersion;
   publicFurryUserId = null;
@@ -1473,30 +1479,6 @@ function normalizeCloudData(data, userId = getCurrentUserId()) {
   }
 
   return stripProfileMeta(data);
-}
-
-function buildCloudData(
-  userId = getCurrentUserId(),
-  sourceConversations = conversations,
-) {
-  const rows = filterConversationsForUser(
-    stripProfileMeta(sourceConversations),
-    userId,
-  )
-    .filter(conversation => !isConversationDeleted(conversation));
-  if (currentProfile?.avatar_url && userId) {
-    rows.unshift({
-      id: PROFILE_META_ID,
-      type: "profile",
-      profile: {
-        ...currentProfile,
-        user_id: userId,
-        email: session.user.email || "",
-        updated_at: currentProfile.updated_at || new Date().toISOString()
-      }
-    });
-  }
-  return rows;
 }
 
 async function loadUserProfileFromCloud() {
@@ -2198,6 +2180,7 @@ async function checkLogin(options = {}) {
     skipChatReload = false,
     waitForUserState = false,
     retainToken = false,
+    background = false,
     restoreVersion: expectedVersion = null,
   } = options;
 
@@ -2244,6 +2227,7 @@ async function checkLogin(options = {}) {
           if (!hardFailure) {
             // A temporary verification outage is not a logout or a Free entitlement.
             window.SunlandProPayment?.markUnavailable();
+            scheduleHistoryRetry();
             sessionReady = true;
             scheduleRenderUser();
             return;
@@ -2265,7 +2249,7 @@ async function checkLogin(options = {}) {
           updateProviderCapabilityUI();
           if (lastIdentityErrorReason !== resolution.reason) {
             lastIdentityErrorReason = resolution.reason;
-            showToast(SUNLAND_LOGIN_STATE_MESSAGE);
+            if (!background) showToast(SUNLAND_LOGIN_STATE_MESSAGE);
           }
           scheduleRenderUser();
           return;
@@ -2308,11 +2292,7 @@ async function checkLogin(options = {}) {
           console.warn("本地会话数据无法解析，已保留可用的内存会话");
         }
 
-        if (!skipCloudSync) {
-          await syncFromCloud();
-          if (!isSessionStateCurrent(state)) return;
-          if (expectedVersion != null && isRestoreStale(expectedVersion)) return;
-        }
+        if (!skipCloudSync) void syncFromCloud();
         renderChatList();
       } else {
         conversations = [];
@@ -2796,6 +2776,10 @@ let lastUserMessage = null;
 
 let syncTimer = null;
 let cloudSyncRequest = null;
+let historyRetryTimer = null;
+let historyRetryAttempts = 0;
+let historyRetryAt = 0;
+let historyEditVersion = 0;
 const historySyncs = new Map();
 const historyVaults = new Map();
 window.addEventListener("storage", event => {
@@ -2805,15 +2789,72 @@ window.addEventListener("storage", event => {
     void restoreLoginState({ retainToken: true });
     return;
   }
-  const owner=getCurrentUserId();
-  if (owner && event.key?.startsWith("sunland_history_v1_"+encodeURIComponent(owner)+"_")) {
-    let branch;
-    try { branch=JSON.parse(event.newValue || event.oldValue || 'null'); }
-    catch { return; } // Unknown-owner bytes remain untouched.
-    if(branch?.owner!==owner)return;
-    showToast("另一个标签页保存了历史分支。当前内容已保留，可在设置中恢复或导出。");
-  }
 });
+window.addEventListener("online", () => {
+  resetHistoryRetry();
+  void resumeHistorySync();
+});
+
+function resetHistoryRetry() {
+  clearTimeout(historyRetryTimer);
+  historyRetryTimer = null;
+  historyRetryAt = 0;
+  historyRetryAttempts = 0;
+}
+
+function scheduleHistoryRetry() {
+  if (historyRetryTimer !== null || navigator.onLine === false || !localStorage.getItem("token")) return;
+  const generation = historySessionGeneration;
+  const delay = Math.min(120_000, 1000 * 2 ** Math.min(historyRetryAttempts++, 7));
+  const wait = Math.round(delay * (0.75 + Math.random() * 0.25));
+  historyRetryAt = Date.now() + wait;
+  historyRetryTimer = setTimeout(() => {
+    historyRetryTimer = null;
+    historyRetryAt = 0;
+    if (generation === historySessionGeneration) void resumeHistorySync();
+  }, wait);
+}
+
+async function resumeHistorySync() {
+  if (!localStorage.getItem("token") || navigator.onLine === false || Date.now() < historyRetryAt) return;
+  if (getCurrentUserId()) await syncFromCloud();
+  else await restoreLoginState({ background: true });
+}
+
+function logHistoryFailure(stage, error) {
+  console.warn("[history-sync]", stage, error?.code || error?.status || error?.name || "unavailable");
+}
+
+async function historyDatabaseRequest(sync, request) {
+  if (!createHistoryClient) throw new Error("database-client-unavailable");
+  const tokenService = window.SunlandDatabaseToken;
+  const { userId } = sync;
+  const run = async () => {
+    if (!sync.isCurrent()) throw new Error("history-session-changed");
+    const token = await tokenService.get(userId);
+    if (!token || !sync.isCurrent()) throw new Error("history-session-changed");
+    // The RPC derives its owner from the database JWT. Pin each request to
+    // this verified owner's token so a late SDK fetch cannot switch accounts.
+    const client = createHistoryClient(() => token);
+    return request(client).abortSignal(AbortSignal.timeout(12_000));
+  };
+  const rejectedToken = result => result?.status === 401 || result?.error?.code === "PGRST301";
+  try {
+    const result = await run();
+    if (!rejectedToken(result)) return result;
+    tokenService.clear();
+  } catch (error) {
+    if (error?.status !== 401) throw error;
+    // Only the application token exchange can need an app credential refresh.
+    const state = captureSessionState();
+    const result = await resolveIdentityResult({
+      token: state.token, expectedUserId: userId, force: true, state,
+    });
+    if (!result.ok || !sync.isCurrent()) throw error;
+  }
+  return run();
+}
+
 function getHistoryVault(userId) {
   const generation = historySessionGeneration;
   let vault = historyVaults.get(userId);
@@ -2822,7 +2863,10 @@ function getHistoryVault(userId) {
     vault.generation = generation;
     if (!vault.snapshot.sync) {
       const legacy = sessionStorage.getItem("conversation_sync_" + userId);
-      if (legacy) vault.update({sync:JSON.parse(legacy)});
+      if (legacy) {
+        try { vault.update({sync:JSON.parse(legacy)}); }
+        catch (error) { logHistoryFailure("legacy-queue", error); }
+      }
     }
     historyVaults.set(userId,vault);
   }
@@ -2834,133 +2878,129 @@ function getHistorySync(userId) {
     const sync = new HistorySync({
       userId, storage: getHistoryVault(userId).syncStorage(),
       isCurrent: () => getCurrentUserId() === userId && historySessionGeneration === generation,
-      rpc: params => supabase.rpc("sunland_apply_conversation_patch", params),
+      rpc: params => historyDatabaseRequest(sync, client => client.rpc("sunland_apply_conversation_patch", params)),
     });
     sync.generation = generation;
     historySyncs.set(userId, sync);
   }
   return historySyncs.get(userId);
 }
-function showHistorySyncError(error) {
-  showToast(error instanceof HistoryConflict
-    ? "对话在其他设备上有新修改，本机内容已保留，暂未同步。请复制未同步内容到新对话后重试。"
-    : "云端同步暂时失败，本机内容已保留，将在下次同步时重试。");
-}
 async function retryDeletedContexts(sync) {
   for (const id of [...sync.state.contextDeletes]) {
     if (!sync.isCurrent()) return;
-    try {
-      const identity = getCurrentVerifiedIdentity();
-      if (getVerifiedUserId(identity) !== sync.userId) return;
-      const result = await authenticatedFetch(
-        `https://ai-core.sunland.dev/v1/conversations/${encodeURIComponent(id)}/context`,
-        { method: "DELETE" }, false,
-        { userId: sync.userId, token: getVerifiedToken(identity) },
-      );
-      if (!sync.isCurrent()) return;
-      if (!result?.ok) throw new Error("context cleanup unavailable");
-      sync.state.contextDeletes = sync.state.contextDeletes.filter(item => item !== id);
-      sync.persist();
-    } catch (_) {
-      if (sync.isCurrent()) showToast("历史已删除，AI 上下文暂未清理，将在下次同步时重试。");
-      return;
-    }
+    const identity = getCurrentVerifiedIdentity();
+    if (getVerifiedUserId(identity) !== sync.userId) return;
+    const result = await authenticatedFetch(
+      `https://ai-core.sunland.dev/v1/conversations/${encodeURIComponent(id)}/context`,
+      { method: "DELETE", signal: AbortSignal.timeout(12_000) }, false,
+      { userId: sync.userId, token: getVerifiedToken(identity), background: true },
+    );
+    if (!sync.isCurrent()) return;
+    if (!result?.ok) throw Object.assign(new Error("context-cleanup-unavailable"), { status: result?.status });
+    sync.state.contextDeletes = sync.state.contextDeletes.filter(item => item !== id);
+    try { sync.persist(); }
+    catch (error) { sync.state.contextDeletes.push(id); throw error; }
   }
 }
 
 async function syncFromCloudForUser(userId) {
-  const sync = getHistorySync(userId);
+  let sync;
   try {
-    await sync.enqueue(() => sync.deliver());
+    sync = getHistorySync(userId);
+    const vault = getHistoryVault(userId);
+    try { await sync.enqueue(() => sync.deliverDeletes()); }
+    catch (error) {
+      if (!(error instanceof HistoryConflict)) throw error;
+      logHistoryFailure("deliver-conflict", error);
+    }
     if (!sync.isCurrent()) return;
     const readRevision = sync.revision;
-    const { data, error } = await supabase
-      .from("conversations")
-      .select("data")
-      .eq("user_id", userId)
-      .maybeSingle();
-
+    const [{ data, error }, { data: tombstones, error: deletedError }] = await Promise.all([
+      historyDatabaseRequest(sync, client => client.from("conversations").select("data").eq("user_id", userId).maybeSingle()),
+      historyDatabaseRequest(sync, client => client.from("deleted_conversations").select("conv_id").eq("user_id", userId)),
+    ]);
     if (!sync.isCurrent()) return;
-
-    if (error) {
-      throw error;
-    }
-
-    const { data: tombstones, error: deletedError } = await supabase
-      .from("deleted_conversations").select("conv_id").eq("user_id", userId);
-    if (!sync.isCurrent()) return;
-    if (deletedError) throw deletedError;
-    {
-      const cloudConversations = normalizeCloudData(data?.data || [], userId);
-      const merged = await sync.enqueue(() => sync.reconcile(conversations, cloudConversations,
-        (tombstones || []).map(row => String(row.conv_id)), readRevision));
-      if (!sync.isCurrent() || !merged) return;
-      conversations = merged.filter(conversation => !isConversationDeleted(conversation))
-        .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
-      if (sync.state.blocked.length) showHistorySyncError(new HistoryConflict());
-// ⭐ 防止当前会话丢失
-if (currentId) {
-  const stillExists = conversations.find(c => c.id === currentId);
-  if (!stillExists && conversations.length) {
-    currentId = conversations[0].id;
-  }
-}
-
-      if (sync.isCurrent()) {
-        persistConversationStateLocally(userId);
-      }
+    if (error || deletedError) throw error || deletedError;
+    if (data && !Array.isArray(data.data)) throw new Error("invalid-history-snapshot");
+    const cloud = normalizeCloudData(data?.data || [], userId);
+    const deleted = (tombstones || []).map(row => String(row.conv_id));
+    await sync.enqueue(async () => {
+      if (readRevision !== sync.revision || !sync.isCurrent()) return;
+      const current = conversations.find(row => row.id === currentId);
+      const old = JSON.stringify(current);
+      const merged = sync.reconcile(conversations, cloud, deleted, readRevision);
+      const editVersion = historyEditVersion;
+      let selected;
+      let next;
+      const retained = await sync.retainLocalBranches(merged, cloud, deleted, vault.legacyBranches(),
+        id => merged.some(record => conversationIdKey(record.id) === id &&
+          requestCoordinator.activeForConversation(record.id)),
+        () => sync.isCurrent() && editVersion === historyEditVersion,
+        (records, state) => {
+          next = records.filter(conversation => !isConversationDeleted(conversation) || isConversationDeleting(conversation))
+            .sort((a, b) => (b.updatedAt || 0) - (a.updatedAt || 0));
+          selected = next.find(row => row.syncForkOf === conversationIdKey(currentId) &&
+            JSON.stringify(row.history) === JSON.stringify(current?.history))
+            || next.find(row => conversationIdKey(row.id) === conversationIdKey(currentId)) || next[0];
+          vault.update({records: next, currentId: selected?.id ?? null, sync: state});
+        });
+      if (!retained || !sync.isCurrent()) return;
+      vault.markLegacyBranchesRead();
+      conversations = next;
+      currentId = selected?.id ?? null;
       renderChatList();
-
-      // ⭐ 同步后强制刷新当前对话（否则UI不会更新）
-      if (conversations.length) {
-        const exists = conversations.find(c => c.id === currentId);
-
-        if (!currentId || !exists) {
-          loadChat(conversations[0].id);
-        } else {
-          loadChat(currentId);
-        }
-      }
-      await retryDeletedContexts(sync);
+      if (!selected && current) chatInner.replaceChildren();
+      if (selected && (JSON.stringify(selected) !== old || !chatInner.hasChildNodes()) &&
+          !requestCoordinator.activeForConversation(selected.id)) loadChat(selected.id, { preserveSidebar: true });
+    });
+    if (!sync.isCurrent()) return;
+    // Local vault records are also a durable write source. They may be newer
+    // than the persisted RPC receipt after a reload or several quick edits.
+    try {
+      await sync.save(() => filterConversationsForUser(conversations, userId)
+        .filter(record => record.id !== PROFILE_META_ID && !isConversationDeleted(record)));
+    } catch (error) {
+      if (!(error instanceof HistoryConflict)) throw error;
+      logHistoryFailure("save-conflict", error);
+      scheduleHistoryRetry();
+      return;
     }
-  } catch (e) {
-    console.warn("云端拉取失败:", e);
-    if (sync.isCurrent()) showHistorySyncError(e);
+    await retryDeletedContexts(sync);
+    if (sync.isCurrent()) resetHistoryRetry();
+  } catch (error) {
+    if (sync ? sync.isCurrent() : getCurrentUserId() === userId) {
+      logHistoryFailure("retry", error);
+      scheduleHistoryRetry();
+    }
   }
 }
 
 async function syncFromCloud() {
   const userId = getCurrentUserId();
-  if (!userId) return;
+  if (!userId || navigator.onLine === false || Date.now() < historyRetryAt) return;
   if (cloudSyncRequest?.userId === userId && cloudSyncRequest.generation === historySessionGeneration) return cloudSyncRequest.promise;
 
+  const generation = historySessionGeneration;
+  const version = historyEditVersion;
   const promise = syncFromCloudForUser(userId);
-  cloudSyncRequest = { userId, promise, generation: historySessionGeneration };
+  cloudSyncRequest = { userId, promise, generation };
   try {
     await promise;
   } finally {
-    if (cloudSyncRequest?.promise === promise) cloudSyncRequest = null;
+    if (cloudSyncRequest?.promise === promise) {
+      cloudSyncRequest = null;
+      if (generation === historySessionGeneration && version !== historyEditVersion && getCurrentUserId() === userId) {
+        scheduleHistorySync(userId);
+      }
+    }
   }
 }
 
-async function writeConversationsToCloud(expectedUserId, sourceConversations = null) {
-  const userId = getCurrentUserId();
-  if (!userId || userId !== expectedUserId || supabase.__offline) return false;
-  const sync = getHistorySync(userId);
-  try {
-    await sync.save(() => buildCloudData(userId, sourceConversations || conversations)
-      .filter(record => record.id !== PROFILE_META_ID));
-    if (!sync.isCurrent()) return false;
-    await retryDeletedContexts(sync);
-    return true;
-  } catch (error) {
-    if (sync.isCurrent()) showHistorySyncError(error);
-    return false;
-  }
-}
-
-async function syncToCloud(expectedUserId = getCurrentUserId()) {
-  await writeConversationsToCloud(expectedUserId);
+function scheduleHistorySync(userId) {
+  clearTimeout(syncTimer);
+  syncTimer = setTimeout(() => {
+    if (getCurrentUserId() === userId) void syncFromCloud();
+  }, 600);
 }
 
 function persistConversationStateLocally(userId) {
@@ -2979,13 +3019,10 @@ function persistConversationStateLocally(userId) {
 
 function saveConversations() {
   const userId = getCurrentUserId();
-  if (userId) persistConversationStateLocally(userId);
-
-  // ⭐ 防抖同步（减少请求）
-  clearTimeout(syncTimer);
-  syncTimer = setTimeout(() => {
-    syncToCloud(userId);
-  }, 600);
+  if (!userId) return;
+  persistConversationStateLocally(userId);
+  ++historyEditVersion;
+  scheduleHistorySync(userId);
 }
 
 function belongsToCurrentConversationNamespace(conversation, userId) {
@@ -3044,30 +3081,19 @@ async function deleteConversationForCurrentUser(targetConversation) {
   }
 
   clearTimeout(syncTimer);
-  let cloudDeleted = false;
   try {
     await sync.delete(targetKey, target.provider === "sunland");
-    cloudDeleted = sync.isCurrent();
   } catch (error) {
-    if (sync.isCurrent()) showHistorySyncError(error);
-  }
-  if (!cloudDeleted || !sync.isCurrent()) {
-    deletedConversationIds.delete(targetKey);
-    deletingConversationIds.delete(targetKey);
-    if (
-      sync.isCurrent() &&
-      !conversations.some(conversation => conversationIdKey(conversation.id) === targetKey)
-    ) {
-      conversations = mergeConversationCollections(conversations, [target]).sort(
-        (a, b) => (b.updatedAt || 0) - (a.updatedAt || 0),
-      );
-      persistConversationStateLocally(userId);
+    if (sync.isCurrent()) {
+      deletedConversationIds.delete(targetKey);
+      deletingConversationIds.delete(targetKey);
+      renderChatList();
+      logHistoryFailure("delete", error);
+      scheduleHistoryRetry();
     }
-    renderChatList();
-    if (conversationIdKey(currentId) === targetKey) loadChat(target.id);
-    showToast("暂时无法删除这个对话，请稍后再试。");
     return false;
   }
+  if (!sync.isCurrent()) return false;
 
   const targetIsCurrent = conversationIdKey(currentId) === targetKey;
   conversations = conversations.filter(
@@ -3090,8 +3116,6 @@ async function deleteConversationForCurrentUser(targetConversation) {
   saveConversations();
   loadChat(currentId);
   updateRequestUiState();
-  await retryDeletedContexts(sync);
-  if (!sync.isCurrent()) return false;
   showToast("对话已删除。");
   return true;
 }
@@ -3140,8 +3164,8 @@ function createNewChat() {
 }
 
 
-function loadChat(id) {
-  closeSidebarForMobile();
+function loadChat(id, { preserveSidebar = false } = {}) {
+  if (!preserveSidebar) closeSidebarForMobile();
   const c = conversations.find(x => x.id === id);
   if (!c) return false;
 
@@ -3159,6 +3183,8 @@ function loadChat(id) {
   }
   if (session?.userId) {
     persistCurrentConversationId(localStorage, session.userId, currentId);
+    try { getHistoryVault(session.userId).update({currentId}); }
+    catch (error) { logHistoryFailure("local-selection", error); }
   }
   history = JSON.parse(JSON.stringify(c.history));
   chatInner.style.opacity = "0";
@@ -3186,7 +3212,7 @@ function loadChat(id) {
     style.innerText = ".bubble { animation: none !important; }";
     document.head.appendChild(style);
 
-    renderHistory.slice(1).forEach(m => {
+    renderHistory.filter(message => message.role !== "system").forEach(m => {
       if (isFurryEventCardMessage(m)) {
         appendFurryEventMessage({ target: chatInner, message: m });
         return;
@@ -3197,8 +3223,8 @@ function loadChat(id) {
       });
       let restoredAttachments=[];
       if (m.recoveryOutbox) {
-        try { restoredAttachments=recoveredAttachments(m.recoveryOutbox,getCurrentUserId()); }
-        catch { showToast(uiText("恢复附件无效，原始备份仍保留")); }
+        try { restoredAttachments=storedHistoryAttachments(m.recoveryOutbox,getCurrentUserId()); }
+        catch (error) { logHistoryFailure("stored-attachment", error); }
       }
       if (m.content || messageType === "ai" || restoredAttachments.length) {
         addMessage(m.content, messageType, {
@@ -3212,7 +3238,7 @@ function loadChat(id) {
         }
         for (const attachment of restoredAttachments) {
           const button=document.createElement('button');button.type='button';
-          button.textContent=uiText('下载恢复附件');
+          button.textContent=uiText('下载附件');
           button.onclick=()=>{
             if(getCurrentUserId()!==owner)return;
             const url=URL.createObjectURL(new Blob([attachment.bytes()],{type:'application/octet-stream'}));
@@ -3690,14 +3716,17 @@ function addRegenerateButton(requestContext, fullText) {
       context.bubble = chatInner.lastElementChild?.querySelector(".bubble");
       updateRequestUiState();
       await runDeepSeekRequest(context);
-    } catch (error) { showToast(error.message || "重新生成失败，原回答已保留"); }
+    } catch (error) {
+      if (error instanceof HistoryConflict) logHistoryFailure("regeneration", error);
+      showToast("暂时无法重新生成，原回答已保留。");
+    }
     finally {
       if (context) {
         try {
           if (sync.state.regenerations?.[String(conversation.id)]?.status === "pending") {
             sync.markRegenerationUnknown(conversation.id, context.partialContent || "");
           }
-        } catch (error) { showToast(error.message || "恢复状态保存失败，请导出本机历史"); }
+        } catch (error) { logHistoryFailure("regeneration-checkpoint", error); }
         finally { requestCoordinator.finish(context); updateRequestUiState(); }
       }
     }
@@ -4161,10 +4190,6 @@ async function send() {
     hideGlobalLoading();
     return;
   }
-  if (getHistorySync(getCurrentUserId()).hasUnresolvedRegeneration(sendingConversation.id)) {
-    showToast("重新生成结果未确认，原回答已保留。请在设置中导出或恢复该分支。");
-    hideGlobalLoading(); return;
-  }
   if (requestCoordinator.activeForConversation(sendingConversation.id)) {
     console.warn("当前会话已有请求，跳过重复发送");
     hideGlobalLoading();
@@ -4493,7 +4518,7 @@ async function holdForMaintenanceIfEnabled() {
 }
 
 // 所有恢复流程可能访问的模块状态与事件处理器均已初始化，之后才开始登录、
-// Provider/会话恢复。首屏会等待同源数据客户端、用户资料、权益与当前历史
+// Provider/会话恢复。首屏会等待同源数据客户端、用户资料、权益与本机历史
 // 全部落到 DOM，再与 window.load 汇合，一次性揭示完整页面。
   await supabaseReady;
   await refreshModelCatalog().catch(() => null);
@@ -4569,9 +4594,9 @@ scrollBtn.style.transform = "translateY(8px) scale(0.9)";
 // 前台低频同步；页面刷新、重新聚焦和重新可见时还会立即同步。
 const CLOUD_SYNC_INTERVAL_MS = 60_000;
 setInterval(async () => {
-  if (document.visibilityState !== "hidden" && getCurrentVerifiedIdentity()) {
+  if (document.visibilityState !== "hidden" && localStorage.getItem("token")) {
     await Promise.all([
-      syncFromCloud(),
+      resumeHistorySync(),
       loadUserProfileFromCloud(),
     ]);
     scheduleRenderUser();
@@ -4625,7 +4650,7 @@ window.addEventListener("DOMContentLoaded", () => {
 });
 /* ===== 登录状态补丁（跨页面返回恢复·增强版） ===== */
 
-async function restoreLoginState({ retainToken = false } = {}) {
+async function restoreLoginState({ retainToken = false, background = false } = {}) {
   captureSessionState();
   if (restoreLoginPromise) return restoreLoginPromise;
 
@@ -4638,14 +4663,15 @@ async function restoreLoginState({ retainToken = false } = {}) {
 
       await checkLogin({
         skipCloudSync: true,
-        skipChatReload: true,
+        skipChatReload: Boolean(conversations.length),
         retainToken,
+        background,
         restoreVersion: version,
       });
       if (isRestoreStale(version)) return;
 
       if (getCurrentVerifiedIdentity()) {
-        await syncFromCloud();
+        void syncFromCloud();
       }
       if (isRestoreStale(version)) return;
 

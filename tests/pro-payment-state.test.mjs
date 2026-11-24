@@ -117,7 +117,7 @@ test('login restoration preserves a verified session during temporary identity v
     localStorage: { getItem: () => 'credential-A', removeItem: () => { removed++; } },
     identityAuthority: { resolve: async () => ({ ok: false, reason: 'verification-unavailable' }), clear: () => { clears++; } },
     readCachedDisplayUser: () => ({ id: 'A' }), isVerifiedIdentity: () => false,
-    scheduleRenderUser() {}, sessionReady: false });
+    scheduleRenderUser() {}, scheduleHistoryRetry() {}, sessionReady: false });
   installSessionGuards(context);
   vm.runInContext(appSource.slice(appSource.indexOf('async function checkLogin('), appSource.indexOf('function renderUserCore(')), context);
   await vm.runInContext('checkLogin()', context);
@@ -130,7 +130,7 @@ test('changed credentials become Unknown before an unavailable new identity chec
   const old = api.captureRequest(); storage.set('token', 'credential-B');
   const context = vm.createContext({ window, getCurrentUserId: () => 'A', checkLoginPromise: null,
     localStorage: window.localStorage, identityAuthority: { resolve: async () => ({ ok: false, reason: 'verification-unavailable' }) },
-    readCachedDisplayUser: () => ({ id: 'A' }), isVerifiedIdentity: () => false, scheduleRenderUser() {}, sessionReady: false });
+    readCachedDisplayUser: () => ({ id: 'A' }), isVerifiedIdentity: () => false, scheduleRenderUser() {}, scheduleHistoryRetry() {}, sessionReady: false });
   installSessionGuards(context);
   vm.runInContext(appSource.slice(appSource.indexOf('async function checkLogin('), appSource.indexOf('function renderUserCore(')), context);
   await vm.runInContext('checkLogin()', context);

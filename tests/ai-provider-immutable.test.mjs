@@ -157,7 +157,7 @@ test('live local and cloud code preserve provider invariants with versioned hist
   assert.match(aiApp, /setConversationProvider\(c, model\.provider, currentModel\)/);
   assert.match(aiApp, /const hasStarted = hasConversationStarted\(c\)/);
   assert.match(aiApp, /latest && !hasConversationStarted\(latest\)/);
-  assert.match(aiApp, /sync\.reconcile\(conversations, cloudConversations/);
+  assert.match(aiApp, /sync\.reconcile\(conversations, cloud, deleted, readRevision/);
   const syncSource = fs.readFileSync(new URL('../ai/history-sync.js', import.meta.url), 'utf8');
   assert.match(syncSource, /filterConversationsForUser\(\[copy\(record\)\], this\.userId\)/);
   assert.match(syncSource, /hasConversationStarted\(record\) && record\.provider !== remote\.provider/);
@@ -169,7 +169,7 @@ test('web deletion survives cloud object replacement and mixed id types', () => 
   assert.match(aiApp, /deletedConversationIds\.add\(targetKey\)/);
   assert.match(
     aiApp,
-    /merged\.filter\(conversation => !isConversationDeleted\(conversation\)\)/,
+    /records\.filter\(conversation => !isConversationDeleted\(conversation\) \|\| isConversationDeleting\(conversation\)\)/,
   );
   assert.doesNotMatch(aiApp, /conversation !== target/);
 });

@@ -231,6 +231,7 @@ export class IdentityAuthority {
     if (generation !== this._generation || !isCurrent()) {
       return { ok: false, reason: "stale-resolution" };
     }
+    if (signal?.aborted) return { ok: false, reason: "verification-unavailable" };
     if (!data || typeof data !== "object") {
       return { ok: false, reason: "invalid-verification-response" };
     }
