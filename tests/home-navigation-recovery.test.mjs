@@ -4,10 +4,11 @@ import { readFileSync } from 'node:fs';
 import { JSDOM } from 'jsdom';
 
 const home = readFileSync(new URL('../index.html', import.meta.url), 'utf8');
-function fixture() {
-  const dom = new JSDOM('<body class="ready"><button id="aiEntry"></button></body>', { url: 'https://fixture.invalid', runScripts: 'outside-only' });
+function fixture({ reduceMotion = false } = {}) {
+  const dom = new JSDOM(home, { url: 'https://fixture.invalid', runScripts: 'outside-only' });
   const scheduled = new Map();
   let id = 0;
+  dom.window.matchMedia = (query) => ({ matches: !reduceMotion && query === '(prefers-reduced-motion: no-preference)' });
   dom.window.setTimeout = (fn) => { scheduled.set(++id, fn); return id; };
   dom.window.clearTimeout = (key) => scheduled.delete(key);
   const script = [...home.matchAll(/<script(?:\s[^>]*)?>([\s\S]*?)<\/script>/g)]
@@ -38,6 +39,24 @@ test('rapid AI entry clicks schedule one navigation', () => {
     button.click(); button.click(); button.click();
     assert.equal(scheduled.size, 1);
   } finally { dom.window.close(); }
+});
+
+test('AI remains a native link for reduced motion and modified clicks', () => {
+  for (const reduceMotion of [true, false]) {
+    const { dom, scheduled, button } = fixture({ reduceMotion });
+    try {
+      assert.equal(button.href, 'https://fixture.invalid/ai.html');
+      button.addEventListener('click', (event) => {
+        assert.equal(event.defaultPrevented, false);
+        event.preventDefault();
+      });
+      button.dispatchEvent(new dom.window.MouseEvent('click', {
+        bubbles: true, cancelable: true, metaKey: !reduceMotion,
+      }));
+      assert.equal(scheduled.size, 0);
+      assert.equal(dom.window.document.body.classList.contains('ai-leaving'), false);
+    } finally { dom.window.close(); }
+  }
 });
 
 test('account settings icons all have an existing CSS mask', () => {
