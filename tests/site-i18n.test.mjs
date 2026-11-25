@@ -279,6 +279,25 @@ test("language dropdown shows six flagged choices and supports keyboard dismissa
   dom.window.close();
 });
 
+test("homepage product copy follows the existing language menu", () => {
+  const dom = createDom(fs.readFileSync("index.html", "utf8"), "zh");
+  const { document, Event } = dom.window;
+  document.dispatchEvent(new Event("DOMContentLoaded"));
+
+  for (const [language, title, cta] of [
+    ["en", "Sunland AI", "Try it now"], ["ja", "Sunland AI", "今すぐ使う"],
+    ["ko", "Sunland AI", "바로 체험하기"], ["es", "Sunland AI", "Pruébalo ahora"],
+    ["zh-Hant", "霜藍 AI", "立即體驗"], ["zh", "霜蓝 AI", "立即体验"],
+  ]) {
+    document.querySelector(`#languageMenu [data-lang="${language}"]`).click();
+    assert.equal(document.querySelector("#productTitle").textContent, title);
+    assert.equal(document.querySelector("#aiEntry span").textContent, cta);
+    assert.equal(document.querySelectorAll(".product-features li").length, 5);
+    assert.equal(dom.window.localStorage.getItem("lang"), language);
+  }
+  dom.window.close();
+});
+
 test("dynamic system UI is localized without rewriting chat content", async () => {
   const dom = createDom(`<!doctype html><html><body>
     <main id="surface"></main>

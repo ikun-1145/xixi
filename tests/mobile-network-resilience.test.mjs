@@ -8,20 +8,19 @@ const { JSDOM, VirtualConsole } = projectRequire('jsdom');
 
 const readProjectFile = path => fs.readFileSync(new URL(`../${path}`, import.meta.url), 'utf8');
 
-test('home page becomes visible when module and third-party resources are unavailable', async () => {
+test('home page exposes the product link without scripts or a blocking splash', () => {
   const virtualConsole = new VirtualConsole();
   const dom = new JSDOM(readProjectFile('index.html'), {
     pretendToBeVisual: true,
-    runScripts: 'dangerously',
     url: 'https://sunland.example/',
     virtualConsole,
   });
 
   try {
-    await new Promise(resolve => dom.window.setTimeout(resolve, 1500));
-
-    assert.equal(dom.window.document.body.classList.contains('ready'), true);
-    assert.equal(dom.window.document.getElementById('loading'), null);
+    const { document } = dom.window;
+    assert.equal(document.querySelector('main h1').textContent, '霜蓝 AI');
+    assert.equal(document.querySelector('main a').href, 'https://sunland.example/ai.html');
+    assert.equal(document.getElementById('loading'), null);
   } finally {
     dom.window.close();
   }

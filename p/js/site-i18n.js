@@ -28,6 +28,22 @@
   });
 
   const rows = [
+    ["霜蓝 AI", "Sunland AI", "Sunland AI", { "zh-Hant": "霜藍 AI", ko: "Sunland AI", es: "Sunland AI" }],
+    ["从对话、编程到创作，也帮你查找信息、发现兽聚和整理 OC 稿件。", "Chat, code, and create. Find information, discover furry events, and organize your OC commissions.", "会話やプログラミング、創作に。情報を探したり、ファーリーイベントを見つけたり、OC の依頼を整理したりできます。", { "zh-Hant": "從對話、程式開發到創作，也幫你查找資訊、發現獸聚和整理 OC 稿件。", ko: "대화하고, 코딩하고, 창작하세요. 정보를 찾고, 퍼리 행사를 둘러보고, OC 커미션을 정리할 수도 있어요.", es: "Conversa, programa y crea. Busca información, descubre eventos furry y organiza los encargos de tus personajes originales." }],
+    ["立即体验", "Try it now", "今すぐ使う", { "zh-Hant": "立即體驗", ko: "바로 체험하기", es: "Pruébalo ahora" }],
+    ["核心功能", "Key features", "主な機能", { "zh-Hant": "核心功能", ko: "주요 기능", es: "Funciones principales" }],
+    ["AI 对话", "AI chat", "AI チャット", { "zh-Hant": "AI 對話", ko: "AI 채팅", es: "Chat con IA" }],
+    ["编程创作", "Code & create", "コードと創作", { "zh-Hant": "程式開發與創作", ko: "코딩과 창작", es: "Código y creación" }],
+    ["兽聚探索", "Furry events", "ファーリーイベント", { "zh-Hant": "獸聚探索", ko: "퍼리 행사", es: "Eventos furry" }],
+    ["OC 稿件管理", "OC commissions", "OC の依頼管理", { "zh-Hant": "OC 稿件管理", ko: "OC 커미션 관리", es: "Encargos de OC" }],
+    ["智能查询", "Smart search", "スマート検索", { "zh-Hant": "智慧查詢", ko: "스마트 검색", es: "Búsqueda inteligente" }],
+    ["你好！", "Hello!", "こんにちは！", { "zh-Hant": "你好！", ko: "안녕하세요!", es: "¡Hola!" }],
+    ["欢迎来到我的个人主页，这里记录着我的创作、想法与旅程。", "Welcome to my personal website, where I share my creations and journey.", "私の個人サイトへようこそ。ここでは創作と旅の記録を紹介しています。", { "zh-Hant": "歡迎來到我的個人主頁，這裡記錄著我的創作、想法與旅程。", ko: "제 개인 홈페이지에 오신 것을 환영합니다. 이곳에는 창작물과 생각, 여정을 기록합니다.", es: "Bienvenido a mi sitio web personal, donde comparto mis creaciones, ideas y viajes." }],
+    ["兽设介绍", "My Fursona", "設定紹介", { "zh-Hant": "獸設介紹", ko: "캐릭터 소개", es: "Mi fursona" }],
+    ["关注我", "Follow Me", "フォロー", { "zh-Hant": "關注我", ko: "팔로우", es: "Sígueme" }],
+    ["联系我", "Contact", "連絡先", { "zh-Hant": "聯絡我", ko: "연락하기", es: "Contacto" }],
+    ["留学规划", "Study Plan", "留学計画", { "zh-Hant": "留學規劃", ko: "유학 계획", es: "Plan de estudios" }],
+    ["捐赠支持", "Support Me", "支援する", { "zh-Hant": "捐贈支持", ko: "후원하기", es: "Apóyame" }],
     // Manual DeepSeek web search (page-memory preference).
     ["联网搜索", "Web Search", "ウェブ検索", {"zh-Hant": "聯網搜尋", "ko": "웹 검색", "es": "Búsqueda web"}],
     ["正在搜索网络…", "Searching the web…", "ウェブを検索中…", {"zh-Hant": "正在搜尋網路…", "ko": "웹 검색 중…", "es": "Buscando en la web…"}],
