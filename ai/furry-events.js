@@ -532,12 +532,15 @@ export function shouldAnswerFromFurryEventContext(text, history = []) {
 }
 
 export function formatFurryEventDateRange(event) {
+  const startDay = datePart(event?.start_at ?? event?.startAt);
+  const endDay = datePart(event?.end_at ?? event?.endAt);
+  if (startDay && endDay && startDay.slice(0, 4) !== endDay.slice(0, 4)) return `${startDay}–${endDay}`;
   const format = value => {
-    const match = datePart(value).match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    const match = value.match(/^(\d{4})-(\d{2})-(\d{2})$/);
     return match ? `${Number(match[2])}月${Number(match[3])}日` : "时间待定";
   };
-  const start = format(event?.start_at ?? event?.startAt);
-  const end = format(event?.end_at ?? event?.endAt);
+  const start = format(startDay);
+  const end = format(endDay);
   return !end || end === start || end === "时间待定" ? start : `${start}–${end}`;
 }
 

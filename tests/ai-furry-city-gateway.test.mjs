@@ -55,11 +55,13 @@ async function verifyWebTurns(t, exploration = false, mocked = false) {
   let requestNumber = 0;
   let interrupted = false;
   let overrideResponse;
+  const pageTurns = [];
   const errors = [];
   const run = vm.runInNewContext(`${requestSource}\nrunDeepSeekRequest`, {
     window, chatInner, setTimeout, clearTimeout, TextDecoder,
     localStorage: {getItem: () => 'fixture-session'},
     newHistoryOperationId: () => `city-fixture-${++requestNumber}`,
+    send: turn => pageTurns.push(turn),
     buildFurryEventModelHistory, getLatestFurryEventCard, createFurryEventCardMessage, appendFurryEventMessage,
     buildVisionMessages: messages => messages,
     apiFetch: async body => {
@@ -112,6 +114,26 @@ async function verifyWebTurns(t, exploration = false, mocked = false) {
     assert.equal(history.at(-1).content, reply);
     assert.equal(window.document.querySelector('#answer').textContent, reply);
     assert.equal(chatInner.lastElementChild, previousView);
+    const scope = '检索范围：宁波，尚未结束的活动。FCC 的记录不足以确认是否有匹配活动。';
+    await runFrames({type:'furry_event_result',status:'coverage_unknown',summary:scope});
+    assert.equal(history.at(-1).content,scope);
+    assert.equal(chatInner.lastElementChild.textContent,scope);
+    const pageQuery = {limit:1};
+    await runFrames({type:'furry_event_result',status:'searching'}, {type:'furry_event_result',status:'success',
+      events:[{id:'fcc:1',name:'星回启元',city:'广州',startAt:'2026-12-31T00:00:00+08:00',endAt:'2027-01-02T00:00:00+08:00'}],
+      fccMatchCount:3,pageQuery,nextCursor:'next',eventReference:'signed'});
+    assert.equal(chatInner.querySelector('.furry-event-count').textContent,'本页 1 场 · 共 3 场');
+    chatInner.querySelector('.furry-event-next').click();
+    assert.equal(pageTurns[0].conversationId,1795258285119);
+    assert.equal(pageTurns[0].page.nextCursor,'next');
+    assert.equal(pageTurns[0].page.eventReference,'signed');
+    assert.match(chatInner.lastElementChild.textContent,/2026-12-31–2027-01-02/);
+    await runFrames({type:'furry_event_result',status:'searching'},
+      {type:'furry_event_result',status:'unavailable',explorationAction:'next'});
+    assert.equal(getLatestFurryEventCard(history).furryPage.eventReference,'signed');
+    assert.ok(chatInner.querySelector('.furry-event-next'));
+    await runFrames({type:'furry_event_result',status:'no_results',summary:'暂无更多场次'});
+    assert.equal(chatInner.querySelector('.furry-event-next'),null);
     window.close();
     return;
   }
@@ -122,8 +144,8 @@ async function verifyWebTurns(t, exploration = false, mocked = false) {
       ['最近有什么兽聚？',4,/FCC 共找到 4 场活动，本页显示 4 场/],
       ['推荐5个你觉得适合的',4,/推荐 4 场[\s\S]+夹具场馆 1/],
       ['把刚才推荐的几个再显示一下',4,/相关兽聚活动/],
-      ['宁波的',0,/没有找到相关兽聚活动/],
-      ['显示几个卡片给我看',0,/没有找到相关兽聚活动/],
+      ['宁波的',1,/宁波夹具活动 5/],
+      ['显示几个卡片给我看',1,/相关兽聚活动/],
       ['换成杭州的',0,/获取失败/],
       ['重试杭州的查询',1,/杭州夹具活动 4/],
       ['再显示这几场',1,/相关兽聚活动/],
@@ -166,7 +188,7 @@ async function verifyWebTurns(t, exploration = false, mocked = false) {
     }
     if (id === null) {
       assert.equal(card.furryEvents.length, 0);
-      assert.match(history.at(-1).content, city === '京都' ? /记录不足以确认/ : /没有找到相关兽聚活动/);
+      assert.match(history.at(-1).content, city === '京都' ? /检索范围：京都.*记录不足以确认/ : /检索范围：名古屋.*未找到匹配活动/);
     } else {
       assert.equal(card.furryEvents[0].id, `fcc:${id}`);
       assert.ok(chatInner.lastElementChild.textContent.includes(`${city}夹具活动 ${id}`));
@@ -226,7 +248,9 @@ test('RPC-exported FCC records survive Gateway pagination and revoke on city cha
     card = frames.find(frame => frame.type === 'furry_event_result' && frame.status !== 'searching') ?? card;
     return frames.map(frame => frame.choices?.[0]?.delta?.content ?? '').join('');
   };
-  assert.equal(turn('广州近期有什么兽聚？'), '未找到匹配活动');
+  assert.equal(turn('广州近期有什么兽聚？'), '星回启元');
+  assert.equal(card.fccMatchCount,3);
+  assert.equal(card.pageQuery.time_range,undefined);
   assert.equal(turn('未来三个月广州有哪些兽聚？'), '星回启元');
   const firstPage = card.eventReference;
   assert.equal(turn('还有吗？'), '万圣奇夜·东方幻园');

@@ -169,12 +169,12 @@ function renderLoading(documentRef, content) {
   content.appendChild(track);
 }
 
-function renderResult(documentRef, content, message) {
+function renderResult(documentRef, content, message, onNextPage) {
   const events = normalizeFurryEvents(message?.furryEvents, message?.preserveOrder === true);
   if (message?.furryError) {
     const error = documentRef.createElement("div");
     error.className = "furry-event-empty";
-    appendIconText(documentRef, error, "paw", uiText("兽聚信息暂时获取失败，请稍后再试"));
+    appendIconText(documentRef, error, "paw", message.furryCoverage || uiText("兽聚信息暂时获取失败，请稍后再试"));
     content.appendChild(error);
     return;
   }
@@ -192,7 +192,9 @@ function renderResult(documentRef, content, message) {
   appendIconText(documentRef, title, "paw", uiText("相关兽聚活动"));
   const count = documentRef.createElement("span");
   count.className = "furry-event-count";
-  count.textContent = uiText(`${events.length} 场 · 横向滑动查看更多`);
+  count.textContent = Number.isInteger(message?.fccMatchCount) && message.fccMatchCount >= events.length
+    ? uiText(`本页 ${events.length} 场 · 共 ${message.fccMatchCount} 场`)
+    : uiText(`${events.length} 场 · 横向滑动查看更多`);
   header.append(title, count);
   content.appendChild(header);
 
@@ -202,9 +204,17 @@ function renderResult(documentRef, content, message) {
   track.setAttribute("aria-label", uiText(`相关兽聚活动，共 ${events.length} 场`));
   events.forEach(event => track.appendChild(createEventCard(documentRef, event)));
   content.appendChild(track);
+  if (message?.furryPage?.nextCursor && onNextPage) {
+    const next = documentRef.createElement("button");
+    next.type = "button";
+    next.className = "furry-event-next";
+    next.textContent = uiText("查看下一页");
+    next.addEventListener("click", () => onNextPage(message.furryPage));
+    content.appendChild(next);
+  }
 }
 
-export function appendFurryEventMessage({ target, message = null, loading = false, animate = true }) {
+export function appendFurryEventMessage({ target, message = null, loading = false, animate = true, onNextPage = null }) {
   if (!target?.ownerDocument) return null;
   const documentRef = target.ownerDocument;
   const wrapper = documentRef.createElement("div");
@@ -223,7 +233,7 @@ export function appendFurryEventMessage({ target, message = null, loading = fals
       renderLoading(documentRef, content);
     } else {
       wrapper.classList.remove("is-loading");
-      renderResult(documentRef, content, nextMessage);
+      renderResult(documentRef, content, nextMessage, onNextPage);
     }
   };
 

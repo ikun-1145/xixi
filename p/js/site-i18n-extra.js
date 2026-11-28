@@ -2525,6 +2525,13 @@
     "ko": "자주 묻는 질문",
     "es": "Eventos relacionados de furia"
   },
+  "查看下一页": {
+    "zh-Hant": "查看下一頁",
+    en: "View next page",
+    ja: "次のページを見る",
+    ko: "다음 페이지 보기",
+    es: "Ver la página siguiente",
+  },
   "场 · 横向滑动查看更多": {
     "zh-Hant": "場 · 橫向滑動檢視更多",
     "ko": "이벤트 · Swipe 보도",
