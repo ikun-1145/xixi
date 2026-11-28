@@ -65,6 +65,8 @@ printf 'header = "Authorization: Bearer %s"\n' "$SUNLAND_API_KEY" |
 
 ## Python
 
+使用 `urllib` 时，请设置应用自己的 `User-Agent`。Cloudflare 可能拒绝使用 `Python-urllib/...` 默认标识的请求。这类边缘响应没有 `X-Request-Id`。
+
 ```python
 import json
 import os
@@ -78,7 +80,8 @@ request = Request(
     "https://openapi.sunland.dev/v1/membership/batch",
     data=json.dumps({"emails": ["user1@example.com", "user2@example.com"]}).encode(),
     headers={"Authorization": f"Bearer {os.environ['SUNLAND_API_KEY']}",
-             "Content-Type": "application/json"},
+             "Content-Type": "application/json",
+             "User-Agent": "Partner-Membership-Sync/1.0"},
     method="POST",
 )
 with build_opener(NoRedirect()).open(request, timeout=15) as response:

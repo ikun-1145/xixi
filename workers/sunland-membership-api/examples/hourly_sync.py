@@ -26,7 +26,8 @@ def check_batch(base_url, key, emails):
     request = urllib.request.Request(
         f"{base_url.rstrip('/')}/v1/membership/batch",
         data=json.dumps({"emails": emails}).encode(),
-        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json"},
+        headers={"Authorization": f"Bearer {key}", "Content-Type": "application/json",
+                 "User-Agent": "Sunland-Membership-Hourly-Sync/1.0"},
         method="POST",
     )
     opener = urllib.request.build_opener(NoRedirect())
