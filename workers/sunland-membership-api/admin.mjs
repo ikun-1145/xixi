@@ -92,6 +92,16 @@ export async function runAdmin(query, command, subject, options) {
     case 'partner-enable':
       return one(`update ${schema}.partners set enabled=$2 where id=$1 returning id`,
         [partner, command === 'partner-enable']);
+    case 'direct-query-enable': {
+      const approvalRef = requireMatch(/^[A-Za-z0-9][A-Za-z0-9._/-]{0,127}$/, options.approvalRef);
+      return one(`update ${schema}.partners
+        set direct_query_enabled=true,direct_query_approved_at=now(),direct_query_approval_ref=$2
+        where id=$1 returning id,direct_query_enabled,direct_query_approved_at,direct_query_approval_ref`,
+        [partner, approvalRef]);
+    }
+    case 'direct-query-disable':
+      return one(`update ${schema}.partners set direct_query_enabled=false
+        where id=$1 returning id,direct_query_enabled`, [partner]);
     case 'consent-grant': {
       const email = normalizeEmail(options.verifiedEmail);
       if (!email || typeof options.userId !== 'string' || !options.userId) throw new Error('invalid_consent');

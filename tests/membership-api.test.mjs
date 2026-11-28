@@ -6,7 +6,10 @@ import { PGlite } from '@electric-sql/pglite';
 import { runAdmin } from '../workers/sunland-membership-api/admin.mjs';
 import { createWorker } from '../workers/sunland-membership-api/worker.js';
 
-const migration = await readFile(new URL('../supabase/migrations/20261128131000_sunland_membership_api.sql', import.meta.url), 'utf8');
+const baseMigration = await readFile(new URL('../supabase/migrations/20261128131000_sunland_membership_api.sql', import.meta.url), 'utf8');
+const directMigration = await readFile(
+  new URL('../supabase/migrations/20261128143000_sunland_membership_direct_query.sql', import.meta.url), 'utf8',
+);
 const env = {
   SUPABASE_URL: 'https://database.example.invalid',
   SUPABASE_PUBLISHABLE_KEY: 'sb_publishable_synthetic',
@@ -30,14 +33,17 @@ insert into public.user_profiles(user_id,email,pro,identity_status,is_banned) va
   ('revoked','revoked@example.test',true,'active',false),
   ('banned','banned@example.test',true,'active',true),
   ('deleting','deleting@example.test',true,'deleting',false),
+  ('retired','retired@example.test',true,'retired',false),
   ('old-owner','reuse@example.test',true,'retired',false),
   ('new-owner','reuse@example.test',true,'active',false);
 `;
 const db = new PGlite();
 const admin = (command, subject, options = {}) => runAdmin(db.query.bind(db), command, subject, options);
+const approve = partner => admin('direct-query-enable', partner, { approvalRef: 'QA-123' });
 const logs = [];
 let partnerA;
 let partnerB;
+let upgradePartner;
 const digest = key => createHash('sha256').update(key).digest('hex');
 const rpc = (token, hash, emails, size) => db.query(
   'select public.sunland_membership_check($1,$2,$3,$4) as result', [token, hash, emails, size],
@@ -69,10 +75,12 @@ const batch = (emails, key) => request('/v1/membership/batch', { emails }, key);
 
 before(async () => {
   await db.exec(fixture);
-  await db.exec(migration);
+  await db.exec(baseMigration);
   env.MEMBERSHIP_RPC_TOKEN = (await admin('worker-issue')).rpc_token;
   await admin('partner-create', 'partner-a');
   await admin('partner-create', 'partner-b');
+  await admin('partner-create', 'upgrade-partner');
+  upgradePartner = await admin('key-issue', 'upgrade-partner');
   partnerA = await admin('key-issue', 'partner-a', { expiresAt: '2099-12-01T00:00:00Z' });
   partnerB = await admin('key-issue', 'partner-b');
   for (const userId of ['paid', 'legacy', 'basic', 'expired', 'revoked', 'banned']) {
@@ -81,25 +89,52 @@ before(async () => {
   await admin('consent-revoke', 'partner-a', { userId: 'revoked' });
   await db.exec(`
     insert into sunland_membership.authorizations(partner_id,user_id)
-    values ('partner-a','old-owner'),('partner-a','deleting')
+    values ('partner-a','old-owner'),('partner-a','deleting'),('upgrade-partner','paid')
   `);
+  await db.exec(directMigration);
+  await approve('partner-a');
 });
 
 after(() => db.close());
 
-test('返回权威 Pro 布尔值，不泄露账户或授权状态', async () => {
+test('升级后默认关闭，管理员以审批编号为单个合作方开启，可随时关闭', async () => {
+  assert.equal((await verify('paid@example.test', upgradePartner.api_key)).status, 403);
+  assert.equal((await verify('paid@example.test', partnerB.api_key)).status, 403);
+  await assert.rejects(admin('direct-query-enable', 'upgrade-partner'), /invalid_arguments/);
+  await assert.rejects(db.exec(
+    "update sunland_membership.partners set direct_query_enabled=true where id='upgrade-partner'",
+  ), { code: '23514' });
+  const approval = await approve('upgrade-partner');
+  assert.equal(approval.direct_query_enabled, true);
+  assert.equal(approval.direct_query_approval_ref, 'QA-123');
+  assert.ok(approval.direct_query_approved_at);
+  assert.equal((await verify('paid@example.test', upgradePartner.api_key)).status, 200);
+  assert.equal((await batch(['paid@example.test'], partnerB.api_key)).status, 403);
+  await admin('direct-query-disable', 'upgrade-partner');
+  await admin('partner-enable', 'upgrade-partner');
+  const denied = await verify('paid@example.test', upgradePartner.api_key);
+  assert.equal(denied.status, 403);
+  assert.equal((await denied.json()).error.code, 'access_disabled');
+  assert.deepEqual((await db.query(
+    "select daily_requests,daily_emails from sunland_membership.partners where id='upgrade-partner'",
+  )).rows, [{ daily_requests: 1, daily_emails: 1 }]);
+});
+
+test('直接查询无授权记录或曾撤回授权的 Pro，只返回权威布尔值', async () => {
   assert.deepEqual(await (await verify(' PAID@Example.test ')).json(), { success: true, is_pro: true });
   assert.deepEqual(await (await verify('legacy@example.test')).json(), { success: true, is_pro: true });
-  for (const email of ['basic', 'expired', 'missing', 'unauthorized', 'revoked', 'banned', 'deleting', 'reuse']) {
+  assert.deepEqual(await (await verify('unauthorized@example.test')).json(), { success: true, is_pro: true });
+  assert.deepEqual(await (await verify('revoked@example.test')).json(), { success: true, is_pro: true });
+  assert.deepEqual(await (await verify('reuse@example.test')).json(), { success: true, is_pro: true });
+  for (const email of ['basic', 'expired', 'missing', 'banned', 'deleting', 'retired']) {
     assert.deepEqual(await (await verify(email + '@example.test')).json(), { success: true, is_pro: false });
   }
-  assert.deepEqual(await (await verify('paid@example.test', partnerB.api_key)).json(), { success: true, is_pro: false });
   await db.exec("update public.user_profiles set pro=false where user_id='paid'");
   assert.deepEqual(await (await verify('paid@example.test')).json(), { success: true, is_pro: false });
   await db.exec("update public.user_profiles set pro=true where user_id='paid'");
 });
 
-test('批量上限、规范去重、重复同步及撤销后查询', async () => {
+test('批量上限、规范去重、重复同步及授权记录保留', async () => {
   const emails = ['paid@example.test', ' PAID@EXAMPLE.TEST ',
     ...Array.from({ length: 98 }, (_, i) => `synthetic-${i}@example.test`)];
   const full = await (await batch([...emails.slice(1), 'last@example.test'])).json();
@@ -110,7 +145,11 @@ test('批量上限、规范去重、重复同步及撤销后查询', async () =>
   assert.ok(first.results.slice(1).every(item => item.is_pro === false));
   assert.deepEqual(await (await batch(emails)).json(), first);
   await admin('consent-revoke', 'partner-a', { userId: 'paid' });
-  assert.deepEqual(await (await verify('paid@example.test')).json(), { success: true, is_pro: false });
+  const { rows: [consent] } = await db.query(
+    "select revoked_at from sunland_membership.authorizations where partner_id='partner-a' and user_id='paid'",
+  );
+  assert.ok(consent.revoked_at);
+  assert.deepEqual(await (await verify('paid@example.test')).json(), { success: true, is_pro: true });
   await admin('consent-grant', 'partner-a', { userId: 'paid', verifiedEmail: 'paid@example.test' });
   assert.ok(logs.some(entry => entry.outcome === '200_anomalous_access'));
 });
@@ -143,6 +182,7 @@ test('无效、到期、禁用、吊销和原子轮换的密钥', async () => {
   await db.query(`insert into sunland_membership.api_keys(partner_id,key_hash,created_at,expires_at)
     values ('partner-b',$1,now()-interval '2 hours',now()-interval '1 hour')`, [digest('sl_live_' + 'y'.repeat(43))]);
   assert.equal((await verify('paid@example.test', 'sl_live_' + 'y'.repeat(43))).status, 401);
+  await approve('partner-b');
   const key = await admin('key-issue', 'partner-b');
   await admin('key-disable', key.id);
   assert.equal((await verify('paid@example.test', key.api_key)).status, 403);
@@ -164,6 +204,7 @@ test('原子滚动分钟及每日配额对同一合作方的多把密钥生效',
     ['emails', { emails_per_day: 5 }, 2, 2],
   ]) {
     await admin('partner-create', id);
+    await approve(id);
     await admin('partner-configure', id, limits);
     const keys = await Promise.all([admin('key-issue', id), admin('key-issue', id)]);
     const responses = await Promise.all(Array.from({ length: 12 }, (_, i) =>
@@ -203,9 +244,9 @@ test('数据库 credential 的范围、撤销、索引及敏感字段', async ()
 
   await db.exec(`insert into public.user_profiles(user_id,email)
     select 'u'||n, 'u'||n||'@example.test' from generate_series(1,15000) n; analyze public.user_profiles`);
-  const query = migration.match(/from unnest\(p_emails\) with ordinality[\s\S]+?a\.revoked_at is null/)[0]
-    .replace('p_emails', '$1::text[]').replace('v_partner.id', "'partner-a'");
-  const { rows } = await db.query('explain (format text) select profile.is_pro,a.user_id ' + query,
+  const query = directMigration.match(/from unnest\(p_emails\) with ordinality[\s\S]+?profile on true/)[0]
+    .replace('p_emails', '$1::text[]');
+  const { rows } = await db.query('explain (format text) select profile.is_pro ' + query,
     [Array.from({ length: 100 }, (_, i) => `u${i}@example.test`)]);
   const plan = rows.map(item => item['QUERY PLAN']).join('\n');
   assert.match(plan, /Index Scan using user_profiles_email_unique_idx/);
