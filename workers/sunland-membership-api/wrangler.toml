@@ -1,0 +1,31 @@
+name = "sunland-membership-api"
+main = "worker.js"
+compatibility_date = "2026-11-28"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = false
+preview_urls = false
+
+[observability]
+enabled = true
+
+[observability.logs]
+enabled = true
+invocation_logs = false
+
+[observability.traces]
+enabled = false
+
+[env.staging]
+name = "sunland-membership-api-staging"
+workers_dev = false
+preview_urls = false
+
+[env.staging.observability]
+enabled = true
+
+[env.staging.observability.logs]
+enabled = true
+invocation_logs = false
+
+[env.staging.observability.traces]
+enabled = false
