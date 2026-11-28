@@ -858,7 +858,7 @@ import {
   clearChatErrorNotices,
   showChatErrorNotice,
 } from './chat-error-notice.js?v=20260829-1';
-import { appendFurryEventMessage } from './furry-event-cards.js?v=20261124-frost-motion-2';
+import { appendFurryEventMessage } from './furry-event-cards.js?v=fcc-query-scope';
 import {
   buildFurryEventModelHistory,
   createFurryEventCardMessage,
@@ -2922,9 +2922,11 @@ function loadChat(id, { preserveSidebar = false, animate = false } = {}) {
     welcome.classList.remove("welcome-enter");
     chatInner.innerHTML = "";
 
+    const latestFurryCard = getLatestFurryEventCard(renderHistory);
     renderHistory.filter(message => message.role !== "system").forEach(m => {
       if (isFurryEventCardMessage(m)) {
-        appendFurryEventMessage({ target: chatInner, message: m, animate: false });
+        appendFurryEventMessage({ target: chatInner, message: m, animate: false,
+          onNextPage: m === latestFurryCard ? page => send({conversationId:id, page}) : null });
         return;
       }
       const messageType = m.role === "user" ? "user" : "ai";
@@ -3701,12 +3703,14 @@ async function runDeepSeekRequest(requestContext) {
           }
           if (requestContext.nativeFurry && parsed.type === 'furry_event_result') {
             if (parsed.status === 'searching') {
-              if (isRequestVisible(requestContext) && !eventView) eventView = appendFurryEventMessage({target: chatInner, loading: true});
+              if (isRequestVisible(requestContext) && !eventView) eventView = appendFurryEventMessage({target: chatInner, loading: true,
+                onNextPage: page => send({conversationId:requestContext.conversationId, page})});
             } else {
               consentPanel?.remove();
               consentPanel = null;
               const coverageUnknown = parsed.status === 'coverage_unknown';
-              const coverageText = coverageUnknown ? uiText('FCC 的记录不足以确认这个范围内是否有活动') : '';
+              const summary = typeof parsed.summary === 'string' && parsed.summary.length <= 6000 ? parsed.summary.trim() : '';
+              const coverageText = coverageUnknown ? summary || uiText('FCC 的记录不足以确认这个范围内是否有活动') : '';
               const message = createFurryEventCardMessage({events: parsed.status === 'success' ? parsed.events : [], preserveOrder: true,
                 error: ['success', 'no_results'].includes(parsed.status) ? null : coverageText || uiText('兽聚查询失败')});
               if (parsed.status === 'success' && (message.isEmpty || message.furryEvents.length !== parsed.events.length)) {
@@ -3714,14 +3718,24 @@ async function runDeepSeekRequest(requestContext) {
                 message.isEmpty = true;
                 message.furryError = uiText('兽聚查询失败');
               }
-              const summary = typeof parsed.summary === 'string' && parsed.summary.length <= 6000 ? parsed.summary.trim() : '';
+              if (coverageUnknown) message.furryCoverage = coverageText;
+              if (Number.isInteger(parsed.fccMatchCount) && parsed.fccMatchCount >= message.furryEvents.length) {
+                message.fccMatchCount = parsed.fccMatchCount;
+              }
               eventSummary = coverageText || (!message.furryError && summary ? summary : uiText(message.furryError ? '兽聚信息暂时获取失败，请稍后再试'
                 : message.isEmpty ? '没有找到相关兽聚活动' : '相关兽聚活动'));
+              if (parsed.status === 'unavailable' && (requestContext.furryPageTurn || parsed.explorationAction === 'next')) {
+                eventView?.element.remove();
+                eventView = null;
+                continue;
+              }
               if (parsed.pageQuery && (!message.furryError || parsed.status === 'coverage_unknown')) message.furryPage = {query: parsed.pageQuery, nextCursor: parsed.nextCursor ?? null,
                 ...(typeof parsed.eventReference === 'string' ? {eventReference: parsed.eventReference} : {})};
               if (appendRequestMessage(requestContext, message) && isRequestVisible(requestContext)) {
+                chatInner.querySelector('.furry-event-next')?.remove();
                 if (eventView) eventView.update(message);
-                else appendFurryEventMessage({target: chatInner, message});
+                else appendFurryEventMessage({target: chatInner, message,
+                  onNextPage: page => send({conversationId:requestContext.conversationId, page})});
               } else eventView?.element.remove();
               eventView = null;
             }
@@ -3838,8 +3852,8 @@ async function runDeepSeekRequest(requestContext) {
 
 const lastRealSendByConversation = new Map();
 
-async function send() {
-  if (pendingFiles.length > 0) showGlobalLoading();
+async function send(pageTurn = null) {
+  if (!pageTurn && pendingFiles.length > 0) showGlobalLoading();
   const now = Date.now();
   if (window._lastSendTime && now - window._lastSendTime < 800) console.warn("发送过快");
   window._lastSendTime = now;
@@ -3887,11 +3901,14 @@ async function send() {
   }
 
   const composerDraft = input.value;
-  const text = composerDraft.trim();
+  const text = pageTurn ? '下一页' : composerDraft.trim();
   const isSunlandConversation = sendingConversation.provider === "sunland";
   const previousFurryCard = getLatestFurryEventCard(sendingConversation.history);
   const nativeFurry = !isSunlandConversation && (isPublicFurryAvailable(verifiedUserId) || window.SUNLAND_FURRY_EVENT_AGENT === true ||
     new URLSearchParams(location.search).get('furry-city') === '1');
+  if (pageTurn && (!nativeFurry || sendingConversation.id !== pageTurn.conversationId ||
+      previousFurryCard?.furryPage?.nextCursor !== pageTurn.page.nextCursor ||
+      previousFurryCard?.furryPage?.eventReference !== pageTurn.page.eventReference)) return;
   const furrySearchRequired = !nativeFurry && shouldSearchFurryEvents(
     text,
     sendingConversation.history,
@@ -3904,7 +3921,7 @@ async function send() {
     clearPendingAttachments();
     updateProviderCapabilityUI();
   }
-  const files = isSunlandConversation ? [] : [...pendingFiles];
+  const files = isSunlandConversation || pageTurn ? [] : [...pendingFiles];
   if (!text && files.length === 0) {
     showToast("好像还没有输入内容呢，可以跟我说点什么。");
     hideGlobalLoading();
@@ -3998,6 +4015,7 @@ async function send() {
 
   requestContext.traceContext = createTraceContext();
   requestContext.nativeFurry = nativeFurry;
+  requestContext.furryPageTurn = Boolean(pageTurn);
   requestContext.traceId = requestContext.traceContext?.traceId ?? null;
   requestContext.canRecordDiagnostics = () =>
     requestCoordinator.canWrite(requestContext);
@@ -4080,10 +4098,10 @@ async function send() {
     }
 
     lastUserMessage = visionPrompt;
-    if (currentId === requestContext.conversationId && input.value === composerDraft) input.value = "";
-    if (currentId === requestContext.conversationId && pendingFiles.length === files.length &&
+    if (!pageTurn && currentId === requestContext.conversationId && input.value === composerDraft) input.value = "";
+    if (!pageTurn && currentId === requestContext.conversationId && pendingFiles.length === files.length &&
         pendingFiles.every((file,index) => file === files[index])) clearPendingAttachments();
-    input.style.height = "auto";
+    if (!pageTurn) input.style.height = "auto";
     if (currentId === requestContext.conversationId) {
       requestErrorsByConversation.delete(conversationIdKey(requestContext.conversationId));
       clearChatErrorNotices(chatInner);

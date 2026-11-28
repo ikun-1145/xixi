@@ -839,6 +839,24 @@ body:not(.night) #loadingBar img {
   white-space: nowrap;
 }
 
+.furry-event-next {
+  display: block;
+  min-height: 44px;
+  margin: 6px 2px 0 auto;
+  padding: 0 12px;
+  border: 1px solid currentColor;
+  border-radius: 10px;
+  background: transparent;
+  color: inherit;
+  font: inherit;
+  font-size: 13px;
+  cursor: pointer;
+}
+
+.frost-chat .furry-event-next {
+  color: var(--frost-brand);
+}
+
 .furry-event-track {
   display: grid;
   grid-auto-flow: column;
