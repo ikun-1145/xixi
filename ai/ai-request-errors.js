@@ -30,7 +30,7 @@ export function classifyAiHttpError(status, code = null) {
     return { message: "当前请求已提交或正在处理，请先检查对话状态，避免重复发送。", showLimitModal: false };
   }
   if (["MODEL_OUTCOME_UNKNOWN", "QUOTA_COMMIT_UNKNOWN", "QUOTA_RELEASE_UNKNOWN"].includes(code)) {
-    return { message: "请求处理结果暂时无法确认，请先刷新使用额度，避免重复发送。", showLimitModal: false };
+    return { message: "请求处理结果暂时无法确认，请先检查对话状态，避免重复发送。", showLimitModal: false };
   }
   if (status === 402) {
     return { message: "AI 上游服务额度暂时不可用，请稍后再试。", showLimitModal: false };

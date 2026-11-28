@@ -368,11 +368,11 @@ test("production web code contains no Symbolic Core runtime import or vendor scr
   assert.match(migrationSource, /\/v1\/migrations\/local-state/u);
 });
 
-test("production web claims activation server-side and never writes protected profile fields", () => {
+test("production chat and settings never write protected profile fields", () => {
   const appSource = fs.readFileSync(new URL("../ai/app.js", import.meta.url), "utf8");
   const settingsSource = fs.readFileSync(new URL("../ai_settings.html", import.meta.url), "utf8");
 
-  assert.match(appSource, /\/v1\/activation\/claim/u);
+  assert.doesNotMatch(appSource, /\/v1\/activation\/claim/u);
   assert.doesNotMatch(appSource, /\.from\(["']activation_codes["']\)/u);
   assert.doesNotMatch(appSource, /\.from\(["']user_profiles["']\)[\s\S]{0,80}\.upsert/u);
   assert.doesNotMatch(settingsSource, /\.from\(["']user_profiles["']\)[\s\S]{0,80}\.upsert/u);

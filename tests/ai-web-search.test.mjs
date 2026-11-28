@@ -25,7 +25,7 @@ function buttonHarness() {
 
 function requestHarness({ enabled = true, response, visible = true, cancel = false, deep = false } = {}) {
   const dom = new JSDOM('<div id="bubble"></div>');
-  const requests = [], messages = [], statuses = [], notices = [], errors = [], usage = [], labels = [], timers = [];
+  const requests = [], messages = [], statuses = [], notices = [], errors = [], labels = [], timers = [];
   const context = {
     webSearch: enabled, model: 'deepseek-v4-flash', deep,
     sessionGeneration: 0, userId: 'user-a', conversationId: 7, history: [{ role: 'user', content: '原始问题' }],
@@ -42,8 +42,6 @@ function requestHarness({ enabled = true, response, visible = true, cancel = fal
     DEEPSEEK_VISION_MODEL: 'vision',
     apiFetch: async (...args) => { requests.push(args); return response; },
     observeTraceResponse: () => 'trace', getCurrentUserId: () => 'user-a',
-    parseRemaining: x => x === null ? null : Number(x), usageDate: () => '2026-10-19',
-    renderRemaining: x => usage.push(x), refreshChatUsage: noop,
     abortMissingTarget: () => context.controller.signal.aborted,
     currentId: 7, showLimitModal: noop,
     requestCoordinator: { canWrite: () => !context.controller.signal.aborted },
@@ -62,13 +60,12 @@ function requestHarness({ enabled = true, response, visible = true, cancel = fal
       statuses.push(status); originalStatus(context, status);
       labels.push(context.bubble.querySelector('.web-search-status')?.textContent ?? null);
     };
-    let usageVersion = 0, lastUsageDate;
     ${runSource}
     return runDeepSeekRequest;`)(...Object.values(deps), statuses, labels);
   if (cancel) context.controller.abort();
   return {
     run: () => run(context), setVisible: value => { visible = value; },
-    context, requests, messages, statuses, notices, errors, usage, labels, timers, dom,
+    context, requests, messages, statuses, notices, errors, labels, timers, dom,
   };
 }
 
@@ -128,7 +125,7 @@ test('disabled search sends explicit false and preserves messages, model, quota 
   assert.deepEqual(h.requests[0][0].messages, h.context.history);
   assert.equal(h.requests[0][2], h.context.controller.signal);
   assert.equal(h.messages[0].content, '正常回复');
-  assert.deepEqual(h.usage, [11]);
+  assert.equal(h.requests[0][0].request_id, 'request-7');
   assert.equal(h.context.webSearchConfirmed, undefined);
   assert.deepEqual(h.notices, []);
   assert.equal(h.context.bubble.querySelector('.web-search-status'), null);

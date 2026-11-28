@@ -4,7 +4,6 @@ import { readFileSync } from "node:fs";
 import { JSDOM } from "jsdom";
 
 const read = path => readFileSync(new URL(`../${path}`, import.meta.url), "utf8");
-const payModalHandler = /^async function showPayModal\(\) \{[\s\S]*?^\}/m;
 
 test("pricing offers Production dual payments, legal and support details in all six languages", async () => {
   for (const language of ["zh", "zh-Hant", "en", "ja", "ko", "es"]) {
@@ -89,38 +88,34 @@ test("Production merchandise UI creates an authenticated intent once and waits f
   dom.window.close();
 });
 
-test("AI upgrade handler always enters public pricing without payment fallback", async () => {
-  const app = read("ai/app.js");
-  const handler = app.match(payModalHandler)?.[0];
-  assert.ok(handler, "showPayModal function found");
-  const { default: vm } = await import("node:vm");
-  const location = { href: "https://sunland.dev/ai.html" };
-  await vm.runInNewContext(handler + "showPayModal()", { window: { location, open() { throw new Error("unexpected popup"); } } });
-  assert.equal(location.href, "pricing.html");
-  assert.doesNotMatch(handler, /afdian|beginCheckout|activated/i);
-  assert.match(app, /proBtn\.onclick[\s\S]*?showActivationModal\(\)/);
-  assert.match(app, /function showActivationModal\(\)\s*\{[\s\S]*?showPayModal\(\);\s*return;/);
+test("AI chat and settings show no purchase buttons and keep member support", () => {
+  const chat = read("ai.html");
+  const settings = read("ai_settings.html");
+  assert.doesNotMatch(chat + settings, /<button[^>]*>\s*购买 Pro/);
+  assert.match(settings, /id="proRecheckBtn"/);
+  assert.match(settings, /href="pro_activation_support\.html"/);
 });
 
-
-test("deep-thinking and Pro-model modal purchase buttons use the review pricing path", async () => {
+test("chat limits and Pro gates can be dismissed without a purchase offer", async () => {
   const app = read("ai/app.js");
   const { default: vm } = await import("node:vm");
-  const route = app.match(payModalHandler)?.[0];
-  assert.ok(route, "showPayModal function found");
-  for (const [start, end] of [["function showProRequiredModal()", "function showProModelModal()"], ["function showProModelModal()", "let usageVersion = 0;"]]) {
-    const dom = new JSDOM("<body></body>", { url: "https://sunland.dev/ai.html" });
-    const begin = app.indexOf(start);
-    const finish = app.indexOf(end, begin + start.length);
-    assert.ok(finish > begin, "modal boundary found");
-    const location = { href: "https://sunland.dev/ai.html" };
-    const context = vm.createContext({ document: dom.window.document, window: { location },
-      setTimeout: callback => callback(), appendProRecheckControl() {} });
-    vm.runInContext(route + "function showActivationModal() { showPayModal(); }\n" + app.slice(begin, finish) + start.replace("function ", "") + ";", context);
-    const button = dom.window.document.getElementById("openProBtn");
-    assert.match(button.textContent, /购买 Pro.*¥15 CNY/);
-    button.click();
-    assert.equal(location.href, "pricing.html");
+  for (const [name, modalId, message] of [
+    ["showProRequiredModal", "proRequiredModal", /深度思考是 Pro 功能/],
+    ["showProModelModal", "proModelModal", /该模型为 Pro 专属/],
+    ["showLimitModal", "limitModal", /今日免费额度已用完，请明天再来/],
+  ]) {
+    const dom = new JSDOM("<body></body>");
+    const source = app.match(new RegExp(`^function ${name}\\(\\) \\{[\\s\\S]*?^\\}`, "m"))?.[0];
+    assert.ok(source, `${name} found`);
+    vm.runInNewContext(`${source}\n${name}();`, {
+      document: dom.window.document, setTimeout: callback => callback(),
+      appendProRecheckControl() {}, uiText: value => value,
+    });
+    const modal = dom.window.document.getElementById(modalId);
+    assert.match(modal.textContent, message);
+    assert.doesNotMatch(modal.textContent, /购买 Pro|¥|CNY/);
+    modal.querySelector("button").click();
+    assert.equal(modal.isConnected, false);
     dom.window.close();
   }
 });

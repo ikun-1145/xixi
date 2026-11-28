@@ -177,13 +177,6 @@ body.dark .avatar-upload-hint {
   color: #94a3b8;
 }
 
-body.dark .usage-label {
-  color: #e2e8f0;
-}
-
-body.dark .usage-hint {
-  color: #94a3b8;
-}
     .avatar-ring {
       width: 76px; height: 76px;
       border-radius: 50%;
@@ -405,38 +398,6 @@ body.dark .usage-hint {
     }
     #userId::-webkit-scrollbar {
       display: none;
-    }
-
-    /* Usage bar */
-    .usage-wrap {
-      padding: 14px 16px;
-    }
-    .usage-top {
-      display: flex; justify-content: space-between; align-items: baseline;
-      margin-bottom: 8px;
-    }
-    .usage-left {
-      display: flex; align-items: center; gap: 10px;
-    }
-    .usage-label { font-size: 14px; font-weight: 500; color: var(--text); }
-    .usage-count { font-size: 13px; font-weight: 600; color: var(--accent); }
-    .usage-bar-bg {
-      height: 6px;
-      background: rgba(34,211,238,0.12);
-      border-radius: 99px;
-      overflow: hidden;
-    }
-    .usage-bar-fill {
-      height: 100%;
-      border-radius: 99px;
-      background: linear-gradient(90deg, var(--accent), var(--pro));
-      transition: width .6s cubic-bezier(0.34,1.2,0.64,1);
-      width: 0%;
-    }
-    .usage-hint {
-      font-size: 11px;
-      color: var(--subtext);
-      margin-top: 6px;
     }
 
     /* Pro card */
@@ -1156,7 +1117,7 @@ body.dark .usage-hint {
 }
 </style>
 <link rel="stylesheet" href="ai/frost-tokens.css?v=5">
-<link rel="stylesheet" href="ai/frost-settings.css?v=5">
+<link rel="stylesheet" href="ai/frost-settings.css?v=6">
 </head>
 <body class="frost-settings">
 <script>applySettingsTheme();</script>
@@ -1253,24 +1214,6 @@ body.dark .usage-hint {
       </div>
     </div>
 
-    <!-- 使用情况 -->
-    <div class="section-label">今日使用</div>
-    <div class="card">
-      <div class="usage-wrap">
-        <div class="usage-top">
-          <div class="usage-left">
-            <div class="row-icon" style="background:rgba(34,211,238,0.1)"><span class="ui-svg-icon icon-chart" aria-hidden="true"></span></div>
-            <span class="usage-label">剩余次数</span>
-          </div>
-          <span class="usage-count" id="usageCount">--</span>
-        </div>
-        <div class="usage-bar-bg">
-          <div class="usage-bar-fill" id="usageBar"></div>
-        </div>
-        <div class="usage-hint" id="usageHint">每天重置 20 次免费额度</div>
-      </div>
-    </div>
-
     <!-- Pro -->
     <div class="section-label">会员</div>
     <div class="card pro-card" id="proCard">
@@ -1290,8 +1233,6 @@ body.dark .usage-hint {
         </div>
         <p class="pro-disabled-note">一次性购买 · 非订阅 · 不自动续费</p>
         <p class="pro-disabled-note">霜蓝 AI 提供服务</p>
-        <button class="btn-pro" type="button" onclick="upgrade()">购买 Pro · ¥15 CNY</button>
-        <div class="pro-disabled-note" id="proReviewStatus" role="status" aria-live="polite"></div>
         <a class="pro-support-link" href="mailto:support@sunland.dev">support@sunland.dev</a>
         <div class="pro-support-link"><a href="privacy.html">隐私政策</a> · <a href="xukexieyi.html">用户协议</a> · <a href="pricing.html">付费说明</a></div>
         <button class="btn-pro" id="proRecheckBtn" type="button" onclick="recheckSettingsPayment()">检查到账状态</button>
@@ -1811,23 +1752,11 @@ async function editNickname() {
       };
     }
 
-    function setUsageBar(remain, total = 20) {
-      const pct = Math.min(100, Math.round((remain / total) * 100));
-      document.getElementById("usageBar").style.width = pct + "%";
-      document.getElementById("usageCount").innerText = remain + " 次";
-    }
-
     function renderActivated() {
       // 头像徽章
       const badge = document.getElementById("heroBadge");
       badge.innerHTML = '<span class="ui-svg-icon icon-gem" aria-hidden="true"></span>Pro 会员';
       badge.className = "hero-badge pro";
-
-      // 使用情况
-      document.getElementById("usageCount").innerText = "∞";
-      document.getElementById("usageBar").style.width = "100%";
-      document.getElementById("usageBar").style.background = "linear-gradient(90deg,#22d3ee,#0e9aa7)";
-      document.getElementById("usageHint").innerText = "Pro 会员 · 无限次对话";
 
       // Pro 卡片变已激活样式
       const proCard = document.getElementById("proCard");
@@ -1845,7 +1774,6 @@ async function editNickname() {
 
     const originalProCard = Array.from(document.getElementById("proCard").childNodes, node => node.cloneNode(true));
     const originalBadge = document.getElementById("heroBadge").cloneNode(true);
-    const originalUsageHint = document.getElementById("usageHint").textContent;
     window.SunlandProPayment.subscribe(snapshot => {
       if (snapshot.state === "PRO") { renderActivated(); return; }
       const card = document.getElementById("proCard");
@@ -1857,10 +1785,6 @@ async function editNickname() {
       badge.className = originalBadge.className;
       badge.replaceChildren(...Array.from(originalBadge.childNodes, node => node.cloneNode(true)));
       if (snapshot.state === "UNKNOWN") badge.textContent = "--";
-      document.getElementById("usageHint").textContent = originalUsageHint;
-      document.getElementById("usageBar").style.background = "";
-      document.getElementById("usageCount").innerText = "--";
-      document.getElementById("usageBar").style.width = "0%";
       updateProSupportLink();
     });
     async function recheckSettingsPayment() {
@@ -1888,8 +1812,6 @@ async function editNickname() {
         document.getElementById("userEmail").innerText = message;
         document.getElementById("heroName").innerText = message;
         document.getElementById("userId").innerText = "--";
-        document.getElementById("usageCount").innerText = "--";
-        document.getElementById("usageBar").style.width = "0%";
         setupAvatarUpload(null);
         return;
       }
@@ -1932,11 +1854,11 @@ async function editNickname() {
 
       if (window.SunlandProPayment.getState().identityVersion !== profileEpoch || getUserFromToken()?.id !== user.id) return;
       await window.SunlandProPayment.refreshMembership(settingsSupabase);
-      await refreshSettingsUsage();
+      await refreshSettingsMembership();
     }
 
     let settingsUsageVersion = 0;
-    async function refreshSettingsUsage() {
+    async function refreshSettingsMembership() {
       const user = await ensureSettingsIdentity();
       const userId = user?.id;
       if (!userId) return;
@@ -1953,20 +1875,15 @@ async function editNickname() {
         }), userId);
         if (getUserFromToken()?.id !== userId || version !== settingsUsageVersion || !payment.isCurrent(membershipRequest)) return;
         payment.applyMembership(usage.isPro, membershipRequest);
-        if (!usage.isPro) setUsageBar(usage.remain);
       } catch {
         if (getUserFromToken()?.id !== userId || version !== settingsUsageVersion) return;
         payment.markUnavailable(membershipRequest);
-        if (payment.getState().state !== "PRO") {
-          document.getElementById("usageCount").innerText = "--";
-          document.getElementById("usageBar").style.width = "0%";
-        }
       }
     }
 
     import("./ai/usage.js").then(({ watchUsage }) => {
-      watchUsage(refreshSettingsUsage);
-    }).catch(() => console.warn("额度自动刷新未加载"));
+      watchUsage(refreshSettingsMembership);
+    }).catch(() => console.warn("会员状态自动刷新未加载"));
 
     function updateProSupportLink() {
       const link = document.getElementById("proSupportLink");
@@ -1995,10 +1912,6 @@ async function editNickname() {
       } catch {
         // The regular settings page already renders its logged-out state. Never trust a DOM id for payment binding.
       }
-    }
-
-    async function upgrade() {
-      location.href = "pricing.html";
     }
 
     function logout() {

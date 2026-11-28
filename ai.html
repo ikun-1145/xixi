@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover, interactive-widget=resizes-content">
 <script defer src="p/js/site-i18n-extra.js?v=glass-home"></script>
-<script defer src="p/js/site-i18n.js?v=20261124-history-sync"></script>
+<script defer src="p/js/site-i18n.js?v=20261128-quiet-quota"></script>
 
 <title>Sunland AI · Beta</title>
 <link rel="manifest" href="/manifest.json">
@@ -186,7 +186,7 @@ html.night .app-loading-spinner {
 }
 </style>
 <link rel="stylesheet" href="ai/frost-tokens.css?v=5">
-<link rel="stylesheet" href="ai/frost-chat.css?v=9">
+<link rel="stylesheet" href="ai/frost-chat.css?v=10">
 
 <!-- CSP for GeeTest -->
 <meta http-equiv="Content-Security-Policy" content="default-src * 'unsafe-inline' 'unsafe-eval' data: blob:;
@@ -255,9 +255,7 @@ child-src *;
   <!-- 右边 -->
   <div class="top-actions">
     <button id="quickNewChat" type="button" aria-label="新对话" title="新对话"><span aria-hidden="true">＋</span></button>
-    <div id="usageHint" class="ghost-btn" style="cursor:default;">--</div>
     <button class="ghost-btn" id="downloadBtn" onclick="location.href='download.html'">下载公测版</button>
-    <button class="pro-btn" id="proBtn">购买 Pro</button>
 
     <button type="button" class="avatar" id="avatarBtn" aria-label="账号" aria-controls="userMenu"></button>
 
@@ -702,7 +700,7 @@ child-src *;
 if (window.__SUNLAND_AI_AUTH_OK__) {
   const appScript = document.createElement("script");
   appScript.type = "module";
-  appScript.src = "ai/app.js?v=glass-home";
+  appScript.src = "ai/app.js?v=quiet-quota";
   appScript.addEventListener("error", () => {
     window.__SUNLAND_AI_BOOT_FAILED__?.();
   }, { once: true });
