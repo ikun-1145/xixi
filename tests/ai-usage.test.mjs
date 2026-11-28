@@ -24,33 +24,34 @@ const app = readFileSync(new URL('../ai/app.js', import.meta.url), 'utf8');
 function harness() {
   let userId = 'a';
   const pending = [];
-  const hint = { innerText: '' };
+  const memberships = [];
   const context = vm.createContext({
     getCurrentUserId: () => userId,
     readUsage: () => new Promise(resolve => pending.push(resolve)),
     authenticatedFetch() {},
-    isActivated: false,
-    usageDate,
-    renderProUsageHint: () => { hint.innerText = 'Pro'; },
-    document: { getElementById: () => hint },
-    uiText: text => text,
+    window: { SunlandProPayment: {
+      captureRequest: () => ({}),
+      isCurrent: () => true,
+      applyMembership: isPro => { memberships.push(isPro); },
+    } },
   });
   vm.runInContext(app.slice(app.indexOf('let usageVersion = 0;'), app.indexOf('async function checkActivation()')), context);
-  return { context, pending, hint, setUser: id => { userId = id; } };
+  return { context, pending, memberships, setUser: id => { userId = id; } };
 }
 
-test('late quota snapshots cannot overwrite a newer chat result or another account', async () => {
+test('late snapshots cannot overwrite newer membership or another account', async () => {
   const h = harness();
   const first = vm.runInContext('refreshChatUsage()', h.context);
-  vm.runInContext('++usageVersion; lastUsageDate = usageDate(); renderRemaining(12)', h.context);
-  h.pending.shift()({ remain: 13 });
-  await first;
-  assert.equal(h.hint.innerText, '今日剩余 12 次');
   const second = vm.runInContext('refreshChatUsage()', h.context);
-  h.setUser('b');
-  h.pending.shift()({ remain: 10 });
+  h.pending.pop()({ isPro: true });
   await second;
-  assert.equal(h.hint.innerText, '今日剩余 12 次');
+  h.pending.shift()({ isPro: false });
+  await first;
+  const third = vm.runInContext('refreshChatUsage()', h.context);
+  h.setUser('b');
+  h.pending.shift()({ isPro: false });
+  await third;
+  assert.deepEqual(h.memberships, [true]);
 });
 
 test('public city capability is opt-in, account-scoped and cleared by server shutdown', async () => {
@@ -68,18 +69,13 @@ test('public city capability is opt-in, account-scoped and cleared by server shu
   assert.equal(available('a'),false);
 });
 
-test('chat quota updates are account scoped and both pages stop querying obsolete usage tables', () => {
-  const quotaStart = app.indexOf('// Quota belongs');
-  const errorHandlerStart = app.indexOf('if (!res.ok) {', quotaStart);
-  assert.ok(quotaStart >= 0 && errorHandlerStart > quotaStart);
-  const flow = app.slice(quotaStart, errorHandlerStart);
-  assert.match(flow, /getCurrentUserId\(\) === requestContext.userId/);
-  assert.doesNotMatch(flow, /currentId === requestContext.conversationId/);
-  assert.ok(flow.indexOf('renderRemaining(remain)') < flow.indexOf('abortMissingTarget'));
+test('chat and settings keep membership checks without rendering remaining quota', () => {
+  const chat = readFileSync(new URL('../ai.html', import.meta.url), 'utf8');
   const settings = readFileSync(new URL('../ai_settings.html', import.meta.url), 'utf8');
+  assert.doesNotMatch(chat + app + settings, /usageHint|usageCount|usageBar|renderRemaining|今日剩余|x-remain/);
   assert.doesNotMatch(app + settings, /\.from\("(?:usage|request_logs)"\)/);
   assert.match(settings, /readUsage/);
-  assert.match(settings, /watchUsage\(refreshSettingsUsage\)/);
+  assert.match(settings, /watchUsage\(refreshSettingsMembership\)/);
 });
 
 test('UTC+8 midnight rejects yesterday snapshots and accepts the new daily balance', async t => {

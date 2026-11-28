@@ -58,15 +58,6 @@ function createUiIcon(name, className = "") {
   return icon;
 }
 
-function renderProUsageHint() {
-  const hint = document.getElementById("usageHint");
-  if (!hint) return;
-  hint.replaceChildren(
-    createUiIcon("gem"),
-    document.createTextNode(uiText("Pro · 无限使用")),
-  );
-}
-
 function showUpdateTip() {
   const box = document.createElement("div");
 
@@ -840,8 +831,8 @@ item.style.borderRadius = "12px";
 // 统一接口与各 Provider 通信；DeepSeek 现有逻辑保持不变，只有新增的 Sunland
 // 分支会用到这个 registry。
 import { createProviderRegistry } from './providers/registry.js';
-import { classifyAiResponseError } from './ai-request-errors.js';
-import { parseRemaining, readUsage, usageDate, watchUsage } from './usage.js';
+import { classifyAiResponseError } from './ai-request-errors.js?v=quiet-quota';
+import { readUsage, watchUsage } from './usage.js';
 import {
   buildVisionMessages,
   createVisionHistoryMessage,
@@ -1311,12 +1302,7 @@ const deletingConversationIds = new Set();
 
 window.SunlandProPayment?.subscribe(snapshot => {
   isActivated = snapshot.state === "PRO";
-  if (!snapshot.userId) {
-    const hint = document.getElementById("usageHint");
-    if (hint) hint.innerText = "--";
-    return;
-  }
-  if (isActivated) renderProUsageHint();
+  if (!snapshot.userId) return;
   if (snapshot.state === "FREE" && deepMode) deepMode = false;
   updateDeepButton();
   scheduleRenderUser();
@@ -1896,13 +1882,7 @@ function showProRequiredModal() {
   modal.innerHTML = `
     <div class="modal-content">
       <span class="close">×</span>
-      <h2 style="margin-bottom:0.5rem;font-size:1.2rem;">深度思考是 Pro 功能</h2>
-      <p style="color:#666;font-size:13px;margin-bottom:1.2rem;line-height:1.6;">
-        升级后可开启深度思考模式，并解锁无限次对话。
-      </p>
-      <button id="openProBtn" class="oauth-btn" style="margin-bottom:0.6rem;">
-        购买 Pro · ¥15 CNY
-      </button>
+      <h2 style="margin-bottom:0.5rem;font-size:1.2rem;">${uiText("深度思考是 Pro 功能")}</h2>
       <button id="closeProTipBtn" style="
         width:100%;
         border-radius:10px;
@@ -1911,7 +1891,7 @@ function showProRequiredModal() {
         color:#555;
         cursor:pointer;
         border:none;
-      ">稍后再说</button>
+      ">${uiText("关闭")}</button>
     </div>
   `;
 
@@ -1929,10 +1909,6 @@ function showProRequiredModal() {
   modal.querySelector(".close").onclick = closeModal;
   modal.querySelector("#closeProTipBtn").onclick = closeModal;
   modal.onclick = e => { if (e.target === modal) closeModal(); };
-  modal.querySelector("#openProBtn").onclick = () => {
-    closeModal();
-    setTimeout(showActivationModal, 250);
-  };
 }
 function showProModelModal() {
   if (document.getElementById("proModelModal")) return;
@@ -1952,10 +1928,6 @@ function showProModelModal() {
       <p style="color:#666;font-size:13px;margin-bottom:1.2rem;line-height:1.6;">
         当前选择的模型仅对 Pro 用户开放
       </p>
-
-      <button id="openProBtn" class="oauth-btn" style="margin-bottom:0.6rem;">
-        购买 Pro · ¥15 CNY
-      </button>
 
       <button id="chooseAnotherModelBtn" style="
         width:100%;
@@ -1982,11 +1954,6 @@ function showProModelModal() {
   modal.querySelector(".close").onclick = closeModal;
   modal.onclick = e => { if (e.target === modal) closeModal(); };
 
-  modal.querySelector("#openProBtn").onclick = () => {
-    closeModal();
-    setTimeout(showActivationModal, 200);
-  };
-
   modal.querySelector("#chooseAnotherModelBtn").onclick = () => {
     closeModal();
     document.getElementById("modelSelector")?.click();
@@ -1994,20 +1961,10 @@ function showProModelModal() {
 }
 
 let usageVersion = 0;
-let lastUsageDate = null;
 let publicFurryUserId = null;
 
 function isPublicFurryAvailable(userId) {
   return Boolean(userId) && publicFurryUserId === userId;
-}
-
-function renderRemaining(remain) {
-  if (remain === -1 || isActivated) {
-    renderProUsageHint();
-    return;
-  }
-  const hint = document.getElementById("usageHint");
-  if (hint) hint.innerText = remain == null ? "--" : uiText(`今日剩余 ${remain} 次`);
 }
 
 async function refreshChatUsage() {
@@ -2016,20 +1973,16 @@ async function refreshChatUsage() {
   const version = ++usageVersion;
   const payments = globalThis.window?.SunlandProPayment;
   const membershipRequest = payments?.captureRequest();
-  if (lastUsageDate !== usageDate()) renderRemaining(null);
   try {
     const usage = await readUsage(authenticatedFetch, userId);
     if (getCurrentUserId() !== userId || version !== usageVersion) return;
     publicFurryUserId = usage.furryCity === true ? userId : null;
     if (membershipRequest && !payments.isCurrent(membershipRequest)) return;
     payments?.applyMembership(usage.isPro, membershipRequest);
-    lastUsageDate = usage.date;
-    renderRemaining(usage.remain);
   } catch {
     if (getCurrentUserId() === userId && version === usageVersion) {
       publicFurryUserId = null;
       payments?.markUnavailable(membershipRequest);
-      renderRemaining(null);
     }
   }
 }
@@ -2289,7 +2242,6 @@ function renderUserCore() {
 if (!sessionReady) return; // ⭐ 防止初始化乱刷
   const avatarEl = document.getElementById("avatarBtn");
   const emailEl = document.getElementById("userEmail");
-  const proBtn = document.querySelector(".pro-btn");
 
   if (!avatarEl || !emailEl) return;
 
@@ -2298,7 +2250,6 @@ if (!sessionReady) return; // ⭐ 防止初始化乱刷
   avatarEl.innerText = "?";
   avatarEl.style.backgroundImage = ""; // ⭐ 必加
   emailEl.innerText = "未登录";
-  if (proBtn) proBtn.style.display = "none";
   lastRenderedUserKey = "guest";
   return;
 }
@@ -2319,10 +2270,6 @@ if (!sessionReady) return; // ⭐ 防止初始化乱刷
     avatarEl.style.backgroundImage = "";
     avatarEl.innerText = letter;
   }
-  // ===== Pro按钮 =====
-  if (proBtn) {
-    proBtn.style.display = isActivated ? "none" : "inline-block";
-  }
   lastRenderedUserKey = `${session.userId}:${user.email || ""}:${isActivated ? 1 : 0}`;
 }
 
@@ -2340,15 +2287,8 @@ function showLimitModal() {
   modal.innerHTML = `
     <div class="modal-content">
       <span class="close">×</span>
-      <h2 style="margin-bottom:0.5rem;font-size:1.2rem;display:flex;align-items:center;gap:7px;"><span class="ui-svg-icon icon-alert" aria-hidden="true"></span>今日次数已用完</h2>
-      <p style="color:#666;font-size:13px;margin-bottom:1.2rem;">
-        每天限免 20 次，明天自动重置。<br>
-        Pro 为 ¥15 CNY 一次性购买，非订阅、不自动续费。
-      </p>
-
-      <button id="payBtn" class="oauth-btn" style="margin-bottom:0.6rem;">
-        购买 Pro · ¥15 CNY
-      </button>
+      <h2 style="margin-bottom:1.2rem;font-size:1.2rem;display:flex;align-items:center;gap:7px;"><span class="ui-svg-icon icon-alert" aria-hidden="true"></span>${uiText("今日免费额度已用完，请明天再来。")}</h2>
+      <button type="button" id="closeLimitBtn" class="oauth-btn">${uiText("关闭")}</button>
     </div>
   `;
 
@@ -2356,202 +2296,12 @@ function showLimitModal() {
 
   function closeModal() {
     modal.classList.add("closing");
-
-setTimeout(() => {
-  modal.classList.remove("active");
-  modal.remove();
-}, 200);
+    setTimeout(() => modal.remove(), 200);
   }
 
   modal.querySelector(".close").onclick = closeModal;
   modal.onclick = e => { if (e.target === modal) closeModal(); };
-
-  modal.querySelector("#payBtn").onclick = () => {
-    closeModal();
-    setTimeout(() => showPayModal(), 250);
-  };
-}
-
-function showActivationSuccess(modal, closeModal) {
-  const content = modal.querySelector(".modal-content");
-  if (!content) return;
-
-  content.innerHTML = `
-    <div style="text-align:center;padding:10px 0;">
-      <div style="
-        width:64px;
-        height:64px;
-        margin:0 auto 12px;
-        border-radius:50%;
-        background:linear-gradient(135deg,#22d3ee,#0e9aa7);
-        display:flex;
-        align-items:center;
-        justify-content:center;
-        color:white;
-        font-size:28px;
-        box-shadow:0 8px 24px rgba(34,211,238,0.35);
-        animation: fadeInBubble .25s ease;
-      ">✓</div>
-
-      <h2 style="margin:0 0 6px;font-size:1.2rem;font-weight:600;">
-        激活成功
-      </h2>
-
-      <p style="
-        font-size:13px;
-        color:#666;
-        line-height:1.5;
-        margin:0;
-      ">
-        已解锁 Pro · 无限使用
-      </p>
-    </div>
-  `;
-
-  setTimeout(closeModal, 1400);
-}
-
-function showActivationModal() {
-  // 🚫 激活码系统已弃用：购买统一进入审核中的价格页（showPayModal）。
-  //    下方为旧的激活码兑换逻辑，已不可达，保留以便需要时回溯，可后续清理。
-  showPayModal();
-  return;
-
-  if (document.getElementById("activationModal")) return;
-
-  const modal = document.createElement("div");
-  modal.id = "activationModal";
-  modal.className = "modal active";
-
-  modal.innerHTML = `
-    <div class="modal-content">
-      <span class="close">×</span>
-      <h2 style="margin-bottom:1rem;">输入激活码</h2>
-
-      <input id="codeInput" placeholder="SL-XXXX-XXXX" style="
-        width:100%;
-        padding:0.7rem;
-        border-radius:12px;
-        border:1px solid rgba(0,0,0,0.12);
-        margin-bottom:8px;
-      ">
-
-      <p id="codeMsg" style="font-size:13px;color:#ef4444;height:16px;"></p>
-
-      <button id="submitCodeBtn" class="oauth-btn">
-        激活
-      </button>
-
-      <button id="goPayBtn" style="
-        width:100%;
-        border-radius:12px;
-        padding:0.85rem;
-        margin-top:6px;
-        background:linear-gradient(135deg,#22d3ee,#67e8f9);
-        color:#00323a;
-        cursor:pointer;
-        border:none;
-        font-weight:700;
-        font-size:14px;
-        box-shadow:0 10px 25px rgba(34,211,238,0.35);
-      ">
-        <span class="ui-svg-icon icon-gem" aria-hidden="true" style="margin-right:6px;"></span>扫码支付（推荐）
-      </button>
-      <a href="pro_activation_support.html" style="display:block;margin-top:10px;text-align:center;color:#0e7490;font-size:12px;">${proPaymentText("supportLink", "Pro 到账申诉")}</a>
-    </div>
-  `;
-
-  document.body.appendChild(modal);
-
-  function closeModal() {
-    modal.classList.add("closing");
-
-setTimeout(() => {
-  modal.classList.remove("active");
-  modal.remove();
-}, 200);
-  }
-
-  modal.querySelector(".close").onclick = closeModal;
-  modal.onclick = e => { if (e.target === modal) closeModal(); };
-
-  modal.querySelector("#submitCodeBtn").onclick = async () => {
-    const code = modal.querySelector("#codeInput").value.trim().toUpperCase();
-    const msg = modal.querySelector("#codeMsg");
-    const btn = modal.querySelector("#submitCodeBtn");
-    if (btn.disabled) return;
-    btn.disabled = true;
-    btn.innerText = "激活中...";
-
-    const identity = getCurrentVerifiedIdentity();
-    const userId = getVerifiedUserId(identity);
-    const token = getVerifiedToken(identity);
-    if (!userId || !token) {
-      msg.innerText = "请先登录";
-      msg.style.color = "#ef4444";
-      btn.disabled = false;
-      btn.innerText = "激活";
-      return;
-    }
-
-    if (!/^[A-Z0-9_-]{4,64}$/.test(code)) {
-      msg.innerText = "请输入激活码";
-      msg.style.color = "#ef4444";
-      btn.disabled = false;
-      btn.innerText = "激活";
-      return;
-    }
-
-    msg.innerText = "验证中...";
-    msg.style.color = "#999";
-
-    try {
-      const response = await authenticatedFetch(
-        "https://api.sunland.dev/v1/activation/claim",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ code }),
-        },
-        false,
-        { userId, token },
-      );
-      if (!response || getCurrentUserId() !== userId) return;
-      const payload = await response.json().catch(() => ({}));
-      if (response.ok && ["success", "already_activated"].includes(payload.result)) {
-        if (getCurrentVerifiedIdentity() !== identity) return;
-        await checkActivation();
-        updateDeepButton();
-        showActivationSuccess(modal, closeModal);
-        return;
-      }
-      msg.innerText = payload.result === "used_by_other"
-        ? "激活码已被他人使用"
-        : payload.result === "invalid_code"
-          ? "激活码不存在"
-          : "激活服务暂时不可用，请稍后重试";
-      msg.style.color = "#ef4444";
-    } catch (error) {
-      console.warn("激活请求失败:", error);
-      msg.innerText = "激活服务暂时不可用，请稍后重试";
-      msg.style.color = "#ef4444";
-    } finally {
-      btn.disabled = false;
-      btn.innerText = "激活";
-    }
-  };
-
-  // ⭐ 跳转支付
-  modal.querySelector("#goPayBtn").onclick = () => {
-  modal.classList.add("closing");
-
-  setTimeout(() => {
-    modal.classList.remove("active");
-    modal.remove();
-  }, 200);
-
-  setTimeout(() => showPayModal(), 250); // ⭐ 补上
-};
+  modal.querySelector("#closeLimitBtn").onclick = closeModal;
 }
 
 // ===== 搜索输入框事件绑定（页面加载时绑定；原先误置于已弃用的激活码弹窗内）=====
@@ -2564,11 +2314,6 @@ setTimeout(() => {
     renderChatList();
   });
 }, 0);
-
-async function showPayModal() {
-  // Public purchasing is under review; no checkout or entitlement writes.
-  window.location.href = "pricing.html";
-}
 
 let controller = null;
 let sendingLock = false;
@@ -3856,17 +3601,6 @@ async function runDeepSeekRequest(requestContext) {
       }, false, requestContext.controller.signal, requestContext.traceContext);
       if (!res) return;
       requestContext.traceId = observeTraceResponse("api-worker", res, requestContext.traceId);
-      // Quota belongs to the account, even if its conversation was switched/deleted.
-      if (requestContext.sessionGeneration === sessionGeneration && getCurrentUserId() === requestContext.userId) {
-        const remain = parseRemaining(res.headers.get("x-remain"));
-        if (remain !== null && res.headers.get("x-usage-date") === usageDate()) {
-          ++usageVersion; // An older snapshot must not overwrite this response.
-          lastUsageDate = usageDate();
-          renderRemaining(remain);
-        } else {
-          void refreshChatUsage();
-        }
-      }
       if (abortMissingTarget(requestContext)) return;
 
       if (!res.ok) {
@@ -4637,13 +4371,6 @@ setInterval(async () => {
   }
 }, CLOUD_SYNC_INTERVAL_MS);
 
-// ===== Pro按钮点击事件绑定 =====
-const proBtn = document.getElementById("proBtn");
-if (proBtn) {
-  proBtn.onclick = () => {
-    showActivationModal();
-  };
-}
 if (deepBtn) {
   deepBtn.onclick = async () => {
     if (!providerCapabilityState.deepThinking) return;
@@ -4667,13 +4394,6 @@ if (deepBtn) {
     showToast(deepMode ? "深度思考已开启" : "深度思考已关闭");
   };
 }
-// ===== 从设置页跳转自动打开升级 =====
-if (window.location.hash === "#upgrade") {
-  setTimeout(() => {
-    showActivationModal();
-  }, 300);
-}
-
 // ⭐ 再兜底一次（防止前面报错导致未执行）
 window.addEventListener("DOMContentLoaded", () => {
   try {

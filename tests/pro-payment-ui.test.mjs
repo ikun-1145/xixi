@@ -97,7 +97,7 @@ test("Pro payment closes the placeholder and never enters checkout when identity
   assert.equal(opened[0].closed, true);
 });
 
-test("both Pro entry pages use the shared payment module and expose the static support route", () => {
+test("chat and settings use the shared payment module and settings links to support", () => {
   const app = readFileSync(new URL("../ai/app.js", import.meta.url), "utf8");
   const settings = readFileSync(new URL("../ai_settings.html", import.meta.url), "utf8");
   const support = readFileSync(new URL("../pro_activation_support.html", import.meta.url), "utf8");
@@ -106,7 +106,7 @@ test("both Pro entry pages use the shared payment module and expose the static s
   assert.doesNotMatch(app, /payments\.beginCheckout/);
   assert.match(settings, /window\.SunlandProPayment/);
   assert.doesNotMatch(settings, /payment\.beginCheckout/);
-  assert.match(app, /pro_activation_support\.html/);
+  assert.match(app, /payments\.reconcile\(\)/);
   assert.match(settings, /pro_activation_support\.html/);
   assert.match(support, /support@sunland\.dev/);
   for (const language of ["zh", "zh-Hant", "en", "ja", "ko", "es"]) {
@@ -159,12 +159,10 @@ test("a stalled intent times out and its late response cannot open checkout", as
 });
 
 
-test("settings purchase uses the public Production pricing path", async () => {
+test("settings keeps the public pricing information link without a purchase button", () => {
   const settings = readFileSync(new URL("../ai_settings.html", import.meta.url), "utf8");
-  const handler = settings.slice(settings.indexOf("    async function upgrade()"), settings.indexOf("    function logout()"));
-  const location = { href: "" };
-  await vm.runInNewContext(handler + "upgrade()", { location });
-  assert.equal(location.href, "pricing.html");
+  assert.match(settings, /<a href="pricing\.html">付费说明<\/a>/);
+  assert.doesNotMatch(settings, /onclick="upgrade\(\)"/);
 });
 
 test("public checkout disabled rejects before identity, popup or order writes", async () => {
@@ -193,7 +191,7 @@ test("checkout rejects an old A response after A to B to A even with the same cr
   assert.equal(saved.size, 0);
 });
 
-test("settings restores its upgrade card on confirmed Free and keeps its Pro card on temporary errors", () => {
+test("settings restores its support card on confirmed Free and keeps its Pro card on temporary errors", () => {
   const settings = readFileSync(new URL("../ai_settings.html", import.meta.url), "utf8");
   const document = new JSDOM(settings).window.document;
   const { api } = loadPaymentModule();
@@ -206,7 +204,7 @@ test("settings restores its upgrade card on confirmed Free and keeps its Pro car
   assert.equal(document.getElementById("proCard").classList.contains("activated"), true);
   api.applyMembership(false, api.captureRequest());
   assert.equal(document.getElementById("proCard").classList.contains("activated"), false);
-  assert.ok(document.querySelector('#proCard [onclick="upgrade()"]'));
+  assert.ok(document.getElementById("proSupportLink"));
   assert.ok(document.getElementById("proRecheckBtn"));
 });
 

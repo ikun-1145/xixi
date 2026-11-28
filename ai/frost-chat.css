@@ -126,7 +126,7 @@ html:is(.night, .dark) body.frost-chat #app {
   font-size: 1.125rem;
   cursor: pointer;
 }
-.frost-chat .top-actions > :is(.ghost-btn, .pro-btn) {
+.frost-chat .top-actions > .ghost-btn {
   min-height: 38px;
   padding: 7px 12px;
   box-sizing: border-box;
@@ -139,9 +139,6 @@ html:is(.night, .dark) body.frost-chat #app {
   box-shadow: none;
   backdrop-filter: none;
 }
-.frost-chat #usageHint { align-content: center; border-color: transparent; color: var(--frost-muted); }
-.frost-chat #proBtn { color: var(--frost-iris); background: var(--frost-iris-tint); }
-.frost-chat #proBtn:hover { box-shadow: none; }
 .frost-chat .user-menu {
   transform: none;
   width: min(240px, calc(100vw - 32px));
@@ -899,7 +896,6 @@ body.frost-chat .furry-event-skeleton {
   .frost-chat #app > .header { min-height: 60px; padding-left: max(10px, env(safe-area-inset-left)); }
   .frost-chat #app .top-brand { gap: 6px; }
   .frost-chat #app .top-wordmark { font-size: .9375rem; }
-  .frost-chat #proBtn { min-height: var(--frost-control); font-size: .75rem; padding-inline: 8px; }
   .frost-chat #app > #chat { padding-bottom: 16px; }
   .frost-chat #app > .input-area { padding-bottom: calc(8px + env(safe-area-inset-bottom)); }
   .frost-chat .input-area .input-box { padding: 7px; border-radius: 24px; }

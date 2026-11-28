@@ -119,7 +119,7 @@ body.dark.frost-settings .card.pro-card {
 .frost-settings .pro-disabled-note,
 .frost-settings .pro-support-link { margin-top: 0; }
 .frost-settings :is(.pro-support-link, .pro-support-link a) { color: var(--frost-brand); }
-.frost-settings :is(#proReviewStatus, #proPaymentStatus):empty { margin-top: -10px; }
+.frost-settings #proPaymentStatus:empty { margin-top: -10px; }
 .frost-settings .pro-gem { background: var(--frost-iris-tint); box-shadow: none; }
 .frost-settings .pro-gem .ui-svg-icon { color: var(--frost-iris); }
 .frost-settings .btn-pro {
@@ -134,7 +134,7 @@ body.dark.frost-settings .card.pro-card {
 }
 .frost-settings .btn-pro::after { display: none; }
 .frost-settings .btn-pro:hover { transform: none; box-shadow: inset 0 0 0 1px currentColor; }
-.frost-settings :is(.row-icon, .usage-bar-bg, .diagnostics-preview-content, .diagnostics-performance) {
+.frost-settings :is(.row-icon, .diagnostics-preview-content, .diagnostics-performance) {
   background: var(--frost-tint) !important;
   color: var(--frost-text);
 }
@@ -142,7 +142,6 @@ body.dark.frost-settings .card.pro-card {
 .frost-settings .row-left { min-width: 0; }
 .frost-settings .row-label { overflow-wrap: anywhere; }
 .frost-settings .row-value { color: var(--frost-body); }
-.frost-settings .usage-bar-fill { background: var(--frost-accent); transition: width var(--frost-motion) var(--frost-ease); }
 .frost-settings button:not([hidden]), .frost-settings summary { min-height: var(--frost-control); }
 .frost-settings .row :is(button, .row-value) { flex-shrink: 0; }
 .frost-settings .row :is(#userId, #userEmail) { flex-shrink: 1; min-width: 0; overflow-wrap: anywhere; text-align: end; }
