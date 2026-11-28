@@ -4403,6 +4403,114 @@ window.addEventListener("pagehide", () => {
   void sunlandDiagnosticsRuntime.flush();
 }, { once: true });
 document.getElementById("newChatBtn").onclick = createNewChat;
+document.getElementById("quickNewChat")?.addEventListener("click", createNewChat);
+
+function updateWelcomeGreeting() {
+  const greeting = document.getElementById("welcomeGreeting");
+  if (!greeting) return;
+  const hour = new Date().getHours();
+  const period = hour < 5 || hour >= 18 ? "晚上好"
+    : hour < 11 ? "早上好" : hour < 14 ? "中午好" : "下午好";
+  greeting.textContent = uiText(period);
+}
+updateWelcomeGreeting();
+window.addEventListener("site-language-change", updateWelcomeGreeting);
+window.addEventListener("focus", updateWelcomeGreeting);
+
+const welcomeTools = document.getElementById("welcomeTools");
+function useWelcomeShortcut(event) {
+  const control = event.target.closest("button");
+  if (!control) return;
+  if (control.hasAttribute("data-more-tools")) {
+    welcomeTools?.showModal();
+    return;
+  }
+  const draft = control.dataset.draft;
+  if (!draft) return;
+  if (welcomeTools?.open) welcomeTools.close();
+  if (input.value.trim() || pendingFiles.length || requestCoordinator.activeForConversation(currentId)) {
+    showToast(uiText("请先完成或清空当前输入，再选择功能"));
+    return;
+  }
+  const quickSend = control.hasAttribute("data-quick-send");
+  input.value = quickSend ? draft : uiText(draft);
+  input.dispatchEvent(new Event("input", { bubbles: true }));
+  if (quickSend) void send();
+  else input.focus();
+}
+welcome.addEventListener("click", useWelcomeShortcut);
+welcomeTools?.addEventListener("click", useWelcomeShortcut);
+
+for (const track of welcome.querySelectorAll(".welcome-track")) {
+  const reduced = matchMedia("(prefers-reduced-motion: reduce)");
+  const originals = [...track.children];
+  let copies = [];
+  let lastFrame = 0;
+  let distance = 0;
+  let idleUntil = performance.now() + 4500;
+  const pointers = new Set();
+  const pause = () => { idleUntil = performance.now() + 4500; };
+  track.addEventListener("pointerdown", event => {
+    pointers.add(event.pointerId);
+    pause();
+  });
+  function release(event) {
+    if (pointers.delete(event.pointerId)) pause();
+  }
+  window.addEventListener("pointerup", release);
+  window.addEventListener("pointercancel", release);
+  track.addEventListener("pointerleave", pause);
+  track.addEventListener("focusout", pause);
+  track.addEventListener("wheel", pause, { passive: true });
+
+  function updateOverflow() {
+    const last = originals.at(-1);
+    const right = last.offsetLeft + last.offsetWidth;
+    const overflow = right + parseFloat(getComputedStyle(track).paddingRight) > track.clientWidth + 1;
+    if (reduced.matches || !overflow || !track.clientWidth) {
+      copies.forEach(copy => copy.remove());
+      copies = [];
+    } else if (!copies.length) {
+      copies = [...originals, ...originals].map(original => {
+        const copy = original.cloneNode(true);
+        copy.tabIndex = -1;
+        copy.setAttribute("aria-hidden", "true");
+        track.append(copy);
+        return copy;
+      });
+    }
+  }
+
+  function drift(now) {
+    const elapsed = Math.min(now - lastFrame, 34);
+    lastFrame = now;
+    if (copies.length && now >= idleUntil && !pointers.size &&
+        !track.matches(":hover, :focus-within") && !document.hidden &&
+        !welcomeTools?.open && !track.closest(".keyboard-visible")) {
+      const span = copies[0].offsetLeft - originals[0].offsetLeft;
+      if (span > 0) {
+        distance += elapsed * .009;
+        if (distance >= 1) {
+          const next = track.scrollLeft + Math.floor(distance);
+          track.scrollLeft = next >= 2 * span ? span + next % span : next;
+          distance %= 1;
+        }
+      }
+    }
+  }
+  let frame;
+  function animate(now) {
+    drift(now);
+    frame = requestAnimationFrame(animate);
+  }
+  function syncTrack() {
+    updateOverflow();
+    cancelAnimationFrame(frame);
+    if (copies.length) frame = requestAnimationFrame(animate);
+  }
+  new ResizeObserver(syncTrack).observe(track);
+  reduced.addEventListener("change", syncTrack);
+}
 
 async function holdForMaintenanceIfEnabled() {
   const timeout = new Promise((resolve) => setTimeout(() => resolve(null), 7000));
